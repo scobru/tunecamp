@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyRound } from 'lucide-react';
 import API from '../../services/api';
 import { notify } from '../../utils/notify';
 
 export const ChangePasswordCard = () => {
+    const { t } = useTranslation('auth');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPass, setConfirmPass] = useState('');
@@ -13,7 +15,7 @@ export const ChangePasswordCard = () => {
         e.preventDefault();
 
         if (newPassword !== confirmPass) {
-            notify.error(null, 'New passwords do not match');
+            notify.error(null, t('errors.newPasswordsDoNotMatch'));
             return;
         }
 
@@ -22,12 +24,12 @@ export const ChangePasswordCard = () => {
             const res: any = await API.changePassword(currentPassword, newPassword);
             // The server bumps the token version, so the old token is now invalid
             if (res?.token) API.setToken(res.token);
-            notify.success('Password changed successfully');
+            notify.success(t('changePassword.success'));
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPass('');
         } catch (err: any) {
-            notify.error(err, 'Failed to change password');
+            notify.error(err, t('errors.changePasswordFailed'));
         } finally {
             setLoading(false);
         }
@@ -37,16 +39,16 @@ export const ChangePasswordCard = () => {
         <div className="card bg-base-200 border border-base-content/10 overflow-hidden">
             <div className="bg-base-200/40 p-6 border-b border-base-content/5">
                 <h3 className="text-xl font-bold flex items-center gap-2">
-                    <KeyRound size={20} className="text-warning" /> Change Password
+                    <KeyRound size={20} className="text-warning" /> {t('changePassword.title')}
                 </h3>
                 <p className="text-xs opacity-50 mt-1">
-                    Update the password you use to log in to this instance.
+                    {t('changePassword.description')}
                 </p>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4 max-w-md">
                 <div className="form-control">
                     <label className="label">
-                        <span className="label-text text-xs font-bold opacity-40">Current Password</span>
+                        <span className="label-text text-xs font-bold opacity-40">{t('fields.currentPassword')}</span>
                     </label>
                     <input
                         type="password"
@@ -59,7 +61,7 @@ export const ChangePasswordCard = () => {
                 </div>
                 <div className="form-control">
                     <label className="label">
-                        <span className="label-text text-xs font-bold opacity-40">New Password</span>
+                        <span className="label-text text-xs font-bold opacity-40">{t('fields.newPassword')}</span>
                     </label>
                     <input
                         type="password"
@@ -73,7 +75,7 @@ export const ChangePasswordCard = () => {
                 </div>
                 <div className="form-control">
                     <label className="label">
-                        <span className="label-text text-xs font-bold opacity-40">Confirm New Password</span>
+                        <span className="label-text text-xs font-bold opacity-40">{t('fields.confirmNewPassword')}</span>
                     </label>
                     <input
                         type="password"
@@ -86,7 +88,7 @@ export const ChangePasswordCard = () => {
                 </div>
                 <button type="submit" className="btn btn-primary shadow-level-1" disabled={loading}>
                     {loading ? <span className="loading loading-spinner loading-xs" /> : <KeyRound size={16} />}
-                    Update Password
+                    {t('actions.updatePassword')}
                 </button>
             </form>
         </div>

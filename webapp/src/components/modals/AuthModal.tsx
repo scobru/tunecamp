@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation, Trans } from 'react-i18next';
 import { useAuthStore } from '../../stores/useAuthStore';
 import API from '../../services/api';
 import { LogIn, UserPlus, Shield, KeyRound } from 'lucide-react';
 import { match } from 'ts-pattern';
 
 export const AuthModal = () => {
+    const { t } = useTranslation('auth');
     const dialogRef = useRef<HTMLDialogElement>(null);
     const [mode, setMode] = useState<'login' | 'register' | 'setup' | 'forgot'>('login');
     const [username, setUsername] = useState('');
@@ -52,7 +54,7 @@ export const AuthModal = () => {
             const result = await API.forgotPassword(forgotEmail);
             setForgotMessage(result.message);
         } catch (err: any) {
-            setForgotMessage(err?.message ?? 'Something went wrong. Please try again.');
+            setForgotMessage(err?.message ?? t('errors.somethingWrong'));
         } finally {
             setForgotLoading(false);
         }
@@ -70,6 +72,7 @@ export const AuthModal = () => {
                     throw new Error('Passwords do not match');
                 }
                 await register(username, password);
+            // ponytail: sentinel string stays English — it's an internal control signal, not shown; UI copy uses t() below
             } else {
                 await login(username, password);
             }
@@ -79,7 +82,7 @@ export const AuthModal = () => {
             setUsername('');
         } catch (err: any) {
             if (err.message === 'Passwords do not match') {
-                setLocalError('Passwords do not match');
+                setLocalError(t('errors.passwordsDoNotMatch'));
             }
             // Error managed by store usually
         } finally {
@@ -96,10 +99,10 @@ export const AuthModal = () => {
                 
                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
                     {match(mode)
-                        .with('register', () => <><UserPlus size={20}/> Create Account</>)
-                        .with('setup', () => <><Shield size={20}/> Create First Admin</>)
-                        .with('forgot', () => <><KeyRound size={20}/> Reset Password</>)
-                        .otherwise(() => <><LogIn size={20}/> Sign In</>)
+                        .with('register', () => <><UserPlus size={20}/> {t('titles.createAccount')}</>)
+                        .with('setup', () => <><Shield size={20}/> {t('titles.createFirstAdmin')}</>)
+                        .with('forgot', () => <><KeyRound size={20}/> {t('titles.resetPassword')}</>)
+                        .otherwise(() => <><LogIn size={20}/> {t('titles.signIn')}</>)
                     }
                 </h3>
 
@@ -110,29 +113,29 @@ export const AuthModal = () => {
                             onClick={() => switchMode('login')}
                             role="tab"
                             aria-selected={mode === 'login'}
-                        >Login</button>
+                        >{t('tabs.login')}</button>
                         <button
                             className={`tab flex-auto ${mode === 'register' ? 'tab-active' : ''}`}
                             onClick={() => switchMode('register')}
                             role="tab"
                             aria-selected={mode === 'register'}
-                        >Register</button>
+                        >{t('tabs.register')}</button>
                     </div>
                 )}
 
                 {mode === 'forgot' ? (
                     <form onSubmit={handleForgotSubmit} className="space-y-4">
                         <p className="text-sm opacity-70">
-                            Enter the email linked to your account and we'll send you a reset link.
+                            {t('forgot.prompt')}
                         </p>
                         <div className="form-control">
                             <label className="label" htmlFor="forgot-email">
-                                <span className="label-text">Email</span>
+                                <span className="label-text">{t('fields.email')}</span>
                             </label>
                             <input
                                 id="forgot-email"
                                 type="email"
-                                placeholder="you@example.com"
+                                placeholder={t('fields.emailPlaceholder')}
                                 className="input input-bordered w-full"
                                 value={forgotEmail}
                                 onChange={e => setForgotEmail(e.target.value)}
@@ -149,7 +152,7 @@ export const AuthModal = () => {
                             {forgotLoading ? (
                                 <span className="loading loading-spinner loading-sm"></span>
                             ) : (
-                                'Send Reset Link'
+                                t('actions.sendResetLink')
                             )}
                         </button>
 
@@ -158,19 +161,19 @@ export const AuthModal = () => {
                             className="link link-hover text-sm w-full text-center block opacity-70"
                             onClick={() => switchMode('login')}
                         >
-                            Back to Sign In
+                            {t('actions.backToSignIn')}
                         </button>
                     </form>
                 ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="form-control">
                                 <label className="label" htmlFor="username">
-                                    <span className="label-text">Username</span>
+                                    <span className="label-text">{t('fields.username')}</span>
                                 </label>
                                 <input
                                     id="username"
                                     type="text"
-                                    placeholder="username"
+                                    placeholder={t('fields.usernamePlaceholder')}
                                     className="input input-bordered w-full"
                                     value={username}
                                     onChange={e => setUsername(e.target.value)}
@@ -181,7 +184,7 @@ export const AuthModal = () => {
 
                             <div className="form-control">
                                 <label className="label" htmlFor="password">
-                                    <span className="label-text">Password</span>
+                                    <span className="label-text">{t('fields.password')}</span>
                                 </label>
                                 <input 
                                     id="password"
@@ -201,14 +204,14 @@ export const AuthModal = () => {
                                     className="link link-hover text-xs opacity-70 -mt-2"
                                     onClick={() => switchMode('forgot')}
                                 >
-                                    Forgot password?
+                                    {t('actions.forgotPassword')}
                                 </button>
                             )}
 
                             {mode === 'register' && (
                                 <div className="form-control">
                                     <label className="label" htmlFor="confirmPass">
-                                        <span className="label-text">Confirm Password</span>
+                                        <span className="label-text">{t('fields.confirmPassword')}</span>
                                     </label>
                                     <input 
                                         id="confirmPass"
@@ -225,10 +228,14 @@ export const AuthModal = () => {
 
                             {mode === 'register' && (
                                 <p className="text-xs opacity-60 text-center">
-                                    By creating an account you agree to this instance's{' '}
-                                    <Link to="/terms" className="link" onClick={() => dialogRef.current?.close()}>Terms of Service</Link>
-                                    {' '}and{' '}
-                                    <Link to="/privacy" className="link" onClick={() => dialogRef.current?.close()}>Privacy Policy</Link>.
+                                    <Trans
+                                        t={t}
+                                        i18nKey="terms.agreement"
+                                        components={{
+                                            terms: <Link to="/terms" className="link" onClick={() => dialogRef.current?.close()} />,
+                                            privacy: <Link to="/privacy" className="link" onClick={() => dialogRef.current?.close()} />,
+                                        }}
+                                    />
                                 </p>
                             )}
 
@@ -239,7 +246,7 @@ export const AuthModal = () => {
                     {showSetupOffer && (
                         <div className="bg-primary/10 p-4 rounded-lg flex flex-col gap-3">
                             <p className="text-sm opacity-90 text-center">
-                                No admin account yet. Create the first admin with the credentials above.
+                                {t('setupOffer.prompt')}
                             </p>
                             <button
                                 type="button"
@@ -257,7 +264,7 @@ export const AuthModal = () => {
                                         setPassword('');
                                         setShowSetupOffer(false);
                                     } catch (e: any) {
-                                        setLocalError(e?.message ?? 'Setup failed');
+                                        setLocalError(e?.message ?? t('errors.setupFailed'));
                                     } finally {
                                         setIsLoading(false);
                                     }
@@ -266,7 +273,7 @@ export const AuthModal = () => {
                                 {isLoading ? (
                                     <span className="loading loading-spinner loading-xs"></span>
                                 ) : (
-                                    'Create Admin Account'
+                                    t('actions.createAdminAccount')
                                 )}
                             </button>
                         </div>
@@ -278,9 +285,9 @@ export const AuthModal = () => {
                                 <span className="loading loading-spinner loading-sm"></span>
                             ) : (
                                 match(mode)
-                                    .with('register', () => 'Sign Up')
-                                    .with('setup', () => 'Create Admin')
-                                    .otherwise(() => 'Sign In')
+                                    .with('register', () => t('actions.signUp'))
+                                    .with('setup', () => t('actions.createAdmin'))
+                                    .otherwise(() => t('actions.signIn'))
                             )}
                         </button>
                     )}

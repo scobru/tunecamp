@@ -4,8 +4,10 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 
 import enCommon from './locales/en/common.json';
 import enAdmin from './locales/en/admin.json';
+import enAuth from './locales/en/auth.json';
 import itCommon from './locales/it/common.json';
 import itAdmin from './locales/it/admin.json';
+import itAuth from './locales/it/auth.json';
 
 // ponytail: catalogs bundled statically — switch to lazy per-namespace loading when they grow past a few KB
 i18n
@@ -13,8 +15,8 @@ i18n
   .use(initReactI18next)
   .init({
     resources: {
-      en: { common: enCommon, admin: enAdmin },
-      it: { common: itCommon, admin: itAdmin },
+      en: { common: enCommon, admin: enAdmin, auth: enAuth },
+      it: { common: itCommon, admin: itAdmin, auth: itAuth },
     },
     fallbackLng: 'en',
     supportedLngs: ['en', 'it'],

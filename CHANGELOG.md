@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.20.0] - 2026-07-06
+
+### Added
+- **i18n: `auth` namespace fully translated (EN/IT).** Extracted every hardcoded string from the authentication surfaces into a new `auth.json` catalog and wired them through `t()`: the `AuthModal` (sign in / register / create-first-admin / forgot-password flows, tabs, field labels, Terms & Privacy consent via `<Trans>`, setup-offer, and all buttons), the `ChangePasswordCard` (labels, description, success/error toasts), and the `ResetPassword` page (headings, done state, missing-token notice, validation). English is the source/fallback, Italian at full parity. Second namespace migrated after the Setup Wizard pilot — see `docs/i18n-plan.md` (Sprint 2, `auth.json`).
+
 ## [2.19.1] - 2026-07-06
 
 ### Changed
