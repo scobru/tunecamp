@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "i18n:check": "node scripts/check-i18n.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.0",

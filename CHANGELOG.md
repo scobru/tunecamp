@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.20.1] - 2026-07-06
+
+### Added
+- **i18n guardrail (E2): missing/orphan key check in CI.** New `webapp/scripts/check-i18n.mjs` (run via `npm run i18n:check -w webapp`, wired into the webapp CI job before build) compares every locale catalog against the source locale (`en`): a key present in `en` but missing from a target locale is a **warning** (English fallback keeps the UI working); a key present in a target locale with no `en` source, or a namespace file that exists in only one locale, is a **build-failing error**. Keeps EN/IT parity from silently rotting as new namespaces land. No runtime dependencies.
+
 ## [2.20.0] - 2026-07-06
 
 ### Added
