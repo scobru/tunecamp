@@ -231,6 +231,12 @@ describe('findAudioFiles', () => {
         expect(files).toEqual([]);
     });
 
+    test('should return empty array if directory does not exist', async () => {
+        const nonExistentDir = path.join(tmpDir, 'does-not-exist');
+        const files = await fileUtils.findAudioFiles(nonExistentDir);
+        expect(files).toEqual([]);
+    });
+
     test('should find audio files in directory and subdirectories', async () => {
         const testDir = path.join(tmpDir, 'audio-files');
         await fs.mkdirp(testDir);
@@ -293,5 +299,13 @@ describe('findAudioFiles', () => {
             'm-file.wav',
             'z-file.mp3'
         ]);
+    });
+
+    test('should propagate errors from underlying glob implementation', async () => {
+        // Trigger a native Node.js ERR_INVALID_ARG_VALUE error by passing a null byte
+        // which glob will eventually pass down to fs.readdir
+        const invalidPath = path.join(tmpDir, '\0invalid');
+
+        await expect(fileUtils.findAudioFiles(invalidPath)).rejects.toThrow();
     });
 });

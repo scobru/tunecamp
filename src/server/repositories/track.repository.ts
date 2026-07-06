@@ -352,6 +352,9 @@ export class TrackRepository {
         const values: any[] = [];
         for (const [key, value] of Object.entries(track)) {
             if (['id', 'created_at', 'album_title', 'owner_name', 'artist_slug', 'wallet_address', 'effective_owner_id', 'album_status', 'album_visibility', 'album_artist_tag'].includes(key)) continue;
+            // Partial<Track> semantics: `undefined` means "leave unchanged" — only an
+            // explicit `null` clears a column (better-sqlite3 binds undefined as NULL).
+            if (value === undefined) continue;
             fields.push(`${key} = ?`);
             values.push(value);
         }
@@ -585,7 +588,11 @@ export class TrackRepository {
             case 'cover': condition = "(external_artwork IS NULL AND (album_id IS NULL OR EXISTS (SELECT 1 FROM albums al WHERE al.id = album_id AND (al.cover_path IS NULL OR al.cover_path = ''))))"; break;
             case 'album': condition = "album_id IS NULL"; break;
             case 'artist': condition = "(artist_id IS NULL OR artist_name = 'Unknown Artist')"; break;
-            case 'external': condition = "external_id IS NULL"; break;
+            // "External / Streaming": tracks whose audio is not a durable local
+            // file — streaming references (service set, e.g. bandcamp/youtube) or
+            // no on-disk path. Previously `external_id IS NULL`, which matched
+            // nearly the whole local library instead.
+            case 'external': condition = "(file_path IS NULL OR file_path LIKE 'http%' OR (service IS NOT NULL AND service != 'local'))"; break;
             default: return [];
         }
         const rows = this.db.prepare(`SELECT * FROM v_tracks WHERE ${condition}`).all();

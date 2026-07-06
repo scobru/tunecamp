@@ -264,5 +264,16 @@ describe("VisibilityGuardian", () => {
       // @ts-ignore
       expect(getContextFromProfile({ userId: 5 })).toEqual({ role: UserRole.GUEST });
     });
+
+    test("should return GUEST role when profile is of unexpected primitive types", () => {
+      // @ts-ignore
+      expect(getContextFromProfile(123)).toEqual({ role: UserRole.GUEST });
+      // @ts-ignore
+      expect(getContextFromProfile("invalid_string")).toEqual({ role: UserRole.GUEST });
+      // @ts-ignore
+      expect(getContextFromProfile(true)).toEqual({ role: UserRole.GUEST });
+      // @ts-ignore
+      expect(getContextFromProfile([])).toEqual({ role: UserRole.GUEST });
+    });
   });
 });

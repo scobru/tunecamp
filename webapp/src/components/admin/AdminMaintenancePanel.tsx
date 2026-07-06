@@ -19,6 +19,10 @@ export const AdminMaintenancePanel = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [isAIProcessing, setIsAIProcessing] = useState(false);
     const [isPrewarming, setIsPrewarming] = useState(false);
+    // Header system ops get their own flags so triggering one doesn't put a
+    // spinner on every other button that shares `isProcessing`.
+    const [isRescanning, setIsRescanning] = useState(false);
+    const [isOptimizing, setIsOptimizing] = useState(false);
     const [results, setResults] = useState<{ success: number, failed: number, skipped: number } | null>(null);
     const [auditStatus, setAuditStatus] = useState<any | null>(null);
     const [runningTasks, setRunningTasks] = useState<any[]>([]);
@@ -259,14 +263,14 @@ export const AdminMaintenancePanel = () => {
 
     const handleOptimizeDB = async () => {
         if (!await confirm("This will merge duplicate albums (same artist + title), remove orphaned albums and artists. Continue?")) return;
-        setIsProcessing(true);
+        setIsOptimizing(true);
         try {
             const res = await API.pruneOrphans();
             notify.success(res.message);
         } catch (e: any) {
             notify.error(e, "Optimization failed");
         } finally {
-            setIsProcessing(false);
+            setIsOptimizing(false);
         }
     };
 
@@ -298,14 +302,14 @@ export const AdminMaintenancePanel = () => {
 
     const handleRescan = async () => {
         if (!await confirm("Trigger a full library rescan? This deep scan finds new files and updates existing metadata.")) return;
-        setIsProcessing(true);
+        setIsRescanning(true);
         try {
             await API.triggerRescan();
             notify.success("Full library rescan triggered in background.");
         } catch (e: any) {
             notify.error(e, "Rescan failed");
         } finally {
-            setIsProcessing(false);
+            setIsRescanning(false);
         }
     };
 
@@ -349,20 +353,21 @@ export const AdminMaintenancePanel = () => {
                     <button
                         className="btn btn-sm btn-outline btn-secondary tooltip tooltip-bottom"
                         onClick={handleRescan}
-                        disabled={isProcessing}
+                        disabled={isRescanning}
                         data-tip="Deep scan of the music directory to detect new files"
                     >
-                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Zap size={18} />}
+                        {isRescanning ? <Loader2 className="animate-spin" size={18} /> : <Zap size={18} />}
                         Rescan Library
                     </button>
 
-                    <button 
-                        className="btn btn-sm btn-ghost"
+                    <button
+                        className="btn btn-sm btn-ghost tooltip tooltip-bottom"
                         onClick={mode === 'tracks' ? loadTracks : mode === 'artists' ? loadArtists : loadAlbums}
                         disabled={isLoading}
+                        data-tip="Reload the table below (no filesystem scan)"
                     >
                         {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />}
-                        Scan
+                        Refresh List
                     </button>
 
                     <button
@@ -378,10 +383,10 @@ export const AdminMaintenancePanel = () => {
                     <button
                         className="btn btn-sm btn-outline btn-error tooltip tooltip-bottom"
                         onClick={handleOptimizeDB}
-                        disabled={isProcessing}
+                        disabled={isOptimizing}
                         data-tip="Merge duplicate albums, remove orphan records"
                     >
-                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Database size={18} />}
+                        {isOptimizing ? <Loader2 className="animate-spin" size={18} /> : <Database size={18} />}
                         Optimize DB
                     </button>
                 </div>
@@ -453,7 +458,8 @@ export const AdminMaintenancePanel = () => {
                                             max={task.progress.total}
                                         ></progress>
                                     ) : (
-                                        <progress className={`progress ${colorClass} w-full h-2`} defaultValue={undefined}></progress>
+                                        // No value = indeterminate progress bar
+                                        <progress className={`progress ${colorClass} w-full h-2`}></progress>
                                     )}
                                     <div className="text-xs opacity-60 flex justify-between">
                                         <span>{progressMsg}</span>

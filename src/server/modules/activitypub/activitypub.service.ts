@@ -1647,14 +1647,16 @@ export class ActivityPubService {
             notesByArtist.set(artist.id, []);
         }
 
-        for (const release of releases) {
+        for (let i = 0; i < releases.length; i++) {
+            const release = releases[i];
             if (release.artist_id !== null) {
                 const arr = releasesByArtist.get(release.artist_id);
                 if (arr !== undefined) arr.push(release);
             }
         }
 
-        for (const note of allNotes) {
+        for (let i = 0; i < allNotes.length; i++) {
+            const note = allNotes[i];
             const arr = notesByArtist.get(note.artist_id);
             if (arr !== undefined) arr.push(note);
         }
@@ -1720,6 +1722,7 @@ export class ActivityPubService {
             const pending = this.db.getPendingFollowers ? this.db.getPendingFollowers(artistId) : [];
             if (pending.length > 0) {
                 console.log(`  👥 Auto-accepting ${pending.length} pending follower(s)...`);
+                // Batch accept pending followers to avoid N+1 query bottlenecks
                 this.db.acceptPendingFollowers(artistId);
             }
         }
