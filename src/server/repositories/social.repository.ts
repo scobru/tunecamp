@@ -48,9 +48,9 @@ export class SocialRepository {
 
     /** Batch accept all pending followers to eliminate N+1 queries */
     acceptPendingFollowers(artistId: number): void {
-        this.db.transaction(() => {
-            this.db.prepare("UPDATE followers SET status = 'accepted' WHERE artist_id = ? AND status = 'pending'").run(artistId);
-        })();
+        this.db.transaction((id: number) => {
+            this.db.prepare("UPDATE followers SET status = 'accepted' WHERE artist_id = ? AND status = 'pending'").run(id);
+        })(artistId);
     }
 
     /** Reject a follower request */
