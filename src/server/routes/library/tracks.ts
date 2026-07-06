@@ -126,7 +126,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         if (!req.context || !VisibilityGuardian.canWriteContent(req.context)) throw new ForbiddenError("Unauthorized");
         if (!req.isAdmin && !req.isActive) throw new ForbiddenError("Account not active");
 
-        const { title, albumId, artistId: bodyArtistId, trackNum, url, service, externalArtwork, duration, lyrics, currency, priceUsdc } = req.body;
+        const { title, albumId, artistId: bodyArtistId, trackNum, url, service, externalArtwork, duration, lyrics, currency, priceUsdc, localize } = req.body;
         
         let finalArtistId = bodyArtistId;
         if (!req.isAdmin) {
@@ -155,6 +155,17 @@ export function createTracksRoutes(container: ServiceContainer): Router {
 
         const newTrack = library.getTrack(trackId);
         res.status(201).json(newTrack ? mapTrackDTO(newTrack, database, req.username) : null);
+
+        // Opt-in durable import: streaming references (e.g. Bandcamp) rot — signed CDN
+        // links expire and nothing survives a redeploy — so when the caller asks to
+        // localize, download the audio into the library in the background. The response
+        // has already been sent; localization runs through its own bounded queue.
+        const RIPPABLE_SERVICES = new Set(["bandcamp", "youtube", "soundcloud"]);
+        if (localize && localizationService && url && service && RIPPABLE_SERVICES.has(service)) {
+            localizationService.localizeTrack(trackId)
+                .then(() => { if (albumId) publishingService.syncRelease(albumId).catch(() => {}); })
+                .catch(e => console.error(`[Tracks] Auto-localize failed for track ${trackId}:`, e?.message || e));
+        }
 
         if (albumId) {
             publishingService.syncRelease(albumId).catch(e => console.error("Sync failed:", e));
