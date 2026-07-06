@@ -131,6 +131,7 @@ describe('ffmpeg.ts', () => {
 
         it('should acquire a slot successfully when available', () => {
             expect(tryAcquireLiveSlot()).toBe(true);
+            releaseLiveSlot(); // Cleanup
         });
 
         it('should return false when max slots are reached', () => {
@@ -161,6 +162,32 @@ describe('ffmpeg.ts', () => {
             // Should be able to acquire exactly one slot
             expect(tryAcquireLiveSlot()).toBe(true);
             expect(tryAcquireLiveSlot()).toBe(false);
+        });
+
+        it('should verify tryAcquireLiveSlot and releaseLiveSlot in isolation', () => {
+            // Reset state (ensure starting from 0)
+            while (tryAcquireLiveSlot()) {} // Exhaust
+            for (let i = 0; i < 1000; i++) releaseLiveSlot(); // Fully empty
+
+            // 1) Test tryAcquireLiveSlot success
+            const acquired = tryAcquireLiveSlot();
+            expect(acquired).toBe(true);
+
+            // 2) Test releaseLiveSlot impact (can re-acquire)
+            releaseLiveSlot();
+            const reacquired = tryAcquireLiveSlot();
+            expect(reacquired).toBe(true);
+
+            // Clean up the slot we just acquired
+            releaseLiveSlot();
+
+            // 3) Test releaseLiveSlot bounds (cannot release past 0)
+            releaseLiveSlot(); // Try to release extra
+            releaseLiveSlot(); // Try to release extra
+
+            // It should still only allow up to max, we check this by just ensuring we can still acquire
+            expect(tryAcquireLiveSlot()).toBe(true);
+            releaseLiveSlot();
         });
 
         it('should not allow activeLiveTranscodes to drop below 0', () => {
