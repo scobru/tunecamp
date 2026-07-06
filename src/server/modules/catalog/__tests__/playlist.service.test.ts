@@ -134,10 +134,14 @@ describe('PlaylistService', () => {
             expect(retrievedService).toBe(service);
         });
 
-        test('getPlaylistService should return the singleton instance if initialized', async () => {
+        test('getPlaylistService should correctly return the initialized singleton instance', async () => {
              const mockDb = {} as any;
              const initService = await initPlaylistService(mockDb);
-             expect(getPlaylistService()).toBe(initService);
+
+             const retrievedService = getPlaylistService();
+             expect(retrievedService).toBeDefined();
+             expect(retrievedService).toBe(initService);
+             expect(retrievedService).toBeInstanceOf(PlaylistService);
         });
     });
 });
