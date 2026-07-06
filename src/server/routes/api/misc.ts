@@ -15,6 +15,37 @@ try {
     // fallback: version stays '0.0.0'
 }
 
+function getFilteredChangelog(): string {
+    try {
+        const changelogPath = path.join(process.cwd(), 'CHANGELOG.md');
+        if (!fs.existsSync(changelogPath)) {
+            return "Changelog not found.";
+        }
+        const content = fs.readFileSync(changelogPath, 'utf8');
+        const sections = content.split(/^## /m);
+        const header = sections[0] || "# Changelog\n\n";
+        const versionBlocks = sections.slice(1, 9);
+        
+        const processedBlocks = versionBlocks.map(block => {
+            const lines = block.split('\n');
+            const filteredLines = lines.filter(line => {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('-') && (
+                    /test|ci|mock|jest|coverage|lint|eslint|refactor|workspace|dependency|docker|github|vitest|tsbuildinfo|knip/i.test(trimmed)
+                )) {
+                    return false;
+                }
+                return true;
+            });
+            return filteredLines.join('\n');
+        });
+        
+        return [header.trim(), ...processedBlocks].join('\n\n## ');
+    } catch {
+        return "Changelog unavailable.";
+    }
+}
+
 export function createMiscRoutes(container: ServiceContainer): Router {
     const router = Router();
     const config = container.config;
@@ -55,6 +86,10 @@ export function createMiscRoutes(container: ServiceContainer): Router {
 
     router.get("/api/version", (_req: Request, res: Response) => {
         res.json({ version: pkg.version });
+    });
+
+    router.get("/api/changelog", (_req: Request, res: Response) => {
+        res.json({ changelog: getFilteredChangelog() });
     });
 
     // Public assets store

@@ -162,6 +162,9 @@ const About = () => {
           >
             GitHub
           </a>
+          <Link to="/changelog" className="btn btn-secondary">
+            Changelog
+          </Link>
           <Link to="/" className="btn btn-ghost">
             Back to Home
           </Link>
