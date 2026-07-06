@@ -1636,28 +1636,27 @@ export class ActivityPubService {
         // Pass true to bypass visibility filters so private releases are also processed (as Deletes)
         const releases = this.db.getReleases(true);
 
-        // Group releases by artist ID
+        const allNotes = this.db.getApNotesByArtistIds(artists.map(a => a.id), true);
+
+        // Group releases and notes by artist ID
         const releasesByArtist = new Map<number, any[]>();
+        const notesByArtist = new Map<number, any[]>();
+
+        for (const artist of artists) {
+            releasesByArtist.set(artist.id, []);
+            notesByArtist.set(artist.id, []);
+        }
+
         for (const release of releases) {
             if (release.artist_id !== null) {
-                let artistReleases = releasesByArtist.get(release.artist_id);
-                if (!artistReleases) {
-                    artistReleases = [];
-                    releasesByArtist.set(release.artist_id, artistReleases);
-                }
-                artistReleases.push(release);
+                const arr = releasesByArtist.get(release.artist_id);
+                if (arr !== undefined) arr.push(release);
             }
         }
 
-        const allNotes = this.db.getApNotesByArtistIds(artists.map(a => a.id), true);
-        const notesByArtist = new Map<number, any[]>();
         for (const note of allNotes) {
-            let artistNotes = notesByArtist.get(note.artist_id);
-            if (!artistNotes) {
-                artistNotes = [];
-                notesByArtist.set(note.artist_id, artistNotes);
-            }
-            artistNotes.push(note);
+            const arr = notesByArtist.get(note.artist_id);
+            if (arr !== undefined) arr.push(note);
         }
 
         for (const artist of artists) {

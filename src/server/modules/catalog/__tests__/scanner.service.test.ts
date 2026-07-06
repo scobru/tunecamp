@@ -33,6 +33,8 @@ jest.unstable_mockModule('../../../providers/scanner/local-fs.provider.js', () =
 
 // Dynamic imports
 let ScannerService: any;
+let getScannerService: any;
+let initScannerService: any;
 
 describe('ScannerService', () => {
     let scannerService: any;
@@ -40,6 +42,8 @@ describe('ScannerService', () => {
     beforeAll(async () => {
         const scannerModule = await import('../scanner.service.js');
         ScannerService = scannerModule.ScannerService;
+        getScannerService = scannerModule.getScannerService;
+        initScannerService = scannerModule.initScannerService;
     });
 
     beforeEach(() => {
@@ -75,5 +79,22 @@ describe('ScannerService', () => {
             undefined, 
             undefined
         );
+    });
+
+    describe('Singleton logic', () => {
+        test('getScannerService should return null initially', () => {
+            expect(getScannerService()).toBeNull();
+        });
+
+        test('initScannerService should initialize and getScannerService should return it', async () => {
+            const mockDb = {} as any;
+            const service = await initScannerService(mockDb, mockScanner as any);
+
+            expect(service).toBeInstanceOf(ScannerService);
+            expect(getScannerService()).toBe(service);
+
+            const { syncRegistryWithDatabase } = await import('../../../core/provider.js');
+            expect(syncRegistryWithDatabase).toHaveBeenCalledWith(service.getRegistry(), mockDb);
+        });
     });
 });
