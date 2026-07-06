@@ -31,8 +31,13 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 | `GET` | `/api/albums` | List all local albums. Returns `status` (`draft` \| `published`) and `is_release` (boolean) to distinguish library content from official releases |
 | `GET` | `/api/albums/:id` | Album details including the track list |
 | `GET` | `/api/artists` | List all artists |
+| `POST` | `/api/tracks` | Create a track (import). Accepts an opt-in `localize` boolean: when set on a rippable service (`bandcamp`/`youtube`/`soundcloud`) with a source `url`, the server downloads the audio into a durable local file in the background after responding |
 | `GET` | `/api/tracks/:id` | Track metadata |
 | `GET` | `/api/tracks/:id/stream` | Binary audio stream (supports `Range` for cloud tracks) |
+| `GET` | `/api/tracks/:id/download` | Download a single track's local audio file |
+| `POST` | `/api/tracks/:id/localize` | Admin-only: download an external track's audio into a durable local file |
+| `GET` | `/api/albums/:id/download` | Download a ZIP of the album's local audio files (skips streaming/linked tracks) |
+| `GET` | `/api/releases/:id/download` | Download a ZIP of a release's local audio files. Resolves numeric id or slug; private releases gated to owner/admin |
 | `GET` | `/api/waveform/:id` | Waveform data for visualisation |
 | `GET` | `/api/releases/:id/artwork/:filename` | Serve additional release artwork securely |
 
