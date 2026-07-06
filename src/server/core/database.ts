@@ -1200,11 +1200,13 @@ export function createDatabase(dbPath: string): DatabaseService {
             COALESCE(NULLIF(t.artist_name, ''), ar_t.name, NULLIF(a.album_artist, ''), ar_a.name, 'Unknown Artist') as artist_name,
             COALESCE(ar_t.slug, ar_a.slug) as artist_slug,
             COALESCE(ar_t.wallet_address, ar_a.wallet_address) as artist_wallet_address,
-            COALESCE(t.owner_id, a.owner_id) as effective_owner_id
+            COALESCE(t.owner_id, a.owner_id) as effective_owner_id,
+            own.username as owner_name
         FROM tracks t
         LEFT JOIN albums a ON t.album_id = a.id
         LEFT JOIN artists ar_t ON t.artist_id = ar_t.id
-        LEFT JOIN artists ar_a ON a.artist_id = ar_a.id;
+        LEFT JOIN artists ar_a ON a.artist_id = ar_a.id
+        LEFT JOIN admin own ON COALESCE(t.owner_id, a.owner_id) = own.id;
     `);
 
     // Triggers
