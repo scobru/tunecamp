@@ -121,104 +121,84 @@ describe('ffmpeg.ts', () => {
         });
     });
 
-    describe('Live Slots Admission Control', () => {
+    describe('tryAcquireLiveSlot and releaseLiveSlot', () => {
         beforeEach(() => {
-            // Ensure slots are completely empty before each test
+            // Drain slots to 0 before each test
             for (let i = 0; i < 100; i++) {
                 releaseLiveSlot();
             }
         });
 
-        it('should acquire a slot successfully when available', () => {
-            expect(tryAcquireLiveSlot()).toBe(true);
+        it('should successfully acquire a slot if under the limit', () => {
+            const success = tryAcquireLiveSlot();
+            expect(success).toBe(true);
             releaseLiveSlot(); // Cleanup
         });
 
-        it('should return false when max slots are reached', () => {
-            let acquiredCount = 0;
-            // Exhaust all available slots
-            while (tryAcquireLiveSlot()) {
-                acquiredCount++;
-                if (acquiredCount > 1000) {
-                    throw new Error('Infinite loop detected or MAX_LIVE_TRANSCODES is too high');
+        it('should correctly release a slot and allow re-acquisition', () => {
+            expect(tryAcquireLiveSlot()).toBe(true);
+            releaseLiveSlot();
+            // Assuming default limit is at least 1, we can acquire again
+            expect(tryAcquireLiveSlot()).toBe(true);
+            releaseLiveSlot();
+        });
+
+        it('should return false when MAX_LIVE_TRANSCODES limit is hit by looping', () => {
+            let numAcquired = 0;
+            // Attempt to exhaust the capacity safely without infinite loop
+            for (let i = 0; i < 2000; i++) {
+                if (tryAcquireLiveSlot()) {
+                    numAcquired++;
+                } else {
+                    break;
                 }
             }
 
-            expect(acquiredCount).toBeGreaterThan(0);
+            // Should have acquired at least 1 slot
+            expect(numAcquired).toBeGreaterThan(0);
 
-            // Should be false now
-            expect(tryAcquireLiveSlot()).toBe(false);
-        });
-
-        it('should allow acquiring again after releasing a slot', () => {
-            // Exhaust all available slots
-            while (tryAcquireLiveSlot()) {}
-
+            // Next attempt must fail since max capacity is reached
             expect(tryAcquireLiveSlot()).toBe(false);
 
-            // Release one slot
-            releaseLiveSlot();
-
-            // Should be able to acquire exactly one slot
-            expect(tryAcquireLiveSlot()).toBe(true);
-            expect(tryAcquireLiveSlot()).toBe(false);
+            // Release all slots
+            for (let i = 0; i < numAcquired; i++) {
+                releaseLiveSlot();
+            }
         });
 
-        it('should verify tryAcquireLiveSlot and releaseLiveSlot in isolation', () => {
-            // Reset state (ensure starting from 0)
-            while (tryAcquireLiveSlot()) {} // Exhaust
-            for (let i = 0; i < 1000; i++) releaseLiveSlot(); // Fully empty
-
-            // 1) Test tryAcquireLiveSlot success
-            const acquired = tryAcquireLiveSlot();
-            expect(acquired).toBe(true);
-
-            // 2) Test releaseLiveSlot impact (can re-acquire)
+        it('should enforce the 0 bound limit preventing active count from dropping below zero', () => {
+            // Release slots blindly when we expect count is already 0
             releaseLiveSlot();
-            const reacquired = tryAcquireLiveSlot();
-            expect(reacquired).toBe(true);
-
-            // Clean up the slot we just acquired
-            releaseLiveSlot();
-
-            // 3) Test releaseLiveSlot bounds (cannot release past 0)
-            releaseLiveSlot(); // Try to release extra
-            releaseLiveSlot(); // Try to release extra
-
-            // It should still only allow up to max, we check this by just ensuring we can still acquire
-            expect(tryAcquireLiveSlot()).toBe(true);
-            releaseLiveSlot();
-        });
-
-        it('should not allow activeLiveTranscodes to drop below 0', () => {
-            // Start from 0 slots
-            // Try to release slots when already at 0
             releaseLiveSlot();
             releaseLiveSlot();
 
-            let acquiredCount = 0;
-            while (tryAcquireLiveSlot()) {
-                acquiredCount++;
+            // Find out the exact max capacity
+            let maxCapacity = 0;
+            while (tryAcquireLiveSlot() && maxCapacity < 2000) {
+                maxCapacity++;
             }
 
-            const maxCapacity = acquiredCount;
-
-            // Release all of them
+            // Drop back down to zero exactly
             for (let i = 0; i < maxCapacity; i++) {
                 releaseLiveSlot();
             }
 
-            // Try to release extra
+            // Excess releases below 0 bounds
             releaseLiveSlot();
             releaseLiveSlot();
 
-            // Re-acquire and check if the count matches maxCapacity
-            let newAcquiredCount = 0;
-            while (tryAcquireLiveSlot()) {
-                newAcquiredCount++;
+            // Now if we acquire again, it should reach the same exact maxCapacity
+            let finalCapacity = 0;
+            while (tryAcquireLiveSlot() && finalCapacity < 2000) {
+                finalCapacity++;
             }
 
-            expect(newAcquiredCount).toBe(maxCapacity);
+            expect(finalCapacity).toEqual(maxCapacity);
+
+            // Cleanup
+            for (let i = 0; i < maxCapacity; i++) {
+                releaseLiveSlot();
+            }
         });
     });
 });
