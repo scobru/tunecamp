@@ -133,6 +133,10 @@ describe('isArtworkOrAvatar helper', () => {
         expect(isArtworkOrAvatar('music/folder.png')).toBe(true);
         expect(isArtworkOrAvatar('music/artwork.png')).toBe(true);
         expect(isArtworkOrAvatar('music/avatar.jpg')).toBe(true);
+        expect(isArtworkOrAvatar('music/cover.jpeg')).toBe(true);
+        expect(isArtworkOrAvatar('music/folder.webp')).toBe(true);
+        expect(isArtworkOrAvatar('music/artwork.gif')).toBe(true);
+        expect(isArtworkOrAvatar('music/avatar.avif')).toBe(true);
     });
 
     test('should return true for files with auto-generated names or prefixes', () => {
