@@ -86,6 +86,7 @@ describe('ScannerService', () => {
             await jest.isolateModulesAsync(async () => {
                 const { getScannerService } = await import('../scanner.service.js');
                 expect(getScannerService()).toBeNull();
+                expect(getScannerService()).toBeFalsy();
             });
         });
 
@@ -97,6 +98,7 @@ describe('ScannerService', () => {
 
                 const instance = getScannerService();
                 expect(instance).toBe(service);
+                expect(instance).not.toBeNull();
                 expect(instance).toBeInstanceOf(ScannerService);
 
                 const { syncRegistryWithDatabase } = await import('../../../core/provider.js');
