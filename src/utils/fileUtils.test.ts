@@ -173,3 +173,42 @@ describe('File Hashing', () => {
         });
     });
 });
+
+describe('findAudioFiles', () => {
+    const tmpDir = path.join(os.tmpdir(), 'findAudioFiles-tests');
+
+    beforeAll(async () => {
+        await fs.mkdirp(tmpDir);
+    });
+
+    afterAll(async () => {
+        await fs.remove(tmpDir);
+    });
+
+    test('should return empty array if no audio files found', async () => {
+        const emptyDir = path.join(tmpDir, 'empty');
+        await fs.mkdirp(emptyDir);
+        const files = await fileUtils.findAudioFiles(emptyDir);
+        expect(files).toEqual([]);
+    });
+
+    test('should find audio files in directory and subdirectories', async () => {
+        const testDir = path.join(tmpDir, 'audio-files');
+        await fs.mkdirp(testDir);
+
+        await fs.writeFile(path.join(testDir, 'song.mp3'), '');
+        await fs.writeFile(path.join(testDir, 'image.jpg'), '');
+
+        const subDir = path.join(testDir, 'album');
+        await fs.mkdirp(subDir);
+        await fs.writeFile(path.join(subDir, 'track.flac'), '');
+
+        const files = await fileUtils.findAudioFiles(testDir);
+
+        // Sort for consistent checking
+        expect(files.map(f => f.replace(/\\/g, '/')).sort()).toEqual([
+            'album/track.flac',
+            'song.mp3'
+        ].sort());
+    });
+});
