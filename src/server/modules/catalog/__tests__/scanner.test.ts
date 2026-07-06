@@ -130,6 +130,7 @@ describe('Scanner Core Logic', () => {
 describe('isArtworkOrAvatar helper', () => {
     test('should return true for artwork, folder, cover, and avatar files', () => {
         expect(isArtworkOrAvatar('music/cover.jpg')).toBe(true);
+        expect(isArtworkOrAvatar('music/cover.png')).toBe(true);
         expect(isArtworkOrAvatar('music/folder.png')).toBe(true);
         expect(isArtworkOrAvatar('music/artwork.png')).toBe(true);
         expect(isArtworkOrAvatar('music/avatar.jpg')).toBe(true);
@@ -137,6 +138,13 @@ describe('isArtworkOrAvatar helper', () => {
         expect(isArtworkOrAvatar('music/folder.webp')).toBe(true);
         expect(isArtworkOrAvatar('music/artwork.gif')).toBe(true);
         expect(isArtworkOrAvatar('music/avatar.avif')).toBe(true);
+    });
+
+    test('should throw TypeError for null or undefined input', () => {
+        // @ts-ignore
+        expect(() => isArtworkOrAvatar(null)).toThrow();
+        // @ts-ignore
+        expect(() => isArtworkOrAvatar(undefined)).toThrow();
     });
 
     test('should return true for files with auto-generated names or prefixes', () => {
@@ -162,6 +170,7 @@ describe('isArtworkOrAvatar helper', () => {
 
     test('should be case insensitive', () => {
         expect(isArtworkOrAvatar('music/COVER.JPG')).toBe(true);
+        expect(isArtworkOrAvatar('music/FOLDER.PNG')).toBe(true);
         expect(isArtworkOrAvatar('music/folder.PNG')).toBe(true);
         expect(isArtworkOrAvatar('music/ArtWork.jpeg')).toBe(true);
         expect(isArtworkOrAvatar('music/AVATAR.WebP')).toBe(true);
