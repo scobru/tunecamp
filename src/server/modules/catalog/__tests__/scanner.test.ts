@@ -150,6 +150,28 @@ describe('isArtworkOrAvatar helper', () => {
         expect(isArtworkOrAvatar('music/assets/random-pic.jpg')).toBe(true);
     });
 
+    test('should return false if extension is not in the whitelist', () => {
+        expect(isArtworkOrAvatar('music/cover.mp3')).toBe(false);
+        expect(isArtworkOrAvatar('music/artwork.txt')).toBe(false);
+        expect(isArtworkOrAvatar('music/avatar.pdf')).toBe(false);
+    });
+
+    test('should be case insensitive', () => {
+        expect(isArtworkOrAvatar('music/COVER.JPG')).toBe(true);
+        expect(isArtworkOrAvatar('music/folder.PNG')).toBe(true);
+        expect(isArtworkOrAvatar('music/ArtWork.jpeg')).toBe(true);
+        expect(isArtworkOrAvatar('music/AVATAR.WebP')).toBe(true);
+    });
+
+    test('should handle edge case file names correctly', () => {
+        // No extension
+        expect(isArtworkOrAvatar('music/cover')).toBe(false);
+        // Hidden files
+        expect(isArtworkOrAvatar('music/.cover.jpg')).toBe(false);
+        // Only extension
+        expect(isArtworkOrAvatar('music/.jpg')).toBe(false);
+    });
+
     test('should return false for valid files or audio tracks', () => {
         expect(isArtworkOrAvatar('music/song.mp3')).toBe(false);
         expect(isArtworkOrAvatar('music/booklet.pdf')).toBe(false);
