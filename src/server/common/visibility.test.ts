@@ -259,5 +259,10 @@ describe("VisibilityGuardian", () => {
       expect(getContextFromProfile(VisibilityProfile.PUBLIC_STAGE)).toEqual({ role: UserRole.GUEST });
       expect(getContextFromProfile(VisibilityProfile.OWNER_SCOPED)).toEqual({ role: UserRole.GUEST });
     });
+
+    test("should return GUEST role when profile is an object without a role", () => {
+      // @ts-ignore
+      expect(getContextFromProfile({ userId: 5 })).toEqual({ role: UserRole.GUEST });
+    });
   });
 });
