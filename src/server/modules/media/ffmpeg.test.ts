@@ -169,6 +169,47 @@ describe('ffmpeg.ts', () => {
         it('should enforce the 0 bound limit preventing active count from dropping below zero', () => {
             // Release slots blindly when we expect count is already 0
             releaseLiveSlot();
+
+            // Over-releasing must not create extra capacity: exhausting the pool
+            // still caps out and denies the next acquire. (Limit-agnostic: the
+            // concurrency limit is derived from CPU cores, so asserting an exact
+            // count of 1 only held on 2-core CI runners.)
+            let cap = 0;
+            while (tryAcquireLiveSlot() && cap < 2000) cap++;
+            expect(cap).toBeGreaterThan(0);
+            expect(tryAcquireLiveSlot()).toBe(false);
+            for (let i = 0; i < cap; i++) releaseLiveSlot();
+        });
+
+        it('should verify tryAcquireLiveSlot and releaseLiveSlot in isolation', () => {
+            // Reset state (ensure starting from 0)
+            while (tryAcquireLiveSlot()) {} // Exhaust
+            for (let i = 0; i < 1000; i++) releaseLiveSlot(); // Fully empty
+
+            // 1) Test tryAcquireLiveSlot success
+            const acquired = tryAcquireLiveSlot();
+            expect(acquired).toBe(true);
+
+            // 2) Test releaseLiveSlot impact (can re-acquire)
+            releaseLiveSlot();
+            const reacquired = tryAcquireLiveSlot();
+            expect(reacquired).toBe(true);
+
+            // Clean up the slot we just acquired
+            releaseLiveSlot();
+
+            // 3) Test releaseLiveSlot bounds (cannot release past 0)
+            releaseLiveSlot(); // Try to release extra
+            releaseLiveSlot(); // Try to release extra
+
+            // It should still only allow up to max, we check this by just ensuring we can still acquire
+            expect(tryAcquireLiveSlot()).toBe(true);
+            releaseLiveSlot();
+        });
+
+        it('should not allow activeLiveTranscodes to drop below 0', () => {
+            // Start from 0 slots
+            // Try to release slots when already at 0
             releaseLiveSlot();
             releaseLiveSlot();
 
