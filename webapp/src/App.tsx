@@ -143,6 +143,11 @@ function LegacyMyPlaylistRedirect() {
   return <Navigate to={`/playlists/${id}`} replace />;
 }
 
+function ArtistRedirect() {
+  const { idOrSlug } = useParams<{ idOrSlug: string }>();
+  return <Navigate to={`/artists/${idOrSlug}`} replace />;
+}
+
 function App() {
   const { init, checkAuth } = useAuthStore();
   const { fetchStatus } = useConfigStore();
@@ -212,6 +217,7 @@ function App() {
             <Route path="/releases/tracks" element={<Releases />} />
             <Route path="/artists" element={<Artists />} />
             <Route path="/artists/:idOrSlug" element={<ArtistDetails />} />
+            <Route path="/@:idOrSlug" element={<ArtistRedirect />} />
             <Route path="/tracks" element={<Navigate to="/releases/tracks" replace />} />
 
             {/* Features */}
