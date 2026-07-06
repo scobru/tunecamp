@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.17.3] - 2026-07-06
+
+### Fixed
+- **`docs/CONTRIBUTING.md` still told contributors to branch off `main` and open PRs against `main`.** This contradicted the integration-branch workflow (`dev` is the branch everything targets; `dev` is promoted to `main` for releases). The "Propose Changes" steps now branch off `dev` and open the PR against `dev`.
+
+### Docs
+- **The auto-promotion job requires a repo setting that was off.** The `promote` job (CI) opens the `dev → main` PR via `gh pr create`, which needs **Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create and approve pull requests"** enabled (`can_approve_pull_request_reviews: true`). With it off, `server`/`webapp` pass but `promote` fails with `GitHub Actions is not permitted to create or approve pull requests`, so no promotion PR is opened and `main` silently drifts behind `dev`. Enable it once per repo; the CHANGELOG entry for 2.17.1 describes the job but not this prerequisite.
+
 ## [2.17.2] - 2026-07-06
 
 ### Fixed

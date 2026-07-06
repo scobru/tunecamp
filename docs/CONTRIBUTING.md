@@ -19,12 +19,12 @@ Before writing code, please check the existing issues to see if your concern has
 ### 2. Propose Changes
 
 1. **Fork** the repository.
-2. Create a **feature branch** (`git checkout -b feature/your-feature`).
+2. Create a **feature branch off `dev`** (`git checkout dev && git pull && git checkout -b feature/your-feature`). `dev` is the integration branch — never branch off `main`.
 3. Make your changes (see [Development Setup](#development-setup)).
 4. **Test** your changes (see [Testing](#testing)).
 5. **Commit** with clear, descriptive messages (`git commit -m 'Add support for X'`).
 6. **Push** to your fork (`git push origin feature/your-feature`).
-7. Open a **Pull Request** against the `main` branch.
+7. Open a **Pull Request** against the `dev` branch (not `main`). `dev` is promoted to `main` for releases.
 
 ---
 
