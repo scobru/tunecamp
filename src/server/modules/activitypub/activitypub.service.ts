@@ -1720,6 +1720,7 @@ export class ActivityPubService {
             const pending = this.db.getPendingFollowers ? this.db.getPendingFollowers(artistId) : [];
             if (pending.length > 0) {
                 console.log(`  👥 Auto-accepting ${pending.length} pending follower(s)...`);
+                // Batch accept pending followers to avoid N+1 query bottlenecks
                 this.db.acceptPendingFollowers(artistId);
             }
         }
