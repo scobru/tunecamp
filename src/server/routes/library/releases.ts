@@ -319,6 +319,66 @@ export function createReleaseRouter(container: ServiceContainer): Router {
     }));
 
     /**
+     * GET /api/releases/:id/download (ZIP)
+     *
+     * Free-download endpoint for a whole release. The webapp links here for
+     * releases (`album.download === 'free'`); without this route the request
+     * fell through to the SPA catch-all and returned a blank page instead of a
+     * file. Mirrors the album ZIP route but resolves either a numeric id or a
+     * slug (the frontend uses `slug || id`).
+     */
+    router.get("/:id/download", wrapAsync(async (req: any, res: any) => {
+        const param = req.params.id as string;
+        let release: any;
+        if (/^\d+$/.test(param)) {
+            release = library.getRelease(parseInt(param, 10)) || library.getAlbum(parseInt(param, 10));
+        } else {
+            release = library.getReleaseBySlug(param) || library.getAlbumBySlug(param);
+        }
+        if (!release) throw new NotFoundError("Release not found");
+
+        const isPrivileged = req.isAdmin || req.isSuperUser || (release.owner_id != null && release.owner_id === req.userId);
+        if (!isPrivileged && release.visibility === 'private') {
+            throw new ForbiddenError("Access denied");
+        }
+
+        const tracks = library.getReleaseTracks(release.id);
+        if (!tracks || tracks.length === 0) throw new NotFoundError("No tracks found");
+
+        // Only local audio files can be bundled; streaming/linked tracks
+        // (null, http(s) or gdrive:// paths) have no on-disk payload to zip.
+        const localTracks = tracks.filter((t: any) =>
+            t.file_path &&
+            !t.file_path.startsWith('http://') &&
+            !t.file_path.startsWith('https://') &&
+            !t.file_path.startsWith('gdrive://')
+        );
+        if (localTracks.length === 0) throw new NotFoundError("No downloadable audio files for this release");
+
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(release.title || 'release')}.zip"`);
+
+        const archiver = (await import('archiver')).default;
+        const archive = archiver('zip', { zlib: { level: 9 }, statConcurrency: 50 });
+
+        archive.on('warning', (err: any) => {
+            if (err.code === 'ENOENT') {
+                console.warn(`[Releases] Missing file skipped in ZIP: ${err.message}`);
+            } else {
+                throw err;
+            }
+        });
+
+        archive.pipe(res);
+
+        for (const track of localTracks) {
+            const trackPath = path.join(musicDir, track.file_path as string);
+            archive.file(trackPath, { name: path.basename(trackPath) });
+        }
+        await archive.finalize();
+    }));
+
+    /**
      * GET /api/releases/:id/cover
      */
     router.get("/:id/cover", wrapAsync(async (req: any, res: any) => {
