@@ -120,6 +120,18 @@ describe('validateUsername', () => {
         expect(validateUsername('user!name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
         expect(validateUsername('user name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
         expect(validateUsername('user@name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(validateUsername('user-name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(validateUsername('user.name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(validateUsername('user/name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(validateUsername('user\\name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(validateUsername('user#name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(validateUsername('user$name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(validateUsername('user%name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(validateUsername('user^name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(validateUsername('user&name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(validateUsername('user*name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(validateUsername('user(name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(validateUsername('user)name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
     });
 
     test('should return valid for valid username', () => {
