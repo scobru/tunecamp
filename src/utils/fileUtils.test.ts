@@ -233,4 +233,48 @@ describe('findAudioFiles', () => {
             'song.mp3'
         ].sort());
     });
+
+    test('should find all supported audio extensions and ignore others', async () => {
+        const testDir = path.join(tmpDir, 'all-extensions');
+        await fs.mkdirp(testDir);
+
+        // Supported
+        const supported = ['mp3', 'flac', 'ogg', 'wav', 'm4a', 'aac', 'opus'];
+        for (const ext of supported) {
+            await fs.writeFile(path.join(testDir, `file.${ext}`), '');
+        }
+
+        // Unsupported
+        const unsupported = ['txt', 'jpg', 'png', 'pdf', 'zip'];
+        for (const ext of unsupported) {
+            await fs.writeFile(path.join(testDir, `file.${ext}`), '');
+        }
+
+        const files = await fileUtils.findAudioFiles(testDir);
+
+        expect(files.length).toBe(supported.length);
+        const extensionsFound = files.map(f => path.extname(f).slice(1));
+
+        // Assert all supported extensions are present
+        expect([...extensionsFound].sort()).toEqual([...supported].sort());
+    });
+
+    test('should return files sorted alphabetically', async () => {
+        const testDir = path.join(tmpDir, 'sorting');
+        await fs.mkdirp(testDir);
+
+        // Create files out of alphabetical order
+        await fs.writeFile(path.join(testDir, 'z-file.mp3'), '');
+        await fs.writeFile(path.join(testDir, 'a-file.flac'), '');
+        await fs.writeFile(path.join(testDir, 'm-file.wav'), '');
+
+        const files = await fileUtils.findAudioFiles(testDir);
+
+        // Assert strictly ordered array
+        expect(files.map(f => f.replace(/\\/g, '/'))).toEqual([
+            'a-file.flac',
+            'm-file.wav',
+            'z-file.mp3'
+        ]);
+    });
 });
