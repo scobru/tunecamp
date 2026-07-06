@@ -77,3 +77,23 @@ describe('ScannerService', () => {
         );
     });
 });
+
+describe('ScannerService singleton', () => {
+    let getScannerService: any;
+    let initScannerService: any;
+
+    beforeAll(async () => {
+        const scannerModule = await import('../scanner.service.js');
+        getScannerService = scannerModule.getScannerService;
+        initScannerService = scannerModule.initScannerService;
+    });
+
+    test('initScannerService should initialize and getScannerService should return it', async () => {
+        expect(getScannerService()).toBeNull();
+        const mockDb = {} as any;
+        const result = await initScannerService(mockDb, mockScanner as any);
+
+        expect(result).toBeDefined();
+        expect(getScannerService()).toBe(result);
+    });
+});
