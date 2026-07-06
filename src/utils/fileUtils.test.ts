@@ -1,8 +1,9 @@
-import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, test, expect, beforeAll, afterAll, jest } from '@jest/globals';
 import path from 'path';
 import crypto from 'crypto';
 import fs from 'fs-extra';
 import os from 'os';
+import { PassThrough } from 'stream';
 import * as fileUtils from './fileUtils.js';
 
 describe('fileExists', () => {
@@ -150,7 +151,23 @@ describe('File Hashing', () => {
             const expectedHash = crypto.createHash('md5').update(content).digest('hex');
             const hash = await fileUtils.getFastFileHash(filePath);
 
+            expect(hash).toHaveLength(32);
             expect(hash).toBe(expectedHash);
+        });
+
+        test('should propagate errors from getFileHash fallback via mock on boundary size files', async () => {
+            const filePath = path.join(tmpDir, 'error-boundary.txt');
+            const content = Buffer.alloc(2 * 1024 * 1024 - 1, 'z'); // Just under 2MB
+            await fs.writeFile(filePath, content);
+
+            const spy = jest.spyOn(fs, 'createReadStream').mockImplementationOnce(() => {
+                const stream = new PassThrough();
+                process.nextTick(() => stream.emit('error', new Error('mocked stream error')));
+                return stream as any;
+            });
+
+            await expect(fileUtils.getFastFileHash(filePath)).rejects.toThrow('mocked stream error');
+            spy.mockRestore();
         });
 
         test('should fallback to full hash for files just under 2MB (2MB - 1 byte)', async () => {
