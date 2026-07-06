@@ -98,23 +98,28 @@ describe('sanitizeFilename', () => {
 });
 
 describe('validateUsername', () => {
-    test('should return invalid for empty/null username', () => {
+    test('should return invalid for empty/null/undefined username', () => {
         expect(validateUsername('')).toEqual({ valid: false, error: 'Username is required' });
         // @ts-ignore
         expect(validateUsername(null)).toEqual({ valid: false, error: 'Username is required' });
+        // @ts-ignore
+        expect(validateUsername(undefined)).toEqual({ valid: false, error: 'Username is required' });
     });
 
     test('should return invalid for too short username', () => {
+        expect(validateUsername('a')).toEqual({ valid: false, error: 'Username must be at least 3 characters' });
         expect(validateUsername('ab')).toEqual({ valid: false, error: 'Username must be at least 3 characters' });
     });
 
     test('should return invalid for too long username', () => {
         expect(validateUsername('this_is_a_very_long_username_that_is_too_long')).toEqual({ valid: false, error: 'Username must be at most 20 characters' });
+        expect(validateUsername('twentyone_chars_long_')).toEqual({ valid: false, error: 'Username must be at most 20 characters' });
     });
 
     test('should return invalid for invalid characters', () => {
         expect(validateUsername('user!name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
         expect(validateUsername('user name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(validateUsername('user@name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
     });
 
     test('should return valid for valid username', () => {
