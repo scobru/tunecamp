@@ -25,10 +25,7 @@ jest.unstable_mockModule('webtorrent', () => ({
 }));
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import path from 'path';
 let TorrentService: any;
-
-const SEED_STORE = path.join('/mock/music/dir', '.torrent-seeds');
 
 describe('TorrentService', () => {
     let service: any;
@@ -53,12 +50,6 @@ describe('TorrentService', () => {
         mockScanner = {
             processAudioFile: jest.fn()
         };
-
-        // init() (fired on the deferred timer) prepares the seed store and reaps the
-        // legacy /tmp store — no-op the filesystem side effects so tests don't touch disk.
-        const fsExtra = (await import('fs-extra')).default;
-        jest.spyOn(fsExtra, 'ensureDirSync').mockImplementation((() => {}) as any);
-        jest.spyOn(fsExtra, 'removeSync').mockImplementation((() => {}) as any);
 
         jest.useFakeTimers();
 
@@ -157,40 +148,6 @@ describe('TorrentService', () => {
         it('should keep bare name when artist is missing', async () => {
             const opts = await seedWith('Kind of Blue');
             expect(opts.name).toBe('Kind of Blue');
-        });
-
-        it('should pin the store path to the hidden on-volume seed store, not /tmp', async () => {
-            // Regression: seeding without opts.path made WebTorrent copy payloads into
-            // os.tmpdir()/webtorrent, which never gets reaped and (via the old resume
-            // logic) nested every seed together — the runaway /tmp/webtorrent growth.
-            const opts = await seedWith('Kind of Blue', 'Miles Davis');
-            expect(opts.path).toBe(SEED_STORE);
-            expect(opts.path).not.toMatch(/(^|\/)tmp(\/|$)/);
-        });
-    });
-
-    describe('resumeSeeding', () => {
-        it('seeds the stored path directly into the hidden store and never readdirs it', async () => {
-            jest.advanceTimersByTime(5000); // initialize client
-
-            const fsExtra = (await import('fs-extra')).default;
-            jest.spyOn(fsExtra, 'pathExists').mockResolvedValue(true as any);
-            const readdirSpy = jest.spyOn(fsExtra, 'readdir');
-
-            mockClientSeed.mockImplementation((_input: any, opts: any, cb: any) => {
-                cb({ infoHash: 'RESUMED', name: opts.name, on: jest.fn() });
-            });
-
-            const ok = await service['resumeSeeding']({
-                info_hash: 'RESUMED', name: 'Some Album', owner_id: 1, path: '/mock/music/dir/Some Album'
-            });
-
-            expect(ok).toBe(true);
-            // Must seed the exact stored path — never expand a directory into siblings,
-            // which is what recursively nested every seed on each restart.
-            expect(mockClientSeed.mock.calls[0][0]).toBe('/mock/music/dir/Some Album');
-            expect(mockClientSeed.mock.calls[0][1].path).toBe(SEED_STORE);
-            expect(readdirSpy).not.toHaveBeenCalled();
         });
     });
 

@@ -18,8 +18,7 @@ Il sistema è gestito dal servizio `TorrentService` (`src/server/modules/integra
 ## 2. Struttura delle Cartelle
 
 I torrent vengono scaricati in una cartella dedicata per evitare che lo scanner principale della libreria rilevi file incompleti:
-- **Download**: `music/downloads/torrents/`
-- **Seed**: `music/.torrent-seeds/` — lo store che WebTorrent usa quando effettua il *seeding* dei file della libreria. Ha un nome che inizia con un punto, così lo scanner del catalogo e il watcher lo ignorano (saltano le cartelle nascoste), e si trova sotto `musicDir` per condividere il volume persistente. Passare esplicitamente questo `path` è ciò che impedisce a WebTorrent di ricadere sul suo store predefinito `os.tmpdir()/webtorrent` — la causa della storica crescita incontrollata di `/tmp/webtorrent` (vedi la voce di changelog 2.17.3). All'avvio `TorrentService` rimuove eventuali residui del vecchio store `/tmp/webtorrent`.
+- **Percorso**: `music/downloads/torrents/`
 
 ## 3. Rotte API
 

@@ -96,9 +96,8 @@ const AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opu
 const GENERIC_EXTENSIONS = [".zip", ".pdf", ".epub", ".rar", ".7z", ".tar.gz", ".dmg", ".exe", ".txt", ".png", ".jpg", ".jpeg"];
 
 export function isArtworkOrAvatar(filePath: string): boolean {
-    const ext = path.extname(filePath);
-    const extLower = ext.toLowerCase();
-    if (![".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"].includes(extLower)) {
+    const ext = path.extname(filePath).toLowerCase();
+    if (![".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"].includes(ext)) {
         return false;
     }
     const baseName = path.basename(filePath, ext).toLowerCase();

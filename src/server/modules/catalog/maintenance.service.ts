@@ -728,12 +728,7 @@ export class MaintenanceService {
                         const keepId = dupTracks[0].id;
                         const mergeIds = dupTracks.slice(1).map((t: any) => Number(t.id));
                         try {
-                            if (mergeIds.length > 0) {
-                                const CHUNK_SIZE = 900;
-                                for (let i = 0; i < mergeIds.length; i += CHUNK_SIZE) {
-                                    this.db.mergeTracks(mergeIds.slice(i, i + CHUNK_SIZE), keepId);
-                                }
-                            }
+                            if (mergeIds.length > 0) this.db.mergeTracks(mergeIds, keepId);
                             mergedCount += mergeIds.length;
                         } catch (err) {}
                     }
@@ -755,10 +750,7 @@ export class MaintenanceService {
                 }
                 for (const [keepId, mergeIds] of barePairs.entries()) {
                     try {
-                        const CHUNK_SIZE = 900;
-                        for (let i = 0; i < mergeIds.length; i += CHUNK_SIZE) {
-                            this.db.mergeTracks(mergeIds.slice(i, i + CHUNK_SIZE), keepId);
-                        }
+                        this.db.mergeTracks(mergeIds, keepId);
                         mergedBareCount += mergeIds.length;
                     } catch (err) {}
                 }

@@ -24,8 +24,7 @@ The system is managed by the `TorrentService` (`src/server/modules/integrations/
 ## 2. Directory Structure
 
 Torrents are downloaded into a dedicated subdirectory to prevent the main library scanner from picking up incomplete files:
-- **Downloads**: `music/downloads/torrents/`
-- **Seeds**: `music/.torrent-seeds/` — the store WebTorrent uses when *seeding* library files. It is dot-prefixed so the catalog scanner and file watcher skip it (they ignore hidden directories), and it lives under `musicDir` so it shares the persistent volume. Passing this explicit `path` is what stops WebTorrent from falling back to its `os.tmpdir()/webtorrent` default — the source of the historical runaway `/tmp/webtorrent` growth (see the 2.17.3 changelog entry). `TorrentService` reaps any leftover legacy `/tmp/webtorrent` store on startup.
+- **Path**: `music/downloads/torrents/`
 
 ## 3. API Routes
 

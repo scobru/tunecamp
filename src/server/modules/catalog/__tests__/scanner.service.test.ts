@@ -82,19 +82,25 @@ describe('ScannerService', () => {
     });
 
     describe('Singleton logic', () => {
-        test('getScannerService should return null initially', () => {
-            expect(getScannerService()).toBeNull();
+        test('getScannerService should return null initially', async () => {
+            await jest.isolateModulesAsync(async () => {
+                const { getScannerService } = await import('../scanner.service.js');
+                expect(getScannerService()).toBeNull();
+            });
         });
 
         test('initScannerService should initialize and getScannerService should return it', async () => {
-            const mockDb = {} as any;
-            const service = await initScannerService(mockDb, mockScanner as any);
+            await jest.isolateModulesAsync(async () => {
+                const { getScannerService, initScannerService, ScannerService } = await import('../scanner.service.js');
+                const mockDb = {} as any;
+                const service = await initScannerService(mockDb, mockScanner as any);
 
-            expect(service).toBeInstanceOf(ScannerService);
-            expect(getScannerService()).toBe(service);
+                expect(service).toBeInstanceOf(ScannerService);
+                expect(getScannerService()).toBe(service);
 
-            const { syncRegistryWithDatabase } = await import('../../../core/provider.js');
-            expect(syncRegistryWithDatabase).toHaveBeenCalledWith(service.getRegistry(), mockDb);
+                const { syncRegistryWithDatabase } = await import('../../../core/provider.js');
+                expect(syncRegistryWithDatabase).toHaveBeenCalledWith(service.getRegistry(), mockDb);
+            });
         });
     });
 });
