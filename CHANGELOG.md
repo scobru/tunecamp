@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.18.2] - 2026-07-06
+
+### Added
+- **Artist short-links (`/@slug`):** Added frontend client-side redirection from `/@slug` to `/artists/:slug` and backend `/@:slug` interception to dynamically inject Open Graph (og:title, og:description, og:image) SEO metadata tags for rich social preview cards when sharing links.
+
+### Changed
+- **Archive Sidebar Icon:** Replaced the generic Folder icon with a dedicated Archive icon to avoid visual confusion with the admin Files/Browser folder icon.
+
 ## [2.18.1] - 2026-07-06
 
 ### Fixed

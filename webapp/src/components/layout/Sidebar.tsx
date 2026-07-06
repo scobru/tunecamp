@@ -11,6 +11,7 @@ import {
   Music,
   BarChart2,
   Folder,
+  Archive,
   Globe,
   LifeBuoy,
   LogIn,
@@ -213,7 +214,7 @@ export const Sidebar = () => {
               )}
               <NavItem to="/my-music" icon={Music} label="My Catalog" />
               {isAdmin && (
-                <NavItem to="/archive" icon={Folder} label="Archive" />
+                <NavItem to="/archive" icon={Archive} label="Archive" />
               )}
             </ul>
           </div>

@@ -547,6 +547,26 @@ export async function startServer(config: ServerConfig): Promise<void> {
         } catch (e) { res.redirect(`/#/share/${id}`); }
     });
 
+    app.get("/@:slug", (req, res) => {
+        const { slug } = req.params;
+        try {
+            const artist = database.getArtistBySlug(slug);
+            if (artist) {
+                let html = getCachedHtml();
+                const publicUrl = (database.getSetting("publicUrl") || config.publicUrl || `${req.protocol}://${req.get('host')}`).trim().replace(/\/$/, "");
+                const title = artist.name || "Artist Profile";
+                const description = artist.bio || `Listen to ${artist.name} on TuneCamp`;
+                const image = `/api/artists/${artist.id}/cover`;
+                const ogTags = `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><meta property="og:image" content="${publicUrl}${image}" />`;
+                html = html.replace('<head>', '<head>' + ogTags);
+                return res.send(html);
+            }
+        } catch (e) {
+            // fall through to default
+        }
+        res.send(getCachedHtml());
+    });
+
     app.get("*", (req, res) => {
         if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found" });
         res.send(getCachedHtml());
