@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
+import { LanguageSwitcher } from "../ui/LanguageSwitcher";
 import { WalletPill } from "../ui/WalletPill";
 import { canPublish } from "../../utils/permissions";
 import { getRoleLabel, getRoleBadgeClass } from "../../utils/roles";
@@ -227,8 +228,9 @@ export const Sidebar = () => {
         sidebarCollapsed ? "space-y-2" : "space-y-4"
       )}>
         {!sidebarCollapsed && !isAuthenticated && (
-          <div className="px-2">
+          <div className="px-2 space-y-2">
             <ThemeSwitcher />
+            <LanguageSwitcher />
           </div>
         )}
 
@@ -268,8 +270,9 @@ export const Sidebar = () => {
             </div>
 
             <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-level-1 bg-base-300 rounded-2xl w-60 border border-base-content/10 mb-2">
-              <div className="px-2 pb-2">
+              <div className="px-2 pb-2 space-y-2">
                 <ThemeSwitcher />
+                <LanguageSwitcher />
               </div>
               <div className="divider my-0 opacity-10"></div>
               

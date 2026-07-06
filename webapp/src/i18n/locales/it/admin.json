@@ -1,0 +1,27 @@
+{
+  "wizard": {
+    "steps": {
+      "security": "Sicurezza",
+      "identity": "Identità"
+    },
+    "secureInstanceTitle": "Proteggi la tua istanza",
+    "secureAccountTitle": "Proteggi il tuo account",
+    "defaultPasswordPrompt": "Stai usando la password predefinita. Cambiala con una sicura prima di continuare.",
+    "tempPasswordPrompt": "Stai usando una password temporanea. Scegline una nuova per continuare.",
+    "currentPassword": "Password attuale",
+    "newPassword": "Nuova password",
+    "confirmNewPassword": "Conferma nuova password",
+    "identityTitle": "Identità TuneCamp",
+    "identityPrompt": "Dai un nome e una descrizione alla tua istanza musicale. È così che gli altri ti vedranno nella rete.",
+    "siteName": "Nome del sito",
+    "siteNamePlaceholder": "es. La Mia Etichetta",
+    "description": "Descrizione",
+    "descriptionPlaceholder": "Racconta al mondo la tua musica...",
+    "finishSetup": "Completa configurazione",
+    "errors": {
+      "passwordMismatch": "Le nuove password non coincidono",
+      "changePasswordFailed": "Cambio password non riuscito",
+      "saveSettingsFailed": "Salvataggio impostazioni non riuscito"
+    }
+  }
+}
