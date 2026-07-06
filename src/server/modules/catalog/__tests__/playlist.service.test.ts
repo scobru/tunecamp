@@ -142,6 +142,15 @@ describe('PlaylistService', () => {
              expect(retrievedService).toBeDefined();
              expect(retrievedService).toBe(initService);
              expect(retrievedService).toBeInstanceOf(PlaylistService);
+             expect(typeof retrievedService.getProviderForUrl).toBe('function');
+        });
+
+        test('getPlaylistService should return undefined when uninitialized', async () => {
+            await jest.isolateModulesAsync(async () => {
+                const mod = await import('../playlist.service.js');
+                // @ts-ignore
+                expect(mod.getPlaylistService()).toBeUndefined();
+            });
         });
     });
 });

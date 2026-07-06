@@ -125,6 +125,17 @@ describe('validateUsername', () => {
     test('should return valid for valid username', () => {
         expect(validateUsername('valid_User_123')).toEqual({ valid: true });
     });
+
+    test('should return invalid for boundary edge cases', () => {
+        // 2 characters (too short)
+        expect(validateUsername('ab')).toEqual({ valid: false, error: 'Username must be at least 3 characters' });
+        // 3 characters (shortest valid)
+        expect(validateUsername('abc')).toEqual({ valid: true });
+        // 20 characters (longest valid)
+        expect(validateUsername('a1234567890123456789')).toEqual({ valid: true });
+        // 21 characters (too long)
+        expect(validateUsername('a12345678901234567890')).toEqual({ valid: false, error: 'Username must be at most 20 characters' });
+    });
 });
 
 describe('getPlaceholderSVG structure details', () => {
