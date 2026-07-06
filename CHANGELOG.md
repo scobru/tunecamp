@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.18.1] - 2026-07-06
+
+### Fixed
+- **Matching album metadata wiped the existing cover (and other fields) — the new cover showed until a browser refresh, then the preset placeholder returned.** `POST /api/albums/:id/match-metadata` always sends every field, with `undefined` for anything the chosen result lacks (e.g. no `coverUrl`). The album/track repository `update()` bound those `undefined` values straight into SQL, and better-sqlite3 binds `undefined` as `NULL` — so applying a match without a cover **nulled `cover_path`** (same for description, genre, etc.). Both repositories now follow `Partial<T>` semantics: `undefined` leaves a column unchanged; only an explicit `null` clears it. Regression test added.
+- **The "External / Streaming" filter in Admin → Maintenance listed nearly the whole local library.** The query used `external_id IS NULL` (which matches every normal local track) instead of selecting actual streaming references. It now returns tracks whose audio is not a durable local file: no `file_path`, an `http` path, or a non-`local` service.
+
+### Changed
+- **Startup/maintenance repairs now report tracks whose `file_path` points to a file missing from disk** (e.g. legacy mangled names like `..._wav_wav.wav` — the source of the ffmpeg "No such file or directory" prewarm failures). Report-only by design: files are never moved or renamed, and the real file (if present under another name) is re-imported by the orphan scan, leaving the broken row as a duplicate to review manually.
+- **Maintenance panel cleanup:** the ambiguous "Scan" button is now "Refresh List" with a tooltip clarifying it only reloads the table (vs. "Rescan Library" which scans the filesystem); Rescan/Optimize DB have independent spinners instead of sharing one processing flag with every other button; fixed the indeterminate progress bar on background tasks.
+
 ## [2.18.0] - 2026-07-06
 
 ### Changed

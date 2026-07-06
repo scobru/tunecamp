@@ -149,6 +149,22 @@ describe('AlbumRepository', () => {
             expect(a?.is_public).toBe(false);
         });
 
+        test('undefined values leave columns unchanged; explicit null clears them', () => {
+            const id = repo.create(albumInput({ title: 'Covered', genre: 'Rock', cover_path: 'releases/covered/artwork/cover.jpg' }));
+
+            // Regression: match-metadata sends every field, with `undefined` for
+            // anything the chosen result lacks (e.g. no coverUrl). better-sqlite3
+            // binds undefined as NULL, so this used to wipe the stored cover.
+            repo.update(id, { genre: 'Jazz', cover_path: undefined, description: undefined } as any);
+            const a = repo.getById(id);
+            expect(a?.genre).toBe('Jazz');
+            expect(a?.cover_path).toBe('releases/covered/artwork/cover.jpg');
+
+            // Explicit null still clears.
+            repo.update(id, { cover_path: null });
+            expect(repo.getById(id)?.cover_path).toBeNull();
+        });
+
         test('sets is_public when a release is flipped to public/unlisted', () => {
             const artistId = artists.create('Opener');
             const id = repo.createRelease(albumInput({
