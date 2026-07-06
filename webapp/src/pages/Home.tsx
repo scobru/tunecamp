@@ -34,6 +34,10 @@ const Home = () => {
   const { user } = useAuthStore();
   const { currentTrack, isPlaying, togglePlay, progress, duration, playQueue, recentlyPlayed } = usePlayerStore();
 
+  // Peer/network plays carry a `siteUrl` (remote instance) — mostly raw MP3s with
+  // no cover/metadata, so keep "Jump back in" to local library plays only.
+  const localRecentlyPlayed = (recentlyPlayed || []).filter((i: any) => !i.siteUrl);
+
   const handleResume = () => {
     togglePlay();
   };
@@ -200,7 +204,7 @@ const Home = () => {
       </div>
 
       {/* Jump back in (Recently Played) */}
-      {recentlyPlayed && recentlyPlayed.length > 0 && (
+      {localRecentlyPlayed.length > 0 && (
         <div className="space-y-6">
           <div className="flex items-end justify-between px-2">
             <div>
@@ -209,7 +213,7 @@ const Home = () => {
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 lg:gap-6 opacity-90">
-            {recentlyPlayed.slice(0, 8).map((item) => (
+            {localRecentlyPlayed.slice(0, 8).map((item) => (
               <div
                 key={item.id}
                 onClick={(e) => handlePlayHistory(e, item)}

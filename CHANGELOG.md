@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.19.1] - 2026-07-06
+
+### Changed
+- **"Jump back in" now shows local library plays only.** Recently-played tracks played from a peer/federated instance (`activitypub`/`http`/`rss` network tracks — identified by their remote `siteUrl`) are mostly raw MP3s with no cover art or metadata, which made the row look broken. The Home page now filters them out of "Jump back in"; they remain fully playable everywhere else and in the underlying play history.
+
 ## [2.19.0] - 2026-07-06
 
 ### Added
