@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.19.0] - 2026-07-06
+
+### Added
+- **UI internationalization (EN/IT) — foundation.** The webapp now ships an i18n layer (`react-i18next` + `i18next-browser-languagedetector`): English is the source/fallback locale, Italian the first translation. Language is auto-detected (localStorage `tc_lang` → browser), switchable via a new EN/IT toggle next to the theme switcher in the sidebar, and kept in sync with `<html lang>`. Pilot surface: the Setup Wizard modal is fully translated; remaining screens will be migrated namespace-by-namespace (see `docs/i18n-plan.md`).
+
 ## [2.18.2] - 2026-07-06
 
 ### Added
