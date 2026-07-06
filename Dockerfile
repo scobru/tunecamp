@@ -109,6 +109,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/webapp/dist ./webapp/dist
 COPY --from=builder /app/webapp/public ./webapp/public
 COPY --from=builder /app/plugins ./plugins
+COPY --from=builder /app/CHANGELOG.md ./CHANGELOG.md
 
 # Create directories for data persistence
 RUN mkdir -p /music /data /radata

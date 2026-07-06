@@ -33,9 +33,11 @@ import {
   Info,
   Scale,
   MoreHorizontal,
+  Sparkles,
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
+import { LanguageSwitcher } from "../ui/LanguageSwitcher";
 import { WalletPill } from "../ui/WalletPill";
 import { canPublish } from "../../utils/permissions";
 import { getRoleLabel, getRoleBadgeClass } from "../../utils/roles";
@@ -226,8 +228,9 @@ export const Sidebar = () => {
         sidebarCollapsed ? "space-y-2" : "space-y-4"
       )}>
         {!sidebarCollapsed && !isAuthenticated && (
-          <div className="px-2">
+          <div className="px-2 space-y-2">
             <ThemeSwitcher />
+            <LanguageSwitcher />
           </div>
         )}
 
@@ -267,8 +270,9 @@ export const Sidebar = () => {
             </div>
 
             <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-level-1 bg-base-300 rounded-2xl w-60 border border-base-content/10 mb-2">
-              <div className="px-2 pb-2">
+              <div className="px-2 pb-2 space-y-2">
                 <ThemeSwitcher />
+                <LanguageSwitcher />
               </div>
               <div className="divider my-0 opacity-10"></div>
               
@@ -295,6 +299,7 @@ export const Sidebar = () => {
               <li><Link to="/support"><LifeBuoy size={16}/> Support</Link></li>
               <li><Link to="/terms"><Scale size={16}/> Legal</Link></li>
               <li><Link to="/about"><Info size={16}/> About</Link></li>
+              <li><Link to="/changelog"><Sparkles size={16}/> Changelog</Link></li>
               <li><a href="/feed.xml" target="_blank" rel="noopener noreferrer"><Rss size={16}/> RSS Feed</a></li>
               {communityLink && (
                 <li><a href={communityLink} target="_blank" rel="noopener noreferrer"><MessageSquare size={16}/> Community</a></li>

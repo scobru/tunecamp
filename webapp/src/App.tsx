@@ -33,6 +33,7 @@ const Social = lazy(() => import("./pages/Social"));
 const About = lazy(() => import("./pages/About"));
 const Legal = lazy(() => import("./pages/Legal"));
 const Guide = lazy(() => import("./pages/Guide"));
+const Changelog = lazy(() => import("./pages/Changelog"));
 const SharePage = lazy(() => import("./pages/SharePage"));
 const ContentSearch = lazy(() => import("./pages/ContentSearch"));
 const Admin = lazy(() => import("./pages/Admin"));
@@ -203,6 +204,7 @@ function App() {
           <Route element={<MainLayout />}>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
+            <Route path="/changelog" element={<Changelog />} />
             <Route path="/terms" element={<Legal />} />
             <Route path="/privacy" element={<Legal />} />
             <Route path="/guide" element={<Guide />} />

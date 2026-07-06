@@ -1,0 +1,27 @@
+{
+  "wizard": {
+    "steps": {
+      "security": "Security",
+      "identity": "Identity"
+    },
+    "secureInstanceTitle": "Secure your instance",
+    "secureAccountTitle": "Secure your account",
+    "defaultPasswordPrompt": "You are currently using the default password. Let's change it to something secure before you proceed.",
+    "tempPasswordPrompt": "You are using a temporary password. Choose a new one to continue.",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmNewPassword": "Confirm New Password",
+    "identityTitle": "TuneCamp Identity",
+    "identityPrompt": "Give your music instance a name and description. This is how others will see you in the network.",
+    "siteName": "Site Name",
+    "siteNamePlaceholder": "e.g. My Awesome Records",
+    "description": "Description",
+    "descriptionPlaceholder": "Tell the world about your music...",
+    "finishSetup": "Finish Setup",
+    "errors": {
+      "passwordMismatch": "New passwords do not match",
+      "changePasswordFailed": "Failed to change password",
+      "saveSettingsFailed": "Failed to save settings"
+    }
+  }
+}
