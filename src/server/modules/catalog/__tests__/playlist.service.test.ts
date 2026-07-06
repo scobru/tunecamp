@@ -145,6 +145,17 @@ describe('PlaylistService', () => {
              expect(typeof retrievedService.getProviderForUrl).toBe('function');
         });
 
+        test('getPlaylistService should consistently return the exact same instance on multiple calls', async () => {
+             const mockDb = {} as any;
+             await initPlaylistService(mockDb);
+
+             const call1 = getPlaylistService();
+             const call2 = getPlaylistService();
+
+             expect(call1).toBeDefined();
+             expect(call1).toBe(call2);
+        });
+
         test('getPlaylistService should return undefined when uninitialized', async () => {
             await jest.isolateModulesAsync(async () => {
                 const mod = await import('../playlist.service.js');
