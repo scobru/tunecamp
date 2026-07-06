@@ -411,39 +411,46 @@ export class TrackRepository {
         if (fromIds.length === 0) return;
         this.db.transaction(() => {
             // Step 1: Handle row-by-row metadata carrying
-            for (const fId of fromIds) {
-                try {
-                    // Carry over metadata that the keeper is missing (don't overwrite existing values)
-                    const from = this.db.prepare("SELECT * FROM tracks WHERE id = ?").get(fId) as any;
-                    const to = this.db.prepare("SELECT * FROM tracks WHERE id = ?").get(toId) as any;
-                    if (from && to) {
-                        const carryFields = [
-                            'lossless_path', 'external_id', 'fingerprint', 'lyrics',
-                            'external_artwork', 'hash', 'file_hash', 'waveform',
-                            'year', 'genre', 'bitrate', 'sample_rate', 'duration',
-                            'mime_type', 'file_size', 'version', 'url', 'service',
-                            'artist_name', 'track_num', 'album_id', 'artist_id'
-                        ];
-                        const updates: string[] = [];
-                        const values: any[] = [];
-                        for (const f of carryFields) {
-                            const toVal = to[f];
-                            const fromVal = from[f];
-                            const toEmpty = toVal === null || toVal === undefined || toVal === '' || toVal === 0;
-                            const fromHas = fromVal !== null && fromVal !== undefined && fromVal !== '' && fromVal !== 0;
-                            if (toEmpty && fromHas) {
-                                updates.push(`${f} = ?`);
-                                values.push(fromVal);
+            const to = this.db.prepare("SELECT * FROM tracks WHERE id = ?").get(toId) as any;
+            if (to) {
+                const carryFields = [
+                    'lossless_path', 'external_id', 'fingerprint', 'lyrics',
+                    'external_artwork', 'hash', 'file_hash', 'waveform',
+                    'year', 'genre', 'bitrate', 'sample_rate', 'duration',
+                    'mime_type', 'file_size', 'version', 'url', 'service',
+                    'artist_name', 'track_num', 'album_id', 'artist_id'
+                ];
+
+                const CHUNK_SIZE = 900;
+                for (let i = 0; i < fromIds.length; i += CHUNK_SIZE) {
+                    const chunk = fromIds.slice(i, i + CHUNK_SIZE);
+                    const bindStr = chunk.map(() => '?').join(',');
+
+                    try {
+                        const fromRows = this.db.prepare(`SELECT * FROM tracks WHERE id IN (${bindStr})`).all(...chunk) as any[];
+                        for (const from of fromRows) {
+                            const updates: string[] = [];
+                            const values: any[] = [];
+                            for (const f of carryFields) {
+                                const toVal = to[f];
+                                const fromVal = from[f];
+                                const toEmpty = toVal === null || toVal === undefined || toVal === '' || toVal === 0;
+                                const fromHas = fromVal !== null && fromVal !== undefined && fromVal !== '' && fromVal !== 0;
+                                if (toEmpty && fromHas) {
+                                    updates.push(`${f} = ?`);
+                                    values.push(fromVal);
+                                    to[f] = fromVal; // Update in-memory to prevent duplicate carries
+                                }
+                            }
+                            if (updates.length > 0) {
+                                values.push(toId);
+                                this.db.prepare(`UPDATE tracks SET ${updates.join(', ')} WHERE id = ?`).run(...values);
                             }
                         }
-                        if (updates.length > 0) {
-                            values.push(toId);
-                            this.db.prepare(`UPDATE tracks SET ${updates.join(', ')} WHERE id = ?`).run(...values);
-                        }
+                    } catch (err) {
+                        console.error(`🚨 [TrackRepository] Metadata merge failed during transaction batch (${chunk[0]}... -> ${toId}):`, err);
+                        throw err; // Re-throw to ensure transaction rollback
                     }
-                } catch (err) {
-                    console.error(`🚨 [TrackRepository] Metadata merge failed during transaction (${fId} -> ${toId}):`, err);
-                    throw err; // Re-throw to ensure transaction rollback
                 }
             }
 
