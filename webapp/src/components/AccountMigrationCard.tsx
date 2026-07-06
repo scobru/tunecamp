@@ -10,7 +10,15 @@ import { notify } from "../utils/notify";
  * moves data — not credentials. Artist follower-redirect is separate (the
  * ActivityPub "Identity Migration" panel / Move activity).
  */
-export default function AccountMigrationCard() {
+interface AccountMigrationCardProps {
+  hasArtistProfile?: boolean;
+  onNavigateToArtist?: () => void;
+}
+
+export default function AccountMigrationCard({
+  hasArtistProfile = false,
+  onNavigateToArtist,
+}: AccountMigrationCardProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<null | {
@@ -68,8 +76,21 @@ export default function AccountMigrationCard() {
       <p className="text-sm opacity-70">
         Move your account to another TuneCamp instance. Export your profile + playlists here,
         then register on the new instance and import the archive. Purchases stay on the instance
-        where they were made. To redirect your followers (artists), use the ActivityPub identity
-        migration below.
+        where they were made.
+        {hasArtistProfile && onNavigateToArtist && (
+          <>
+            {" "}
+            To redirect your artist followers, use the ActivityPub identity migration in the{" "}
+            <button
+              type="button"
+              className="link link-primary font-semibold align-baseline p-0 h-auto min-h-0 text-sm"
+              onClick={onNavigateToArtist}
+            >
+              Artist Profile
+            </button>{" "}
+            tab.
+          </>
+        )}
       </p>
 
       <div className="flex flex-wrap gap-2">

@@ -771,6 +771,18 @@ const Profile = () => {
                 </div>
               </div>
             </div>
+            {hasArtistProfile && (
+              <div className="text-xs opacity-75 mt-2 bg-base-300/40 p-3 rounded-lg border border-base-content/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <span>🎨 You have a linked Artist Profile. Manage all identity migration, verification aliases, and cross-posting in your artist settings.</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("artist")}
+                  className="btn btn-xs btn-outline btn-primary flex-shrink-0"
+                >
+                  Go to Artist Profile
+                </button>
+              </div>
+            )}
           </div>
 
           {/* API Tokens Panel */}
@@ -892,7 +904,10 @@ const Profile = () => {
             </div>
           )}
 
-          <AccountMigrationCard />
+          <AccountMigrationCard
+            hasArtistProfile={hasArtistProfile}
+            onNavigateToArtist={() => setActiveTab("artist")}
+          />
           </div>
         )}
 
