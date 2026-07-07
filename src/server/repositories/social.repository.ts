@@ -62,6 +62,10 @@ export class SocialRepository {
         this.db.prepare("DELETE FROM followers WHERE artist_id = ? AND actor_uri = ?").run(artistId, actorUri);
     }
 
+    removeAllFollowers(actorUri: string): void {
+        this.db.prepare("DELETE FROM followers WHERE actor_uri = ?").run(actorUri);
+    }
+
     updateFollowerUri(oldActorUri: string, newActorUri: string, newInboxUri: string, newSharedInboxUri?: string): void {
         this.db.prepare(
             "UPDATE followers SET actor_uri = ?, inbox_uri = ?, shared_inbox_uri = ? WHERE actor_uri = ?"
