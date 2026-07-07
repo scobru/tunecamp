@@ -328,8 +328,13 @@ export class LibrarySync {
     const ext = path.extname(normalizedPath).toLowerCase();
     const isLossless = this.LOSSLESS_EXTENSIONS.includes(ext);
 
+    // Filename-fallback titles keep conversion junk ("A_Gravame_mp3") that then
+    // leaks into every future generated filename. Strip trailing ext tokens.
+    const fallbackTitle = path.basename(normalizedPath, ext)
+        .replace(/([_\s.-]+(wav|mp3|flac|m4a|aac|ogg|opus))+$/i, '') || path.basename(normalizedPath, ext);
+
     const trackId = this.database.createTrack({
-        title: metadataHints?.title || common.title || path.basename(normalizedPath, ext),
+        title: metadataHints?.title || common.title || fallbackTitle,
         album_id: albumId,
         artist_id: artistId,
         owner_id: ownerId || this.primaryAdminId || 1,
