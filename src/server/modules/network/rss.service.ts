@@ -100,9 +100,11 @@ export function createRssService(db: DatabaseService): RssService {
                 is_followed: true,
             });
 
-            for (const item of parsed.items) {
-                db.upsertRemoteContent(item);
-            }
+            db.transaction(() => {
+                for (const item of parsed.items) {
+                    db.upsertRemoteContent(item);
+                }
+            });
             console.log(`📡 [RSS] Followed "${parsed.channel.name}" (${parsed.items.length} items) — ${effectiveUrl}`);
             return { name: parsed.channel.name || effectiveUrl, items: parsed.items.length };
         },
@@ -126,9 +128,11 @@ export function createRssService(db: DatabaseService): RssService {
                 outbox_url: feedUrl,
             });
 
-            for (const item of parsed.items) {
-                db.upsertRemoteContent(item);
-            }
+            db.transaction(() => {
+                for (const item of parsed.items) {
+                    db.upsertRemoteContent(item);
+                }
+            });
             return parsed.items.length;
         },
 
