@@ -15,6 +15,21 @@ export interface AuthenticatedRequest extends Request {
 }
 
 /**
+ * Routes loaded by native browser consumers that cannot set an Authorization
+ * header: <audio>/<video> elements (track streaming), EventSource (board
+ * stream), and plain <a> download links (track/album/release downloads,
+ * admin backups). Only these routes may authenticate via the `token` query
+ * parameter; every other route is header-only so session tokens don't leak
+ * into request logs through generic API URLs.
+ */
+const QUERY_TOKEN_ROUTES = /\/(stream|download)(\/|\.|$)|^\/api\/admin\/backup\//;
+
+function allowsQueryToken(req: Request): boolean {
+    const path = (req.originalUrl || req.url || "").split("?")[0];
+    return QUERY_TOKEN_ROUTES.test(path);
+}
+
+/**
  * Creates auth middleware that validates JWT tokens
  */
 export function createAuthMiddleware(authService: AuthService) {
@@ -27,6 +42,8 @@ export function createAuthMiddleware(authService: AuthService) {
 
         if (authHeader && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
+        } else if (typeof req.query.token === "string" && allowsQueryToken(req)) {
+            token = req.query.token;
         }
 
         if (!token) return null;
