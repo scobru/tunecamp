@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.20.2] - 2026-07-08
+
+### Fixed
+- **Private-library playback broken: `MEDIA_ELEMENT_ERROR: Format error` on every track.** PR #886 removed `?token=` extraction from the auth middleware to keep session JWTs out of request logs — but native browser consumers (`<audio>` elements, `EventSource`, plain `<a>` download links) cannot send an `Authorization` header, and the webapp authenticates exactly those URLs via `?token=`. The backend therefore saw every stream request as anonymous, `canConsumeTrack` denied private tracks with a 403 JSON body, and the audio element choked trying to decode JSON as audio. Query-token auth is now restored **only** for routes that native consumers load — `/stream`, `/download` and `/api/admin/backup/*` — while every other API route remains header-only, preserving the original log-leak fix. Payment downloads are unaffected: they keep their own short-lived `?dt=` token scheme.
+
 ## [2.20.1] - 2026-07-07
 
 ### Fixed
