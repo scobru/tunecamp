@@ -47,9 +47,10 @@ const mockFs = {
 jest.unstable_mockModule('fs-extra', () => ({ __esModule: true, default: mockFs }));
 
 let MediaEngine: any;
+let sendStreamResult: any;
 
 beforeAll(async () => {
-  ({ MediaEngine } = await import('./media-engine.js'));
+  ({ MediaEngine, sendStreamResult } = await import('./media-engine.js'));
 });
 
 const MUSIC_DIR = path.join('/srv', 'music');
@@ -172,5 +173,102 @@ describe('MediaEngine.getStream — local format routing', () => {
     expect(transcode).toHaveBeenCalledTimes(1);
     expect(transcode.mock.calls[0][1]).toBe('ogg');
     expect(result.contentType).toBe('audio/ogg');
+  });
+});
+
+describe('sendStreamResult', () => {
+  let res: any;
+  let stream: any;
+
+  beforeEach(() => {
+    res = {
+      setHeader: jest.fn(),
+      status: jest.fn().mockReturnThis(),
+      end: jest.fn(),
+      on: jest.fn(),
+    };
+    stream = {
+      pipe: jest.fn(),
+      destroy: jest.fn(),
+      destroyed: false,
+    };
+  });
+
+  it('delegates to nginx via X-Accel-Redirect when configured', () => {
+    const result = {
+      contentType: 'audio/flac',
+      xAccelRedirect: '/internal/media/123.flac',
+      statusCode: 200,
+    };
+
+    sendStreamResult(res, result as any);
+
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'audio/flac');
+    expect(res.setHeader).toHaveBeenCalledWith('X-Accel-Redirect', '/internal/media/123.flac');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.end).toHaveBeenCalledTimes(1);
+
+    // Should return early, not setting standard stream headers
+    expect(res.setHeader).not.toHaveBeenCalledWith('Accept-Ranges', 'bytes');
+  });
+
+  it('sets standard stream headers and pipes when a stream is provided', () => {
+    const result = {
+      contentType: 'audio/mpeg',
+      contentLength: 4000,
+      contentRange: 'bytes 0-3999/4000',
+      statusCode: 206,
+      stream,
+    };
+
+    sendStreamResult(res, result as any);
+
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'audio/mpeg');
+    expect(res.setHeader).toHaveBeenCalledWith('Accept-Ranges', 'bytes');
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Length', 4000);
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Range', 'bytes 0-3999/4000');
+    expect(res.status).toHaveBeenCalledWith(206);
+    expect(stream.pipe).toHaveBeenCalledWith(res);
+
+    // Should not call end directly if stream is provided, pipe handles it
+    expect(res.end).not.toHaveBeenCalled();
+  });
+
+  it('cleans up stream on client disconnect to free resources', () => {
+    const result = {
+      contentType: 'audio/mpeg',
+      statusCode: 200,
+      stream,
+    };
+
+    sendStreamResult(res, result as any);
+
+    const closeHandler = res.on.mock.calls.find((call: any[]) => call[0] === 'close');
+    expect(closeHandler).toBeDefined();
+
+    // Trigger close
+    closeHandler[1]();
+    expect(stream.destroy).toHaveBeenCalledTimes(1);
+
+    // If stream is already destroyed, it should not call destroy again
+    stream.destroy.mockClear();
+    stream.destroyed = true;
+    closeHandler[1]();
+    expect(stream.destroy).not.toHaveBeenCalled();
+  });
+
+  it('ends response directly if no stream is provided (e.g. HEAD request)', () => {
+    const result = {
+      contentType: 'audio/mpeg',
+      statusCode: 200,
+    };
+
+    sendStreamResult(res, result as any);
+
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'audio/mpeg');
+    expect(res.setHeader).toHaveBeenCalledWith('Accept-Ranges', 'bytes');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.end).toHaveBeenCalledTimes(1);
+    expect(res.on).not.toHaveBeenCalled();
   });
 });
