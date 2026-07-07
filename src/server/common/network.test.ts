@@ -75,4 +75,84 @@ describe('Network Utilities', () => {
             expect(res).toBeNull();
         });
     });
+
+    describe('isLiveTuneCamp', () => {
+        let originalFetch: typeof globalThis.fetch;
+        let mockFetch: any;
+
+        beforeEach(() => {
+            originalFetch = globalThis.fetch;
+            mockFetch = jest.fn();
+            (globalThis as any).fetch = mockFetch;
+        });
+
+        afterEach(() => {
+            (globalThis as any).fetch = originalFetch;
+        });
+
+        test('returns false if URL is empty', async () => {
+            expect(await network.isLiveTuneCamp('')).toBe(false);
+        });
+
+        test('returns false if URL is unsafe', async () => {
+            isSafeUrl.mockResolvedValue(false);
+            expect(await network.isLiveTuneCamp('http://192.168.1.1')).toBe(false);
+        });
+
+        test('uses base URL without trailing slash', async () => {
+            mockFetch.mockResolvedValue({
+                ok: true,
+                json: jest.fn().mockResolvedValue({ releases: [] })
+            });
+            await network.isLiveTuneCamp('http://example.com/');
+            expect(mockFetch).toHaveBeenCalledWith('http://example.com/api/catalog', expect.any(Object));
+        });
+
+        test('returns false and drains if response is not ok', async () => {
+            const mockText = jest.fn().mockResolvedValue('');
+            mockFetch.mockResolvedValue({
+                ok: false,
+                text: mockText
+            });
+            expect(await network.isLiveTuneCamp('http://example.com')).toBe(false);
+            expect(mockText).toHaveBeenCalled();
+        });
+
+        test('returns false if fetch throws an error', async () => {
+            mockFetch.mockRejectedValue(new Error('Network error'));
+            expect(await network.isLiveTuneCamp('http://example.com')).toBe(false);
+        });
+
+        test('returns true if response contains releases array', async () => {
+            mockFetch.mockResolvedValue({
+                ok: true,
+                json: jest.fn().mockResolvedValue({ releases: [] })
+            });
+            expect(await network.isLiveTuneCamp('http://example.com')).toBe(true);
+        });
+
+        test('returns true if response contains tracks array', async () => {
+            mockFetch.mockResolvedValue({
+                ok: true,
+                json: jest.fn().mockResolvedValue({ tracks: [] })
+            });
+            expect(await network.isLiveTuneCamp('http://example.com')).toBe(true);
+        });
+
+        test('returns false if response JSON does not match catalog shape', async () => {
+            mockFetch.mockResolvedValue({
+                ok: true,
+                json: jest.fn().mockResolvedValue({ other: 'data' })
+            });
+            expect(await network.isLiveTuneCamp('http://example.com')).toBe(false);
+        });
+
+        test('returns false if data is null', async () => {
+             mockFetch.mockResolvedValue({
+                ok: true,
+                json: jest.fn().mockResolvedValue(null)
+            });
+            expect(await network.isLiveTuneCamp('http://example.com')).toBe(false);
+        });
+    });
 });
