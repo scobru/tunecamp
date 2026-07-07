@@ -24,6 +24,33 @@ const mockConfig = {
 
 const mockRestartFn = jest.fn();
 
+describe('createBackupRoutes', () => {
+    it('should create and return an express router with the expected routes', () => {
+        const router = createBackupRoutes({
+            database: mockDatabase,
+            config: mockConfig
+        } as any, mockRestartFn);
+
+        expect(router.name).toBe('router');
+
+        const routes = router.stack
+            .filter(layer => layer.route)
+            .map(layer => ({
+                path: layer.route.path,
+                methods: Object.keys(layer.route.methods)
+            }));
+
+        expect(routes).toEqual(expect.arrayContaining([
+            { path: '/full', methods: ['get'] },
+            { path: '/gdrive', methods: ['post'] },
+            { path: '/audio', methods: ['get'] },
+            { path: '/restore', methods: ['post'] },
+            { path: '/chunk', methods: ['post'] },
+            { path: '/restore-chunked', methods: ['post'] }
+        ]));
+    });
+});
+
 describe('Backup Routes (Chunked Upload)', () => {
     let app: express.Express;
     const uploadId = 'test_upload_123';
