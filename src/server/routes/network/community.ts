@@ -1,6 +1,15 @@
 import express, { Router } from "express";
+import { readFile } from "fs/promises";
+import path from "path";
 import type { ServiceContainer } from "../../core/container.js";
 import { buildCommunitySites } from "../../modules/network/community-sites.js";
+
+let pkg: { version: string } = { version: '0.0.0' };
+try {
+    pkg = JSON.parse(await readFile(path.join(process.cwd(), 'package.json'), 'utf8'));
+} catch {
+    // fallback
+}
 
 // ponytail: in-memory rate limit, 1 registration per IP per hour
 const registerRateLimit = new Map<string, number>();
@@ -29,7 +38,7 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
             const publicUrl = dbService.getSetting("publicUrl") || config.publicUrl || null;
             res.json({
                 software: "tunecamp",
-                version: "2.3.0",
+                version: pkg.version,
                 url: publicUrl,
                 name: dbService.getSetting("siteName") || config.siteName || "TuneCamp Instance",
                 description: dbService.getSetting("siteDescription") || config.siteDescription || "",
