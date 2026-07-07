@@ -367,8 +367,6 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                     }
                 }
 
-                console.log(`[Stripe Debug] Track resolved:`, trackData ? { id: itemId, title: trackData.title, price: trackData.price, price_usdc: trackData.price_usdc, currency: trackData.currency } : 'NULL');
-
                 if (!trackData) return res.status(404).json({ error: `Track ${itemId} not found` });
                 name = trackData.title;
 
