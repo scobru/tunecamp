@@ -144,7 +144,7 @@ describe('FederatedDiscoveryService', () => {
         expect(status).toEqual({ origin: 'https://dead.example.com', offline: true, offlineSince: expect.any(Number), lastSeen: ancient });
     });
 
-    test('prune purges entries that have been offline past the purge window', () => {
+    test('prune purges gossip-discovered entries offline past the purge window', () => {
         const svc = createFederatedDiscoveryService(db, {});
         const ancient = Date.now() - 40 * 24 * 60 * 60 * 1000; // 40d ago
         const longOffline = Date.now() - 31 * 24 * 60 * 60 * 1000; // flagged offline 31d ago
@@ -157,6 +157,24 @@ describe('FederatedDiscoveryService', () => {
 
         const count = db.prepare('SELECT COUNT(*) as c FROM federated_instances').get() as any;
         expect(count.c).toBe(0);
+    });
+
+    test('prune never purges followed peers — their offline flag persists until unfollow', () => {
+        const svc = createFederatedDiscoveryService(db, {
+            getApSeedOrigins: () => ['https://followed.example.com'],
+        });
+        const ancient = Date.now() - 60 * 24 * 60 * 60 * 1000; // 60d ago, far past the 30d purge window
+        const insert = db.prepare(`INSERT INTO federated_instances
+            (origin, name, description, cover_image, artist_name, community_link, version, last_seen, fetched_at, offline_since)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+        insert.run('https://followed.example.com', 'Followed', '', null, null, null, '2.0', ancient, ancient, ancient);
+        insert.run('https://gossiped.example.com', 'Gossiped', '', null, null, null, '2.0', ancient, ancient, ancient);
+
+        svc.prune();
+
+        const origins = (db.prepare('SELECT origin FROM federated_instances').all() as any[]).map(r => r.origin);
+        expect(origins).toEqual(['https://followed.example.com']); // gossip row purged, followed row kept
+        expect(svc.getInstanceStatus('https://followed.example.com')?.offline).toBe(true);
     });
 
     test('a successful probe clears offline_since on an instance that came back', async () => {

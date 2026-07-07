@@ -17,7 +17,7 @@ import { isSafeUrl } from "../../../utils/networkUtils.js";
  */
 
 const HARD_EXPIRY_MS = 24 * 60 * 60 * 1000;     // 1d: instances not refreshed by a successful probe within a day are flagged offline (crawl runs every 6h, so a live peer is refreshed ~4×/day)
-const PURGE_AFTER_MS = 30 * 24 * 60 * 60 * 1000; // 30d offline with no successful probe: garbage-collect the row entirely
+const PURGE_AFTER_MS = 30 * 24 * 60 * 60 * 1000; // 30d offline with no successful probe: garbage-collect the row entirely (gossip-discovered rows only — followed peers are never auto-purged)
 const FETCH_TIMEOUT = 5000;                     // 5s per request
 const MAX_INSTANCES = 100;                      // crawl breadth safety cap
 const MAX_DEPTH = 3;                            // crawl depth safety cap
@@ -64,8 +64,10 @@ export interface FederatedDiscoveryService {
     getPeers(): string[];
     /**
      * Flags entries not refreshed within the hard expiry as offline (kept, not deleted,
-     * so admins can see they've gone dark); garbage-collects entries offline past the
-     * purge threshold. Called automatically after each crawl.
+     * so admins can see they've gone dark); garbage-collects gossip-discovered entries
+     * offline past the purge threshold. Followed peers (seeds/AP follows) are never
+     * auto-purged — their offline flag persists until an explicit unfollow.
+     * Called automatically after each crawl.
      */
     prune(): void;
     /**
@@ -142,7 +144,7 @@ export function createFederatedDiscoveryService(
     `);
     // A successful probe always clears offline_since — being reachable again matters more than when it happened.
     const markOfflineStmt = db.prepare("UPDATE federated_instances SET offline_since = ? WHERE fetched_at < ? AND offline_since IS NULL");
-    const purgeStmt = db.prepare("DELETE FROM federated_instances WHERE offline_since IS NOT NULL AND offline_since < ?");
+    const selectPurgeableStmt = db.prepare("SELECT origin FROM federated_instances WHERE offline_since IS NOT NULL AND offline_since < ?");
     const deleteStmt = db.prepare("DELETE FROM federated_instances WHERE origin = ?");
 
     let crawling = false;
@@ -347,7 +349,17 @@ export function createFederatedDiscoveryService(
         const now = Date.now();
         try {
             markOfflineStmt.run(now, now - HARD_EXPIRY_MS);
-            purgeStmt.run(now - PURGE_AFTER_MS);
+            // Garbage-collect long-offline rows, but never ones the admin explicitly
+            // follows (AP seeds): those were chosen, not gossip-discovered, so their
+            // offline flag must stay visible in the admin panel until an unfollow.
+            const followed = new Set(
+                [...(options.seeds || []), ...(options.getApSeedOrigins?.() || [])]
+                    .map(normalizeOrigin)
+                    .filter((o): o is string => !!o)
+            );
+            for (const row of selectPurgeableStmt.all(now - PURGE_AFTER_MS) as any[]) {
+                if (!followed.has(row.origin)) deleteStmt.run(row.origin);
+            }
         } catch (e) {
             console.error("❌ [FederatedDiscovery] Prune failed:", e);
         }
