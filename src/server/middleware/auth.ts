@@ -27,8 +27,6 @@ export function createAuthMiddleware(authService: AuthService) {
 
         if (authHeader && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
-        } else if (req.query.token) {
-            token = req.query.token as string;
         }
 
         if (!token) return null;
