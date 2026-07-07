@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.19.3] - 2026-07-07
+
+### Fixed
+- **Docker build failed on `npm ci` (lock file out of sync).** `package-lock.json` was missing the optional React 18 peer-dependency entries nested under `@docsearch/js` (pulled in by vitepress): `react@18.3.1`, `react-dom@18.3.1`, `@types/react@18.3.31`, `@types/prop-types`, `scheduler` — so `npm ci` aborted with EUSAGE ("lock file is not in sync"). Regenerated the lock with `npm install`; `npm ci` passes again.
+
 ## [2.19.2] - 2026-07-06
 
 ### Fixed
