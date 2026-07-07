@@ -124,7 +124,7 @@ describe('FederatedDiscoveryService', () => {
         expect(peers).not.toContain('https://me.example.com');     // own origin excluded
     });
 
-    test('prune drops entries older than the hard expiry', () => {
+    test('prune flags entries older than the hard expiry as offline instead of deleting them', () => {
         const svc = createFederatedDiscoveryService(db, {});
         const ancient = Date.now() - 2 * 24 * 60 * 60 * 1000; // 2d ago, expiry is 1d
         db.prepare(`INSERT INTO federated_instances
@@ -134,8 +134,43 @@ describe('FederatedDiscoveryService', () => {
 
         svc.prune();
 
+        const row = db.prepare('SELECT * FROM federated_instances WHERE origin = ?').get('https://dead.example.com') as any;
+        expect(row).toBeTruthy();
+        expect(row.offline_since).not.toBeNull();
+        // Flagged offline, so it drops out of the served/gossip lists...
+        expect(svc.getCommunitySites()).toHaveLength(0);
+        // ...but stays queryable for admin visibility.
+        const status = svc.getInstanceStatus('https://dead.example.com');
+        expect(status).toEqual({ origin: 'https://dead.example.com', offline: true, offlineSince: expect.any(Number), lastSeen: ancient });
+    });
+
+    test('prune purges entries that have been offline past the purge window', () => {
+        const svc = createFederatedDiscoveryService(db, {});
+        const ancient = Date.now() - 40 * 24 * 60 * 60 * 1000; // 40d ago
+        const longOffline = Date.now() - 31 * 24 * 60 * 60 * 1000; // flagged offline 31d ago
+        db.prepare(`INSERT INTO federated_instances
+            (origin, name, description, cover_image, artist_name, community_link, version, last_seen, fetched_at, offline_since)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+            .run('https://longgone.example.com', 'Gone', '', null, null, null, '2.0', ancient, ancient, longOffline);
+
+        svc.prune();
+
         const count = db.prepare('SELECT COUNT(*) as c FROM federated_instances').get() as any;
         expect(count.c).toBe(0);
+    });
+
+    test('a successful probe clears offline_since on an instance that came back', async () => {
+        global.fetch = routeFetch({ 'https://a.example.com': { software: 'tunecamp', name: 'A', peers: [] } }) as any;
+        const svc = createFederatedDiscoveryService(db, { seeds: ['https://a.example.com'] });
+        const ancient = Date.now() - 2 * 24 * 60 * 60 * 1000;
+        db.prepare(`INSERT INTO federated_instances
+            (origin, name, description, cover_image, artist_name, community_link, version, last_seen, fetched_at, offline_since)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+            .run('https://a.example.com', 'A', '', null, null, null, '2.0', ancient, ancient, ancient);
+
+        await svc.crawl();
+
+        expect(svc.getInstanceStatus('https://a.example.com')?.offline).toBe(false);
     });
 
     test('prune keeps entries refreshed within the last day', () => {
