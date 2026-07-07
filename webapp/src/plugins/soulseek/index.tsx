@@ -1,6 +1,8 @@
 
 import { Download, Activity } from 'lucide-react';
 import { pluginRegistry, type FrontendPlugin } from '../../core/plugins/registry';
+import { SoulseekSearchTab } from './SearchTab';
+import { SoulseekDownloadsTab } from './DownloadsTab';
 
 const SoulseekConfigPanel = ({ settings, setSettings }: any) => (
     <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
@@ -40,13 +42,13 @@ export const soulseekPlugin: FrontendPlugin = {
             id: 'soulseek',
             label: 'Soulseek',
             icon: <Activity className="mr-2" size={16} />,
-            component: () => null
+            component: SoulseekSearchTab
         },
         {
             id: 'downloads',
             label: 'Transfers',
             icon: <Download className="mr-2" size={16} />,
-            component: () => null
+            component: SoulseekDownloadsTab
         }
     ]
 };

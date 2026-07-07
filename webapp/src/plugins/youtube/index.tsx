@@ -1,19 +1,31 @@
-
 import { Youtube, Globe } from 'lucide-react';
-import { pluginRegistry } from '../../core/plugins/registry';
+import { pluginRegistry, type FrontendPlugin } from '../../core/plugins/registry';
+import { StreamingSearchTab } from './SearchTab';
 
-pluginRegistry.register({
-    id: 'youtube', name: 'YouTube', icon: <Youtube className="text-[#FF0000]" />,
-    description: 'Resilient streaming via yt-dlp with fallbacks.',
-    statusCheck: (status) => ({ status: status?.youtube?.online ? 'online' : 'offline', details: status?.youtube?.online ? "Service reachable" : "Service unreachable" }),
+export const youtubePlugin: FrontendPlugin = {
+    id: 'youtube',
+    name: 'YouTube & Streaming',
+    icon: <Youtube className="text-error" />,
+    description: 'Search and rip audio from YouTube, SoundCloud, Bandcamp, and other platforms using yt-dlp',
+    statusCheck: (_, plugins) => {
+        const enabled = plugins.find(p => p.id === 'youtube')?.enabled;
+        return {
+            status: enabled ? 'online' : 'offline',
+            details: enabled ? "Enabled — ready to download streams" : "Disabled"
+        };
+    },
     customAction: {
         label: 'Upload Cookies',
         onClick: () => document.getElementById('youtube-cookie-input')?.click()
     },
-    searchTabs: [{
-        id: 'streaming',
-        label: 'Streaming',
-        icon: <Globe className="mr-2" size={16} />,
-        component: () => null
-    }]
-});
+    searchTabs: [
+        {
+            id: 'streaming',
+            label: 'Streaming',
+            icon: <Globe className="mr-2" size={16} />,
+            component: StreamingSearchTab
+        }
+    ]
+};
+
+pluginRegistry.register(youtubePlugin);

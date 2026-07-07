@@ -56,9 +56,14 @@ class PluginRegistry {
         return Array.from(this.plugins.values());
     }
 
-    getSearchTabs() {
+    getSearchTabs(status?: any) {
         return this.getAll()
             .filter(p => p.searchTabs)
+            .filter(p => {
+                if (!status || !p.statusCheck) return true; // If no status provided, assume online
+                const check = p.statusCheck(status, []); // We pass [] for plugins since frontend doesn't have the full backend plugins list here easily
+                return check.status === 'online';
+            })
             .flatMap(p => p.searchTabs!.map(tab => ({
                 pluginId: p.id,
                 ...tab
