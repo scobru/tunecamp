@@ -1,6 +1,6 @@
 import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from 'react';
-import { RefreshCw, Trash2, ExternalLink, Globe, Rss, Server } from 'lucide-react';
+import { RefreshCw, Trash2, ExternalLink, Globe, Rss, Server, WifiOff } from 'lucide-react';
 import API from '../../services/api';
 import { notify } from '../../utils/notify';
 
@@ -245,7 +245,17 @@ export const AdminFederationPanel = () => {
                                                 </div>
                                             </div>
                                             <div className="min-w-0">
-                                                <div className="font-bold text-sm truncate">{peer.name || peer.username}</div>
+                                                <div className="font-bold text-sm truncate flex items-center gap-1.5">
+                                                    {peer.name || peer.username}
+                                                    {peer.offline && (
+                                                        <span
+                                                            className="badge badge-error badge-outline badge-sm gap-1 tooltip tooltip-top normal-case"
+                                                            data-tip={`Unreachable since ${peer.offlineSince ? new Date(peer.offlineSince).toLocaleString() : 'unknown'} — consider unfollowing`}
+                                                        >
+                                                            <WifiOff size={10}/> Offline
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <div className="text-xs opacity-40 truncate flex items-center gap-1 font-mono">
                                                     <span className="truncate">{peer.uri}</span>
                                                     <a href={peer.uri} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 hover:text-primary transition-opacity">

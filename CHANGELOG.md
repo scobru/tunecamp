@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.20.1] - 2026-07-07
+
+### Fixed
+- **Followed peers are never auto-purged from federated discovery.** The 30-day garbage collection introduced in 2.20.0 deleted *any* long-offline row from `federated_instances`, including instances the admin explicitly follows — which silently removed their "Offline" badge from the Instances & Peers panel after a month. `prune()` now skips origins that are federation seeds or ActivityPub-followed instance actors: their offline flag persists until the admin unfollows. Gossip-discovered instances (never followed) are still purged after 30 days offline, keeping the cache from accumulating dead strangers.
+
+## [2.20.0] - 2026-07-07
+
+### Added
+- **Offline flag on followed peer instances.** Federated-discovery's 24h prune used to silently `DELETE` a peer from `federated_instances` once it stopped answering probes, so a followed instance that went dark just vanished from Network → Instances with no signal to the admin. Dead peers are now flagged `offline_since` instead (kept, not deleted) and only garbage-collected after 30 days offline. The "Instances & Peers" admin panel (`GET /api/admin/network/ap/peers`) surfaces this as a red "Offline" badge with an "unreachable since — consider unfollowing" tooltip on each affected peer.
+- **1-day dead-instance cleanup on the marketing site's Network Graph.** `network-graph.html` crawls live from the browser with no backend, so unreachable nodes previously stayed red forever. It now tracks "first seen offline" per origin in `localStorage` and drops a node from the graph once it's been continuously unreachable for 24h — mirroring the same expiry the TuneCamp instance itself uses.
+
 ## [2.19.6] - 2026-07-07
 
 ### Fixed

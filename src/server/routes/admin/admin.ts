@@ -2298,7 +2298,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
     /**
      * GET /api/admin/network/ap/peers
-     * List followed ActivityPub actors
+     * List followed ActivityPub actors, annotated with federated-discovery offline
+     * status so the admin can see a peer has gone dark and consider unfollowing it.
      */
     router.get("/network/ap/peers", async (req: AuthenticatedRequest, res: any) => {
         try {
@@ -2306,7 +2307,22 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 return res.status(403).json({ error: "Only admin can view peers" });
             }
             const peers = social.getFollowedActors();
-            res.json(peers);
+            const annotated = peers.map((peer: any) => {
+                if (peer.type === "rss") return peer;
+                let origin: string | null = null;
+                try {
+                    origin = new URL(peer.uri).origin;
+                } catch {
+                    origin = null;
+                }
+                const status = origin ? federatedDiscoveryService.getInstanceStatus(origin) : null;
+                return {
+                    ...peer,
+                    offline: status?.offline ?? false,
+                    offlineSince: status?.offlineSince ?? null,
+                };
+            });
+            res.json(annotated);
         } catch (error) {
             console.error("Error listing peers:", error);
             res.status(500).json({ error: "Failed to list peers" });

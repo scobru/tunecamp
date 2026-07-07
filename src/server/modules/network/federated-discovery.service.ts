@@ -10,11 +10,14 @@ import { isSafeUrl } from "../../../utils/networkUtils.js";
  * the frontier through each peer's `/api/community/peers` endpoint.
  *
  * Modeled on CatalogCacheService: SQLite-backed, SSRF-guarded (isSafeUrl), bounded
- * fetch timeouts, and a hard expiry so instances that go away stop being served.
+ * fetch timeouts, and a hard expiry so instances that go away stop being served (they
+ * are flagged `offline_since` rather than deleted, so admins following them can see it
+ * and decide whether to unfollow; only garbage-collected after a much longer purge window).
  * There is NO central relay — discovery is pure gossip from the seed points.
  */
 
-const HARD_EXPIRY_MS = 24 * 60 * 60 * 1000;     // 1d: drop instances not refreshed by a successful probe within a day (crawl runs every 6h, so a live peer is refreshed ~4×/day)
+const HARD_EXPIRY_MS = 24 * 60 * 60 * 1000;     // 1d: instances not refreshed by a successful probe within a day are flagged offline (crawl runs every 6h, so a live peer is refreshed ~4×/day)
+const PURGE_AFTER_MS = 30 * 24 * 60 * 60 * 1000; // 30d offline with no successful probe: garbage-collect the row entirely (gossip-discovered rows only — followed peers are never auto-purged)
 const FETCH_TIMEOUT = 5000;                     // 5s per request
 const MAX_INSTANCES = 100;                      // crawl breadth safety cap
 const MAX_DEPTH = 3;                            // crawl depth safety cap
@@ -28,6 +31,13 @@ interface FederatedInstance {
     communityLink?: string;
     version?: string;
     lastSeen?: number;
+}
+
+export interface InstanceStatus {
+    origin: string;
+    offline: boolean;
+    offlineSince?: number;
+    lastSeen: number;
 }
 
 export interface FederatedDiscoveryOptions {
@@ -52,7 +62,13 @@ export interface FederatedDiscoveryService {
     getCommunitySites(): FederatedInstance[];
     /** Known instance origins, for the public `/api/community/peers` gossip endpoint. */
     getPeers(): string[];
-    /** Drops entries older than the hard expiry. Called automatically after each crawl. */
+    /**
+     * Flags entries not refreshed within the hard expiry as offline (kept, not deleted,
+     * so admins can see they've gone dark); garbage-collects gossip-discovered entries
+     * offline past the purge threshold. Followed peers (seeds/AP follows) are never
+     * auto-purged — their offline flag persists until an explicit unfollow.
+     * Called automatically after each crawl.
+     */
     prune(): void;
     /**
      * Removes a specific origin from the discovery cache immediately.
@@ -60,6 +76,8 @@ export interface FederatedDiscoveryService {
      * Network → Instances tab without waiting for the 1-day hard expiry.
      */
     deleteInstance(rawOrigin: string): void;
+    /** Offline/last-seen status for a followed origin, for admin visibility (e.g. "consider unfollowing"). */
+    getInstanceStatus(rawOrigin: string): InstanceStatus | null;
 }
 
 /** Strip path/query and return the canonical origin, or null if unparseable. */
@@ -101,13 +119,18 @@ export function createFederatedDiscoveryService(
             fetched_at INTEGER NOT NULL
         );
     `);
+    const existingCols = db.prepare("PRAGMA table_info(federated_instances)").all() as any[];
+    if (!existingCols.some((c) => c.name === "offline_since")) {
+        db.exec("ALTER TABLE federated_instances ADD COLUMN offline_since INTEGER");
+    }
 
     const selectAllStmt = db.prepare("SELECT * FROM federated_instances WHERE fetched_at >= ? ORDER BY last_seen DESC");
     const selectOriginsStmt = db.prepare("SELECT origin FROM federated_instances WHERE fetched_at >= ?");
+    const selectByOriginStmt = db.prepare("SELECT * FROM federated_instances WHERE origin = ?");
     const upsertStmt = db.prepare(`
         INSERT INTO federated_instances
-            (origin, name, description, cover_image, artist_name, community_link, version, last_seen, fetched_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (origin, name, description, cover_image, artist_name, community_link, version, last_seen, fetched_at, offline_since)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
         ON CONFLICT(origin) DO UPDATE SET
             name = excluded.name,
             description = excluded.description,
@@ -116,9 +139,12 @@ export function createFederatedDiscoveryService(
             community_link = excluded.community_link,
             version = excluded.version,
             last_seen = excluded.last_seen,
-            fetched_at = excluded.fetched_at
+            fetched_at = excluded.fetched_at,
+            offline_since = NULL
     `);
-    const pruneStmt = db.prepare("DELETE FROM federated_instances WHERE fetched_at < ?");
+    // A successful probe always clears offline_since — being reachable again matters more than when it happened.
+    const markOfflineStmt = db.prepare("UPDATE federated_instances SET offline_since = ? WHERE fetched_at < ? AND offline_since IS NULL");
+    const selectPurgeableStmt = db.prepare("SELECT origin FROM federated_instances WHERE offline_since IS NOT NULL AND offline_since < ?");
     const deleteStmt = db.prepare("DELETE FROM federated_instances WHERE origin = ?");
 
     let crawling = false;
@@ -320,8 +346,20 @@ export function createFederatedDiscoveryService(
     };
 
     const prune = () => {
+        const now = Date.now();
         try {
-            pruneStmt.run(Date.now() - HARD_EXPIRY_MS);
+            markOfflineStmt.run(now, now - HARD_EXPIRY_MS);
+            // Garbage-collect long-offline rows, but never ones the admin explicitly
+            // follows (AP seeds): those were chosen, not gossip-discovered, so their
+            // offline flag must stay visible in the admin panel until an unfollow.
+            const followed = new Set(
+                [...(options.seeds || []), ...(options.getApSeedOrigins?.() || [])]
+                    .map(normalizeOrigin)
+                    .filter((o): o is string => !!o)
+            );
+            for (const row of selectPurgeableStmt.all(now - PURGE_AFTER_MS) as any[]) {
+                if (!followed.has(row.origin)) deleteStmt.run(row.origin);
+            }
         } catch (e) {
             console.error("❌ [FederatedDiscovery] Prune failed:", e);
         }
@@ -337,7 +375,25 @@ export function createFederatedDiscoveryService(
         }
     };
 
+    const getInstanceStatus = (rawOrigin: string): InstanceStatus | null => {
+        const o = normalizeOrigin(rawOrigin);
+        if (!o) return null;
+        try {
+            const row = selectByOriginStmt.get(o) as any;
+            if (!row) return null;
+            return {
+                origin: row.origin,
+                offline: row.offline_since != null,
+                offlineSince: row.offline_since ?? undefined,
+                lastSeen: row.last_seen,
+            };
+        } catch (e) {
+            console.error("❌ [FederatedDiscovery] getInstanceStatus failed:", e);
+            return null;
+        }
+    };
+
     prune();
 
-    return { crawl, probeOrigin, getCommunitySites, getPeers, prune, deleteInstance };
+    return { crawl, probeOrigin, getCommunitySites, getPeers, prune, deleteInstance, getInstanceStatus };
 }
