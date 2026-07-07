@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import type { Database as DatabaseType } from "better-sqlite3";
 import type { SocialRepository } from "../../repositories/social.repository.js";
 import type { RemoteActorRepository } from "../../repositories/remote-actor.repository.js";
@@ -120,7 +119,7 @@ export function createSocialManager(
                 }
             }
             const baseSlug = t ? t : c;
-            const generatedSlug = baseSlug.slice(0, 20).toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + crypto.randomBytes(3).toString("hex");
+            const generatedSlug = baseSlug.slice(0, 20).toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Math.random().toString(36).substring(2, 8);
             return Number(db.prepare("INSERT INTO posts (artist_id, content, slug, visibility, published_at, title, summary) VALUES (?, ?, ?, ?, ?, ?, ?)").run(aid, c, generatedSlug, v, (v === 'public' || v === 'unlisted') ? new Date().toISOString() : null, t || null, s || null).lastInsertRowid);
         },
         updatePost(id: number, c: string, v?: any, t?: string | null, s?: string | null) {

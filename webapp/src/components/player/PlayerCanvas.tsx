@@ -12,10 +12,8 @@ import { Waveform } from "./Waveform";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { fixRelativeUrl } from '../../utils/url';
-import { useConfigStore } from "../../stores/useConfigStore";
 
 export const PlayerCanvas = () => {
-    const { cacheBuster } = useConfigStore();
     const { 
         currentTrack, 
         isPlaying, 
@@ -43,13 +41,12 @@ export const PlayerCanvas = () => {
 
     if (!isMounted || !currentTrack) return null;
 
-    let coverUrl = currentTrack ? (
+    let coverUrl = (
         currentTrack.coverImage ||
         currentTrack.coverUrl ||
-        (currentTrack.albumId ? API.getAlbumCoverUrl(currentTrack.albumId, cacheBuster) : "") ||
-        (currentTrack.id ? API.getTrackCoverUrl(currentTrack.id, cacheBuster) : "") ||
-        (currentTrack.artistId ? API.getArtistCoverUrl(currentTrack.artistId, cacheBuster) : "")
-    ) : "";
+        (currentTrack.albumId ? API.getAlbumCoverUrl(currentTrack.albumId) : "") ||
+        (currentTrack.id ? API.getTrackCoverUrl(currentTrack.id) : "")
+    );
 
     // Fix relative paths
     coverUrl = fixRelativeUrl(coverUrl);

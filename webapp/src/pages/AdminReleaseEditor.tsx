@@ -97,6 +97,7 @@ export default function AdminReleaseEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, role, isAuthenticated, isLoading } = useAuthStore();
+  const isNew = !id;
   const isAdmin = role === 'admin' || role === 'root_admin';
   // Mirrors the backend VisibilityGuardian.canPublishContent gate: a listener in
   // self-publish mode (role "user" + artistId) may edit/publish their own content,
@@ -106,8 +107,6 @@ export default function AdminReleaseEditor() {
   // subsequent save/publish in the same session updates it instead of creating a
   // second copy (the URL still says /new, so `isNew` stays true). See handleSave.
   const [createdId, setCreatedId] = useState<number | null>(null);
-
-  const isNew = !id && !createdId;
 
 
   const [loading, setLoading] = useState(false);

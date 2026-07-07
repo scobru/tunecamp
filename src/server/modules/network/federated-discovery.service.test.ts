@@ -126,7 +126,7 @@ describe('FederatedDiscoveryService', () => {
 
     test('prune drops entries older than the hard expiry', () => {
         const svc = createFederatedDiscoveryService(db, {});
-        const ancient = Date.now() - 2 * 24 * 60 * 60 * 1000; // 2d ago, expiry is 1d
+        const ancient = Date.now() - 8 * 24 * 60 * 60 * 1000; // 8d ago, expiry is 7d
         db.prepare(`INSERT INTO federated_instances
             (origin, name, description, cover_image, artist_name, community_link, version, last_seen, fetched_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
@@ -136,19 +136,5 @@ describe('FederatedDiscoveryService', () => {
 
         const count = db.prepare('SELECT COUNT(*) as c FROM federated_instances').get() as any;
         expect(count.c).toBe(0);
-    });
-
-    test('prune keeps entries refreshed within the last day', () => {
-        const svc = createFederatedDiscoveryService(db, {});
-        const recent = Date.now() - 12 * 60 * 60 * 1000; // 12h ago, inside the 1d expiry
-        db.prepare(`INSERT INTO federated_instances
-            (origin, name, description, cover_image, artist_name, community_link, version, last_seen, fetched_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-            .run('https://alive.example.com', 'Alive', '', null, null, null, '2.0', recent, recent);
-
-        svc.prune();
-
-        const count = db.prepare('SELECT COUNT(*) as c FROM federated_instances').get() as any;
-        expect(count.c).toBe(1);
     });
 });

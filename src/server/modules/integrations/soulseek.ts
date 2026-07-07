@@ -2,7 +2,6 @@ import { SoulseekDownloader } from "andrade-soulseek-downloader/dist/index.js";
 import type { SoulseekDownloader as TSoulseekDownloader, SearchOptions, DownloadConfig, SoulseekSearchResult } from "andrade-soulseek-downloader/dist/index.js";
 import path from "path";
 import fs from "fs-extra";
-import crypto from "crypto";
 
 export interface SoulseekResult {
     id: string;
@@ -96,7 +95,7 @@ export class SoulseekService {
             const results = await downloader.search(options);
             
             return results.map((r: SoulseekSearchResult) => {
-                const id = crypto.randomUUID();
+                const id = Math.random().toString(36).substring(2, 11);
                 this.searchCache.set(id, r);
                 return {
                     id,
