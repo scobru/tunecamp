@@ -14,7 +14,7 @@ import { isSafeUrl } from "../../../utils/networkUtils.js";
  * There is NO central relay — discovery is pure gossip from the seed points.
  */
 
-const HARD_EXPIRY_MS = 24 * 60 * 60 * 1000;     // 1d: drop instances not refreshed by a successful probe within a day (crawl runs every 6h, so a live peer is refreshed ~4×/day)
+const HARD_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7d: drop entries never refreshed since
 const FETCH_TIMEOUT = 5000;                     // 5s per request
 const MAX_INSTANCES = 100;                      // crawl breadth safety cap
 const MAX_DEPTH = 3;                            // crawl depth safety cap
@@ -57,7 +57,7 @@ export interface FederatedDiscoveryService {
     /**
      * Removes a specific origin from the discovery cache immediately.
      * Called when an instance is explicitly unfollowed so it stops appearing in the
-     * Network → Instances tab without waiting for the 1-day hard expiry.
+     * Network → Instances tab without waiting for the 7-day hard expiry.
      */
     deleteInstance(rawOrigin: string): void;
 }

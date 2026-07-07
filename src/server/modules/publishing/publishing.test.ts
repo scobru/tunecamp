@@ -1,5 +1,5 @@
 import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globals';
-import { PublishingService, createPublishingService } from './publishing.service.js';
+import { PublishingService } from './publishing.service.js';
 import { createDatabase } from '../../core/database.js';
 import type { FederatedDiscoveryService } from '../network/federated-discovery.service.js';
 import type { ActivityPubService } from '../activitypub/activitypub.service.js';
@@ -330,21 +330,5 @@ describe('PublishingService', () => {
         await expect(publishingService.publishPostToAP(post)).resolves.not.toThrow();
         expect(apMock.broadcastPost).toHaveBeenCalled();
         expect(mockFetch).toHaveBeenCalled();
-    });
-});
-
-describe('createPublishingService', () => {
-    test('creates and returns a new PublishingService instance', () => {
-        const db = createDatabase(':memory:');
-        const federatedDiscoveryMock = {} as unknown as import('../network/federated-discovery.service.js').FederatedDiscoveryService;
-        const apMock = {} as unknown as import('../activitypub/activitypub.service.js').ActivityPubService;
-        const configMock = { server: { domain: 'example.com' } } as unknown as import('../../core/config.js').ServerConfig;
-        const storageMock = {} as unknown as any;
-
-        const service1 = createPublishingService(db, federatedDiscoveryMock, apMock, configMock, storageMock);
-        expect(service1).toBeInstanceOf(PublishingService);
-
-        const service2 = createPublishingService(db, federatedDiscoveryMock, apMock, configMock, storageMock);
-        expect(service1).not.toBe(service2);
     });
 });
