@@ -869,11 +869,27 @@ export class Scanner implements ScannerService {
 
         const score = (t: Track) => (t.album_id ? 2 : 0) + (t.artist_id ? 1 : 0);
 
+        const allIdsToFetch: number[] = [];
+        for (const ids of titleGroups.values()) {
+            if (ids.length > 1) {
+                allIdsToFetch.push(...ids);
+            }
+        }
+
+        const fetchedTracks = this.database.getTracksByIds(allIdsToFetch);
+        const trackMap = new Map<number, Track>();
+        for (let i = 0; i < fetchedTracks.length; i++) {
+            trackMap.set(fetchedTracks[i].id, fetchedTracks[i]);
+        }
+
         for (const [, ids] of titleGroups.entries()) {
             if (ids.length <= 1) continue;
-            const rows = ids
-                .map(id => this.database.getTrack(id))
-                .filter((t): t is Track => !!t);
+
+            const rows: Track[] = [];
+            for (let i = 0; i < ids.length; i++) {
+                const t = trackMap.get(ids[i]);
+                if (t) rows.push(t);
+            }
             if (rows.length <= 1) continue;
 
             rows.sort((a, b) => score(b) - score(a));
