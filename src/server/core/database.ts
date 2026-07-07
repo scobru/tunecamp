@@ -49,6 +49,9 @@ export function createDatabase(dbPath: string): DatabaseService {
         );
 
         for (const table of tablesToRescue) {
+            if (!/^[a-z0-9_]+$/i.test(table)) {
+                throw new Error(`Invalid table name for rescue: ${table}`);
+            }
             const mainExists = tableNames.has(table);
             const oldExists = tableNames.has(`${table}_old`);
             const newExists = tableNames.has(`${table}_new`);
