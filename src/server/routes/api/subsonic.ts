@@ -375,26 +375,39 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         const submission = ensureString(subRaw) !== 'false';
         const ids = Array.isArray(id) ? id : [id];
         const username = (req as any).user.username;
+        const trackIdsToProcess: number[] = [];
         for (const tid of ids) {
             if (!tid?.startsWith('tr_')) continue;
-            const trackId = parseInt(tid.substring(3));
-            if (submission) {
-                db.recordPlay(trackId, new Date().toISOString());
-                nowPlayingCache.set(username, { trackId, timestamp: Date.now() });
-                if (scrobbleService) {
-                    const track = db.getTrack(trackId);
-                    if (track) {
-                        scrobbleService.scrobble({
-                            artist: track.artist_name || "Unknown Artist", title: track.title, album: track.album_title, duration: track.duration ?? undefined
-                        }).catch((e: any) => console.error("[Subsonic] ScrobbleService failure:", e));
+            trackIdsToProcess.push(parseInt(tid.substring(3)));
+        }
+
+        if (trackIdsToProcess.length > 0) {
+            const tracks = db.getTracksByIds(trackIdsToProcess);
+            const tracksMap = new Map();
+            for (let i = 0; i < tracks.length; i++) {
+                tracksMap.set(tracks[i].id, tracks[i]);
+            }
+
+            for (let i = 0; i < trackIdsToProcess.length; i++) {
+                const trackId = trackIdsToProcess[i];
+                if (submission) {
+                    db.recordPlay(trackId, new Date().toISOString());
+                    nowPlayingCache.set(username, { trackId, timestamp: Date.now() });
+                    if (scrobbleService) {
+                        const track = tracksMap.get(trackId);
+                        if (track) {
+                            scrobbleService.scrobble({
+                                artist: track.artist_name || "Unknown Artist", title: track.title, album: track.album_title, duration: track.duration ?? undefined
+                            }).catch((e: any) => console.error("[Subsonic] ScrobbleService failure:", e));
+                        }
                     }
-                }
-            } else if (scrobbleService) {
-                const track = db.getTrack(trackId);
-                if (track) {
-                    scrobbleService.updateNowPlaying({
-                        artist: track.artist_name || "Unknown Artist", title: track.title, album: track.album_title
-                    }).catch((e: any) => console.error("[Subsonic] NowPlaying update failure:", e));
+                } else if (scrobbleService) {
+                    const track = tracksMap.get(trackId);
+                    if (track) {
+                        scrobbleService.updateNowPlaying({
+                            artist: track.artist_name || "Unknown Artist", title: track.title, album: track.album_title
+                        }).catch((e: any) => console.error("[Subsonic] NowPlaying update failure:", e));
+                    }
                 }
             }
         }
