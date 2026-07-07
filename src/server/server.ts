@@ -103,7 +103,7 @@ import { GoogleDriveService } from "./modules/storage/google-drive.service.js";
 import { createStorageRouter } from "./routes/library/storage.js";
 import { createTorrentRoutes } from "./routes/network/torrent.js";
 import { errorHandler } from "./middleware/error-handling.js";
-import { LocalizationService } from "./modules/catalog/localization.service.js";
+
 import { MediaEngine } from "./modules/media/media-engine.js";
 import { SubsonicService } from "./modules/subsonic/subsonic.service.js";
 import { taskManager } from "./modules/workers/task-manager.js";
@@ -307,7 +307,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const discoveryService = new DiscoveryService(database, openRouterService, metadataService);
     const digService = new DigService(database);
 
-    const localizationService = new LocalizationService(database, catalogService, config.musicDir, process.env.YOUTUBE_COOKIES_PATH, undefined, streamingService);
 
     if (config.gdriveClientId && config.gdriveClientSecret) {
         const dbPublicUrl = database.getSetting("publicUrl");
@@ -320,7 +319,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
         });
         const adminRow = database.db.prepare("SELECT id FROM admin ORDER BY id ASC LIMIT 1").get() as any;
         initStorageService(gdriveService, adminRow?.id ?? 1);
-        localizationService.setGDriveService(gdriveService);
     }
 
     const autotaggerService = new AutoTaggerService(database, catalogService, openRouterService);
@@ -342,12 +340,14 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const downloadService = initDownloadService(database);
     
     // Dynamically register optional P2P providers
-    const { cleanups: pluginCleanups, soulseekService, torrentService } = await registerBuiltInDownloadProviders(downloadService, {
+    const { cleanups: pluginCleanups, soulseekService, torrentService, ytdlpService } = await registerBuiltInDownloadProviders(downloadService, {
         database,
         scanner,
         config,
         defaultOwnerId: 1,
-        publishingService
+        publishingService,
+        catalogService,
+        streamingService
     });
 
     const boardService = new BoardService(database);
@@ -373,7 +373,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         digService,
         metadataService,
         maintenanceService,
-        localizationService,
+        ytdlpService,
         mediaEngine,
         waveformService,
         streamingService,

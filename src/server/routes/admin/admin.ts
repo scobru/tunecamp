@@ -36,7 +36,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     const playlistService = container.playlistService;
     const scrobbleService = container.scrobbleService;
     const maintenance = container.maintenanceService;
-    const localizationService = container.localizationService;
+
     const library = container.library;
     const identity = container.identity;
     const social = container.social;

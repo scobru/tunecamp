@@ -8,12 +8,15 @@ export interface PluginContext {
     config: any;
     defaultOwnerId: number;
     publishingService: any;
+    catalogService: any;
+    streamingService: any;
 }
 
 export async function registerBuiltInDownloadProviders(downloadService: DownloadService, context: PluginContext) {
     const cleanups: (() => void)[] = [];
     let soulseekService: any;
     let torrentService: any;
+    let ytdlpService: any;
     try {
         // Try loading Soulseek
         try {
@@ -50,9 +53,24 @@ export async function registerBuiltInDownloadProviders(downloadService: Download
             console.log("ℹ️ Torrent backend plugin not available (or optional deps missing)", e.message);
         }
 
+        // Try loading YtDlp
+        try {
+            const { YtdlpService } = await import('./ytdlp/service.js');
+            ytdlpService = new YtdlpService(
+                context.database, 
+                context.catalogService, 
+                context.config.musicDir, 
+                process.env.YOUTUBE_COOKIES_PATH, 
+                context.streamingService
+            );
+            console.log("✅ Yt-dlp backend plugin registered");
+        } catch (e: any) {
+            console.log("ℹ️ Yt-dlp backend plugin not available", e.message);
+        }
+
     } catch (e) {
         console.error("Failed to load backend plugins", e);
     }
     
-    return { cleanups, soulseekService, torrentService };
+    return { cleanups, soulseekService, torrentService, ytdlpService };
 }

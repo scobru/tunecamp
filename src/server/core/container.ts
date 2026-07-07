@@ -14,7 +14,7 @@ import type { DiscoveryService } from "../modules/catalog/discovery.service.js";
 import type { DigService } from "../modules/catalog/dig.service.js";
 import type { MetadataService } from "../modules/catalog/metadata.service.js";
 import type { MaintenanceService } from "../modules/catalog/maintenance.service.js";
-import type { LocalizationService } from "../modules/catalog/localization.service.js";
+import type { YtdlpService } from "../plugins/ytdlp/service.js";
 import type { MediaEngine } from "../modules/media/media-engine.js";
 import type { WaveformService } from "../modules/waveform/waveform.service.js";
 import type { StreamingService } from "../modules/streaming/streaming.service.js";
@@ -60,7 +60,7 @@ export interface ServiceContainer {
     digService: DigService;
     metadataService: MetadataService;
     maintenanceService: MaintenanceService;
-    localizationService: LocalizationService;
+    ytdlpService?: YtdlpService;
 
     // Media & Playback
     mediaEngine: MediaEngine;
