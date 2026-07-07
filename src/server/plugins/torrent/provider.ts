@@ -1,5 +1,5 @@
 import type { DownloadProvider, DownloadResult } from "../../core/provider.js";
-import type { TorrentService } from "../../modules/integrations/torrent.service.js";
+import type { TorrentService } from "./service.js";
 
 /**
  * TorrentDownloadProvider wraps TorrentService to conform to the DownloadProvider interface.

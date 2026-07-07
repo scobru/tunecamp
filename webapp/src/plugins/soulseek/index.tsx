@@ -1,5 +1,5 @@
-import React from 'react';
-import { Download } from 'lucide-react';
+
+import { Download, Activity } from 'lucide-react';
 import { pluginRegistry, type FrontendPlugin } from '../../core/plugins/registry';
 
 const SoulseekConfigPanel = ({ settings, setSettings }: any) => (

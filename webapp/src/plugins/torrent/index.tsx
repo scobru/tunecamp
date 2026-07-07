@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Download, RefreshCw, Upload } from 'lucide-react';
 import { pluginRegistry, type FrontendPlugin } from '../../core/plugins/registry';
 

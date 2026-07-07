@@ -1,7 +1,7 @@
 import { Router, json } from "express";
 import type { DatabaseService } from "../../core/database.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
-import type { SoulseekService } from "../../modules/integrations/soulseek.js";
+import type { SoulseekService } from "../../plugins/soulseek/service.js";
 import type { ScannerService } from "../../modules/catalog/scanner.service.js";
 import path from "path";
 import { metadataService as defaultMetadataService } from "../../modules/catalog/metadata.service.js";
@@ -47,17 +47,18 @@ export function createSearchRoutes(container: ServiceContainer): Router {
             if (req.userId) {
                 const creds = integration.getUserSoulseekCredentials(req.userId);
                 if (creds && creds.username && creds.password_encrypted) {
-                    await soulseek.connect(creds.username, creds.password_encrypted);
+                    await soulseek?.connect(creds.username, creds.password_encrypted);
                 } else {
                     // Fallback to global credentials
                     const globalUser = identity.getSetting("soulseek_username");
                     const globalPass = identity.getSetting("soulseek_password");
                     if (globalUser && globalPass) {
-                        await soulseek.connect(globalUser, globalPass);
+                        await soulseek?.connect(globalUser, globalPass);
                     }
                 }
             }
 
+            if (!soulseek) return res.status(501).json({ error: "Soulseek plugin not loaded" });
             const results = await soulseek.search(query);
             res.json(results);
         } catch (error) {
@@ -95,6 +96,7 @@ export function createSearchRoutes(container: ServiceContainer): Router {
             });
 
             // Start download in background
+            if (!soulseek) return res.status(501).json({ error: "Soulseek plugin not loaded" });
             soulseek.download(result).then(async (dest) => {
                 integration.updateSoulseekDownloadProgress(downloadId, 1, 'completed', dest);
                 console.log(`📡 Soulseek download finished: ${dest}`);
@@ -135,6 +137,7 @@ export function createSearchRoutes(container: ServiceContainer): Router {
         try {
             integration.updateUserSoulseekCredentials(req.userId!, username, password);
             // Try to connect to verify
+            if (!soulseek) return res.status(501).json({ error: "Soulseek plugin not loaded" });
             const success = await soulseek.connect(username, password);
             res.json({ success });
         } catch (error) {

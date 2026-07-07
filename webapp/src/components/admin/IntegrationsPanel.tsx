@@ -1,21 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  Activity,
-  CheckCircle2,
-  AlertCircle,
-  RefreshCw,
-  Globe,
-  MessageSquare,
-  Search,
-  Cpu,
-  Download,
-  CreditCard,
-  Loader2,
-  Youtube,
-  Settings,
-  Save,
-  Puzzle
-} from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, RefreshCw, Save, Settings, Activity, Puzzle } from "lucide-react";
 import { useConfigStore } from "../../stores/useConfigStore";
 import { useAuthStore } from "../../stores/useAuthStore";
 import API from "../../services/api";
@@ -105,24 +89,6 @@ export const IntegrationsPanel = () => {
         setIsProcessing(null);
     }
   };
-
-  const handleAuth = async (serviceId: string) => {
-    if (serviceId === 'youtube') {
-        document.getElementById('youtube-cookie-input')?.click();
-        return;
-    }
-    
-    setIsProcessing(serviceId);
-    try {
-        // Other auth logic if any
-    } catch (e: any) {
-        console.error("Auth failed:", e);
-        notify.error(e, "Auth failed");
-    } finally {
-        setIsProcessing(null);
-    }
-  };
-
   const handleSaveSettings = async () => {
     if (!settings) return;
     setIsSaving(true);

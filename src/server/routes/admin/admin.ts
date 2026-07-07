@@ -628,7 +628,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 const sUsername = soulseek_username !== undefined ? soulseek_username : identity.getSetting("soulseek_username");
                 const sPassword = soulseek_password !== undefined ? soulseek_password : identity.getSetting("soulseek_password");
                 if (sUsername && sPassword) {
-                    soulseekService.connect(sUsername, sPassword).catch((err: any) => console.error("Failed to reconnect Soulseek:", err));
+                    soulseekService?.connect(sUsername, sPassword).catch((err: any) => console.error("Failed to reconnect Soulseek:", err));
                 }
             }
 
@@ -2173,7 +2173,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
         // 1. Soulseek
         try {
-            results.soulseek = await soulseekService.checkStatus();
+            results.soulseek = soulseekService ? await soulseekService.checkStatus() : { connected: false, error: "Plugin not loaded" };
         } catch (e) {
             results.soulseek = { connected: false, error: "Service error" };
         }

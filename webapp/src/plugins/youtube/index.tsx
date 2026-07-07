@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Youtube, Globe } from 'lucide-react';
 import { pluginRegistry } from '../../core/plugins/registry';
 
