@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.19.4] - 2026-07-07
+
+### Fixed
+- **Import: clean filename-fallback titles.** Tracks with no usable tags derived their title from the raw filename, keeping conversion junk suffixes (e.g. `A_Gravame_mp3_mp3.wav` → title `A_Gravame_mp3_mp3`). Those dirty titles then leaked into every future generated filename (localize, cloud import, peer import), compounding `_mp3`/`_wav` tokens on each generation. Trailing audio-extension tokens are now stripped from fallback titles at import time.
+- **Artwork no longer saved next to audio files.** Remote track artwork and album covers were downloaded into the track's own directory, polluting library folders with `artwork-tr*.jpg`/`cover-al*.jpg` files (which the scanner then had to special-case skip). They now always go to `artwork/tracks/` and `artwork/albums/`. Existing files stay where they are (files are never moved); the DB keeps pointing at them.
+
+## [2.19.3] - 2026-07-07
+
+### Fixed
+- **Docker build failed on `npm ci` (lock file out of sync).** `package-lock.json` was missing the optional React 18 peer-dependency entries nested under `@docsearch/js` (pulled in by vitepress): `react@18.3.1`, `react-dom@18.3.1`, `@types/react@18.3.31`, `@types/prop-types`, `scheduler` — so `npm ci` aborted with EUSAGE ("lock file is not in sync"). Regenerated the lock with `npm install`; `npm ci` passes again.
+
 ## [2.19.2] - 2026-07-06
 
 ### Fixed

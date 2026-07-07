@@ -175,6 +175,19 @@ describe('LibrarySync', () => {
         }));
     });
 
+    test('createNewTrack strips trailing extension junk from filename-fallback titles', async () => {
+        mockDb.getTrackByHash.mockReturnValue(null);
+        mockDb.getTrackByPath.mockReturnValue(null);
+        mockDb.getTrackByMetadata.mockReturnValue(null);
+
+        const result = await librarySync.syncFile('/music/tracks/A_Gravame_mp3_mp3.wav', {}, { musicDir: '/music' });
+
+        expect(result.action).toBe('created');
+        expect(mockDb.createTrack).toHaveBeenCalledWith(expect.objectContaining({
+            title: 'A_Gravame'
+        }));
+    });
+
     test('syncFile handles hash generation error', async () => {
         const { getFastFileHash } = await import('../../../../utils/fileUtils.js');
         (getFastFileHash as jest.Mock).mockRejectedValueOnce(new Error('Hash error'));
