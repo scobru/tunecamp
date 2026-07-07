@@ -8,6 +8,7 @@ import { Search, Download, Activity, RefreshCw, Trash2, AlertCircle, Globe, Play
 import { notify } from '../utils/notify';
 import clsx from 'clsx';
 import type { Track } from '../types';
+import { pluginRegistry } from '../core/plugins/registry';
 
 /**
  * Public torrent search engines opened in a new tab.
@@ -335,40 +336,18 @@ const ContentSearch: React.FC = () => {
                 )}
             </header>
 
-
             <div className="tabs tabs-boxed mb-6 p-1 bg-base-300">
-                <button 
-                    className={`tab flex-1 transition-all ${activeTab === 'soulseek' ? 'tab-active bg-primary text-primary-content shadow-level-1' : ''}`}
-                    onClick={() => setActiveTab('soulseek')}
-                >
-                    <Activity className="mr-2" size={16} /> Soulseek
-                </button>
-                <button 
-                    className={`tab flex-1 transition-all ${activeTab === 'torrents' ? 'tab-active bg-primary text-primary-content shadow-level-1' : ''}`}
-                    onClick={() => setActiveTab('torrents')}
-                >
-                    <RefreshCw className="mr-2" size={16} /> WebTorrent
-                </button>
-                <button
-                    className={`tab flex-1 transition-all ${activeTab === 'seeding' ? 'tab-active bg-success text-success-content shadow-level-1' : ''}`}
-                    onClick={() => setActiveTab('seeding')}
-                >
-                    <Upload className="mr-2" size={16} /> Seeding
-                </button>
-                <button
-                    className={`tab flex-1 transition-all ${activeTab === 'streaming' ? 'tab-active bg-primary text-primary-content shadow-level-1' : ''}`}
-                    onClick={() => setActiveTab('streaming')}
-                >
-                    <Globe className="mr-2" size={16} /> Streaming
-                </button>
-                <button 
-                    className={`tab flex-1 transition-all ${activeTab === 'downloads' ? 'tab-active bg-primary text-primary-content shadow-level-1' : ''}`}
-                    onClick={() => setActiveTab('downloads')}
-                >
-                    <Download className="mr-2" size={16} /> Transfers
-                </button>
+                {pluginRegistry.getSearchTabs().map(tab => (
+                    <button 
+                        key={tab.id}
+                        className={`tab flex-1 transition-all ${activeTab === tab.id ? 'tab-active shadow-level-1 ' + (tab.colorClass || 'bg-primary text-primary-content') : ''}`}
+                        onClick={() => setActiveTab(tab.id as any)}
+                    >
+                        {tab.icon}
+                        <span className="ml-2">{tab.label}</span>
+                    </button>
+                ))}
             </div>
-
             {activeTab === 'soulseek' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Main Search Column */}
