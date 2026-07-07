@@ -1,5 +1,94 @@
 import { jest } from '@jest/globals';
-import { getTralbumCollectors, getFanCollection } from '../bandcamp.js';
+import { getTralbumCollectors, getFanCollection, searchBandcamp } from '../bandcamp.js';
+
+describe('searchBandcamp', () => {
+    let mockFetch: ReturnType<typeof jest.spyOn>;
+    let consoleErrorSpy: ReturnType<typeof jest.spyOn>;
+
+    beforeEach(() => {
+        mockFetch = jest.spyOn(global, 'fetch');
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
+    it('returns empty array on error', async () => {
+        mockFetch.mockRejectedValueOnce(new Error('Network error'));
+        const result = await searchBandcamp('query');
+        expect(result).toEqual([]);
+        expect(consoleErrorSpy).toHaveBeenCalled();
+    });
+
+    it('returns empty array on non-ok response', async () => {
+        mockFetch.mockResolvedValueOnce({
+            ok: false,
+            status: 500
+        } as Response);
+        const result = await searchBandcamp('query');
+        expect(result).toEqual([]);
+        expect(consoleErrorSpy).toHaveBeenCalled();
+    });
+
+    it('fetches search results correctly with default limit and filter', async () => {
+        mockFetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+                auto: {
+                    results: [
+                        { type: 't', id: 1, name: 'Song 1', item_url_path: 'http://url1' },
+                        { type: 'a', id: 2, name: 'Album 2', item_url_root: 'http://url2', img: 'img.jpg', art_id: 123, genre_name: 'Rock', band_name: 'Band', album_name: 'Album', location: 'UK' }
+                    ]
+                }
+            })
+        } as Response);
+
+        const result = await searchBandcamp('query');
+        expect(result).toEqual([
+            { type: 't', id: 1, name: 'Song 1', url: 'http://url1', img: undefined, art_id: undefined, genre_name: undefined, band_name: undefined, album_name: undefined, location: undefined },
+            { type: 'a', id: 2, name: 'Album 2', url: 'http://url2', img: 'img.jpg', art_id: 123, genre_name: 'Rock', band_name: 'Band', album_name: 'Album', location: 'UK' }
+        ]);
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+
+        const fetchArg = mockFetch.mock.calls[0][1];
+        const body = JSON.parse((fetchArg as RequestInit).body as string);
+        expect(body.search_text).toBe('query');
+        expect(body.search_filter).toBe('t'); // default filter
+    });
+
+    it('respects filter and limit parameters', async () => {
+        mockFetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+                auto: {
+                    results: [
+                        { type: 'a', id: 1, name: 'Album 1' },
+                        { type: 'a', id: 2, name: 'Album 2' },
+                        { type: 'a', id: 3, name: 'Album 3' }
+                    ]
+                }
+            })
+        } as Response);
+
+        const result = await searchBandcamp('album query', 'a', 2);
+        expect(result).toHaveLength(2);
+
+        const fetchArg = mockFetch.mock.calls[0][1];
+        const body = JSON.parse((fetchArg as RequestInit).body as string);
+        expect(body.search_text).toBe('album query');
+        expect(body.search_filter).toBe('a');
+    });
+
+    it('handles empty auto or results', async () => {
+        mockFetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({})
+        } as Response);
+        const result = await searchBandcamp('query');
+        expect(result).toEqual([]);
+    });
+});
 
 describe('getTralbumCollectors', () => {
     let mockFetch: ReturnType<typeof jest.spyOn>;
