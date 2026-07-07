@@ -63,7 +63,7 @@ describe('WalletService', () => {
     it('returns the balance when successful', async () => {
       // Need to get the mocked contract somehow, or we can just mock the Contract constructor
       // Since the mock is instantiated inside the function, we can just grab the proto mock
-      const balanceOfMock = new ethers.Contract('0x', [], {}).balanceOf as any;
+      const balanceOfMock = new ethers.Contract('0x', [], {} as any).balanceOf as any;
       balanceOfMock.mockResolvedValue(100n);
 
       const balance = await WalletService.getUsdcBalance('0x123');
@@ -73,7 +73,7 @@ describe('WalletService', () => {
 
     it('returns 0n and logs error on failure', async () => {
       const error = new Error('Contract error');
-      const balanceOfMock = new ethers.Contract('0x', [], {}).balanceOf as any;
+      const balanceOfMock = new ethers.Contract('0x', [], {} as any).balanceOf as any;
       balanceOfMock.mockRejectedValue(error);
 
       const balance = await WalletService.getUsdcBalance('0x123');
