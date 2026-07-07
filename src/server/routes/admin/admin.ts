@@ -773,7 +773,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             if (!maintenance) {
                 return res.status(500).json({ error: "Maintenance service not available" });
             }
-            console.log(`🔍 [Admin] Manual library maintenance and scan triggered by ${req.username}`);
 
             // Run maintenance and full scan in background with dedup protection
             const started = taskManager.run('library-rescan', async () => {
@@ -2319,7 +2318,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
             await apService.unfollowRemoteActor(url, getSiteHandle(database));
             // Remove from gossip-discovery cache so the instance stops appearing
-            // in Network → Instances immediately rather than after the 7-day expiry.
+            // in Network → Instances immediately rather than after the 1-day expiry.
             federatedDiscoveryService.deleteInstance(url);
             res.json({ message: `Successfully sent unfollow request to ${url}` });
         } catch (error: any) {

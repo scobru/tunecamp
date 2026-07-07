@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.19.5] - 2026-07-07
+
+### Changed
+- **Dead federated instances are dropped after 1 day instead of 7.** Discovered TuneCamp instances only refresh their `fetched_at` timestamp on a *successful* probe, and the discovery crawl runs every 6 hours — so a live peer is re-confirmed ~4×/day. The hard expiry that prunes unreachable instances was lowered from 7 days to 24 hours (`HARD_EXPIRY_MS` in `federated-discovery.service.ts`), so an instance that stops responding disappears from Network → Instances within a day rather than lingering for a week.
+
 ## [2.19.4] - 2026-07-07
 
 ### Fixed
