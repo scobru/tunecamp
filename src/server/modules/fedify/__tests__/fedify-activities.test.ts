@@ -8,6 +8,7 @@ function makeDb() {
     return {
         getArtists: jest.fn().mockReturnValue([{ id: 1 }, { id: 2 }, { id: 7 }]),
         removeFollower: jest.fn(),
+        removeAllFollowers: jest.fn(),
         deleteApReply: jest.fn().mockReturnValue(false),
         deleteRemoteContent: jest.fn(),
         upsertRemoteContent: jest.fn(),
@@ -28,12 +29,8 @@ describe('handleDeleteObject', () => {
         const actor = 'https://m.test/users/bob';
         handleDeleteObject(db, actor, actor);
 
-        // one removeFollower per artist, plus the site actor (-1)
-        expect(db.removeFollower).toHaveBeenCalledTimes(4);
-        expect(db.removeFollower).toHaveBeenCalledWith(1, actor);
-        expect(db.removeFollower).toHaveBeenCalledWith(2, actor);
-        expect(db.removeFollower).toHaveBeenCalledWith(7, actor);
-        expect(db.removeFollower).toHaveBeenCalledWith(-1, actor);
+        expect(db.removeAllFollowers).toHaveBeenCalledTimes(1);
+        expect(db.removeAllFollowers).toHaveBeenCalledWith(actor);
         // account-deletion branch returns early: no content/reply deletion
         expect(db.deleteApReply).not.toHaveBeenCalled();
         expect(db.deleteRemoteContent).not.toHaveBeenCalled();

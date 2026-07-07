@@ -57,6 +57,7 @@ export interface FederationProvider {
   transaction?<T>(fn: () => T): T;
   rejectFollower(artistId: number, actorUri: string): void;
   removeFollower(artistId: number, actorUri: string): void;
+  removeAllFollowers(actorUri: string): void;
   updateFollowerUri(oldActorUri: string, newActorUri: string, newInboxUri: string, newSharedInboxUri?: string): void;
 
   // AP Notes
