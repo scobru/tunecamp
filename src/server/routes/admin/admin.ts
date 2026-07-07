@@ -773,7 +773,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             if (!maintenance) {
                 return res.status(500).json({ error: "Maintenance service not available" });
             }
-            console.log(`🔍 [Admin] Manual library maintenance and scan triggered by ${req.username}`);
 
             // Run maintenance and full scan in background with dedup protection
             const started = taskManager.run('library-rescan', async () => {
