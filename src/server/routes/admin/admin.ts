@@ -1015,6 +1015,16 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 updates.genre = genreStr;
             }
             if (body.externalLinks) updates.external_links = JSON.stringify(body.externalLinks);
+            // Additional artworks (booklet/liner images). The editor sends the full
+            // desired list as a JSON string, so a deletion is expressed as a shorter
+            // list (or "[]"). Without persisting it here, image *removals* made in the
+            // editor were silently dropped — only the upload endpoint ever wrote this
+            // column, and it only ever appends. Store the JSON string as-is.
+            if (body.additional_artworks !== undefined) {
+                updates.additional_artworks = typeof body.additional_artworks === 'string'
+                    ? body.additional_artworks
+                    : JSON.stringify(body.additional_artworks);
+            }
             if (body.publishedToZen !== undefined) {
                 updates.published_to_gundb = body.publishedToZen;
             } else if (body.publishedToGunDB !== undefined) {
@@ -1051,6 +1061,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                             }
                         }
                         if (updates.external_links) library.updateAlbumLinks(id, updates.external_links);
+                        if (updates.additional_artworks !== undefined) library.updateAlbum(id, { additional_artworks: updates.additional_artworks });
                         if (updates.published_to_gundb !== undefined || updates.published_to_ap !== undefined) {
                             library.updateAlbumFederationSettings(id, !!updates.published_to_gundb, !!updates.published_to_ap);
                         }
