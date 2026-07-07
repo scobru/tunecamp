@@ -7,7 +7,7 @@ export default {
   roots: ['<rootDir>/src'],
   // Allow Jest to transform ESM-only packages from node_modules (e.g. node-fetch v3+)
   transformIgnorePatterns: [
-    '/node_modules/(?!(node-fetch)/)'
+    '/node_modules/(?!(node-fetch|webtorrent)/)'
   ],
   // Resolve `./foo.js` -> `./foo.ts` at the resolver level (see jest.resolver.cjs)
   // so jest.unstable_mockModule and real imports agree on the same absolute path.

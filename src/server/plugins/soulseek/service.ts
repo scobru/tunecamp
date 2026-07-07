@@ -1,5 +1,5 @@
-import { SoulseekDownloader } from "andrade-soulseek-downloader/dist/index.js";
-import type { SoulseekDownloader as TSoulseekDownloader, SearchOptions, DownloadConfig, SoulseekSearchResult } from "andrade-soulseek-downloader/dist/index.js";
+import { SoulseekDownloader } from "andrade-soulseek-downloader";
+import type { SoulseekDownloader as TSoulseekDownloader, SearchOptions, DownloadConfig, SoulseekSearchResult } from "andrade-soulseek-downloader";
 import path from "path";
 import fs from "fs-extra";
 import crypto from "crypto";
