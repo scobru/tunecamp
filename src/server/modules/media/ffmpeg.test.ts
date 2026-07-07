@@ -268,4 +268,60 @@ describe('ffmpeg.ts', () => {
             }
         });
     });
+
+    describe('acquireTaskSlot and releaseTaskSlot', () => {
+        it('should enforce concurrency limits and queue tasks deterministically', async () => {
+            // Using isolateModulesAsync allows us to run tests against the fresh module state
+            // and we also mock `os.cpus()` so the dynamic limit is always exactly 3 (4 cores - 1).
+            const mockOs = { cpus: () => Array(4).fill({}) };
+            jest.mock('os', () => mockOs);
+
+            await jest.isolateModulesAsync(async () => {
+                const { acquireTaskSlot, releaseTaskSlot } = await import('./ffmpeg.js');
+
+                const createTrackedPromise = () => {
+                    let resolved = false;
+                    const p = acquireTaskSlot().then(() => { resolved = true; });
+                    return { p, get resolved() { return resolved; } };
+                };
+
+                // Fire off 10 requests
+                const tasks = Array.from({ length: 10 }, () => createTrackedPromise());
+
+                // Allow event loop to process promises
+                await new Promise(r => setTimeout(r, 10));
+
+                const resolvedCount = tasks.filter(t => t.resolved).length;
+
+                // Based on 4 mock cores, MAX_CONCURRENT_TASKS will be exactly 3.
+                expect(resolvedCount).toBe(3);
+
+                // The next task in queue should not be resolved yet
+                expect(tasks[3].resolved).toBe(false);
+
+                // Release one task slot, which should trigger the next queued task
+                releaseTaskSlot();
+                await new Promise(r => setTimeout(r, 10));
+
+                // The newly released slot should cause the next queued task to resolve
+                expect(tasks[3].resolved).toBe(true);
+            });
+
+            jest.unmock('os');
+        });
+
+        it('should handle release bounds properly', async () => {
+            await jest.isolateModulesAsync(async () => {
+                const { acquireTaskSlot, releaseTaskSlot } = await import('./ffmpeg.js');
+
+                // Try releasing when no tasks are active. Should not crash or go negative
+                releaseTaskSlot();
+                releaseTaskSlot();
+
+                // Wait for the slot to be acquired.
+                // If it hangs, the test fails by timeout which is correct.
+                await acquireTaskSlot();
+            });
+        });
+    });
 });

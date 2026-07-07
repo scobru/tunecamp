@@ -13,6 +13,7 @@ const mockDb = {
     getArtist: jest.fn(),
     getArtistBySlug: jest.fn(),
     removeFollower: jest.fn(),
+    removeAllFollowers: jest.fn(),
     getSetting: jest.fn(),
     getFollowers: jest.fn(),
     getFollowerInboxes: jest.fn(),
