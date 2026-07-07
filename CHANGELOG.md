@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.19.6] - 2026-07-07
+
+### Fixed
+- **Deleting additional artworks (booklet images) from a release now persists.** Removing an image in the release editor and saving appeared to work, but the deletion was silently dropped and the image reappeared on reload. The editor sends the full desired artwork list on every save, yet `PUT /api/admin/releases/:id` (in `admin.ts`) rebuilds a whitelisted `updates` object and never copied `additional_artworks` — so the column was only ever written (append-only) by the upload endpoint. The handler now persists `additional_artworks` from the request body for both formal releases and library albums, so removals and full clears stick.
+
 ## [2.19.5] - 2026-07-07
 
 ### Changed

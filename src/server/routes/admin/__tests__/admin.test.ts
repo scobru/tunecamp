@@ -237,6 +237,60 @@ describe('Curator (super_user) and Manager (admin) permission boundaries', () =>
         expect(res.status).not.toBe(403);
     });
 
+    // ── additional_artworks persistence (image deletion) ─────────────────────────
+    // The editor sends the full desired booklet list on every save. A deletion is a
+    // shorter list. The full PUT /releases/:id handler whitelists fields into an
+    // `updates` object; additional_artworks must be included or removals are dropped.
+
+    test('PUT /releases/:id persists additional_artworks (image deletions)', async () => {
+        (mockDatabase as any).getRelease = jest.fn().mockReturnValue({
+            id: 30, owner_id: 999, artist_id: 5, visibility: 'private', is_release: 1,
+            additional_artworks: '["artwork/a.jpg","artwork/b.jpg"]',
+        });
+        (mockDatabase as any).getAlbum = jest.fn().mockReturnValue(null);
+        (mockDatabase as any).getAlbumOwners = jest.fn().mockReturnValue([]);
+        (mockDatabase as any).getArtistSimple = jest.fn().mockReturnValue({ can_sell: 1 });
+        (mockDatabase as any).transaction = jest.fn((fn: any) => fn());
+        (mockDatabase as any).updateRelease = jest.fn();
+        (mockDatabase as any).updateAlbum = jest.fn();
+
+        const app = buildApp({ role: 'root_admin', userId: 1 });
+        // User removed "b.jpg", keeping only "a.jpg".
+        const res = await request(app)
+            .put('/admin/releases/30')
+            .send({ additional_artworks: '["artwork/a.jpg"]' });
+
+        expect(res.status).not.toBe(403);
+        expect((mockDatabase as any).updateRelease).toHaveBeenCalledWith(
+            30,
+            expect.objectContaining({ additional_artworks: '["artwork/a.jpg"]' }),
+        );
+    });
+
+    test('PUT /releases/:id persists clearing all additional_artworks', async () => {
+        (mockDatabase as any).getRelease = jest.fn().mockReturnValue({
+            id: 31, owner_id: 999, artist_id: 5, visibility: 'private', is_release: 1,
+            additional_artworks: '["artwork/a.jpg"]',
+        });
+        (mockDatabase as any).getAlbum = jest.fn().mockReturnValue(null);
+        (mockDatabase as any).getAlbumOwners = jest.fn().mockReturnValue([]);
+        (mockDatabase as any).getArtistSimple = jest.fn().mockReturnValue({ can_sell: 1 });
+        (mockDatabase as any).transaction = jest.fn((fn: any) => fn());
+        (mockDatabase as any).updateRelease = jest.fn();
+        (mockDatabase as any).updateAlbum = jest.fn();
+
+        const app = buildApp({ role: 'root_admin', userId: 1 });
+        const res = await request(app)
+            .put('/admin/releases/31')
+            .send({ additional_artworks: '[]' });
+
+        expect(res.status).not.toBe(403);
+        expect((mockDatabase as any).updateRelease).toHaveBeenCalledWith(
+            31,
+            expect.objectContaining({ additional_artworks: '[]' }),
+        );
+    });
+
     // ── canPublishContent gate (inside releaseRouter POST handler) ────────────────
     // The admin restriction middleware lets Curator through, but canPublishContent
     // inside the releaseRouter handler still blocks Curators without an artistId.
