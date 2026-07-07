@@ -107,8 +107,9 @@ export class CatalogService {
         const externalArtwork = data.externalArtwork ?? data.external_artwork;
         if (externalArtwork && typeof externalArtwork === 'string' && externalArtwork.startsWith('http')) {
             try {
-                const relDir = track.file_path ? path.dirname(track.file_path) : "artwork/tracks";
-                const localPath = await this.downloadRemoteImage(externalArtwork, relDir, `artwork-tr${trackId}`);
+                // Always under artwork/: images next to audio files pollute the
+                // library dirs and forced the scanner's isArtworkOrAvatar skip.
+                const localPath = await this.downloadRemoteImage(externalArtwork, "artwork/tracks", `artwork-tr${trackId}`);
                 if (localPath) {
                     // Update database with downloaded local artwork
                     this.database.library.updateTrack(trackId, { external_artwork: localPath });
@@ -547,15 +548,7 @@ export class CatalogService {
 
         // Handle remote cover download
         if (updateData.cover_path && updateData.cover_path.startsWith('http')) {
-            const tracks = this.database.getTracksByAlbum(id);
-            let relDir = "artwork/albums";
-            if (tracks.length > 0 && tracks[0].file_path) {
-                relDir = path.dirname(tracks[0].file_path);
-            } else if (album.cover_path && !album.cover_path.startsWith('http')) {
-                relDir = path.dirname(album.cover_path);
-            }
-
-            const localPath = await this.downloadRemoteImage(updateData.cover_path, relDir, `cover-al${id}`);
+            const localPath = await this.downloadRemoteImage(updateData.cover_path, "artwork/albums", `cover-al${id}`);
             if (localPath) {
                 updateData.cover_path = localPath;
             }
