@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.20.1] - 2026-07-07
+
+### Fixed
+- **Followed peers are never auto-purged from federated discovery.** The 30-day garbage collection introduced in 2.20.0 deleted *any* long-offline row from `federated_instances`, including instances the admin explicitly follows — which silently removed their "Offline" badge from the Instances & Peers panel after a month. `prune()` now skips origins that are federation seeds or ActivityPub-followed instance actors: their offline flag persists until the admin unfollows. Gossip-discovered instances (never followed) are still purged after 30 days offline, keeping the cache from accumulating dead strangers.
+
 ## [2.20.0] - 2026-07-07
 
 ### Added
