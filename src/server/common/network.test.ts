@@ -75,4 +75,98 @@ describe('Network Utilities', () => {
             expect(res).toBeNull();
         });
     });
+
+    describe('isLiveTuneCamp', () => {
+        let originalFetch: typeof globalThis.fetch;
+        let fetchMock: any;
+
+        beforeEach(() => {
+            originalFetch = globalThis.fetch;
+            fetchMock = jest.fn();
+            globalThis.fetch = fetchMock as any;
+        });
+
+        afterEach(() => {
+            globalThis.fetch = originalFetch;
+        });
+
+        test('returns false if url is empty', async () => {
+            expect(await network.isLiveTuneCamp('')).toBe(false);
+            expect(fetchMock).not.toHaveBeenCalled();
+        });
+
+        test('returns false if url is unsafe', async () => {
+            isSafeUrl.mockResolvedValueOnce(false);
+            expect(await network.isLiveTuneCamp('http://192.168.1.1')).toBe(false);
+            expect(fetchMock).not.toHaveBeenCalled();
+        });
+
+        test('returns false and drains if response is not ok', async () => {
+            const mockText = jest.fn().mockResolvedValue('');
+            fetchMock.mockResolvedValue({
+                ok: false,
+                text: mockText
+            });
+
+            expect(await network.isLiveTuneCamp('https://example.com/')).toBe(false);
+            expect(fetchMock).toHaveBeenCalledWith('https://example.com/api/catalog', expect.any(Object));
+            expect(mockText).toHaveBeenCalled();
+        });
+
+        test('returns false if fetch throws an error', async () => {
+            fetchMock.mockRejectedValue(new Error('Network error'));
+            expect(await network.isLiveTuneCamp('https://example.com')).toBe(false);
+        });
+
+        test('returns false if JSON does not contain releases or tracks arrays', async () => {
+            fetchMock.mockResolvedValue({
+                ok: true,
+                json: jest.fn().mockResolvedValue({ somethingElse: true })
+            });
+
+            expect(await network.isLiveTuneCamp('https://example.com')).toBe(false);
+        });
+
+        test('returns true if JSON contains releases array', async () => {
+            fetchMock.mockResolvedValue({
+                ok: true,
+                json: jest.fn().mockResolvedValue({ releases: [] })
+            });
+
+            expect(await network.isLiveTuneCamp('https://example.com')).toBe(true);
+        });
+
+        test('returns true if JSON contains tracks array', async () => {
+            fetchMock.mockResolvedValue({
+                ok: true,
+                json: jest.fn().mockResolvedValue({ tracks: [] })
+            });
+
+            expect(await network.isLiveTuneCamp('https://example.com')).toBe(true);
+        });
+
+        test('aborts fetch if timeout is reached', async () => {
+            const abortSpy = jest.spyOn(AbortController.prototype, 'abort');
+
+            fetchMock.mockImplementation((url, init) => {
+                return new Promise((resolve, reject) => {
+                    const timer = setTimeout(() => resolve({ ok: true, json: () => ({ releases: [] }) }), 100);
+                    if (init && init.signal) {
+                        init.signal.addEventListener('abort', () => {
+                            clearTimeout(timer);
+                            reject(new Error('AbortError'));
+                        });
+                    }
+                });
+            });
+
+            // Use a short 10ms timeout so the real timer finishes immediately
+            const result = await network.isLiveTuneCamp('https://example.com/', 10);
+
+            expect(abortSpy).toHaveBeenCalled();
+            expect(result).toBe(false);
+
+            abortSpy.mockRestore();
+        });
+    });
 });
