@@ -1,5 +1,5 @@
 import path from "path";
-import { loadPlugins } from "../plugin-loader.js";
+import { loadPlugins, getExternalProviderIds } from "../plugin-loader.js";
 import { metadataService } from "../../modules/catalog/metadata.service.js";
 import { streamingService } from "../../modules/streaming/streaming.service.js";
 
@@ -44,5 +44,15 @@ describe("Plugin Loader & Demo Provider Integration Test", () => {
 
         const canHandle = (demoStreaming as any).canHandle("demo:song1");
         expect(canHandle).toBe(true);
+    });
+});
+
+describe("getExternalProviderIds", () => {
+    it("should return the exact same instance on multiple calls", () => {
+        const instance1 = getExternalProviderIds();
+        const instance2 = getExternalProviderIds();
+
+        expect(instance1).toBeInstanceOf(Set);
+        expect(instance1).toBe(instance2);
     });
 });
