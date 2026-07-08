@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.22.2] - 2026-07-08
+
+### Changed
+- **Tools page rewritten with a curated FMHY selection.** The webapp's Tools tab grew from 6 links in 2 categories to 22 tools in 7 categories picked from the FMHY audio wiki for what a TuneCamp user actually does: Tagging & Library Management (Picard, Mp3tag, Kid3, Beets), Convert & Prepare Files (fre:ac, FFmpeg, CUETools), Quality Check & Analysis (Spek, Sonic Visualiser, Tunebat), Record & Edit (Audacity, ocenaudio), Produce (REAPER, LMMS, Waveform Free, Vital), Lyrics & Synced Lyrics (LRCLIB, LRCGET, LRC Maker) and Royalty-Free Sounds & Samples (Freesound, BBC Sound Effects, Citizen DJ). The stream-ripping services previously listed (DoubleDouble, Lucida) were dropped — out of place on a platform where artists sell their own music. The page is now data-driven (sections/tools arrays rendered by one card template) instead of hand-written JSX per card, and each section carries a one-line blurb tying it to the TuneCamp workflow.
+
 ## [2.22.1] - 2026-07-08
 
 ### Fixed
