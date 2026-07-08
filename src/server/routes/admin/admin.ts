@@ -2521,7 +2521,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
      * GET /api/admin/system/plugins
      * List all registered plugins and their enabled status
      */
-    router.get("/system/plugins", (req: AuthenticatedRequest, res: any) => {
+    router.get("/system/plugins", async (req: AuthenticatedRequest, res: any) => {
         if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
             return res.status(403).json({ error: "Super Root access required" });
         }
@@ -2546,7 +2546,80 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
         }
 
+        // Probe real availability for external providers (3s timeout)
+        const STATUS_TIMEOUT = 3000;
+        const probes: Promise<void>[] = [];
+        for (const [id, entry] of byId) {
+            if (!externalIds.has(id) || !entry.enabled) continue;
+            // Look up the actual provider instance to call isAvailable/isConfigured
+            const allRegistries = [
+                getDownloadService()?.getRegistry(),
+                metadataService.getRegistry(),
+                streamingService.getRegistry(),
+                scanner.getRegistry(),
+                aiService?.getRegistry(),
+            ].filter(Boolean);
+
+            const instance: any = allRegistries.map(r => r?.get(id)).find(Boolean);
+            if (!instance) continue;
+
+            const probe = Promise.race([
+                (async () => {
+                    if (typeof instance.isAvailable === 'function') return instance.isAvailable();
+                    if (typeof instance.isConfigured === 'function') return instance.isConfigured();
+                    return true; // no probe method → assume available
+                })(),
+                new Promise<boolean>(resolve => setTimeout(() => resolve(false), STATUS_TIMEOUT))
+            ]).then(available => { entry.available = available; })
+             .catch(() => { entry.available = false; });
+            probes.push(probe);
+        }
+        await Promise.all(probes);
+
         res.json([...byId.values()]);
+    });
+
+    /**
+     * GET /api/admin/system/plugins/:id/settings
+     * Read scoped settings for a plugin (prefixed with plugin_<id>_)
+     */
+    router.get("/system/plugins/:id/settings", (req: AuthenticatedRequest, res: any) => {
+        if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
+            return res.status(403).json({ error: "Super Root access required" });
+        }
+
+        const { id } = req.params;
+        const prefix = `plugin_${id}_`;
+        const all = identity.getAllSettings();
+        const scoped: Record<string, string> = {};
+        for (const [key, value] of Object.entries(all)) {
+            if (key.startsWith(prefix) && value != null) {
+                scoped[key.slice(prefix.length)] = String(value);
+            }
+        }
+        res.json(scoped);
+    });
+
+    /**
+     * PUT /api/admin/system/plugins/:id/settings
+     * Write scoped settings for a plugin
+     */
+    router.put("/system/plugins/:id/settings", (req: AuthenticatedRequest, res: any) => {
+        if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
+            return res.status(403).json({ error: "Super Root access required" });
+        }
+
+        const { id } = req.params;
+        const prefix = `plugin_${id}_`;
+        const settings = req.body;
+        if (!settings || typeof settings !== 'object') {
+            return res.status(400).json({ error: "Body must be a JSON object of key-value pairs" });
+        }
+
+        for (const [key, value] of Object.entries(settings)) {
+            identity.setSetting(`${prefix}${key}`, String(value));
+        }
+        res.json({ success: true });
     });
 
     /**

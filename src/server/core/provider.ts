@@ -5,6 +5,22 @@ export const USER_AGENT = "TuneCamp/1.0.0 ( contact@tunecamp.app )";
 /**
  * Base interface for all TuneCamp providers (Metadata, Scanner, Storage, etc.)
  */
+/** Context passed to a plugin's init() hook with scoped settings access. */
+export interface PluginContext {
+    /** Read a plugin-scoped setting (key is auto-prefixed with plugin_<id>_) */
+    getSetting(key: string): string | undefined;
+    /** Write a plugin-scoped setting */
+    setSetting(key: string, value: string): void;
+}
+
+/** Declarative field descriptor for a plugin's configuration panel. */
+export interface ConfigField {
+    key: string;
+    label: string;
+    type: 'text' | 'password' | 'boolean';
+    placeholder?: string;
+}
+
 export interface TuneCampProvider {
     /** Unique identifier for the provider (e.g. 'musicbrainz', 'local-fs') */
     id: string;
@@ -14,6 +30,16 @@ export interface TuneCampProvider {
     version: string;
     /** Description of what this provider does */
     description?: string;
+
+    /**
+     * Declarative config schema — if present, the admin panel renders a
+     * settings form automatically. Values are read/written through the
+     * scoped getSetting/setSetting injected via init().
+     */
+    configSchema?: ConfigField[];
+
+    /** Called once at load time with scoped settings helpers. */
+    init?(ctx: PluginContext): void | Promise<void>;
 
     /** Lifecycle hooks (optional) */
     onEnable?(): Promise<void>;
@@ -84,7 +110,8 @@ export class ProviderRegistry<T extends TuneCampProvider> {
             name: entry.instance.name,
             version: entry.instance.version,
             enabled: entry.enabled,
-            description: entry.instance.description
+            description: entry.instance.description,
+            configSchema: entry.instance.configSchema
         }));
     }
 }

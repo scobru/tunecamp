@@ -10,7 +10,7 @@ import { aiService } from "../modules/ai/ai.service.js";
 import { getScrobbleService } from "../modules/scrobble/scrobble.service.js";
 import { getPlaylistService } from "../modules/catalog/playlist.service.js";
 
-import type { MetadataProvider, StreamingProvider, DownloadProvider, ScannerProvider, StorageProvider, AIProvider, PlaylistProvider, ScrobbleProvider, ProviderRegistry, TuneCampProvider } from "./provider.js";
+import type { MetadataProvider, StreamingProvider, DownloadProvider, ScannerProvider, StorageProvider, AIProvider, PlaylistProvider, ScrobbleProvider, ProviderRegistry, TuneCampProvider, PluginContext } from "./provider.js";
 
 const PLUGIN_DIR_ENV = process.env.TUNECAMP_PLUGINS_DIR;
 
@@ -20,9 +20,11 @@ export function getExternalProviderIds(): ReadonlySet<string> {
     return externalProviderIds;
 }
 
-/** Minimal slice of the database needed to restore plugin enabled/disabled state. */
+/** Minimal slice of the database needed to restore plugin enabled/disabled state and plugin settings. */
 interface PluginStateStore {
     getPluginState(id: string): { enabled: boolean } | undefined;
+    getSetting?(key: string): string | undefined;
+    setSetting?(key: string, value: string): void;
 }
 
 /**
@@ -78,6 +80,18 @@ export async function loadPlugins(pluginsDir?: string, db?: PluginStateStore): P
             }
 
             const instance = new PluginClass();
+
+            // Inject scoped settings context so plugins can read/write config
+            // without importing database.js directly.
+            if (typeof instance.init === 'function' && db?.getSetting && db?.setSetting) {
+                const prefix = `plugin_${instance.id}_`;
+                const ctx: PluginContext = {
+                    getSetting: (key: string) => db.getSetting!(`${prefix}${key}`) ?? undefined,
+                    setSetting: (key: string, value: string) => db.setSetting!(`${prefix}${key}`, value),
+                };
+                await instance.init(ctx);
+                console.log(`[PluginLoader] 🔧 Injected settings context for: ${instance.id}`);
+            }
 
             if (!instance.id || !instance.name || !instance.version) {
                 console.warn(`[PluginLoader] ⚠️ ${file}: Plugin missing required fields (id, name, version). Skipping.`);
