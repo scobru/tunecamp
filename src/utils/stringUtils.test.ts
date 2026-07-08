@@ -128,6 +128,46 @@ describe('StringUtils.generateUnlockCode', () => {
     });
 });
 
+describe('StringUtils.normalizeUrl', () => {
+    test('should return empty string for empty input', () => {
+        // @ts-ignore
+        expect(StringUtils.normalizeUrl(null)).toBe('');
+        // @ts-ignore
+        expect(StringUtils.normalizeUrl(undefined)).toBe('');
+        expect(StringUtils.normalizeUrl('')).toBe('');
+    });
+
+    test('should return original URL if no trailing slash', () => {
+        expect(StringUtils.normalizeUrl('https://example.com')).toBe('https://example.com');
+        expect(StringUtils.normalizeUrl('http://localhost:3000')).toBe('http://localhost:3000');
+    });
+
+    test('should remove a single trailing slash', () => {
+        expect(StringUtils.normalizeUrl('https://example.com/')).toBe('https://example.com');
+        expect(StringUtils.normalizeUrl('https://example.com/path/')).toBe('https://example.com/path');
+    });
+
+    test('should remove multiple trailing slashes', () => {
+        expect(StringUtils.normalizeUrl('https://example.com//')).toBe('https://example.com');
+        expect(StringUtils.normalizeUrl('https://example.com/path///')).toBe('https://example.com/path');
+    });
+
+    test('should handle URLs with query parameters and fragments', () => {
+        expect(StringUtils.normalizeUrl('https://example.com/search?q=test/')).toBe('https://example.com/search?q=test');
+        expect(StringUtils.normalizeUrl('https://example.com/#section/')).toBe('https://example.com/#section');
+    });
+
+    test('should return empty string if input is just slashes', () => {
+        expect(StringUtils.normalizeUrl('/')).toBe('');
+        expect(StringUtils.normalizeUrl('//')).toBe('');
+        expect(StringUtils.normalizeUrl('///')).toBe('');
+    });
+
+    test('should not modify slashes in the middle of the URL', () => {
+        expect(StringUtils.normalizeUrl('https://example.com/a/b/c')).toBe('https://example.com/a/b/c');
+    });
+});
+
 describe('StringUtils.getFileExtension', () => {
     test('should return empty string for filename with no extension', () => {
         expect(StringUtils.getFileExtension('filename')).toBe('');
