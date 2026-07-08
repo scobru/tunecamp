@@ -38,8 +38,8 @@ export const SoulseekSearchTab: React.FC = () => {
 
     const handleSoulseekDownload = async (item: any) => {
         try {
-            const res = await API.downloadSoulseek(item);
-            notify.success(res.message);
+            await API.downloadSoulseek(item);
+            notify.success("Download started — check the Transfers tab");
         } catch (err: any) {
             notify.error(err, "Download failed");
         }
