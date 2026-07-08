@@ -25,6 +25,18 @@ The fastest path uses Docker. You need:
 
 ## 2. Install & run
 
+Choose one of the following setup options:
+
+### Option A: VPS Auto-Installer (Recommended)
+If you rented a fresh Linux VPS (Ubuntu/Debian), run this single command to automatically install Docker, Docker Compose, Nginx, Certbot (SSL), configure your reverse proxy, clone the repository, and spin up TuneCamp:
+
+```bash
+curl -fsSL https://tunecamp.org/install.sh | sudo bash
+```
+
+### Option B: Manual Docker Setup
+If you want to manage prerequisites and configuration yourself:
+
 ```bash
 # 1. Clone the repository
 git clone https://github.com/scobru/tunecamp.git
@@ -38,7 +50,7 @@ cd tunecamp
 docker-compose up -d --build
 ```
 
-When the container is healthy, open `http://localhost:1970` in your browser.
+When the container is healthy, open `http://localhost:1970` (or your domain) in your browser.
 
 ## 3. First login & secure your instance
 
