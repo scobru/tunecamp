@@ -1,4 +1,8 @@
-import { SoulseekDownloader } from "andrade-soulseek-downloader";
+// The package's "main" field points at dist/api.js (a single default-exported
+// function), but the class we need is only exported from dist/index.js — a
+// mismatch between its package.json and its own dist/index.d.ts. Import that
+// file directly to sidestep the broken root entry point.
+import { SoulseekDownloader } from "andrade-soulseek-downloader/dist/index.js";
 import type { SoulseekDownloader as TSoulseekDownloader, SearchOptions, DownloadConfig, SoulseekSearchResult } from "andrade-soulseek-downloader";
 import path from "path";
 import fs from "fs-extra";
