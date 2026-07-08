@@ -1,4 +1,4 @@
-import React from 'react';
+// Removed React import
 import { Puzzle } from 'lucide-react';
 import { pluginRegistry } from '../../core/plugins/registry';
 import { ExternalProviderSearchTab } from './ExternalProviderSearchTab';
