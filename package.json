@@ -1,6 +1,6 @@
 {
   "name": "tunecamp",
-  "version": "2.21.0",
+  "version": "2.22.0",
   "description": "A decentralized music platform for artists and labels, with streaming, federation, and Subsonic API support",
   "main": "dist/server/server.js",
   "type": "module",
@@ -39,7 +39,6 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@sentry/node": "^10.57.0",
     "adm-zip": "^0.5.16",
-    "andrade-soulseek-downloader": "^1.0.28",
     "archiver": "^7.0.1",
     "axios": "^1.15.0",
     "bcrypt": "^6.0.0",
@@ -71,10 +70,13 @@
     "tar": "^7.5.19",
     "telegraf": "^4.16.3",
     "waveform-data": "^4.5.2",
-    "webtorrent": "^2.8.5",
     "ws": "^8.21.0",
     "xmlbuilder2": "^4.0.3",
     "yaml": "^2.3.4"
+  },
+  "optionalDependencies": {
+    "andrade-soulseek-downloader": "^1.0.28",
+    "webtorrent": "^2.8.5"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",

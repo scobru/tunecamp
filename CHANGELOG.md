@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.22.0] - 2026-07-08
+
+### Added
+- **White-label plugin scorporo completed.** Finishes the groundwork from 2.21.0: `webapp/src/core/plugins/index.ts` no longer statically imports each plugin folder — it uses `import.meta.glob('../../plugins/*/index.{ts,tsx}', { eager: true })`, so deleting a plugin's frontend folder is enough to drop it from the bundle (no import line to edit). `webtorrent` and `andrade-soulseek-downloader` moved from `dependencies` to `optionalDependencies` in the root `package.json`, so `npm install --omit=optional` produces a build without those runtime packages. `container.ts` no longer imports types from `src/server/plugins/{soulseek,torrent,ytdlp}`: it uses structural contracts defined in the new `src/server/core/plugin-contracts.ts`, so the container's types don't depend on plugin folders existing. Removing a grey-area provider from a white-label build is now: delete its backend plugin folder, delete its frontend plugin folder, and (optionally) drop its package from `optionalDependencies`.
+
 ## [2.21.0] - 2026-07-08
 
 ### Added
