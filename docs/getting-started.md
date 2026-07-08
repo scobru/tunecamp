@@ -72,7 +72,7 @@ TuneCamp creates a default admin account on first run:
 2. TuneCamp reads tags, generates waveforms, and processes cover art.
 3. Scanned albums land in **Draft** mode — they're in your library but not publicly visible until you promote them to a **Formal Release** from the Admin dashboard.
 
-You can also ingest music via the [Telegram bot](./telegram.md), [Soulseek](./soulseek.md), [torrents](./torrents.md), or [Google Drive](./google-drive.md).
+You can also ingest music via the [Telegram bot](./telegram.md), [Sidecamp desktop app](./sidecamp.md) (Soulseek, torrents, yt-dlp), or [Google Drive](./google-drive.md).
 
 ## 5. Listen
 

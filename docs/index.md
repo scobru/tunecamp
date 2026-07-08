@@ -111,8 +111,7 @@ Optional third-party services you can connect to your instance.
 | [AI Integrations](./ai-integrations.md) | Metadata automation and recommendations via OpenRouter |
 | [Smart Contracts](./smart-contracts.md) | Solidity contracts (Factory, NFT, Checkout) on Base |
 | [Google Drive](./google-drive.md) | Cloud storage backend for media files |
-| [Soulseek](./soulseek.md) | P2P search and one-click import |
-| [Torrents](./torrents.md) | WebTorrent integration for catalog ingestion |
+| [Sidecamp](./sidecamp.md) | P2P acquisition (Soulseek, BitTorrent, yt-dlp) via the desktop companion app |
 | [Telegram Bot](./telegram.md) | Rapid file ingestion and remote management |
 
 ---

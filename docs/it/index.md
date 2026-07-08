@@ -110,8 +110,7 @@ Servizi di terze parti opzionali che puoi collegare alla tua istanza.
 | [Integrazioni IA](./ai-integrations.md) | Automazione dei metadati e raccomandazioni tramite OpenRouter |
 | [Smart Contracts](./smart-contracts.md) | Contratti Solidity (Factory, NFT, Checkout) su Base |
 | [Google Drive](./google-drive.md) | Backend di archiviazione cloud per file multimediali |
-| [Soulseek](./soulseek.md) | Ricerca P2P e importazione in un clic |
-| [Torrent](./torrents.md) | Integrazione WebTorrent per l'acquisizione del catalogo |
+| [Sidecamp](./sidecamp.md) | Acquisizione P2P (Soulseek, BitTorrent, yt-dlp) tramite l'app desktop companion |
 | [Bot Telegram](./telegram.md) | Acquisizione rapida di file e gestione remota |
 
 ---

@@ -66,10 +66,7 @@ Stripe Connect ti consente di instradare i pagamenti in valuta fiat direttamente
 
 ## 5. Peer-to-Peer (P2P)
 
-### Soulseek (Ricerca e Download)
-1. Non è richiesta alcuna chiave API, ma è necessario un account Soulseek standard.
-2. Scarica il client Soulseek originale o registrati tramite un client compatibile.
-3. Inserisci il tuo `Username` e la tua `Password` nelle impostazioni di TuneCamp.
+L'acquisizione di contenuti P2P (Soulseek, BitTorrent, yt-dlp) è gestita dall'[app desktop Sidecamp](./sidecamp.md), un compagno standalone che funziona sulla tua macchina locale e sincronizza i download con la tua istanza TuneCamp. Consulta [Sidecamp](./sidecamp.md) per le istruzioni di configurazione.
 
 ---
 

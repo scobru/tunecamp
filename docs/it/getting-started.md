@@ -72,7 +72,7 @@ Al primo avvio, TuneCamp crea un account amministratore predefinito:
 2. TuneCamp leggerà i tag dei metadati, genererà le forme d'onda e caricherà le copertine.
 3. Gli album scansionati finiranno nello stato di **Bozza (Draft)** — sono visibili nella tua libreria ma non pubblicamente, fino a quando non li promuoverai a **Formal Release** dal pannello di amministrazione.
 
-Puoi anche importare file musicali tramite il [bot Telegram](./telegram.md), [Soulseek](./soulseek.md), [torrent](./torrents.md) o [Google Drive](./google-drive.md).
+Puoi anche importare file musicali tramite il [bot Telegram](./telegram.md), l'[app desktop Sidecamp](./sidecamp.md) (Soulseek, torrent, yt-dlp) o [Google Drive](./google-drive.md).
 
 ## 5. Ascolta
 

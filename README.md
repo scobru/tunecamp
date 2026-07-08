@@ -82,10 +82,9 @@ docker-compose up -d --build
 
 ### Content Acquisition
 
-- 🔎 **Soulseek Search**: Search Soulseek from the admin panel with one-click import.
-- 🧲 **Torrents**: BitTorrent search and download for catalog ingestion. See [torrents.md](docs/torrents.md).
 - 🏷️ **Discogs Metadata**: Match tracks against the Discogs database for accurate tagging.
 - ☁️ **Google Drive Storage**: Optional Google Drive backend for media storage. See [google-drive.md](docs/google-drive.md).
+- 🔌 **Download Provider Hooks**: The server exposes a download-provider registry that external tools (like [Sidecamp](#tunecamp-ecosystem)) can connect to for Soulseek, BitTorrent, and yt-dlp acquisition. See [PLUGINS.md](docs/PLUGINS.md).
 
 ### Deployment
 
@@ -97,6 +96,7 @@ docker-compose up -d --build
 
 In addition to the core server, the TuneCamp ecosystem includes several companion projects:
 
+- [**sidecamp**](https://github.com/scobru/sidecamp): A standalone Electron desktop app that handles all P2P content acquisition — Soulseek search & download, BitTorrent, and yt-dlp audio ripping — plus peer file-sharing with any TuneCamp instance via a reverse WebSocket tunnel. Keeps the core server clean and compliant.
 - [**tunecamp-website**](https://github.com/scobru/tunecamp-website): The landing page, global community directory, and web-based community audio player.
 - [**tunecamp-peer**](https://github.com/scobru/tunecamp-peer): A lightweight CLI daemon that shares your local music folders with any TuneCamp instance over a secure, reverse WebSocket tunnel.
 - [**tunecamp-4-track-recorder**](https://github.com/scobru/tunecamp-4-track-recorder): A browser-based 4-track cassette recorder built with the Web Audio API and Svelte 5, featuring low-latency overdubbing and mixer capabilities.
@@ -183,7 +183,7 @@ Configuration is managed via environment variables (or an `.env` file).
 | `TUNECAMP_PUBLIC_URL`   | Public HTTPS URL (required for ActivityPub federation) | —                                                        |
 | `TUNECAMP_SITE_NAME`    | Human-readable instance name                           | `My TuneCamp Server`                                     |
 | `TUNECAMP_CORS_ORIGINS` | Comma-separated allowed CORS origins                   | _all_                                                    |
-| `TUNECAMP_DOWNLOAD_DIR` | Directory for Soulseek/torrent downloads               | `./music/downloads` (local) / `/data/downloads` (Docker) |
+| `TUNECAMP_DOWNLOAD_DIR` | Directory for download-provider plugins (e.g. Sidecamp) | `./music/downloads` (local) / `/data/downloads` (Docker) |
 | `TUNECAMP_PLUGINS_DIR`  | Directory to load provider plugins from                | `./plugins`                                              |
 
 **Federation & Network**
