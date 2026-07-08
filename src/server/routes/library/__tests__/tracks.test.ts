@@ -148,38 +148,7 @@ describe('Tracks Routes', () => {
         });
     });
 
-    describe('POST / auto-localize', () => {
-        test('localize=true on a Bandcamp track kicks off background localization', async () => {
-            const res = await request(app)
-                .post('/tracks')
-                .send({ title: 'Imported', albumId: 7, url: 'https://artist.bandcamp.com/track/x', service: 'bandcamp', localize: true });
 
-            expect(res.status).toBe(201);
-            // Response is sent before localization; give the fire-and-forget a tick.
-            await new Promise(r => setImmediate(r));
-            expect(mockYtdlpService.localizeTrack).toHaveBeenCalledWith(4242);
-        });
-
-        test('localize is ignored without an opt-in flag', async () => {
-            const res = await request(app)
-                .post('/tracks')
-                .send({ title: 'Imported', albumId: 7, url: 'https://artist.bandcamp.com/track/x', service: 'bandcamp' });
-
-            expect(res.status).toBe(201);
-            await new Promise(r => setImmediate(r));
-            expect(mockYtdlpService.localizeTrack).not.toHaveBeenCalled();
-        });
-
-        test('localize is ignored for a non-rippable service', async () => {
-            const res = await request(app)
-                .post('/tracks')
-                .send({ title: 'Imported', albumId: 7, url: 'https://example.com/x', service: 'link', localize: true });
-
-            expect(res.status).toBe(201);
-            await new Promise(r => setImmediate(r));
-            expect(mockYtdlpService.localizeTrack).not.toHaveBeenCalled();
-        });
-    });
 
     describe('Deletion Logic', () => {
         test('Artists can delete their own tracks', async () => {

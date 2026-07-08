@@ -30,8 +30,6 @@ export function createTracksRoutes(container: ServiceContainer): Router {
     const musicDir = resolveService(container, 'musicDir');
     const authService = resolveService(container, 'authService');
     const gdriveService = resolveService(container, 'gdriveService');
-    const streamingService = resolveService(container, 'streamingService');
-    const ytdlpService = resolveService(container, 'ytdlpService');
     const mediaEngine = resolveService(container, 'mediaEngine');
     const social = resolveService(container, 'social');
     const library = resolveService(container, 'library');
@@ -156,16 +154,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         const newTrack = library.getTrack(trackId);
         res.status(201).json(newTrack ? mapTrackDTO(newTrack, database, req.username) : null);
 
-        // Opt-in durable import: streaming references (e.g. Bandcamp) rot — signed CDN
-        // links expire and nothing survives a redeploy — so when the caller asks to
-        // localize, download the audio into the library in the background. The response
-        // has already been sent; localization runs through its own bounded queue.
-        const RIPPABLE_SERVICES = new Set(["bandcamp", "youtube", "soundcloud"]);
-        if (localize && ytdlpService && url && service && RIPPABLE_SERVICES.has(service)) {
-            ytdlpService.localizeTrack(trackId)
-                .then(() => { if (albumId) publishingService.syncRelease(albumId).catch(() => {}); })
-                .catch(e => console.error(`[Tracks] Auto-localize failed for track ${trackId}:`, e?.message || e));
-        }
+
 
         if (albumId) {
             publishingService.syncRelease(albumId).catch(e => console.error("Sync failed:", e));
@@ -250,9 +239,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
                 if (!gdriveService) throw new BadRequestError("Google Drive service not available");
                 updatedTrack = await catalogService.localizeTrack(trackId, gdriveService);
             } else {
-                // External web streams require the ytdlp plugin
-                if (!ytdlpService) throw new BadRequestError("Localization plugin (yt-dlp) is not loaded or disabled");
-                updatedTrack = await ytdlpService.localizeTrack(trackId);
+                throw new BadRequestError("Localization for streaming platforms is no longer supported on TuneCamp. Use Sidecamp instead.");
             }
             
             res.json({ success: true, track: updatedTrack });

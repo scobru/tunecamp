@@ -151,7 +151,7 @@ describe('Search Routes', () => {
                 { library: { search: jest.fn() }, streamingService: makeStreaming(), metadataService: makeMetadata() },
                 (req) => { req.isAdmin = true; req.role = UserRole.ROOT_ADMIN; },
             );
-            const res = await request(app).get('/api/search/content/soulseek?q=test');
+            const res = await request(app).get('/api/search/content/provider/soulseek?q=test');
             expect(res.status).toBe(403);
             expect(res.body.error).toContain("'soulseek' integration is disabled");
         });
