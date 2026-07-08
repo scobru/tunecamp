@@ -3,7 +3,7 @@ import path from 'path';
 import os from 'os';
 import fs from 'fs-extra';
 import { type DatabaseService, type Torrent, type TorrentStatus } from '../../core/database.types.js';
-import type { Scanner } from '../catalog/scanner.js';
+import type { Scanner } from '../../modules/catalog/scanner.js';
 
 export class TorrentService {
     private client: WebTorrent.Instance | null = null;

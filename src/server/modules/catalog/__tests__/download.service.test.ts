@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { DownloadService, getDownloadService, initDownloadService } from '../download.service.js';
+import { syncRegistryWithDatabase } from '../../../core/provider.js';
 import type { DownloadProvider, DownloadResult } from '../../../core/provider.js';
 
 class MockDownloadProvider implements DownloadProvider {
@@ -238,46 +239,36 @@ describe('DownloadService', () => {
     });
 
     describe('Singleton functions', () => {
+        // P2P providers are no longer registered by initDownloadService — they
+        // self-register at startup via registerBuiltInDownloadProviders().
         test('initDownloadService and getDownloadService', async () => {
-            const soulseekService = {} as any;
-            const service = initDownloadService(soulseekService);
+            const service = initDownloadService();
             expect(service).toBeInstanceOf(DownloadService);
             expect(getDownloadService()).toBe(service);
 
             const registry = service.getRegistry();
-            expect(registry.get('soulseek')).toBeDefined();
-            expect(registry.isEnabled('soulseek')).toBe(false);
+            expect(registry.get('soulseek')).toBeUndefined();
             expect(registry.get('torrent')).toBeUndefined();
         });
 
-        test('initDownloadService with torrentService', () => {
-            const soulseekService = {} as any;
-            const torrentService = {} as any;
-            const service = initDownloadService(soulseekService, torrentService, 1);
-
-            const registry = service.getRegistry();
-            expect(registry.get('torrent')).toBeDefined();
-            expect(registry.isEnabled('torrent')).toBe(false);
-        });
-
-        test('initDownloadService with db sync success', async () => {
-            const soulseekService = {} as any;
+        test('sync after provider registration re-applies persisted state', async () => {
+            // Mirrors registerBuiltInDownloadProviders(): providers register
+            // first, then the persisted enabled/disabled state is re-applied.
             const db = {
                 getAllPluginsState: jest.fn().mockReturnValue([
                     { id: 'soulseek', enabled: 1 }
                 ])
             };
-            const service = initDownloadService(soulseekService, undefined, 1, db);
-
-            // Allow the async syncRegistryWithDatabase to complete
-            await new Promise(process.nextTick);
-
+            const service = initDownloadService();
             const registry = service.getRegistry();
+            registry.register(new MockDownloadProvider('soulseek', 'Soulseek', '1.0.0'), false);
+
+            await syncRegistryWithDatabase(registry, db);
+
             expect(registry.isEnabled('soulseek')).toBe(true);
         });
 
         test('initDownloadService with db sync failure', async () => {
-            const soulseekService = {} as any;
             const db = {
                 getAllPluginsState: jest.fn().mockImplementation(() => {
                     throw new Error('DB Error');
@@ -286,7 +277,7 @@ describe('DownloadService', () => {
 
             const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-            initDownloadService(soulseekService, undefined, 1, db);
+            initDownloadService(db);
 
             // Allow the promise catch block to run
             await new Promise(process.nextTick);

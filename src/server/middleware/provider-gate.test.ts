@@ -2,8 +2,18 @@ import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 import { initDownloadService, getDownloadService } from '../modules/catalog/download.service.js';
 import { requireDownloadProvider, isDownloadProviderEnabled } from './provider-gate.js';
 
-const mockSoulseek: any = { isConnected: () => false };
-const mockTorrent: any = {};
+// P2P providers are no longer registered by initDownloadService — they
+// self-register at startup via registerBuiltInDownloadProviders(). The gate
+// logic under test only needs providers present in the registry, so we
+// register minimal mocks directly, disabled by default like the real ones.
+const mockProvider = (id: string): any => ({
+    id,
+    name: id,
+    version: '0.0.0',
+    isAvailable: async () => true,
+    search: async () => [],
+    download: async () => '/tmp/file'
+});
 
 const runMiddleware = (providerId: string) => {
     const middleware = requireDownloadProvider(providerId);
@@ -20,7 +30,9 @@ const runMiddleware = (providerId: string) => {
 
 describe('Grey-source provider gating', () => {
     beforeEach(() => {
-        initDownloadService(mockSoulseek, mockTorrent);
+        const service = initDownloadService();
+        service.getRegistry().register(mockProvider('soulseek'), false);
+        service.getRegistry().register(mockProvider('torrent'), false);
     });
 
     test('soulseek and torrent are disabled by default', () => {

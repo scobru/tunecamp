@@ -1,5 +1,5 @@
 import express, { Router } from "express";
-import type { TorrentService } from "../../modules/integrations/torrent.service.js";
+import type { TorrentService } from "../../plugins/torrent/service.js";
 import type { DatabaseService } from "../../core/database.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 
@@ -62,6 +62,7 @@ export function createTorrentRoutes(container: ServiceContainer): Router {
     router.get("/", async (req: any, res) => {
         try {
             const dbTorrents = integration.getTorrents();
+            if (!torrentService) return res.status(501).json({ error: "Torrent plugin not loaded" });
             const activeTorrents = torrentService.getTorrentsStatus() as any[];
 
             const activeMap = new Map(
@@ -120,6 +121,7 @@ export function createTorrentRoutes(container: ServiceContainer): Router {
         // Clamp: min 10s, max 24h
         const timeoutMs = Math.max(10 * 1000, Math.min(24 * 60 * 60 * 1000, parsed));
         try {
+            if (!torrentService) return res.status(501).json({ error: "Torrent plugin not loaded" });
             const removed = await torrentService.purgeStuck(timeoutMs);
             res.json({ success: true, removed, count: removed.length });
         } catch (error: any) {
@@ -136,6 +138,7 @@ export function createTorrentRoutes(container: ServiceContainer): Router {
         if (!magnet) return res.status(400).json({ error: "Magnet URI is required" });
 
         try {
+            if (!torrentService) return res.status(501).json({ error: "Torrent plugin not loaded" });
             const infoHash = await torrentService.addTorrent(magnet, req.userId || null);
             res.json({ success: true, infoHash });
         } catch (error: any) {
@@ -156,6 +159,7 @@ export function createTorrentRoutes(container: ServiceContainer): Router {
         if (!name) return res.status(400).json({ error: "Torrent name is required" });
 
         try {
+            if (!torrentService) return res.status(501).json({ error: "Torrent plugin not loaded" });
             const magnetUri = await torrentService.seedFiles(filePaths, name, req.userId || null, artist);
             res.json({ success: true, magnetUri });
         } catch (error: any) {
@@ -170,6 +174,7 @@ export function createTorrentRoutes(container: ServiceContainer): Router {
     router.delete("/:hash", async (req, res) => {
         const { hash } = req.params;
         try {
+            if (!torrentService) return res.status(501).json({ error: "Torrent plugin not loaded" });
             await torrentService.removeTorrent(hash);
             res.json({ success: true });
         } catch (error: any) {

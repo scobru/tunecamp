@@ -11,8 +11,7 @@ describe('DownloadService Singleton', () => {
     it('returns the DownloadService instance after initialization', async () => {
         await jest.isolateModulesAsync(async () => {
             const { getDownloadService, initDownloadService, DownloadService } = await import('./download.service.js');
-            const mockSoulseekService = {} as any;
-            const service = initDownloadService(mockSoulseekService);
+            const service = initDownloadService();
 
             expect(service).toBeInstanceOf(DownloadService);
             expect(getDownloadService()).toBe(service);

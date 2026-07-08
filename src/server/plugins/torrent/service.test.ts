@@ -36,7 +36,7 @@ describe('TorrentService', () => {
     let mockScanner: any;
 
     beforeEach(async () => {
-        const mod = await import('../torrent.service.js');
+        const mod = await import('./service.js');
         TorrentService = mod.TorrentService;
 
         mockDb = {

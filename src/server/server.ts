@@ -29,6 +29,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 import type { ServerConfig } from "./core/config.js";
+import { registerBuiltInDownloadProviders } from "./plugins/index.js";
 import { createDatabase } from "./core/database.js";
 import { createAuthService } from "./modules/auth/auth.service.js";
 import { createAuthMiddleware } from "./middleware/auth.js";
@@ -87,7 +88,6 @@ import { WaveformService } from "./modules/waveform/waveform.service.js";
 import { securityHeaders } from "./middleware/security.js";
 import { requireModuleEnabled } from "./middleware/moduleGuard.js";
 import { rateLimit } from "./middleware/rateLimit.js";
-import { SoulseekService } from "./modules/integrations/soulseek.js";
 import { TelegramBotService } from "./modules/integrations/telegram-bot.js";
 import { BoardService } from "./modules/board/board.service.js";
 import { createBoardRoutes } from "./routes/api/board.js";
@@ -101,10 +101,9 @@ import { AutoTaggerService } from "./modules/catalog/autotagger.service.js";
 import { createSearchRoutes } from "./routes/network/search.js";
 import { GoogleDriveService } from "./modules/storage/google-drive.service.js";
 import { createStorageRouter } from "./routes/library/storage.js";
-import { TorrentService } from "./modules/integrations/torrent.service.js";
 import { createTorrentRoutes } from "./routes/network/torrent.js";
 import { errorHandler } from "./middleware/error-handling.js";
-import { LocalizationService } from "./modules/catalog/localization.service.js";
+
 import { MediaEngine } from "./modules/media/media-engine.js";
 import { SubsonicService } from "./modules/subsonic/subsonic.service.js";
 import { taskManager } from "./modules/workers/task-manager.js";
@@ -308,7 +307,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const discoveryService = new DiscoveryService(database, openRouterService, metadataService);
     const digService = new DigService(database);
 
-    const localizationService = new LocalizationService(database, catalogService, config.musicDir, process.env.YOUTUBE_COOKIES_PATH, undefined, streamingService);
 
     if (config.gdriveClientId && config.gdriveClientSecret) {
         const dbPublicUrl = database.getSetting("publicUrl");
@@ -321,7 +319,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
         });
         const adminRow = database.db.prepare("SELECT id FROM admin ORDER BY id ASC LIMIT 1").get() as any;
         initStorageService(gdriveService, adminRow?.id ?? 1);
-        localizationService.setGDriveService(gdriveService);
     }
 
     const autotaggerService = new AutoTaggerService(database, catalogService, openRouterService);
@@ -340,12 +337,18 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const scanner = new Scanner(database, storage, autotaggerService, catalogService);
     const scannerService = await initScannerService(database, scanner);
 
-    const soulseekService = new SoulseekService(config.musicDir, config.downloadDir || path.join(config.musicDir, "downloads"));
+    const downloadService = initDownloadService(database);
     
-    const torrentService = new TorrentService(database, scanner, config.musicDir);
-    publishingService.setTorrentService(torrentService);
-
-    const downloadService = initDownloadService(soulseekService, torrentService, 1, database);
+    // Dynamically register optional P2P providers
+    const { cleanups: pluginCleanups, soulseekService, torrentService, ytdlpService } = await registerBuiltInDownloadProviders(downloadService, {
+        database,
+        scanner,
+        config,
+        defaultOwnerId: 1,
+        publishingService,
+        catalogService,
+        streamingService
+    });
 
     const boardService = new BoardService(database);
     const liveService = new LiveService();
@@ -370,7 +373,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         digService,
         metadataService,
         maintenanceService,
-        localizationService,
+        ytdlpService,
         mediaEngine,
         waveformService,
         streamingService,
@@ -388,7 +391,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         radioService,
         peerService,
         soulseekService,
-        torrentService: torrentService as any,
+        torrentService,
         gdriveService,
         openRouterService,
         storage
@@ -583,13 +586,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         server.headersTimeout = 301000;
 
         // Async Background integrations start after the HTTP server is bound!
-        // Soulseek only auto-connects when the admin has opted in via the plugin toggle.
-        if (downloadService.getRegistry().isEnabled("soulseek")) {
-            const slskUser = database.getSetting("soulseek_username");
-            const slskPass = database.getSetting("soulseek_password");
-            soulseekService.connect(slskUser, slskPass).catch(err => console.error("Soulseek initial connection failed:", err));
-        }
-        
+
         telegramBotService.start().catch((err: any) => console.error("Telegram Bot failed to start:", err));
         radioService.resumeIfActive().catch((err: any) => console.error("Radio resume failed:", err));
 
@@ -621,11 +618,8 @@ export async function startServer(config: ServerConfig): Promise<void> {
         try { telegramBotService.stop(); console.log('  ✓ Telegram bot stopped'); }
         catch (e) { console.warn('  ⚠ Telegram stop error:', e); }
 
-        try { soulseekService.disconnect(); console.log('  ✓ Soulseek disconnected'); }
-        catch (e) { console.warn('  ⚠ Soulseek disconnect error:', e); }
-
-        try { torrentService.shutdown(); console.log('  ✓ TorrentService shut down'); }
-        catch (e) { console.warn('  ⚠ Torrent shutdown error:', e); }
+        try { pluginCleanups.forEach(c => c()); console.log('  ✓ Plugins disconnected'); }
+        catch (e) { console.warn('  ⚠ Plugin disconnect error:', e); }
 
         try { peerService.stopHeartbeat(); console.log('  ✓ PeerService heartbeat stopped'); }
         catch (e) { console.warn('  ⚠ PeerService stop error:', e); }

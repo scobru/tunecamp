@@ -31,7 +31,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
     const authService = resolveService(container, 'authService');
     const gdriveService = resolveService(container, 'gdriveService');
     const streamingService = resolveService(container, 'streamingService');
-    const localizationService = resolveService(container, 'localizationService');
+    const ytdlpService = resolveService(container, 'ytdlpService');
     const mediaEngine = resolveService(container, 'mediaEngine');
     const social = resolveService(container, 'social');
     const library = resolveService(container, 'library');
@@ -161,8 +161,8 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         // localize, download the audio into the library in the background. The response
         // has already been sent; localization runs through its own bounded queue.
         const RIPPABLE_SERVICES = new Set(["bandcamp", "youtube", "soundcloud"]);
-        if (localize && localizationService && url && service && RIPPABLE_SERVICES.has(service)) {
-            localizationService.localizeTrack(trackId)
+        if (localize && ytdlpService && url && service && RIPPABLE_SERVICES.has(service)) {
+            ytdlpService.localizeTrack(trackId)
                 .then(() => { if (albumId) publishingService.syncRelease(albumId).catch(() => {}); })
                 .catch(e => console.error(`[Tracks] Auto-localize failed for track ${trackId}:`, e?.message || e));
         }
@@ -226,7 +226,6 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)) {
             throw new ForbiddenError("Only admins can localize tracks");
         }
-        if (!localizationService) throw new BadRequestError("Localization service not available");
 
         const idParam = req.params.id as string;
         let trackId: number;
@@ -242,7 +241,20 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         if (isNaN(trackId)) throw new BadRequestError("Invalid track ID");
         
         try {
-            const updatedTrack = await localizationService.localizeTrack(trackId);
+            const track = database.getTrack(trackId);
+            if (!track) throw new NotFoundError("Track not found");
+
+            let updatedTrack;
+            if (track.file_path && track.file_path.startsWith('gdrive://')) {
+                // Cloud imports are legally handled by the core catalog
+                if (!gdriveService) throw new BadRequestError("Google Drive service not available");
+                updatedTrack = await catalogService.localizeTrack(trackId, gdriveService);
+            } else {
+                // External web streams require the ytdlp plugin
+                if (!ytdlpService) throw new BadRequestError("Localization plugin (yt-dlp) is not loaded or disabled");
+                updatedTrack = await ytdlpService.localizeTrack(trackId);
+            }
+            
             res.json({ success: true, track: updatedTrack });
         } catch (error: any) {
             console.error(`❌ [API] Localization failed for track ${trackId}:`, error.message);

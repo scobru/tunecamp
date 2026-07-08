@@ -1,9 +1,5 @@
 import { ProviderRegistry, syncRegistryWithDatabase } from "../../core/provider.js";
 import type { DownloadProvider, DownloadResult } from "../../core/provider.js";
-import { SoulseekDownloadProvider } from "../../providers/download/soulseek.provider.js";
-import { TorrentDownloadProvider } from "../../providers/download/torrent.provider.js";
-import type { SoulseekService } from "../integrations/soulseek.js";
-import type { TorrentService } from "../integrations/torrent.service.js";
 
 /**
  * DownloadService manages a registry of DownloadProviders.
@@ -13,6 +9,11 @@ import type { TorrentService } from "../integrations/torrent.service.js";
  *
  * The "waterfall" strategy: search all providers simultaneously, merge results.
  * The caller then picks a result and calls download() to retrieve the file.
+ *
+ * P2P providers (Soulseek, BitTorrent) are no longer hard-imported here.
+ * They register themselves at startup via registerBuiltInDownloadProviders()
+ * in server.ts, which dynamically imports them only if the npm packages are
+ * available (they live in optionalDependencies).
  */
 export class DownloadService {
     private registry = new ProviderRegistry<DownloadProvider>();
@@ -90,16 +91,13 @@ export function getDownloadService(): DownloadService | null {
     return _downloadService;
 }
 
-export function initDownloadService(soulseekService: SoulseekService, torrentService?: TorrentService, defaultOwnerId: number = 1, db?: any): DownloadService {
+/**
+ * Creates the DownloadService singleton. P2P providers are no longer
+ * hard-wired here — they register themselves via registerBuiltInDownloadProviders()
+ * in server.ts, which dynamically imports them only when their npm packages exist.
+ */
+export function initDownloadService(db?: any): DownloadService {
     _downloadService = new DownloadService();
-    // P2P sources are an explicit admin opt-in: legally grey for a
-    // music-selling platform, so they ship disabled until toggled on
-    // (Admin → Integrations). syncRegistryWithDatabase below restores
-    // the persisted choice of admins who already opted in.
-    _downloadService.getRegistry().register(new SoulseekDownloadProvider(soulseekService), false);
-    if (torrentService) {
-        _downloadService.getRegistry().register(new TorrentDownloadProvider(torrentService, defaultOwnerId), false);
-    }
     if (db) {
         syncRegistryWithDatabase(_downloadService.getRegistry(), db).catch(err => console.error("Failed to sync download registry:", err));
     }

@@ -1,26 +1,11 @@
 import { useState, useEffect } from "react";
-import {
-  Activity,
-  CheckCircle2,
-  AlertCircle,
-  RefreshCw,
-  Globe,
-  MessageSquare,
-  Search,
-  Cpu,
-  Download,
-  CreditCard,
-  Loader2,
-  Youtube,
-  Settings,
-  Save,
-  Puzzle
-} from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, RefreshCw, Save, Settings, Activity, Puzzle } from "lucide-react";
 import { useConfigStore } from "../../stores/useConfigStore";
 import { useAuthStore } from "../../stores/useAuthStore";
 import API from "../../services/api";
 import { notify } from "../../utils/notify";
 import clsx from "clsx";
+import { pluginRegistry } from "../../core/plugins";
 import type { SiteSettings } from "../../types";
 
 interface PluginInfo {
@@ -104,24 +89,6 @@ export const IntegrationsPanel = () => {
         setIsProcessing(null);
     }
   };
-
-  const handleAuth = async (serviceId: string) => {
-    if (serviceId === 'youtube') {
-        document.getElementById('youtube-cookie-input')?.click();
-        return;
-    }
-    
-    setIsProcessing(serviceId);
-    try {
-        // Other auth logic if any
-    } catch (e: any) {
-        console.error("Auth failed:", e);
-        notify.error(e, "Auth failed");
-    } finally {
-        setIsProcessing(null);
-    }
-  };
-
   const handleSaveSettings = async () => {
     if (!settings) return;
     setIsSaving(true);
@@ -137,255 +104,7 @@ export const IntegrationsPanel = () => {
     }
   };
 
-  const services = [
-    {
-      id: "soulseek",
-      name: "Soulseek",
-      icon: <Download className="text-accent" />,
-      status: status?.soulseek.connected ? 'online' : 'offline',
-      details: status?.soulseek.connected ? `Connected as ${status.soulseek.username}` : "Not connected",
-      description: "P2P music search and download service.",
-      pluginId: "soulseek",
-      hasConfig: true,
-      renderConfig: () => (
-        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
-          <div className="form-control">
-            <label className="label text-xs">Username</label>
-            <input type="text" className="input input-sm input-bordered" value={settings?.soulseek_username || ''} onChange={e => setSettings({ ...settings!, soulseek_username: e.target.value })} />
-          </div>
-          <div className="form-control">
-            <label className="label text-xs">Password</label>
-            <input type="password" className="input input-sm input-bordered" value={settings?.soulseek_password || ''} onChange={e => setSettings({ ...settings!, soulseek_password: e.target.value })} />
-          </div>
-        </div>
-      )
-    },
-    {
-      id: "torrent",
-      name: "BitTorrent",
-      icon: <Download className="text-success" />,
-      status: plugins.find(p => p.id === 'torrent')?.enabled ? 'online' : 'offline',
-      details: plugins.find(p => p.id === 'torrent')?.enabled ? "Enabled — use only for content you own" : "Disabled (default)",
-      description: "Download music via magnet links (WebTorrent). Enable only for content you own the rights to.",
-      pluginId: "torrent"
-    },
-    {
-      id: "telegram",
-      name: "Telegram Bot",
-      icon: <MessageSquare className="text-primary" />,
-      status: status?.telegram.active ? 'online' : 'offline',
-      details: status?.telegram.active ? "Bot is online" : "Bot is offline or not configured",
-      description: "Remote control and notifications via Telegram.",
-      pluginId: "telegram",
-      hasConfig: true,
-      renderConfig: () => (
-        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
-          <div className="form-control">
-            <label className="label text-xs">Bot Token</label>
-            <span className="text-sm text-base-content/70">Configured via TUNECAMP_TELEGRAM_BOT_TOKEN environment variable.</span>
-          </div>
-          <div className="form-control">
-            <label className="label text-xs">Allowed Channels (Comma separated)</label>
-            <input type="text" className="input input-sm input-bordered" value={settings?.telegram_allowed_channels || ''} onChange={e => setSettings({ ...settings!, telegram_allowed_channels: e.target.value })} />
-          </div>
-        </div>
-      )
-    },
-
-    {
-      id: "itunes",
-      name: "iTunes API",
-      icon: <Search className="text-info" />,
-      status: status?.itunes.online ? 'online' : 'offline',
-      details: status?.itunes.online ? "Service reachable" : "Service unreachable",
-      description: "High-resolution covers and metadata search.",
-      pluginId: "itunes"
-    },
-    {
-      id: "musicbrainz",
-      name: "MusicBrainz",
-      icon: <Globe className="text-secondary" />,
-      status: status?.musicbrainz.online ? 'online' : 'offline',
-      details: status?.musicbrainz.online ? "Service reachable" : "Service unreachable",
-      description: "Open encyclopedia for music metadata.",
-      pluginId: "musicbrainz"
-    },
-    {
-      id: "openrouter",
-      name: "AI (OpenRouter)",
-      icon: <Cpu className="text-warning" />,
-      status: status?.openrouter.configured ? 'online' : 'offline',
-      details: status?.openrouter.configured ? `Active: ${status.openrouter.model}` : "API Key missing",
-      description: "AI-powered metadata enrichment and suggestions.",
-      pluginId: "openrouter",
-      hasConfig: true,
-      renderConfig: () => (
-        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
-          <div className="form-control">
-            <label className="label text-xs">API Key</label>
-            <input type="password" className="input input-sm input-bordered" value={settings?.openrouter_api_key || ''} onChange={e => setSettings({ ...settings!, openrouter_api_key: e.target.value })} />
-          </div>
-          <div className="form-control">
-            <label className="label text-xs">Model Selection</label>
-            <select className="select select-sm select-bordered" value={settings?.openrouter_model || ''} onChange={e => setSettings({ ...settings!, openrouter_model: e.target.value })}>
-              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-              <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
-              <option value="openai/gpt-4o">GPT-4o</option>
-              <option value="openai/gpt-4o-mini">GPT-4o-Mini</option>
-            </select>
-          </div>
-        </div>
-      )
-    },
-    {
-      id: "discogs",
-      name: "Discogs",
-      icon: <Activity className="text-base-content" />,
-      status: status?.discogs.configured ? 'online' : 'offline',
-      details: status?.discogs.configured ? "Token configured" : "Token missing",
-      description: "Vinyl-focused metadata and marketplace data.",
-      pluginId: "discogs",
-      hasConfig: true,
-      renderConfig: () => (
-        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
-          <div className="form-control">
-            <label className="label text-xs">Personal Access Token</label>
-            <input type="password" className="input input-sm input-bordered" value={settings?.discogs_token || ''} onChange={e => setSettings({ ...settings!, discogs_token: e.target.value })} />
-          </div>
-        </div>
-      )
-    },
-    {
-      id: "stripe",
-      name: "Stripe",
-      icon: <CreditCard className="text-[#635BFF]" />,
-      status: status?.stripe?.configured ? 'online' : 'offline',
-      details: status?.stripe?.configured ? (status.stripe.webhookConfigured ? "Ready (Live Webhooks)" : "Keys Set (No Webhook)") : "Not Configured",
-      description: "Credit card processing and checkout sessions.",
-      pluginId: "stripe",
-      hasConfig: true,
-      renderConfig: () => (
-        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
-          <div className="form-control">
-            <label className="label text-xs">Secret Key</label>
-            <input type="password" className="input input-sm input-bordered" value={settings?.stripe_secret_key || ''} onChange={e => setSettings({ ...settings!, stripe_secret_key: e.target.value })} />
-          </div>
-          <div className="form-control">
-            <label className="label text-xs">Webhook Secret</label>
-            <input type="password" className="input input-sm input-bordered" value={settings?.stripe_webhook_secret || ''} onChange={e => setSettings({ ...settings!, stripe_webhook_secret: e.target.value })} />
-          </div>
-        </div>
-      )
-    },
-
-    {
-      id: "gdrive",
-      name: "Google Drive",
-      icon: <Globe className="text-blue-500" />,
-      status: status?.gdrive?.configured && status?.gdrive?.active ? 'online' : 'offline',
-      details: status?.gdrive?.configured ? (status.gdrive.active ? "Integration active" : "Service disabled") : "Client ID/Secret missing",
-      description: "Cloud storage for track localization and backup.",
-      pluginId: "gdrive",
-      hasConfig: true,
-      renderConfig: () => (
-        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
-          <div className="form-control">
-            <label className="label text-xs">Client ID</label>
-            <input type="text" className="input input-sm input-bordered" value={settings?.google_drive_client_id || ''} onChange={e => setSettings({ ...settings!, google_drive_client_id: e.target.value })} />
-          </div>
-          <div className="form-control">
-            <label className="label text-xs">Client Secret</label>
-            <input type="password" className="input input-sm input-bordered" value={settings?.google_drive_client_secret || ''} onChange={e => setSettings({ ...settings!, google_drive_client_secret: e.target.value })} />
-          </div>
-        </div>
-      )
-    },
-    {
-      id: "deezer",
-      name: "Deezer",
-      icon: <Globe className="text-[#EF5466]" />,
-      status: status?.deezer?.online ? 'online' : 'offline',
-      details: status?.deezer?.online ? "Service reachable" : "Service unreachable",
-      description: "External playlist import and metadata.",
-      pluginId: "deezer"
-    },
-    {
-      id: "youtube",
-      name: "YouTube",
-      icon: <Youtube className="text-[#FF0000]" />,
-      status: status?.youtube?.online ? 'online' : 'offline',
-      details: status?.youtube?.online ? "Service reachable" : "Service unreachable",
-      description: "Resilient streaming via yt-dlp with fallbacks.",
-      onAuth: () => handleAuth('youtube')
-    },
-    {
-      id: "bandcamp",
-      name: "Bandcamp",
-      icon: <Globe className="text-[#629aa9]" />,
-      status: status?.bandcamp?.online ? 'online' : 'offline',
-      details: status?.bandcamp?.online ? "Service reachable" : "Service unreachable",
-      description: "Metadata fetching and high-quality streaming support via scraping.",
-      pluginId: "bandcamp"
-    },
-    {
-      id: "lastfm",
-      name: "Last.fm",
-      icon: <Activity className="text-[#D51007]" />,
-      status: status?.lastfm?.configured ? 'online' : 'offline',
-      details: status?.lastfm?.configured ? "Scrobbling active" : "Not configured",
-      description: "Music scrobbling and recommendations.",
-      pluginId: "lastfm",
-      hasConfig: true,
-      renderConfig: () => (
-        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
-          <div className="form-control">
-            <label className="label text-xs">API Key</label>
-            <input type="password" className="input input-sm input-bordered" value={settings?.lastfm_api_key || ''} onChange={e => setSettings({ ...settings!, lastfm_api_key: e.target.value })} />
-          </div>
-          <div className="form-control">
-            <label className="label text-xs">Session Key</label>
-            <input type="password" className="input input-sm input-bordered" value={settings?.lastfm_session_key || ''} onChange={e => setSettings({ ...settings!, lastfm_session_key: e.target.value })} />
-          </div>
-        </div>
-      )
-    },
-    {
-      id: "listenbrainz",
-      name: "ListenBrainz",
-      icon: <Activity className="text-[#EB743B]" />,
-      status: status?.listenbrainz?.configured ? 'online' : 'offline',
-      details: status?.listenbrainz?.configured ? "Scrobbling active" : "Not configured",
-      description: "Open source music scrobbling service.",
-      pluginId: "listenbrainz",
-      hasConfig: true,
-      renderConfig: () => (
-        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
-          <div className="form-control">
-            <label className="label text-xs">User Token</label>
-            <input type="password" className="input input-sm input-bordered" value={settings?.listenbrainz_token || ''} onChange={e => setSettings({ ...settings!, listenbrainz_token: e.target.value })} />
-          </div>
-        </div>
-      )
-    },
-    {
-      id: "spotify",
-      name: "Spotify",
-      icon: <Globe className="text-[#1DB954]" />,
-      status: status?.spotify?.online ? 'online' : 'offline',
-      details: status?.spotify?.online ? "Service reachable" : "Service unreachable",
-      description: "Metadata and playlist import from Spotify.",
-      pluginId: "spotify"
-    },
-    {
-      id: "soundcloud",
-      name: "SoundCloud",
-      icon: <Globe className="text-[#FF3300]" />,
-      status: status?.soundcloud?.online ? 'online' : 'offline',
-      details: status?.soundcloud?.online ? "Service reachable" : "Service unreachable",
-      description: "Streaming and metadata from SoundCloud.",
-      pluginId: "soundcloud"
-    }
-  ];
+  const services = pluginRegistry.getAll();
 
   if ((isStatusLoading || isPluginsLoading) && !status && plugins.length === 0) {
     return (
@@ -432,8 +151,9 @@ export const IntegrationsPanel = () => {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {services.map((service) => {
-          const plugin = plugins.find(p => p.id === service.pluginId);
+          const plugin = plugins.find(p => p.id === service.id);
           const isEnabled = plugin ? plugin.enabled : true;
+          const statusInfo = service.statusCheck ? service.statusCheck(status, plugins) : { status: isEnabled ? 'online' : 'offline', details: isEnabled ? 'Enabled' : 'Disabled' };
 
           return (
             <div key={service.id} className={clsx(
@@ -464,7 +184,7 @@ export const IntegrationsPanel = () => {
                     )}
                     <div className={clsx(
                         "w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]",
-                        service.status === 'online' ? "bg-success shadow-success/40" : "bg-error shadow-error/40"
+                        statusInfo.status === 'online' ? "bg-success shadow-success/40" : "bg-error shadow-error/40"
                     )} />
                   </div>
                 </div>
@@ -475,7 +195,7 @@ export const IntegrationsPanel = () => {
                           {service.name}
                           {plugin && <span className="text-xs opacity-30 font-mono">v{plugin.version}</span>}
                         </span>
-                        {service.hasConfig && isRootAdmin && (
+                        {service.configPanel && isRootAdmin && (
                           <button
                             className="btn btn-xs btn-ghost btn-circle tooltip tooltip-left"
                             onClick={() => setExpandedConfig(expandedConfig === service.id ? null : service.id)}
@@ -487,33 +207,33 @@ export const IntegrationsPanel = () => {
                     </h4>
                     <p className="text-xs opacity-60 leading-relaxed h-8 line-clamp-2">{service.description}</p>
 
-                    {(service as any).onAuth && isRootAdmin && (
+                    {service.customAction && isRootAdmin && (
                         <button
                             className="btn btn-xs btn-outline btn-primary mt-3 gap-2"
-                            onClick={(service as any).onAuth}
+                            onClick={service.customAction.onClick}
                             disabled={isProcessing === service.id}
                         >
-                            {isProcessing === service.id ? <Loader2 className="animate-spin" size={14} /> : service.icon}
-                            {service.id === 'youtube' ? 'Upload Cookies' : 'Authenticate'}
+                            {isProcessing === service.id ? <Loader2 className="animate-spin" size={14} /> : (service.customAction.icon || service.icon)}
+                            {service.customAction.label}
                         </button>
                     )}
                 </div>
 
-                {expandedConfig === service.id && service.renderConfig && (
+                {expandedConfig === service.id && service.configPanel && (
                   <div className="mt-2 animate-in fade-in slide-in-from-top-2">
-                    {service.renderConfig()}
+                    <service.configPanel settings={settings!} setSettings={setSettings} />
                   </div>
                 )}
 
                 <div className={clsx(
                     "mt-4 text-[10px] font-mono p-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors",
-                    service.status === 'online'
+                    statusInfo.status === 'online'
                         ? "bg-success/5 border-success/10 text-success"
                         : "bg-error/5 border-error/10 text-error/80"
                 )}>
                   <div className="flex items-center gap-2 overflow-hidden">
-                      {service.status === 'online' ? <CheckCircle2 size={12} className="shrink-0" /> : <AlertCircle size={12} className="shrink-0" />}
-                      <span className="truncate">{service.details}</span>
+                      {statusInfo.status === 'online' ? <CheckCircle2 size={12} className="shrink-0" /> : <AlertCircle size={12} className="shrink-0" />}
+                      <span className="truncate">{statusInfo.details}</span>
                   </div>
                 </div>
               </div>
