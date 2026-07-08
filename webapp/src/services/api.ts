@@ -550,7 +550,7 @@ const API = {
             formData.append("chunk", chunk);
 
             // Retry logic with exponential backoff
-            let lastError: any = null;
+            let lastError: Error | null = null;
             for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
                 try {
                     await handleResponse(api.post('admin/backup/chunk', formData, {
@@ -558,9 +558,9 @@ const API = {
                     }));
                     lastError = null;
                     break;
-                } catch (e: any) {
-                    lastError = e;
-                    console.warn(`Chunk ${i} upload failed (attempt ${attempt + 1}/${MAX_RETRIES}):`, e.message);
+                } catch (e: unknown) {
+                    lastError = e instanceof Error ? e : new Error(String(e));
+                    console.warn(`Chunk ${i} upload failed (attempt ${attempt + 1}/${MAX_RETRIES}):`, lastError.message);
                     if (attempt < MAX_RETRIES - 1) {
                         // Exponential backoff: 2s, 4s, 8s
                         await new Promise(r => setTimeout(r, 2000 * Math.pow(2, attempt)));
