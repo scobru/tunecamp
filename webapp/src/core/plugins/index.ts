@@ -1,9 +1,8 @@
 import './registry'; // Initialize registry
 
-import '../../plugins/soulseek';
-import '../../plugins/torrent';
-import '../../plugins/youtube';
-import '../../plugins/metadata';
-import '../../plugins/builtins'; // Contains Telegram, OpenRouter, Discogs, Stripe, GDrive, LastFm, ListenBrainz
+// Glob-import every plugin folder under src/plugins so white-label builds can
+// drop a provider (soulseek/torrent/youtube/...) by deleting its directory —
+// no edit needed here. Missing folders are simply absent from the glob.
+import.meta.glob('../../plugins/*/index.{ts,tsx}', { eager: true });
 
 export { pluginRegistry, type FrontendPlugin, type PluginConfigProps } from './registry';
