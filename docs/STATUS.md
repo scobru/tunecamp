@@ -20,7 +20,8 @@ An honest snapshot of how production-ready each part of TuneCamp is. Updated 202
 | Lab apps | **Experimental** | Sandboxed-iFrame browser audio tools; PostMessage bridge not yet implemented. See [LAB.md](LAB.md). |
 | Admin System panel | **New** | Live CPU/RAM/storage/task metrics for leak hunting. See [monitoring.md](monitoring.md). |
 | Telegram bot, Google Drive storage | **Beta** | Functional, less test coverage. |
-| Soulseek / BitTorrent / SC-BC stream scraping | **Opt-in, unsupported** | Disabled by default for legal reasons; enable at your own risk. |
+| SoundCloud & Bandcamp streaming | **Opt-in** | Streaming integration via SoundCloud / Bandcamp providers; enable under Admin → Integrations. |
+| Soulseek & Torrents | **Delegated to Sidecamp** | P2P downloading is fully offloaded to the Sidecamp desktop app to keep the server clean. |
 | Backup & restore | **Stable** | UI + CLI tools; see [backup-migration.md](backup-migration.md). Consider Litestream for continuous replication ([scaling.md](scaling.md)). |
 
 ## Known limits
