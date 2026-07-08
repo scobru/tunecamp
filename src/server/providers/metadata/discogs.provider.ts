@@ -9,6 +9,17 @@ export class DiscogsProvider implements TuneCampProvider, MetadataProvider {
     version = "1.0.0";
     description = "Metadata from the Discogs community database";
     
+    configSchema = [
+        {
+            key: "discogs_token",
+            label: "Discogs Personal Access Token",
+            type: "password",
+            placeholder: "Enter token from Discogs Developer Settings",
+            secret: true,
+            required: false
+        }
+    ];
+    
     private dbSettings: any;
     private client: any;
 

@@ -8,7 +8,24 @@ export class LastFmProvider implements ScrobbleProvider {
     readonly id = "lastfm";
     readonly name = "Last.fm";
     readonly version = "1.0.0";
-    readonly description = "Scrobble your plays to Last.fm";
+    readonly description = "Export scrobbles to Last.fm";
+    
+    configSchema = [
+        {
+            key: "lastfm_api_key",
+            label: "API Key",
+            type: "password",
+            secret: true,
+            required: false
+        },
+        {
+            key: "lastfm_session_key",
+            label: "Session Key",
+            type: "password",
+            secret: true,
+            required: false
+        }
+    ];
 
     private database: DatabaseService;
 

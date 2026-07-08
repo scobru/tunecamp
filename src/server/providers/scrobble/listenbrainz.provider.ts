@@ -9,6 +9,16 @@ export class ListenBrainzProvider implements ScrobbleProvider {
     readonly version = "1.0.0";
     readonly description = "Scrobble your plays to ListenBrainz (MetaBrainz)";
 
+    configSchema = [
+        {
+            key: "listenbrainz_token",
+            label: "User Token",
+            type: "password",
+            secret: true,
+            required: false
+        }
+    ];
+
     private database: DatabaseService;
 
     constructor(database: DatabaseService) {
