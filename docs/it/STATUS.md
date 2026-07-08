@@ -1,6 +1,6 @@
 # Stato del Progetto
 
-Un quadro sincero di quanto ciascuna parte di TuneCamp sia pronta per la produzione. Aggiornato al 24 Giugno 2026.
+Un quadro sincero di quanto ciascuna parte di TuneCamp sia pronta per la produzione. Aggiornato all'8 Luglio 2026.
 
 **In generale**: progetto giovane, gestito da un singolo maintainer. Solido per un singolo artista self-hosted o una piccola etichetta in grado di tollerare qualche difetto; non è ancora un sostituto immediato per una piattaforma gestita. Oltre 600 test automatizzati, nessun audit di sicurezza esterno.
 
@@ -13,6 +13,7 @@ Un quadro sincero di quanto ciascuna parte di TuneCamp sia pronta per la produzi
 | Pagamenti Stripe e codici di sblocco | **Beta** | Revisionato internamente (vedi [security-review-payments.md](./security-review-payments.md)); nessun audit esterno. Si consiglia di testare inizialmente con piccoli importi. |
 | Pagamenti on-chain (Base, NFT) | **Beta / opzionale** | Disabilitati di default (`web3Enabled`). Le assunzioni di fiducia sono documentate nella revisione della sicurezza. |
 | Federazione (ActivityPub + catalogo) | **Beta** | Segue istanze da Mastodon/Funkwhale; cataloghi dei peer memorizzati in cache con stale-while-revalidate. Possibili piccoli problemi di interoperabilità. |
+| Sidecamp (Peer Sharing) | **Beta** | Condivisione peer transitoria tramite tunnel WebSocket, importazione locale. Vedi [sidecamp.md](./sidecamp.md). |
 | Live streaming (HLS) | **Nuovo** | Migrato di recente da mesh WebRTC a HLS lato server; testato in contesti reali limitati. |
 | Radio (stazione HLS) | **Nuovo** | Stazione sempre attiva da playlist + mix dinamici per genere; loop di concatenazione FFmpeg. Vedi [radio.md](./radio.md). |
 | Server MCP | **Nuovo / opzionale** | Espone il catalogo ai client IA (ricerca, statistiche, scansione) tramite SSE, protetto da token. Vedi [mcp-setup-guide.md](./mcp-setup-guide.md). |
