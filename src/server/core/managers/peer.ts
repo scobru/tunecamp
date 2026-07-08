@@ -175,9 +175,8 @@ export function createPeerManager(db: DatabaseType): PeerManager {
 
             for (let i = 0; i < sessionIds.length; i += CHUNK_SIZE) {
                 const chunk = sessionIds.slice(i, i + CHUNK_SIZE);
-                const placeholders = chunk.map(() => "?").join(",");
 
-                const rows = db.prepare(`SELECT * FROM peer_tracks WHERE session_id IN (${placeholders})`).all(chunk) as any[];
+                const rows = db.prepare(`SELECT * FROM peer_tracks WHERE session_id IN (SELECT value FROM json_each(?))`).all(JSON.stringify(chunk)) as any[];
 
                 results.push(...rows.map(row => ({
                     id: row.id,

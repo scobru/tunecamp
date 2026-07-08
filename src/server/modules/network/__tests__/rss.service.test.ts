@@ -19,6 +19,7 @@ describe('createRssService', () => {
         mockDb = {
             upsertRemoteActor: jest.fn(),
             upsertRemoteContent: jest.fn(),
+            transaction: jest.fn((fn) => fn()),
             getFollowedActors: jest.fn().mockReturnValue([]),
             unfollowActor: jest.fn(),
         } as unknown as jest.Mocked<DatabaseService>;

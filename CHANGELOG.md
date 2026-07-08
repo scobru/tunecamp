@@ -13,6 +13,13 @@ All notable changes to this project will be documented in this file.
 - **Streaming (yt-dlp) tab no longer disappears from Content Search.** Its status check depended on a backend plugin list that Content Search doesn't have; it now falls back to the YouTube health probe.
 - Broken relative imports (`../../../` instead of `../../`) in the extracted plugin tab components, which failed the webapp build.
 
+## [2.20.2] - 2026-07-08
+
+### Fixed
+- **Private-library playback broken: `MEDIA_ELEMENT_ERROR: Format error` on every track.** PR #886 removed `?token=` extraction from the auth middleware to keep session JWTs out of request logs — but native browser consumers (`<audio>` elements, `EventSource`, plain `<a>` download links) cannot send an `Authorization` header, and the webapp authenticates exactly those URLs via `?token=`. The backend therefore saw every stream request as anonymous, `canConsumeTrack` denied private tracks with a 403 JSON body, and the audio element choked trying to decode JSON as audio. Query-token auth is now restored **only** for routes that native consumers load — `/stream`, `/download` and `/api/admin/backup/*` — while every other API route remains header-only, preserving the original log-leak fix. Payment downloads are unaffected: they keep their own short-lived `?dt=` token scheme.
+
+## [2.20.1] - 2026-07-07
+
 ### Fixed
 - **Followed peers are never auto-purged from federated discovery.** The 30-day garbage collection introduced in 2.20.0 deleted *any* long-offline row from `federated_instances`, including instances the admin explicitly follows — which silently removed their "Offline" badge from the Instances & Peers panel after a month. `prune()` now skips origins that are federation seeds or ActivityPub-followed instance actors: their offline flag persists until the admin unfollows. Gossip-discovered instances (never followed) are still purged after 30 days offline, keeping the cache from accumulating dead strangers.
 

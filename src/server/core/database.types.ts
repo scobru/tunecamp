@@ -647,6 +647,7 @@ export interface SocialManager {
     acceptPendingFollowers(artistId: number): void;
     rejectFollower(artistId: number, actorUri: string): void;
     removeFollower(artistId: number, actorUri: string): void;
+    removeAllFollowers(actorUri: string): void;
     updateFollowerUri(oldActorUri: string, newActorUri: string, newInboxUri: string, newSharedInboxUri?: string): void;
     unfollowActor(uri: string): void;
     addFollowing(artistId: number, actorUri: string, inboxUri?: string): void;

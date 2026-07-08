@@ -1118,8 +1118,7 @@ export class ActivityPubService {
         };
 
         // Get only accepted followers
-        const followers = this.db.getFollowers(artist.id);
-        const inboxes = followers.map(f => f.inbox_uri);
+        const inboxes = this.db.getFollowerInboxes(artist.id);
 
         if (inboxes.length > 0) {
             console.log(`📢 Sending release activity to ${inboxes.length} inboxes`);
@@ -1233,8 +1232,7 @@ export class ActivityPubService {
         };
 
         // Deliver to all accepted followers
-        const followers = this.db.getFollowers(artist.id);
-        const inboxes = [...new Set(followers.map(f => f.inbox_uri).filter(Boolean))];
+        const inboxes = [...new Set(this.db.getFollowerInboxes(artist.id))];
 
         if (inboxes.length > 0) {
             console.log(`📢 [AP] Broadcasting board message from ${artist.name} to ${inboxes.length} inbox(es)`);
@@ -1406,10 +1404,7 @@ export class ActivityPubService {
             to: ["https://www.w3.org/ns/activitystreams#Public"]
         };
 
-        const inboxes = new Set<string>();
-        for (const f of this.db.getFollowers(artist.id)) {
-            if (f.inbox_uri) inboxes.add(f.inbox_uri);
-        }
+        const inboxes = new Set<string>(this.db.getFollowerInboxes(artist.id));
 
         const uniqueThreadActors = [...new Set(threadActors)];
         const cachedActors = new Map<string, any>();
@@ -1533,8 +1528,7 @@ export class ActivityPubService {
             cc: [`${artistActorUrl}/followers`]
         };
 
-        const followers = this.db.getFollowers(artist.id);
-        const inboxes = [...new Set(followers.map(f => f.inbox_uri).filter(Boolean))];
+        const inboxes = [...new Set(this.db.getFollowerInboxes(artist.id))];
 
         if (inboxes.length > 0) {
             console.log(`🔄 [AP] Broadcasting actor Update for "${artist.name}" to ${inboxes.length} inbox(es) to refresh cached keys`);
