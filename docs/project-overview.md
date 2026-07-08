@@ -52,7 +52,7 @@ The project is organized as a monorepo with the following main directories:
 | Repo | Description |
 |------|-------------|
 | [tunecamp](https://github.com/scobru/tunecamp) | Main server + webapp |
-| [tunecamp-peer](https://github.com/scobru/tunecamp-peer) | Standalone CLI peer-sharing daemon |
+| [sidecamp](https://github.com/scobru/sidecamp) | Standalone Desktop App for Peer Sharing, Soulseek, and Torrents |
 | [tunecamp-4-track-recorder](https://github.com/scobru/tunecamp-4-track-recorder) | Browser-based 4-track recorder (Svelte 5 component) |
 | [tunecamp-website](https://github.com/scobru/tunecamp-website) | Landing page and community directory |
 

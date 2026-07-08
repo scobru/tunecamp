@@ -48,7 +48,6 @@ Railway volumes persist across redeploys. Your SQLite database and uploaded/scan
 
 - [Telegram bot](./telegram.md)
 - [Google Drive](./google-drive.md)
-- [Torrents](./torrents.md)
 
 ## Limits
 

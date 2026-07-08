@@ -75,7 +75,7 @@ For people running a TuneCamp instance.
 |-----|-------------|
 | [Federation](./FEDERATION.md) | ActivityPub and HTTP gossip discovery — how instances find each other |
 | [Plugins](./PLUGINS.md) | Loading custom streaming, metadata, and storage providers |
-| [Peer Sharing](./peer-sharing.md) | Built-in, reverse-tunnel WebSocket daemon for transient local music folder sharing |
+| [Sidecamp Desktop](./sidecamp.md) | Desktop application for Sidecamp, Soulseek, and Torrents |
 | [Monitoring](./monitoring.md) | `/health` endpoint, the admin System Resources panel, Sentry crash reporting, and uptime checks |
 | [Scaling](./scaling.md) | SQLite / single-process limits and mitigations |
 | [MCP Setup](./mcp-setup-guide.md) | Exposing the TuneCamp catalog to AI clients via MCP |

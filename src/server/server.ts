@@ -101,7 +101,7 @@ import { AutoTaggerService } from "./modules/catalog/autotagger.service.js";
 import { createSearchRoutes } from "./routes/network/search.js";
 import { GoogleDriveService } from "./modules/storage/google-drive.service.js";
 import { createStorageRouter } from "./routes/library/storage.js";
-import { createTorrentRoutes } from "./routes/network/torrent.js";
+// removed torrent
 import { errorHandler } from "./middleware/error-handling.js";
 
 import { MediaEngine } from "./modules/media/media-engine.js";
@@ -403,7 +403,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/admin/backup", authMiddleware.requireAdmin, createBackupRoutes(container, () => {
         process.exit(0);
     }));
-    app.use("/api/admin/torrents", authMiddleware.requireManager, express.json(), createTorrentRoutes(container));
+    // removed torrent
 
     // Health endpoint MUST be before fedify middleware to avoid blocking
     app.get("/health", (req, res) => {

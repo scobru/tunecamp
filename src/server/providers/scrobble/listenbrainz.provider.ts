@@ -1,5 +1,6 @@
 import type { ScrobbleProvider } from "../../core/provider.js";
 import type { DatabaseService } from "../../core/database.js";
+import type { ConfigField } from "../../core/provider.js";
 
 const LISTENBRAINZ_API_BASE = 'https://api.listenbrainz.org/1';
 
@@ -9,13 +10,11 @@ export class ListenBrainzProvider implements ScrobbleProvider {
     readonly version = "1.0.0";
     readonly description = "Scrobble your plays to ListenBrainz (MetaBrainz)";
 
-    configSchema = [
+    configSchema: ConfigField[] = [
         {
             key: "listenbrainz_token",
             label: "User Token",
-            type: "password",
-            secret: true,
-            required: false
+            type: "password"
         }
     ];
 
