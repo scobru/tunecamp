@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
-import { Share2, Play, Heart, Download, Unlock, ExternalLink, RefreshCw, CheckCircle2, Wallet, Copyright, Mic, ListPlus, ListMusic, MoreVertical, Flag, X } from "lucide-react";
+import { Share2, Play, Heart, Download, Unlock, ExternalLink, CheckCircle2, Wallet, Copyright, Mic, ListPlus, ListMusic, MoreVertical, Flag, X } from "lucide-react";
 
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { usePlayerStore } from "../stores/usePlayerStore";
@@ -41,6 +41,7 @@ const AlbumDetails = () => {
   const [isAlbumLiked, setIsAlbumLiked] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [activeArtworkIndex, setActiveArtworkIndex] = useState<number | null>(null);
+  const [seedingMagnet, setSeedingMagnet] = useState<string | null>(null);
 
   const canEditGenre = isAdmin || Boolean(user?.artistId && String(album?.artistId) === String(user?.artistId));
 
