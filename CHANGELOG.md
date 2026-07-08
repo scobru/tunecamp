@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.22.1] - 2026-07-08
+
+### Fixed
+- **Soulseek plugin never loaded: "Named export 'SoulseekDownloader' not found".** `andrade-soulseek-downloader`'s `package.json` `main` field points at `dist/api.js` (a single default-exported function), but the `SoulseekDownloader` class is only exported from `dist/index.js` — a mismatch between the package's declared entry point and its own type declarations. Node resolved the broken `main` at runtime and the plugin's dynamic `import()` threw on every boot, silently disabling Soulseek. `src/server/plugins/soulseek/service.ts` now imports directly from `andrade-soulseek-downloader/dist/index.js`, sidestepping the bad entry point.
+- **Torrent plugin status never reported to the admin UI.** The `/api/admin/system/health` handler set `results.soulseek` but never set `results.torrent`, so the frontend's Torrent card always read `status.torrent === undefined` and showed "Not configured" regardless of actual state — even while WebTorrent was fully connected and seeding. The health check now reports `results.torrent` (`connected`, `totalPeers`, `activeTorrents`) based on the registry's enabled state and `torrentService.getTorrentsStatus()`.
+
 ## [2.22.0] - 2026-07-08
 
 ### Added
