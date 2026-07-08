@@ -23,8 +23,8 @@ const ContentSearch: React.FC = () => {
         <div className="p-6 max-w-7xl mx-auto">
             <header className="mb-8 flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold mb-2">Content Search</h1>
-                    <p className="text-base-content/60">Find and download music via decentralised protocols.</p>
+                    <h1 className="text-3xl font-bold mb-2">Plugins</h1>
+                    <p className="text-base-content/60">Search and download music via community plugins.</p>
                 </div>
             </header>
 
