@@ -4,7 +4,7 @@ TuneCamp integra **WebTorrent** per consentire agli amministratori di scaricare 
 
 ## 1. Architettura
 
-Il sistema è gestito dal servizio `TorrentService` (`src/server/modules/integrations/torrent.service.ts`), che racchiude un'istanza del client WebTorrent.
+Il sistema è un plugin autonomo in `src/server/plugins/torrent/`, gestito dal servizio `TorrentService` (`service.ts`, con un wrapper `DownloadProvider` in `provider.ts`), che racchiude un'istanza del client WebTorrent.
 
 > **Nessuna ricerca integrata.** La funzionalità di ricerca sui tracker pubblici all'interno del server è stata rimossa: si basava sul collegamento a ThePirateBay/`apibay.org`, che è bloccato a livello di ISP in molte nazioni (es. in Italia tramite provvedimenti AGCOM). Di conseguenza, restituiva silenziosamente zero risultati. La scheda Ricerca Contenuto → WebTorrent ora rimanda a motori di ricerca torrent esterni; l'utente copia il magnet link e lo incolla nella casella "Aggiungi magnet", che viene scaricato tramite WebTorrent in modo indipendente da qualsiasi host bloccato.
 
