@@ -22,6 +22,27 @@ export function requireDownloadProvider(providerId: string) {
     };
 }
 
+/**
+ * Param-based variant of requireDownloadProvider for generic provider routes
+ * (/content/provider/:providerId/...): 404 for a provider that isn't
+ * registered at all, 403 for one the admin has not enabled.
+ */
+export function requireDownloadProviderParam(paramName = "providerId") {
+    return (req: Request, res: Response, next: NextFunction) => {
+        const providerId = req.params[paramName];
+        const registry = getDownloadService()?.getRegistry();
+        if (!providerId || !registry || !registry.get(providerId)) {
+            return res.status(404).json({ error: "Unknown download provider" });
+        }
+        if (!registry.isEnabled(providerId)) {
+            return res.status(403).json({
+                error: `The '${providerId}' integration is disabled. An administrator can enable it under Admin → Integrations. Use it only for content you own the rights to.`
+            });
+        }
+        next();
+    };
+}
+
 /** Non-middleware variant for startup logic and conditional code paths. */
 export function isDownloadProviderEnabled(providerId: string): boolean {
     return getDownloadService()?.getRegistry().isEnabled(providerId) ?? false;

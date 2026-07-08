@@ -8,6 +8,13 @@ import clsx from "clsx";
 import { pluginRegistry } from "../../core/plugins";
 import type { SiteSettings } from "../../types";
 
+interface PluginConfigField {
+    key: string;
+    label: string;
+    type: 'text' | 'password' | 'number' | 'boolean';
+    placeholder?: string;
+}
+
 interface PluginInfo {
     id: string;
     name: string;
@@ -17,7 +24,74 @@ interface PluginInfo {
     service: string;
     types: string[];
     isExternal: boolean;
+    /** Live availability probe result (external plugins only, when enabled) */
+    available?: boolean;
+    /** Declarative admin config form (external plugins) */
+    configSchema?: PluginConfigField[];
 }
+
+/** Generic config form rendered from an external plugin's configSchema. */
+const ExternalPluginConfigForm = ({ plugin, onSaved }: { plugin: PluginInfo; onSaved: () => void }) => {
+    const [values, setValues] = useState<Record<string, string>>({});
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        API.getPluginSettings(plugin.id)
+            .then(res => setValues(res.values || {}))
+            .catch(console.error)
+            .finally(() => setLoading(false));
+    }, [plugin.id]);
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await API.updatePluginSettings(plugin.id, values);
+            notify.success(`${plugin.name} settings saved.`);
+            onSaved();
+        } catch (e: any) {
+            notify.error(e, "Failed to save plugin settings");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) return <div className="mt-4 opacity-50 text-xs">Loading settings...</div>;
+
+    return (
+        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
+            {(plugin.configSchema || []).map(field => (
+                <div key={field.key} className="form-control">
+                    {field.type === 'boolean' ? (
+                        <label className="label cursor-pointer justify-start gap-3 p-0">
+                            <input
+                                type="checkbox"
+                                className="toggle toggle-primary toggle-sm"
+                                checked={values[field.key] === 'true'}
+                                onChange={e => setValues({ ...values, [field.key]: e.target.checked ? 'true' : 'false' })}
+                            />
+                            <span className="label-text text-xs">{field.label}</span>
+                        </label>
+                    ) : (
+                        <>
+                            <label className="label text-xs">{field.label}</label>
+                            <input
+                                type={field.type === 'password' ? 'password' : field.type === 'number' ? 'number' : 'text'}
+                                className="input input-sm input-bordered"
+                                placeholder={field.placeholder}
+                                value={values[field.key] || ''}
+                                onChange={e => setValues({ ...values, [field.key]: e.target.value })}
+                            />
+                        </>
+                    )}
+                </div>
+            ))}
+            <button className={clsx("btn btn-sm btn-primary gap-2", saving && "loading")} onClick={handleSave} disabled={saving}>
+                {!saving && <Save size={14} />} Save
+            </button>
+        </div>
+    );
+};
 
 export const IntegrationsPanel = () => {
   const { status, fetchStatus, isLoading: isStatusLoading } = useConfigStore();
@@ -279,19 +353,38 @@ export const IntegrationsPanel = () => {
                         </div>
                         <div className={clsx(
                           "w-2.5 h-2.5 rounded-full",
-                          plugin.enabled ? "bg-success" : "bg-base-content/20"
+                          // Live probe result when the backend reports one; plain enabled/disabled otherwise
+                          !plugin.enabled ? "bg-base-content/20"
+                            : plugin.available === false ? "bg-error shadow-error/40"
+                            : "bg-success shadow-success/40"
                         )} />
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <h4 className="font-bold text-lg flex items-center gap-2">
-                        {plugin.name}
-                        <span className="text-xs opacity-30 font-mono">v{plugin.version}</span>
+                      <h4 className="font-bold text-lg flex items-center gap-2 justify-between">
+                        <span className="flex items-center gap-2">
+                          {plugin.name}
+                          <span className="text-xs opacity-30 font-mono">v{plugin.version}</span>
+                        </span>
+                        {plugin.configSchema && plugin.configSchema.length > 0 && isRootAdmin && (
+                          <button
+                            className="btn btn-xs btn-ghost btn-circle tooltip tooltip-left"
+                            onClick={() => setExpandedConfig(expandedConfig === plugin.id ? null : plugin.id)}
+                            data-tip="Configure"
+                          >
+                            <Settings size={14} className={expandedConfig === plugin.id ? "text-primary" : ""} />
+                          </button>
+                        )}
                       </h4>
                       <p className="text-xs opacity-60 leading-relaxed line-clamp-2">
                         {plugin.description || `External ${plugin.types.join('+')} provider`}
                       </p>
                     </div>
+                    {expandedConfig === plugin.id && plugin.configSchema && (
+                      <div className="animate-in fade-in slide-in-from-top-2">
+                        <ExternalPluginConfigForm plugin={plugin} onSaved={loadPlugins} />
+                      </div>
+                    )}
                     <div className="mt-4 text-[10px] font-mono p-2.5 rounded-lg border bg-base-content/5 border-base-content/10 text-base-content/50 flex items-center gap-2">
                       <span className="opacity-60">type:</span> {plugin.types.join(' · ')}
                       <span className="ml-auto opacity-40">{plugin.id}</span>

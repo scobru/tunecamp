@@ -93,7 +93,45 @@ export default class MyYouTubeProvider {
 
 Il caricatore (loader) effettua il duck-typing sui metodi elencati sopra sotto la voce **Rilevato da** — una classe viene registrata in *ogni* registro di cui implementa i metodi richiesti (quindi un singolo plugin può fungere, ad esempio, sia da `DownloadProvider` che da `StorageProvider`). Di seguito sono riportati i contratti completi dei metodi per ciascun tipo. I plugin sono scritti in JS semplice; le firme sono mostrate in TypeScript per maggiore chiarezza, tratte da [`src/server/core/provider.ts`](../../src/server/core/provider.ts).
 
-Ogni provider contiene anche i campi base: `id`, `name`, `version`, `description?`, e gli hook opzionali `onEnable()` / `onDisable()` (vedi Hook del Ciclo di Vita sotto).
+Ogni provider contiene anche i campi base: `id`, `name`, `version`, `description?`, gli hook opzionali `onEnable()` / `onDisable()` (vedi Hook del Ciclo di Vita sotto), e gli opzionali `configSchema` + `init()` (vedi Configurazione Admin sotto).
+
+### 1. MetadataProvider
+
+**Rilevato da:** `searchRelease`.
+
+```typescript
+interface MetadataResult {
+    id: string;
+    title: string;
+    artist: string;
+    date: string;
+    year?: number;
+    genre?: string;
+    coverUrl?: string;
+    albumTitle?: string;
+    description?: string;
+    source: string;    // l'id del tuo provider
+}
+
+searchRelease(query: string): Promise<MetadataResult[]>;    // a livello di album/release
+searchRecording(query: string): Promise<MetadataResult[]>;  // a livello di traccia
+getCoverUrl(id: string): Promise<string | null>;
+searchArtist?(query: string): Promise<ArtistMetadata[]>;    // opzionale
+```
+
+Vedi l'esempio completo nella sezione [Creazione di un Plugin](#creazione-di-un-plugin) sopra.
+
+### 2. StreamingProvider
+
+**Rilevato da:** `getStreamUrl`.
+
+```typescript
+getStreamUrl(trackTitle: string, artistName: string, albumTitle?: string): Promise<string | null>;
+canHandle(sourceId: string): boolean;              // il provider può risolvere questo id esterno?
+getStreamById(id: string): Promise<string | null>;
+search?(query: string): Promise<StreamCandidate[]>;  // opzionale: candidati per la ricerca globale
+isAvailable?(): Promise<boolean>;                    // probe di salute opzionale
+```
 
 ### 3. DownloadProvider
 
@@ -271,6 +309,76 @@ async onDisable() { /* pulisci le risorse */ }
 ```
 
 Questi vengono eseguiti quando il plugin viene abilitato/disabilitato — al momento del caricamento (rispettando l'ultimo stato persistito) e ogni volta che un amministratore attiva o disattiva lo switch nel Pannello di Controllo. Un plugin disabilitato da un amministratore rimane disabilitato anche dopo i riavvii.
+
+> **Stato predefinito:** i plugin esterni senza stato persistito partono **abilitati**.
+> È diverso dai provider P2P built-in (Soulseek, Torrent), che sono disabilitati
+> di default e richiedono un opt-in esplicito dell'amministratore.
+
+## Configurazione Admin (`configSchema` + `init()`)
+
+I plugin esterni non possono includere codice frontend, quindi invece di scrivere
+un pannello impostazioni lo *dichiari*. Aggiungi un array `configSchema` e il
+pannello Integrazioni renderizza il form per te; i valori sono persistiti per
+plugin e restituiti tramite il context passato al tuo `init()` opzionale:
+
+```javascript
+// plugins/my-download.js
+export default class MyDownloadProvider {
+    id = 'my-dl'; name = 'My Downloader'; version = '1.0.0';
+
+    // Renderizzato genericamente in Admin → Integrazioni (solo root admin)
+    configSchema = [
+        { key: 'api_key',  label: 'API Key',          type: 'password' },
+        { key: 'base_url', label: 'API Base URL',     type: 'text', placeholder: 'https://api.example.com' },
+        { key: 'lossless', label: 'Preferisci lossless', type: 'boolean' }
+    ];
+
+    // Chiamato una volta al caricamento, prima di onEnable(). Le chiavi sono
+    // automaticamente namespaced per plugin (salvate come plugin_<id>_<key>),
+    // quindi non puoi collidere con le impostazioni core o con altri plugin.
+    async init(ctx) {
+        this.ctx = ctx;
+    }
+
+    async isAvailable() { return !!this.ctx?.getSetting('api_key'); }
+    async search(query) { /* usa this.ctx.getSetting('api_key') ... */ return []; }
+    async download(result) { /* ... */ return '/path/to/file.flac'; }
+}
+```
+
+Il campo `type` è uno tra `text`, `password`, `number`, `boolean`. I valori
+salvati sono sempre stringhe (`'true'`/`'false'` per i boolean). I valori sono
+salvati nel database dell'istanza e sopravvivono ai riavvii; gli amministratori
+li modificano dalla card del plugin in **Admin → Integrazioni** (icona
+ingranaggio, solo root admin).
+
+## Cosa ottengono i plugin esterni nella UI
+
+I plugin esterni sono solo backend — non possono includere componenti React. La
+webapp compensa con UI generica guidata dai contratti dei provider:
+
+- **Card in Integrazioni** — ogni plugin esterno ha una card nella sezione
+  *External Plugins* di Admin → Integrazioni, con toggle abilita/disabilita, un
+  pallino di stato live (basato sul tuo `isAvailable()`/`isConfigured()`,
+  interrogato con timeout di 3s) e un form di configurazione se dichiari
+  `configSchema`.
+- **Tab in Content Search** — ogni *`DownloadProvider` esterno abilitato*
+  ottiene un tab di ricerca generico nella pagina Content Search: campo query,
+  lista risultati (renderizzata dai campi del tuo `DownloadResult`) e pulsante
+  di download. Il file scaricato viene indicizzato automaticamente nella
+  libreria. Il tab usa le route generiche:
+  - `GET  /api/search/content/provider/:id?q=` → `provider.search(q)`
+  - `POST /api/search/content/provider/:id/download` → `provider.download(result)`
+
+  Entrambe le route sono riservate ad admin/manager e vincolate al toggle del
+  plugin (403 se disabilitato, 404 per provider sconosciuti).
+
+Solo i **plugin built-in ("white-label")** — Soulseek, Torrent, yt-dlp — hanno
+frontend dedicati compilati nel bundle (tab custom, pannelli config custom), in
+`webapp/src/plugins/*`. Quel registry è risolto a build time
+(`import.meta.glob`): è ciò che permette alle build white-label di rimuovere un
+provider cancellandone la cartella — ed è anche il motivo per cui i plugin
+esterni non possono agganciarvisi a runtime.
 
 ## Pannello di Controllo
 

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.23.0] - 2026-07-08
+
+### Added
+- **Community/external plugin support: full UI and backend plumbing.** External plugins placed in `plugins/` now get first-class treatment throughout the stack:
+  - **Generic backend routes** — `GET /api/search/content/provider/:id?q=` and `POST /api/search/content/provider/:id/download` let any enabled `DownloadProvider` plugin be searched and used without any white-label frontend code. Both routes are admin/manager-gated and blocked (403) while the plugin is disabled.
+  - **Declarative admin config (`configSchema` + `init()`)** — a plugin that declares a `configSchema` array gets a generic settings form rendered automatically in Admin → Integrations; values are persisted per-plugin with a namespaced key (`plugin_<id>_<key>`) and handed back through a `PluginSettingsContext` passed to the optional `init()` method.
+  - **Live availability probe** — `GET /api/admin/system/plugins` now calls each external plugin's `isAvailable()` or `isConfigured()` (3 s timeout) and surfaces the result as an `available` boolean; the Integrations card's status dot reflects this instead of just the enable toggle.
+  - **Generic Content Search tab** — `ContentSearch` discovers enabled external `DownloadProvider` plugins at runtime via `GET /api/plugins` and renders a generic `ExternalProviderSearchTab` for each (query box, result list with file size and bitrate, download button that auto-indexes the result into the library).
+  - **`requireDownloadProviderParam()` middleware** — new param-based gate factory that reads `:providerId` from the route, returns 404 for unknown providers and 403 for disabled ones; used by the generic content-search routes.
+  - **Docs updated** (EN + IT) — `docs/PLUGINS.md` and `docs/it/PLUGINS.md` now document all 8 provider contracts in full, the `configSchema`/`init()` system, default enabled state for external plugins, and the generic UI that external plugins receive (Integrations card, Content Search tab, admin API routes).
+
 ## [2.22.3] - 2026-07-08
 
 ### Fixed

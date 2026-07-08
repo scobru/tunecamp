@@ -3,6 +3,32 @@ import type { Stats } from "fs";
 export const USER_AGENT = "TuneCamp/1.0.0 ( contact@tunecamp.app )";
 
 /**
+ * One field of a provider's declarative admin config form.
+ * External plugins can't ship frontend code, so the Integrations panel
+ * renders these fields generically. Values are persisted as instance
+ * settings under `plugin_<providerId>_<key>` and handed back to the
+ * plugin through the context passed to its optional `init()`.
+ */
+export interface PluginConfigField {
+    /** Setting key, unique within the plugin (stored as plugin_<providerId>_<key>) */
+    key: string;
+    /** Field label shown in the admin UI */
+    label: string;
+    type: 'text' | 'password' | 'number' | 'boolean';
+    placeholder?: string;
+}
+
+/**
+ * Scoped settings access handed to external plugins via `init()`.
+ * Keys are automatically prefixed with `plugin_<providerId>_`.
+ * (Not to be confused with the built-in plugins' registration PluginContext.)
+ */
+export interface PluginSettingsContext {
+    getSetting(key: string): string | undefined;
+    setSetting(key: string, value: string): void;
+}
+
+/**
  * Base interface for all TuneCamp providers (Metadata, Scanner, Storage, etc.)
  */
 export interface TuneCampProvider {
@@ -14,6 +40,12 @@ export interface TuneCampProvider {
     version: string;
     /** Description of what this provider does */
     description?: string;
+
+    /** Declarative admin config form, rendered generically by the Integrations panel */
+    configSchema?: PluginConfigField[];
+
+    /** Called once at load time with scoped settings access (external plugins) */
+    init?(context: PluginSettingsContext): Promise<void> | void;
 
     /** Lifecycle hooks (optional) */
     onEnable?(): Promise<void>;
@@ -84,7 +116,8 @@ export class ProviderRegistry<T extends TuneCampProvider> {
             name: entry.instance.name,
             version: entry.instance.version,
             enabled: entry.enabled,
-            description: entry.instance.description
+            description: entry.instance.description,
+            configSchema: entry.instance.configSchema
         }));
     }
 }

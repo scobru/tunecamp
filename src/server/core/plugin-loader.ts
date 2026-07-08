@@ -23,6 +23,8 @@ export function getExternalProviderIds(): ReadonlySet<string> {
 /** Minimal slice of the database needed to restore plugin enabled/disabled state. */
 interface PluginStateStore {
     getPluginState(id: string): { enabled: boolean } | undefined;
+    getSetting?(key: string): string | undefined;
+    setSetting?(key: string, value: string): void;
 }
 
 /**
@@ -82,6 +84,23 @@ export async function loadPlugins(pluginsDir?: string, db?: PluginStateStore): P
             if (!instance.id || !instance.name || !instance.version) {
                 console.warn(`[PluginLoader] ⚠️ ${file}: Plugin missing required fields (id, name, version). Skipping.`);
                 continue;
+            }
+
+            // Hand the plugin scoped settings access before it registers or
+            // enables, so onEnable()/isAvailable() can read admin-saved config
+            // (the values behind its declarative configSchema). Keys are
+            // prefixed per-plugin to keep instance settings namespaced.
+            if (typeof instance.init === "function" && db?.getSetting && db?.setSetting) {
+                const prefix = `plugin_${instance.id}_`;
+                try {
+                    await instance.init({
+                        getSetting: (key: string) => db.getSetting!(prefix + key),
+                        setSetting: (key: string, value: string) => db.setSetting!(prefix + key, value)
+                    });
+                } catch (e) {
+                    console.error(`[PluginLoader] ❌ ${file}: init() failed:`, e);
+                    continue;
+                }
             }
 
             // Plugins are registered DISABLED, then reconciled below against the

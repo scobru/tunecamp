@@ -2517,11 +2517,30 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     });
 
 
+    /** All provider registries, for plugin lookup/toggle/config across types. */
+    const getAllRegistries = () => [
+        scanner.getRegistry(),
+        metadataService.getRegistry(),
+        streamingService.getRegistry(),
+        playlistService?.getRegistry(),
+        scrobbleService?.getRegistry(),
+        getDownloadService()?.getRegistry(),
+        aiService?.getRegistry()
+    ].filter(Boolean) as any[];
+
+    const findProviderInstance = (id: string): any => {
+        for (const registry of getAllRegistries()) {
+            const instance = registry.get(id);
+            if (instance) return instance;
+        }
+        return undefined;
+    };
+
     /**
      * GET /api/admin/system/plugins
      * List all registered plugins and their enabled status
      */
-    router.get("/system/plugins", (req: AuthenticatedRequest, res: any) => {
+    router.get("/system/plugins", async (req: AuthenticatedRequest, res: any) => {
         if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
             return res.status(403).json({ error: "Super Root access required" });
         }
@@ -2546,7 +2565,86 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
         }
 
-        res.json([...byId.values()]);
+        // External plugins have no per-provider health probe in /system/health,
+        // so report their live availability here (with a short timeout so one
+        // hanging plugin can't stall the whole panel). Built-ins keep using
+        // their dedicated health checks.
+        const plugins = [...byId.values()];
+        await Promise.all(plugins.map(async (p) => {
+            if (!p.isExternal || !p.enabled) return;
+            const instance = findProviderInstance(p.id);
+            const probe = instance?.isAvailable ?? instance?.isConfigured;
+            if (typeof probe !== 'function') return;
+            try {
+                p.available = await Promise.race([
+                    probe.call(instance) as Promise<boolean>,
+                    new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000))
+                ]);
+            } catch {
+                p.available = false;
+            }
+        }));
+
+        res.json(plugins);
+    });
+
+    /**
+     * GET /api/admin/system/plugins/:id/settings
+     * Current values of a plugin's declarative configSchema fields.
+     */
+    router.get("/system/plugins/:id/settings", (req: AuthenticatedRequest, res: any) => {
+        if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
+            return res.status(403).json({ error: "Super Root access required" });
+        }
+
+        const instance = findProviderInstance(req.params.id);
+        if (!instance) return res.status(404).json({ error: "Plugin not found" });
+
+        const schema = instance.configSchema;
+        if (!Array.isArray(schema) || schema.length === 0) {
+            return res.json({ values: {} });
+        }
+
+        const values: Record<string, string> = {};
+        for (const field of schema) {
+            const stored = identity.getSetting(`plugin_${req.params.id}_${field.key}`);
+            if (stored !== undefined && stored !== null) values[field.key] = stored;
+        }
+        res.json({ values });
+    });
+
+    /**
+     * PUT /api/admin/system/plugins/:id/settings
+     * Persist values for a plugin's configSchema fields. Only keys declared
+     * in the schema are accepted; everything is stored namespaced under
+     * plugin_<id>_<key> so plugins can't clobber core instance settings.
+     */
+    router.put("/system/plugins/:id/settings", (req: AuthenticatedRequest, res: any) => {
+        if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
+            return res.status(403).json({ error: "Super Root access required" });
+        }
+
+        const instance = findProviderInstance(req.params.id);
+        if (!instance) return res.status(404).json({ error: "Plugin not found" });
+
+        const schema = instance.configSchema;
+        if (!Array.isArray(schema) || schema.length === 0) {
+            return res.status(400).json({ error: "Plugin does not declare a configSchema" });
+        }
+
+        const { values } = req.body;
+        if (!values || typeof values !== 'object') {
+            return res.status(400).json({ error: "Field 'values' (object) is required" });
+        }
+
+        const allowedKeys = new Set(schema.map((f: any) => f.key));
+        let saved = 0;
+        for (const [key, value] of Object.entries(values)) {
+            if (!allowedKeys.has(key)) continue;
+            identity.setSetting(`plugin_${req.params.id}_${key}`, String(value));
+            saved++;
+        }
+        res.json({ message: `Saved ${saved} setting(s) for plugin ${req.params.id}`, saved });
     });
 
     /**
@@ -2567,18 +2665,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
         try {
             // Find plugin in all registries
-            const registries = [
-                scanner.getRegistry(),
-                metadataService.getRegistry(),
-                streamingService.getRegistry(),
-                playlistService?.getRegistry(),
-                scrobbleService?.getRegistry(),
-                getDownloadService()?.getRegistry(),
-                aiService?.getRegistry()
-            ].filter(Boolean);
-
             let found = false;
-            for (const registry of registries) {
+            for (const registry of getAllRegistries()) {
                 if (registry?.get(id)) {
                     if (enabled) {
                         await registry.enable(id);

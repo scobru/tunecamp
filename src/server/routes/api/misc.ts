@@ -6,6 +6,8 @@ import type { ServiceContainer } from "../../core/container.js";
 import { VisibilityGuardian, VisibilityProfile } from "../../common/visibility.js";
 import { create } from "xmlbuilder2";
 import { getSiteHandle } from "../../core/site-actor.js";
+import { getDownloadService } from "../../modules/catalog/download.service.js";
+import { getExternalProviderIds } from "../../core/plugin-loader.js";
 
 // Read package.json using process.cwd() so this works in both ESM and CJS (Jest)
 let pkg: { version: string } = { version: '0.0.0' };
@@ -139,11 +141,16 @@ export function createMiscRoutes(container: ServiceContainer): Router {
     });
 
     router.get("/api/plugins", authMiddleware.requireAdmin, (req, res) => {
+        const externalIds = getExternalProviderIds();
         res.json({
             metadata:    metadataService.getRegistry().getRegistryInfo(),
             scanner:     scannerService.getRegistry().getRegistryInfo(),
             streaming:   streamingService.getRegistry().getRegistryInfo(),
             playlist:    playlistService.getRegistry().getRegistryInfo(),
+            // Download providers, flagged so ContentSearch can build a generic
+            // search tab for enabled external (community) plugins.
+            download:    (getDownloadService()?.getRegistry().getRegistryInfo() ?? [])
+                             .map(p => ({ ...p, isExternal: externalIds.has(p.id) })),
         });
     });
 

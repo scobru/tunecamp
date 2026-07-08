@@ -9,7 +9,8 @@ import { streamingService as defaultStreamingService } from "../../modules/strea
 import type { MetadataService } from "../../modules/catalog/metadata.service.js";
 import type { StreamingService } from "../../modules/streaming/streaming.service.js";
 import { VisibilityGuardian, UserRole, Capability, VisibilityProfile } from "../../common/visibility.js";
-import { requireDownloadProvider } from "../../middleware/provider-gate.js";
+import { requireDownloadProvider, requireDownloadProviderParam } from "../../middleware/provider-gate.js";
+import { getDownloadService } from "../../modules/catalog/download.service.js";
 
 import type { ServiceContainer } from "../../core/container.js";
 
@@ -237,6 +238,75 @@ export function createSearchRoutes(container: ServiceContainer): Router {
         } catch (error) {
             res.status(500).json({ error: "Failed to delete download" });
         }
+    });
+
+    // Generic download-provider routes: the HTTP surface for external
+    // (community) DownloadProvider plugins, which have no hardcoded routes of
+    // their own. Same admin/manager restriction as the Soulseek endpoints;
+    // the param gate 404s unknown providers and 403s disabled ones.
+
+    /**
+     * GET /api/search/content/provider/:providerId?q=
+     * Search any registered download provider through the registry contract.
+     */
+    router.get("/content/provider/:providerId", requireDownloadProviderParam(), async (req: AuthenticatedRequest, res) => {
+        const isAdmin = req.isAdmin || (req.role && VisibilityGuardian.isAdminRole(req.role));
+        if (!isAdmin) {
+            return res.status(403).json({ error: "Access denied: Root Admin or Manager only" });
+        }
+
+        const query = req.query.q as string;
+        if (!query) return res.status(400).json({ error: "Query required" });
+
+        try {
+            const provider = getDownloadService()!.getRegistry().get(req.params.providerId)!;
+            const results = await provider.search(query);
+            res.json(results);
+        } catch (error) {
+            console.error(`❌ Provider search failed (${req.params.providerId}):`, error);
+            res.status(500).json({ error: "Provider search failed" });
+        }
+    });
+
+    /**
+     * POST /api/search/content/provider/:providerId/download
+     * Download a search result via the provider, then auto-index it into the library.
+     */
+    router.post("/content/provider/:providerId/download", requireDownloadProviderParam(), async (req: AuthenticatedRequest, res) => {
+        const isAdmin = req.isAdmin || (req.role && VisibilityGuardian.isAdminRole(req.role));
+        if (!isAdmin) {
+            return res.status(403).json({ error: "Access denied: Root Admin or Manager only" });
+        }
+
+        const { result } = req.body;
+        if (!result || !result.filename) {
+            return res.status(400).json({ error: "Valid DownloadResult with filename required" });
+        }
+        if (!req.userId) {
+            return res.status(401).json({ error: "Unauthorized: User ID missing" });
+        }
+
+        const providerId = req.params.providerId;
+        const provider = getDownloadService()!.getRegistry().get(providerId)!;
+        const userId = req.userId;
+
+        // Download in background and auto-index into the library, mirroring
+        // the Soulseek flow. The response just acknowledges the start.
+        provider.download(result).then(async (dest) => {
+            console.log(`📡 [${providerId}] download finished: ${dest}`);
+            try {
+                const settings = identity.getAllSettings();
+                const musicDir = settings.musicDir || process.env.TUNECAMP_MUSIC_DIR || "music";
+                await scanner.processAudioFile(dest, musicDir, undefined, userId);
+                console.log(`✅ [${providerId}] auto-sync completed: ${dest}`);
+            } catch (syncErr) {
+                console.error(`⚠️ [${providerId}] auto-sync failed:`, syncErr);
+            }
+        }).catch(err => {
+            console.error(`❌ [${providerId}] background download failed:`, err);
+        });
+
+        res.json({ success: true, message: "Download started — the file will be indexed into the library when it completes" });
     });
 
     /**

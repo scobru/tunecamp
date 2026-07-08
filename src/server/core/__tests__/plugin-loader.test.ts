@@ -1,4 +1,6 @@
 import path from "path";
+import os from "os";
+import fs from "fs-extra";
 import { loadPlugins, getExternalProviderIds } from "../plugin-loader.js";
 import { metadataService } from "../../modules/catalog/metadata.service.js";
 import { streamingService } from "../../modules/streaming/streaming.service.js";
@@ -44,6 +46,57 @@ describe("Plugin Loader & Demo Provider Integration Test", () => {
 
         const canHandle = (demoStreaming as any).canHandle("demo:song1");
         expect(canHandle).toBe(true);
+    });
+});
+
+describe("Plugin init() settings context", () => {
+    let tmpDir: string;
+
+    beforeAll(async () => {
+        tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "tunecamp-plugin-test-"));
+        // A metadata plugin that declares a configSchema and echoes what its
+        // init() context reads back, so the test can assert the scoping.
+        await fs.writeFile(path.join(tmpDir, "ctx-probe.mjs"), `
+export default class CtxProbe {
+    id = 'ctx-probe';
+    name = 'Context Probe';
+    version = '1.0.0';
+    configSchema = [{ key: 'api_key', label: 'API Key', type: 'password' }];
+    async init(ctx) {
+        this.seenApiKey = ctx.getSetting('api_key');
+        ctx.setSetting('touched', 'yes');
+    }
+    async searchRelease() { return []; }
+    async searchRecording() { return []; }
+    async getCoverUrl() { return null; }
+}
+`);
+    });
+
+    afterAll(async () => {
+        await fs.remove(tmpDir);
+    });
+
+    it("hands the plugin namespaced getSetting/setSetting and surfaces configSchema", async () => {
+        const store: Record<string, string> = { "plugin_ctx-probe_api_key": "k-123" };
+        const db = {
+            getPluginState: () => undefined,
+            getSetting: (k: string) => store[k],
+            setSetting: (k: string, v: string) => { store[k] = v; }
+        };
+
+        await loadPlugins(tmpDir, db);
+
+        const instance: any = metadataService.getRegistry().get("ctx-probe");
+        expect(instance).toBeDefined();
+        // init() read the admin-saved value through the prefixed key
+        expect(instance.seenApiKey).toBe("k-123");
+        // and writes are namespaced too
+        expect(store["plugin_ctx-probe_touched"]).toBe("yes");
+
+        // configSchema is exposed through the registry info (what the admin API returns)
+        const info = metadataService.getRegistry().getRegistryInfo().find(p => p.id === "ctx-probe");
+        expect(info?.configSchema).toEqual([{ key: "api_key", label: "API Key", type: "password" }]);
     });
 });
 

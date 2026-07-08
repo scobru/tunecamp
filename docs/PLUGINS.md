@@ -99,8 +99,46 @@ are plain JS; the signatures are shown in TypeScript for clarity, taken from
 [`src/server/core/provider.ts`](../src/server/core/provider.ts).
 
 Every provider also carries the base fields: `id`, `name`, `version`,
-`description?`, and optional `onEnable()` / `onDisable()` (see Lifecycle Hooks
-below).
+`description?`, optional `onEnable()` / `onDisable()` (see Lifecycle Hooks
+below), optional `configSchema` + `init()` (see Admin Configuration below).
+
+### 1. MetadataProvider
+
+**Detected by:** `searchRelease`.
+
+```typescript
+interface MetadataResult {
+    id: string;
+    title: string;
+    artist: string;
+    date: string;
+    year?: number;
+    genre?: string;
+    coverUrl?: string;
+    albumTitle?: string;
+    description?: string;
+    source: string;    // your provider id
+}
+
+searchRelease(query: string): Promise<MetadataResult[]>;    // album/release level
+searchRecording(query: string): Promise<MetadataResult[]>;  // track level
+getCoverUrl(id: string): Promise<string | null>;
+searchArtist?(query: string): Promise<ArtistMetadata[]>;    // optional
+```
+
+See the full example under [Creating a Plugin](#creating-a-plugin) above.
+
+### 2. StreamingProvider
+
+**Detected by:** `getStreamUrl`.
+
+```typescript
+getStreamUrl(trackTitle: string, artistName: string, albumTitle?: string): Promise<string | null>;
+canHandle(sourceId: string): boolean;              // can this provider resolve the external id?
+getStreamById(id: string): Promise<string | null>;
+search?(query: string): Promise<StreamCandidate[]>;  // optional: candidates for global search
+isAvailable?(): Promise<boolean>;                    // optional health probe
+```
 
 ### 3. DownloadProvider
 
@@ -280,6 +318,74 @@ async onDisable() { /* clean up */ }
 These run when the plugin is enabled/disabled — at load time (honoring the
 last persisted state) and whenever an admin flips the toggle in the Admin Panel.
 A plugin disabled by an admin stays disabled across restarts.
+
+> **Default state:** external plugins with no persisted state start **enabled**.
+> This differs from the built-in P2P providers (Soulseek, Torrent), which are
+> disabled by default and require an explicit admin opt-in.
+
+## Admin Configuration (`configSchema` + `init()`)
+
+External plugins can't ship frontend code, so instead of writing a settings
+panel you *declare* one. Add a `configSchema` array and the Integrations panel
+renders the form for you; values are persisted per-plugin and handed back
+through the context passed to your optional `init()`:
+
+```javascript
+// plugins/my-download.js
+export default class MyDownloadProvider {
+    id = 'my-dl'; name = 'My Downloader'; version = '1.0.0';
+
+    // Rendered generically in Admin → Integrations (root admin only)
+    configSchema = [
+        { key: 'api_key',  label: 'API Key',        type: 'password' },
+        { key: 'base_url', label: 'API Base URL',   type: 'text', placeholder: 'https://api.example.com' },
+        { key: 'lossless', label: 'Prefer lossless', type: 'boolean' }
+    ];
+
+    // Called once at load time, before onEnable(). Keys are automatically
+    // namespaced per plugin (stored as plugin_<id>_<key>), so you can't
+    // collide with core settings or other plugins.
+    async init(ctx) {
+        this.ctx = ctx;
+    }
+
+    async isAvailable() { return !!this.ctx?.getSetting('api_key'); }
+    async search(query) { /* use this.ctx.getSetting('api_key') ... */ return []; }
+    async download(result) { /* ... */ return '/path/to/file.flac'; }
+}
+```
+
+Field `type` is one of `text`, `password`, `number`, `boolean`. Saved values
+are always strings (`'true'`/`'false'` for booleans). The values are stored in
+the instance database and survive restarts; admins edit them from the plugin's
+card in **Admin → Integrations** (gear icon, root admin only).
+
+## What external plugins get in the UI
+
+External plugins are backend-only — they cannot ship React components. The
+webapp compensates with generic UI driven by the provider contracts:
+
+- **Integrations card** — every external plugin gets a card in the
+  *External Plugins* section of Admin → Integrations, with an enable/disable
+  toggle, a live status dot (backed by your `isAvailable()`/`isConfigured()`,
+  probed with a 3s timeout), and a config form if you declare `configSchema`.
+- **Content Search tab** — every *enabled external `DownloadProvider`* gets a
+  generic search tab in the Content Search page: query box, result list
+  (rendered from your `DownloadResult` fields), and a download button. The
+  downloaded file is automatically indexed into the library. The tab talks to
+  the generic routes:
+  - `GET  /api/search/content/provider/:id?q=` → `provider.search(q)`
+  - `POST /api/search/content/provider/:id/download` → `provider.download(result)`
+
+  Both routes are restricted to admins/managers and gated on the plugin's
+  toggle (403 while disabled, 404 for unknown providers).
+
+Only the **built-in ("white-label") plugins** — Soulseek, Torrent, yt-dlp —
+have bespoke compiled-in frontends (custom tabs, custom config panels), living
+in `webapp/src/plugins/*`. That registry is resolved at build time
+(`import.meta.glob`), which is what lets white-label builds drop a provider by
+deleting its folder — and is also why external plugins can't plug into it at
+runtime.
 
 ## Admin Panel
 

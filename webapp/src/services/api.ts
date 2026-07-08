@@ -667,6 +667,13 @@ const API = {
     // --- Admin: Plugins ---
     getPlugins: () => handleResponse(api.get<any[]>('admin/system/plugins')),
     togglePlugin: (pluginId: string, enabled: boolean) => handleResponse(api.put(`admin/system/plugins/${pluginId}/toggle`, { enabled })),
+    getPluginSettings: (pluginId: string) => handleResponse(api.get<{ values: Record<string, string> }>(`admin/system/plugins/${pluginId}/settings`)),
+    updatePluginSettings: (pluginId: string, values: Record<string, string>) => handleResponse(api.put(`admin/system/plugins/${pluginId}/settings`, { values })),
+
+    // --- External download providers (community plugins) ---
+    getPluginRegistry: () => handleResponse(api.get<{ download?: any[] }>('plugins')),
+    searchExternalProvider: (providerId: string, query: string) => handleResponse(api.get<any[]>(`search/content/provider/${encodeURIComponent(providerId)}?q=${encodeURIComponent(query)}`)),
+    downloadExternalProvider: (providerId: string, result: any) => handleResponse(api.post<{ success: boolean, message: string }>(`search/content/provider/${encodeURIComponent(providerId)}/download`, { result })),
 
     // --- Dig (crate-digging) ---
     digSearch: (q: string, source = 'bandcamp') =>

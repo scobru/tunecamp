@@ -1,11 +1,32 @@
 import React, { useState, useEffect } from 'react';
+import { Puzzle } from 'lucide-react';
 import { useConfigStore } from '../stores/useConfigStore';
 import { pluginRegistry } from '../core/plugins/registry';
+import { ExternalProviderSearchTab } from '../components/search/ExternalProviderSearchTab';
+import API from '../services/api';
 
 const ContentSearch: React.FC = () => {
     const status = useConfigStore(state => state.status);
-    const tabs = pluginRegistry.getSearchTabs(status);
-    
+    const builtInTabs = pluginRegistry.getSearchTabs(status);
+
+    // External (community) download plugins have no compiled-in frontend:
+    // give each enabled one a generic search tab driven by the registry API.
+    const [externalTabs, setExternalTabs] = useState<typeof builtInTabs>([]);
+    useEffect(() => {
+        API.getPluginRegistry().then(registry => {
+            const external = (registry.download || []).filter(p => p.isExternal && p.enabled);
+            setExternalTabs(external.map(p => ({
+                pluginId: p.id,
+                id: `external-${p.id}`,
+                label: p.name,
+                icon: <Puzzle className="mr-2" size={16} />,
+                component: () => <ExternalProviderSearchTab providerId={p.id} providerName={p.name} />
+            })));
+        }).catch(() => setExternalTabs([]));
+    }, []);
+
+    const tabs = [...builtInTabs, ...externalTabs];
+
     // Default to the first available tab if activeTab is not set or invalid
     const [activeTab, setActiveTab] = useState<string>('');
 
