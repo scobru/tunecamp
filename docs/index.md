@@ -75,7 +75,7 @@ For people running a TuneCamp instance.
 |-----|-------------|
 | [Federation](./FEDERATION.md) | ActivityPub and HTTP gossip discovery — how instances find each other |
 | [Plugins](./PLUGINS.md) | Loading custom streaming, metadata, and storage providers |
-| [Peer Sharing](./peer-sharing.md) | Built-in, reverse-tunnel WebSocket daemon for transient local music folder sharing |
+| [Sidecamp Desktop](./sidecamp.md) | Desktop application for Sidecamp, Soulseek, and Torrents |
 | [Monitoring](./monitoring.md) | `/health` endpoint, the admin System Resources panel, Sentry crash reporting, and uptime checks |
 | [Scaling](./scaling.md) | SQLite / single-process limits and mitigations |
 | [MCP Setup](./mcp-setup-guide.md) | Exposing the TuneCamp catalog to AI clients via MCP |
@@ -111,8 +111,7 @@ Optional third-party services you can connect to your instance.
 | [AI Integrations](./ai-integrations.md) | Metadata automation and recommendations via OpenRouter |
 | [Smart Contracts](./smart-contracts.md) | Solidity contracts (Factory, NFT, Checkout) on Base |
 | [Google Drive](./google-drive.md) | Cloud storage backend for media files |
-| [Soulseek](./soulseek.md) | P2P search and one-click import |
-| [Torrents](./torrents.md) | WebTorrent integration for catalog ingestion |
+| [Sidecamp](./sidecamp.md) | P2P acquisition (Soulseek, BitTorrent, yt-dlp) via the desktop companion app |
 | [Telegram Bot](./telegram.md) | Rapid file ingestion and remote management |
 
 ---

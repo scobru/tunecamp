@@ -64,15 +64,7 @@ pluginRegistry.register({
     statusCheck: (status) => ({
         status: status?.discogs?.configured ? 'online' : 'offline',
         details: status?.discogs?.configured ? "Token configured" : "Token missing"
-    }),
-    configPanel: ({ settings, setSettings }) => (
-        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
-            <div className="form-control">
-                <label className="label text-xs">Personal Access Token</label>
-                <input type="password" className="input input-sm input-bordered" value={settings?.discogs_token || ''} onChange={e => setSettings({ ...settings!, discogs_token: e.target.value })} />
-            </div>
-        </div>
-    )
+    })
 });
 
 // Stripe
@@ -132,19 +124,7 @@ pluginRegistry.register({
     statusCheck: (status) => ({
         status: status?.lastfm?.configured ? 'online' : 'offline',
         details: status?.lastfm?.configured ? "Scrobbling active" : "Not configured"
-    }),
-    configPanel: ({ settings, setSettings }) => (
-        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
-            <div className="form-control">
-                <label className="label text-xs">API Key</label>
-                <input type="password" className="input input-sm input-bordered" value={settings?.lastfm_api_key || ''} onChange={e => setSettings({ ...settings!, lastfm_api_key: e.target.value })} />
-            </div>
-            <div className="form-control">
-                <label className="label text-xs">Session Key</label>
-                <input type="password" className="input input-sm input-bordered" value={settings?.lastfm_session_key || ''} onChange={e => setSettings({ ...settings!, lastfm_session_key: e.target.value })} />
-            </div>
-        </div>
-    )
+    })
 });
 
 // ListenBrainz
@@ -156,13 +136,5 @@ pluginRegistry.register({
     statusCheck: (status) => ({
         status: status?.listenbrainz?.configured ? 'online' : 'offline',
         details: status?.listenbrainz?.configured ? "Scrobbling active" : "Not configured"
-    }),
-    configPanel: ({ settings, setSettings }) => (
-        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
-            <div className="form-control">
-                <label className="label text-xs">User Token</label>
-                <input type="password" className="input input-sm input-bordered" value={settings?.listenbrainz_token || ''} onChange={e => setSettings({ ...settings!, listenbrainz_token: e.target.value })} />
-            </div>
-        </div>
-    )
+    })
 });

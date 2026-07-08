@@ -102,5 +102,16 @@ export function resolveService<K extends keyof ServiceContainer>(
     container: ServiceContainer,
     key: K
 ): ServiceContainer[K] {
-    return ((container as any)[key] || (container.database as any)?.[key] || container.database) as ServiceContainer[K];
+    const val = (container as any)[key] ?? (container.database as any)?.[key];
+    if (val !== undefined && val !== null) {
+        return val as ServiceContainer[K];
+    }
+    
+    // Optional services should not fall back to the database itself when not present
+    const optionalKeys = ['ytdlpService', 'soulseekService', 'torrentService', 'gdriveService'];
+    if (optionalKeys.includes(key as string)) {
+        return undefined as any;
+    }
+    
+    return (container.database || container) as any;
 }

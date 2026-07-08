@@ -49,12 +49,12 @@ Il progetto è organizzato come un monorepo composto dalle seguenti cartelle pri
 
 ## Repository Correlati
 
-| Repository | Descrizione |
-|---|---|
-| [tunecamp](https://github.com/scobru/tunecamp) | Server principale + applicazione web |
-| [tunecamp-peer](https://github.com/scobru/tunecamp-peer) | Daemon CLI autonomo per la condivisione peer-to-peer |
+| Repo | Descrizione |
+|------|-------------|
+| [tunecamp](https://github.com/scobru/tunecamp) | Server principale + webapp |
+| [sidecamp](https://github.com/scobru/sidecamp) | App Desktop autonoma per Condivisione Peer, Soulseek e Torrents |
 | [tunecamp-4-track-recorder](https://github.com/scobru/tunecamp-4-track-recorder) | Registratore a 4 tracce basato su browser (componente Svelte 5) |
-| [tunecamp-website](https://github.com/scobru/tunecamp-website) | Pagina di presentazione e directory della community |
+| [tunecamp-website](https://github.com/scobru/tunecamp-website) | Landing page e directory della community |
 
 ## Documentazione Correlata
 

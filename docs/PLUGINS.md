@@ -15,7 +15,7 @@ There are 8 provider types you can implement. All are auto-detected at load time
 7.  **ScrobbleProvider** — listening history export (e.g. Last.fm, ListenBrainz). Detected by: `scrobble` + `isConfigured`.
 8.  **AIProvider** — LLM backends for metadata enrichment (e.g. Ollama, OpenAI). Detected by: `enrichMetadata` + `complete`.
 
-> **Note:** ActivityPub federation and P2P Peer Sharing are handled internally by the platform's core modules and are not exposed as external plugin types.
+> **Note:** ActivityPub federation and P2P Sidecamp are handled internally by the platform's core modules and are not exposed as external plugin types.
 
 ---
 

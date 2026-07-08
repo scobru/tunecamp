@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Globe, Activity, Play, Pause, Download } from 'lucide-react';
+import { Search, Globe, Activity, Play, Pause } from 'lucide-react';
 import API from '../../services/api';
 import { notify } from '../../utils/notify';
 import clsx from 'clsx';
@@ -58,31 +58,7 @@ export const StreamingSearchTab: React.FC = () => {
         }
     };
 
-    const handleRipStreaming = async (item: any) => {
-        setLoading(true);
-        try {
-            const trackId = `ext:${item.source}:${item.id || item.originalId}`;
-            const metadata = {
-                title: item.title,
-                artist: item.artist,
-                coverUrl: item.coverUrl || item.thumbnail,
-                duration: item.duration,
-                url: item.url
-            };
-            const starRes = await API.starTrack(trackId, metadata);
-            const dbTrackId = starRes.trackId;
 
-            if (!dbTrackId) throw new Error("Failed to create local record for track");
-
-            await API.localizeTrack(dbTrackId);
-            notify.success(`Localization started for "${item.title}". It will appear in your library soon.`);
-        } catch (err: any) {
-            console.error(`Failed to rip track: ${err.message}`);
-            notify.error(err, "Rip failed");
-        } finally {
-            setLoading(false);
-        }
-    };
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -111,7 +87,7 @@ export const StreamingSearchTab: React.FC = () => {
                             <div className="bg-base-300 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <Globe className="opacity-20" size={32} />
                             </div>
-                            <p className="opacity-40 font-medium">Search providers to localize tracks...</p>
+                            <p className="opacity-40 font-medium">Search providers to preview streams...</p>
                         </div>
                     )}
 
@@ -149,13 +125,6 @@ export const StreamingSearchTab: React.FC = () => {
                                             : <Play size={16} className="ml-0.5" />
                                         }
                                     </button>
-                                    <button 
-                                        onClick={() => handleRipStreaming(res)}
-                                        className="btn btn-primary btn-sm gap-2"
-                                        disabled={loading}
-                                    >
-                                        <Download size={16} /> Rip
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -166,10 +135,10 @@ export const StreamingSearchTab: React.FC = () => {
             <div className="space-y-6">
                 <div className="card bg-primary/5 border border-primary/20 p-5">
                     <h3 className="text-sm font-bold text-primary mb-2 flex items-center gap-2">
-                        <Download size={16} /> Track Localization
+                        <Globe size={16} /> Stream Preview
                     </h3>
                     <p className="text-xs opacity-70 leading-relaxed">
-                        Use this tab to search for tracks on streaming providers and "localize" them. This will download the audio and add it to your permanent library (Santuario).
+                        Use this tab to search for tracks on streaming providers and preview them directly in the audio player. Ripping tracks is no longer supported on TuneCamp; please use Sidecamp instead.
                     </p>
                 </div>
             </div>

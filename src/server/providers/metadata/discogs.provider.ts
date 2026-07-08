@@ -3,11 +3,25 @@ import { TuneCampProvider, MetadataProvider, MetadataMatch, USER_AGENT, ArtistMe
 import pkg from "disconnect";
 const { Client: DiscogsClient } = pkg;
 
+import type { ConfigField } from "../../core/provider.js";
+
 export class DiscogsProvider implements TuneCampProvider, MetadataProvider {
     id = "discogs";
     name = "Discogs";
     version = "1.0.0";
-    description = "Metadata from the Discogs community database";
+    description = "Pulls high-quality release data and genres from the Discogs database";
+    pluginUrl = "https://discogs.com";
+    icon = "💿";
+    type = "metadata" as const;
+    
+    configSchema: ConfigField[] = [
+        {
+            key: "discogs_token",
+            label: "Discogs Personal Access Token",
+            type: "password",
+            placeholder: "Enter your personal access token..."
+        }
+    ];
     
     private dbSettings: any;
     private client: any;

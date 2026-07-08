@@ -4,6 +4,33 @@ import ContentSearch from './ContentSearch'
 import { useConfigStore } from '../stores/useConfigStore'
 import { MemoryRouter } from 'react-router-dom'
 import '../core/plugins' // register the built-in frontend plugins
+import { pluginRegistry } from '../core/plugins/registry'
+
+// Register mock soulseek plugin for testing since it has been moved to sidecamp/external
+pluginRegistry.register({
+  id: 'soulseek',
+  name: 'Soulseek',
+  icon: null,
+  description: 'Mock Soulseek plugin for testing',
+  statusCheck: (status) => ({
+    status: status?.soulseek?.connected ? 'online' : 'offline',
+    details: status?.soulseek?.connected ? 'Connected' : 'Disconnected',
+  }),
+  searchTabs: [
+    {
+      id: 'soulseek',
+      label: 'Soulseek',
+      icon: null,
+      component: () => null,
+    },
+    {
+      id: 'transfers',
+      label: 'Transfers',
+      icon: null,
+      component: () => null,
+    },
+  ],
+})
 
 // Auth/role gating moved out of the component: /search/content is wrapped in
 // ManagerOrRootGuard at the route level (see App.tsx). The component itself

@@ -15,7 +15,7 @@ Ci sono 8 tipi di provider che puoi implementare. Tutti vengono rilevati automat
 7.  **ScrobbleProvider** — esportazione della cronologia di ascolto (es. Last.fm, ListenBrainz). Rilevato da: `scrobble` + `isConfigured`.
 8.  **AIProvider** — backend LLM per l'arricchimento dei metadati (es. Ollama, OpenAI). Rilevato da: `enrichMetadata` + `complete`.
 
-> **Nota:** La federazione ActivityPub e il Peer Sharing P2P sono gestiti internamente dai moduli principali della piattaforma e non sono esposti come tipi di plugin esterni.
+> **Nota:** La federazione ActivityPub e il Sidecamp P2P sono gestiti internamente dai moduli principali della piattaforma e non sono esposti come tipi di plugin esterni.
 
 ---
 

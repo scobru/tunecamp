@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
-import { Share2, Play, Heart, Download, Unlock, ExternalLink, RefreshCw, CheckCircle2, Wallet, Copyright, Mic, ListPlus, ListMusic, MoreVertical, Flag, X } from "lucide-react";
+import { Share2, Play, Heart, Download, Unlock, ExternalLink, CheckCircle2, Wallet, Copyright, Mic, ListPlus, ListMusic, MoreVertical, Flag, X } from "lucide-react";
 
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { usePlayerStore } from "../stores/usePlayerStore";
@@ -39,10 +39,9 @@ const AlbumDetails = () => {
   const { ownedNFTs } = useOwnedNFTs(activeAddress);
   const [likedTrackIds, setLikedTrackIds] = useState<Set<string>>(new Set());
   const [isAlbumLiked, setIsAlbumLiked] = useState(false);
-  const [seedingMagnet, setSeedingMagnet] = useState<string | null>(null);
-  const [isSeeding, setIsSeeding] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [activeArtworkIndex, setActiveArtworkIndex] = useState<number | null>(null);
+  const [seedingMagnet, setSeedingMagnet] = useState<string | null>(null);
 
   const canEditGenre = isAdmin || Boolean(user?.artistId && String(album?.artistId) === String(user?.artistId));
 
@@ -187,31 +186,7 @@ const AlbumDetails = () => {
     }
   };
 
-  const handleShareAsTorrent = async () => {
-      if (!album || !album.tracks) return;
-      
-      setIsSeeding(true);
-      try {
-          // Collect file paths from tracks
-          const filePaths = album.tracks
-            .map((t: any) => t.file_path || t.filePath)
-            .filter(Boolean);
-            
-          if (filePaths.length === 0) {
-              notify.error("No local files found for this album.");
-              return;
-          }
 
-          const res = await API.seedTorrent(filePaths, album.title, album.album_artist || album.albumArtist || album.artistName || album.artist_name);
-          setSeedingMagnet(res.magnetUri);
-          notify.success("Torrent seeding started!");
-      } catch (err: any) {
-          console.error("Seeding failed:", err);
-          notify.error(err, "Failed to start seeding");
-      } finally {
-          setIsSeeding(false);
-      }
-  };
 
 
 
@@ -442,15 +417,7 @@ const AlbumDetails = () => {
                 <Flag size={24} className="opacity-60 text-warning" />
               </button>
 
-              {isAdmin && (
-                <button
-                  className={clsx("btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 transition-all", isSeeding && "loading")}
-                  onClick={handleShareAsTorrent}
-                  title="Share as Torrent (Seed)"
-                >
-                  <RefreshCw size={24} className={clsx("opacity-60", seedingMagnet && "text-primary opacity-100")} />
-                </button>
-              )}
+
 
 
               {isExternalShowcase && externalBuyUrl && (

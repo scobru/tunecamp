@@ -79,10 +79,7 @@ Without `BREVO_API_KEY`/`BREVO_SENDER_EMAIL` configured, `/forgot-password` stil
 
 ## 6. Peer-to-Peer (P2P)
 
-### Soulseek (Search & Download)
-1. No API Key is needed, but a standard Soulseek account is required.
-2. Download the original Soulseek client or register through a compatible client.
-3. Use your `Username` and `Password` in the TuneCamp settings.
+P2P content acquisition (Soulseek, BitTorrent, yt-dlp) is handled by the [Sidecamp desktop app](./sidecamp.md), a standalone companion that runs on your local machine and syncs downloads to your TuneCamp instance. See [Sidecamp](./sidecamp.md) for setup instructions.
 
 ---
 

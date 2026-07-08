@@ -1,6 +1,6 @@
-# Condivisione Peer-to-Peer (Peer Sharing)
+# Condivisione Peer-to-Peer (Sidecamp)
 
-TuneCamp Peer Sharing è una funzionalità integrata, ispirata al modello P2P, che consente agli utenti abilitati di condividere le proprie cartelle musicali locali con un'istanza TuneCamp in tempo reale. I brani condivisi sono temporanei e vengono serviti su richiesta tramite un tunnel WebSocket inverso, superando sistemi NAT e firewall senza richiedere il port-forwarding manuale o la configurazione del router.
+TuneCamp Sidecamp è una funzionalità integrata, ispirata al modello P2P, che consente agli utenti abilitati di condividere le proprie cartelle musicali locali con un'istanza TuneCamp in tempo reale. I brani condivisi sono temporanei e vengono serviti su richiesta tramite un tunnel WebSocket inverso, superando sistemi NAT e firewall senza richiedere il port-forwarding manuale o la configurazione del router.
 
 ---
 
@@ -37,7 +37,7 @@ sequenceDiagram
 Gli amministratori possono controllare la condivisione peer tramite il **Pannello di Amministrazione**:
 
 1. **Controlli Globali** (nella sezione **Settings → Customize Modules**):
-   - **Enable Peer Sharing**: Abilita o disabilita la funzionalità a livello globale.
+   - **Enable Sidecamp**: Abilita o disabilita la funzionalità a livello globale.
    - **Allow Peer Downloads**: Consente agli ascoltatori di scaricare i brani condivisi (se disabilitato, è consentito solo lo streaming).
 2. **Permessi Utente** (nella sezione **Users**):
    - Abilita o disabilita la **Condivisione Peer** per i singoli utenti. Solo gli utenti con questo flag attivo possono stabilire una connessione WebSocket usando il daemon.
@@ -55,7 +55,7 @@ L'importazione richiede che i download siano consentiti (a livello globale, per 
 
 Quando l'opzione **Federate Peer Tracks** è attiva (Settings → Customize Modules, disattivata di default), un'istanza pubblicizza le proprie tracce peer **attualmente condivise** alle altre istanze TuneCamp federate, insieme alle release pubblicate. Questo riusa il percorso di federazione esistente:
 
-- Le tracce vengono aggiunte al payload `GET /api/catalog/full` dell'istanza in un array `peerTracks` (solo quando sono attive sia **Enable Peer Sharing** sia **Federate Peer Tracks**).
+- Le tracce vengono aggiunte al payload `GET /api/catalog/full` dell'istanza in un array `peerTracks` (solo quando sono attive sia **Enable Sidecamp** sia **Federate Peer Tracks**).
 - Le istanze remote le acquisiscono tramite la stessa cache del catalogo usata per le release e le mostrano nella pagina **Network** (`type: "peer"`).
 - La riproduzione passa da un endpoint **pubblico** dedicato, `GET /api/peers/:sessionId/tracks/:trackId/federated-stream`, raggiungibile senza un account locale ma **solo** finché la federazione peer è abilitata.
 - Nella pagina Network le tracce peer federate hanno un badge distinto **PEER** per distinguerle dalle release permanenti.
@@ -66,55 +66,25 @@ Queste voci sono effimere: esistono solo finché il daemon peer è connesso. Poi
 
 ---
 
-## Esecuzione del Daemon CLI
+## Esecuzione di Sidecamp
 
-Il client per la condivisione peer è un **pacchetto autonomo** ospitato in un repository separato: [`tunecamp-peer`](https://github.com/scobru/tunecamp-peer).
+L'applicazione Sidecamp è un **pacchetto desktop autonomo** ospitato in un repository separato: [`sidecamp`](https://github.com/scobru/sidecamp).
 
 ### Installazione
 
+Scarica l'ultimo installer `.exe` dal repository o compilalo dai sorgenti:
+
 ```bash
-git clone https://github.com/scobru/tunecamp-peer.git
-cd tunecamp-peer
+git clone https://github.com/scobru/sidecamp.git
+cd sidecamp
 npm install
-```
-
-### Prerequisiti
-
-- Node.js (v18 o superiore)
-- Un account TuneCamp con i permessi di condivisione peer abilitati dall'amministratore dell'istanza
-
-### Configurazione
-
-**Opzione A — file `.env` (consigliata)**:
-
-```ini
-TUNECAMP_SERVER=https://tuo-dominio-tunecamp.com
-TUNECAMP_TOKEN=IL_TUO_TOKEN_JWT_O_TOKEN_SVILUPPATORE
-TUNECAMP_SHARE=/percorso/della/mia/musica,/altro/percorso
-TUNECAMP_ALLOW_DOWNLOADS=true
-```
-
-**Opzione B — argomenti da riga di comando**:
-
-```bash
-node peer-daemon.js --server <url> --token <token> --share <cartella1> <cartella2>
+npm run build
 ```
 
 ### Utilizzo
 
-```bash
-# Scansiona e verifica i metadati senza connetterti al server
-npm run scan
+1. Apri Sidecamp sul tuo computer.
+2. Nella scheda **Impostazioni**, inserisci l'URL del tuo Host TuneCamp (es. `https://tuo-dominio-tunecamp.com`) e il tuo token di autenticazione (JWT).
+3. Nella **Dashboard di Condivisione**, seleziona le cartelle locali che desideri condividere.
+4. Attiva le connessioni a Soulseek o Torrents. I brani scaricati verranno automaticamente indicizzati dal daemon e condivisi nuovamente col tuo server.
 
-# Avvia la condivisione
-npm start
-```
-
-### Opzioni da Riga di Comando
-
-- `-s, --server <url>`: URL dell'istanza TuneCamp di destinazione (di default `http://localhost:1970`).
-- `-t, --token <jwt>`: Il tuo token sviluppatore o il JWT di sessione.
-- `-f, --folder, --share <percorsi...>`: Una o più cartelle locali da scansionare e condividere.
-- `--no-allow-downloads`: Limita la condivisione al solo streaming (disabilita il download).
-- `--scan-only`: Scansiona ed elenca i metadati delle tracce locali, quindi esce.
-- `-h, --help`: Mostra la guida all'uso.

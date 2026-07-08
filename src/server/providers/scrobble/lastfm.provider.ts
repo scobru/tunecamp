@@ -4,11 +4,26 @@ import type { DatabaseService } from "../../core/database.js";
 
 const LASTFM_API_URL = 'https://ws.audioscrobbler.com/2.0/';
 
+import type { ConfigField } from "../../core/provider.js";
+
 export class LastFmProvider implements ScrobbleProvider {
     readonly id = "lastfm";
     readonly name = "Last.fm";
     readonly version = "1.0.0";
-    readonly description = "Scrobble your plays to Last.fm";
+    readonly description = "Export scrobbles to Last.fm";
+    
+    configSchema: ConfigField[] = [
+        {
+            key: "lastfm_api_key",
+            label: "API Key",
+            type: "password"
+        },
+        {
+            key: "lastfm_api_secret",
+            label: "API Secret",
+            type: "password"
+        }
+    ];
 
     private database: DatabaseService;
 

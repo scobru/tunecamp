@@ -117,7 +117,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
   const handleBatchLocalize = async () => {
     const toLocalize = Array.from(selectedIds).filter(id => {
       const t = tracks.find(track => track.id === id);
-      return t && t.service && t.service !== 'local' && (!t.path?.startsWith('localized/') && !t.path?.startsWith('cloud_imports/'));
+      return t && t.service && t.service !== 'local' && t.path?.startsWith('gdrive://') && !t.path?.startsWith('cloud_imports/');
     });
 
     if (toLocalize.length === 0) {
@@ -137,7 +137,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
         await Promise.all(
           chunk.map(async (id) => {
             try {
-              await API.localizeTrack(id);
+              await API.localizeGDriveTrack(id);
               success++;
             } catch {
               failed++;
@@ -156,7 +156,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
   const hasLocalizableSelected = useMemo(() => {
     return Array.from(selectedIds).some(id => {
       const t = tracks.find(track => track.id === id);
-      return t && t.service && t.service !== 'local' && (!t.path?.startsWith('localized/') && !t.path?.startsWith('cloud_imports/'));
+      return t && t.service && t.service !== 'local' && t.path?.startsWith('gdrive://') && !t.path?.startsWith('cloud_imports/');
     });
   }, [selectedIds, tracks]);
 
@@ -366,12 +366,12 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
                 >
                   Download
                 </a>
-                {t.service && t.service !== 'local' && (!t.path?.startsWith('localized/') && !t.path?.startsWith('cloud_imports/')) && (
+                {t.service && t.service !== 'local' && t.path?.startsWith('gdrive://') && !t.path?.startsWith('cloud_imports/') && (
                   <button
                     className="btn btn-xs btn-ghost text-warning tooltip tooltip-top"
-                    onClick={() => handleLocalize(t.id, t.title, t.path?.startsWith('gdrive://'))}
+                    onClick={() => handleLocalize(t.id, t.title, true)}
                     disabled={localizing === t.id}
-                    data-tip={t.path?.startsWith('gdrive://') ? "Download from GDrive and save to server" : "Download and localize to server library"}
+                    data-tip="Download from GDrive and save to server"
                   >
                     {localizing === t.id ? "..." : "Localize"}
                   </button>

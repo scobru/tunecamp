@@ -207,7 +207,7 @@ export const IntegrationsPanel = () => {
                           {service.name}
                           {plugin && <span className="text-xs opacity-30 font-mono">v{plugin.version}</span>}
                         </span>
-                        {service.configPanel && isRootAdmin && (
+                        {(service.configPanel || (plugin?.configSchema && plugin.configSchema.length > 0)) && isRootAdmin && (
                           <button
                             className="btn btn-xs btn-ghost btn-circle tooltip tooltip-left"
                             onClick={() => setExpandedConfig(expandedConfig === service.id ? null : service.id)}
@@ -234,6 +234,34 @@ export const IntegrationsPanel = () => {
                 {expandedConfig === service.id && service.configPanel && (
                   <div className="mt-2 animate-in fade-in slide-in-from-top-2">
                     <service.configPanel settings={settings!} setSettings={setSettings} />
+                  </div>
+                )}
+                
+                {expandedConfig === service.id && !service.configPanel && plugin?.configSchema && plugin.configSchema.length > 0 && (
+                  <div className="mt-3 space-y-2 animate-in fade-in slide-in-from-top-2">
+                    {plugin.configSchema.map(field => (
+                      <div key={field.key} className="form-control">
+                        <label className="label py-1">
+                          <span className="label-text text-xs">{field.label}</span>
+                        </label>
+                        {field.type === 'boolean' ? (
+                          <input
+                            type="checkbox"
+                            className="toggle toggle-sm toggle-primary"
+                            checked={settings?.[field.key as keyof typeof settings] === 'true' || settings?.[field.key as keyof typeof settings] === true}
+                            onChange={e => setSettings({ ...settings!, [field.key]: e.target.checked })}
+                          />
+                        ) : (
+                          <input
+                            type={field.type === 'password' ? 'password' : 'text'}
+                            className="input input-sm input-bordered w-full"
+                            placeholder={field.placeholder || ''}
+                            value={(settings?.[field.key as keyof typeof settings] as string) || ''}
+                            onChange={e => setSettings({ ...settings!, [field.key]: e.target.value })}
+                          />
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
 
