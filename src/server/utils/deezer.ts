@@ -36,5 +36,10 @@ export const extractDeezerPlaylistId = (url: string): string => {
     const parsed = new URL(url);
     const segments = parsed.pathname.split('/').filter(Boolean);
     const playlistIndex = segments.indexOf('playlist');
+
+    if (playlistIndex === -1 || playlistIndex === segments.length - 1) {
+        throw new Error('Playlist ID not found in URL');
+    }
+
     return segments[playlistIndex + 1];
 };
