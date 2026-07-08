@@ -110,6 +110,12 @@ export interface Release {
     rating?: number;
 }
 
+export interface ActivityPubPostParams {
+    instance?: string;
+    token?: string;
+    [key: string]: unknown;
+}
+
 export interface Artist {
     id: string | number;
     name: string;
@@ -118,7 +124,7 @@ export interface Artist {
     bio?: string;
     coverImage?: string;
     bannerImage?: string | null;
-    postParams?: unknown; // ActivityPub actor
+    postParams?: ActivityPubPostParams | null; // ActivityPub actor
     albums?: Album[];
     releases?: Release[];
     tracks?: Track[];
