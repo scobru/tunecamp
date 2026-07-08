@@ -30,6 +30,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     const apService = container.apService;
     const telegramBotService = container.telegramBotService;
     const soulseekService = container.soulseekService;
+    const torrentService = container.torrentService;
     const metadataService = container.metadataService;
     const streamingService = container.streamingService;
     const gdriveService = container.gdriveService;
@@ -2176,6 +2177,19 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             results.soulseek = soulseekService ? await soulseekService.checkStatus() : { connected: false, error: "Plugin not loaded" };
         } catch (e) {
             results.soulseek = { connected: false, error: "Service error" };
+        }
+
+        // 1b. Torrent
+        try {
+            if (torrentService && getDownloadService()?.getRegistry().isEnabled("torrent")) {
+                const torrents = torrentService.getTorrentsStatus();
+                const totalPeers = torrents.reduce((sum: number, t: any) => sum + (t.numPeers || 0), 0);
+                results.torrent = { connected: true, totalPeers, activeTorrents: torrents.length };
+            } else {
+                results.torrent = { connected: false, error: torrentService ? "Disabled" : "Plugin not loaded" };
+            }
+        } catch (e) {
+            results.torrent = { connected: false, error: "Service error" };
         }
 
         // 2. iTunes
