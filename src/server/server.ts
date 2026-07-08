@@ -151,14 +151,23 @@ export async function startServer(config: ServerConfig): Promise<void> {
         if (isMutation || isMutationPreflight) {
             strictCors(req, res, next);
         } else {
-            publicCors(req, res, next);
+            publicCors(req, res, (err?: any) => {
+                if (err) return next(err);
+                res.locals.skipStrictCors = true;
+                next();
+            });
         }
     };
 
     app.use('/api/community', publicFederationCors);
     app.use('/api/catalog', publicFederationCors);
 
-    app.use(strictCors);
+    app.use((req, res, next) => {
+        if (res.locals.skipStrictCors) {
+            return next();
+        }
+        strictCors(req, res, next);
+    });
 
     console.log(`📦 Initializing database: ${config.dbPath}`);
     const database = createDatabase(config.dbPath);
