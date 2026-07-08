@@ -107,7 +107,7 @@ const mockLibrary = {
     getReleasesByTrackId: jest.fn().mockReturnValue([]),
 } as any;
 
-const mockLocalizationService = {
+const mockYtdlpService = {
     localizeTrack: jest.fn().mockResolvedValue({ id: 4242 } as never),
 } as any;
 
@@ -136,7 +136,7 @@ describe('Tracks Routes', () => {
             publishingService: mockPublishingService,
             catalogService: mockCatalogService,
             library: mockLibrary,
-            localizationService: mockLocalizationService,
+            ytdlpService: mockYtdlpService,
             musicDir: '/tmp/music'
         } as any);
         app.use('/tracks', router);
@@ -157,7 +157,7 @@ describe('Tracks Routes', () => {
             expect(res.status).toBe(201);
             // Response is sent before localization; give the fire-and-forget a tick.
             await new Promise(r => setImmediate(r));
-            expect(mockLocalizationService.localizeTrack).toHaveBeenCalledWith(4242);
+            expect(mockYtdlpService.localizeTrack).toHaveBeenCalledWith(4242);
         });
 
         test('localize is ignored without an opt-in flag', async () => {
@@ -167,7 +167,7 @@ describe('Tracks Routes', () => {
 
             expect(res.status).toBe(201);
             await new Promise(r => setImmediate(r));
-            expect(mockLocalizationService.localizeTrack).not.toHaveBeenCalled();
+            expect(mockYtdlpService.localizeTrack).not.toHaveBeenCalled();
         });
 
         test('localize is ignored for a non-rippable service', async () => {
@@ -177,7 +177,7 @@ describe('Tracks Routes', () => {
 
             expect(res.status).toBe(201);
             await new Promise(r => setImmediate(r));
-            expect(mockLocalizationService.localizeTrack).not.toHaveBeenCalled();
+            expect(mockYtdlpService.localizeTrack).not.toHaveBeenCalled();
         });
     });
 

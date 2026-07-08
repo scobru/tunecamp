@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Download, AlertCircle, Activity } from 'lucide-react';
-import API from '../../../services/api';
-import { notify } from '../../../utils/notify';
+import API from '../../services/api';
+import { notify } from '../../utils/notify';
 
 const getPathSegments = (pathStr: string) => {
     if (!pathStr) return { filename: 'Unknown File', folder: '' };

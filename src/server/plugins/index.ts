@@ -1,6 +1,7 @@
 import type { DatabaseService } from '../core/database.types.js';
 import type { Scanner } from '../modules/catalog/scanner.js';
 import type { DownloadService } from '../modules/catalog/download.service.js';
+import { syncRegistryWithDatabase } from '../core/provider.js';
 
 export interface PluginContext {
     database: DatabaseService;
@@ -26,13 +27,7 @@ export async function registerBuiltInDownloadProviders(downloadService: Download
             
             soulseekService = new SoulseekService(context.config.musicDir, context.config.downloadDir || path.default.join(context.config.musicDir, "downloads"));
             downloadService.getRegistry().register(new SoulseekDownloadProvider(soulseekService), false);
-            
-            if (downloadService.getRegistry().isEnabled("soulseek")) {
-                const slskUser = context.database.getSetting("soulseek_username");
-                const slskPass = context.database.getSetting("soulseek_password");
-                soulseekService.connect(slskUser, slskPass).catch((err: any) => console.error("Soulseek initial connection failed:", err));
-            }
-            
+
             cleanups.push(() => soulseekService.disconnect());
             console.log("✅ Soulseek backend plugin registered");
         } catch (e: any) {
@@ -71,6 +66,23 @@ export async function registerBuiltInDownloadProviders(downloadService: Download
     } catch (e) {
         console.error("Failed to load backend plugins", e);
     }
-    
+
+    // Re-apply the enabled/disabled state persisted by admins. This must run
+    // AFTER the providers are registered above — initDownloadService() creates
+    // an empty registry, so a sync at construction time would find nothing.
+    try {
+        await syncRegistryWithDatabase(downloadService.getRegistry(), context.database);
+    } catch (e) {
+        console.error("Failed to sync download registry:", e);
+    }
+
+    // Soulseek only auto-connects when the admin has opted in via the plugin
+    // toggle (state restored by the sync above).
+    if (soulseekService && downloadService.getRegistry().isEnabled("soulseek")) {
+        const slskUser = context.database.getSetting("soulseek_username");
+        const slskPass = context.database.getSetting("soulseek_password");
+        soulseekService.connect(slskUser, slskPass).catch((err: any) => console.error("Soulseek initial connection failed:", err));
+    }
+
     return { cleanups, soulseekService, torrentService, ytdlpService };
 }

@@ -7,8 +7,12 @@ export const youtubePlugin: FrontendPlugin = {
     name: 'YouTube & Streaming',
     icon: <Youtube className="text-error" />,
     description: 'Search and rip audio from YouTube, SoundCloud, Bandcamp, and other platforms using yt-dlp',
-    statusCheck: (_, plugins) => {
-        const enabled = plugins.find(p => p.id === 'youtube')?.enabled;
+    statusCheck: (status, plugins) => {
+        // ContentSearch calls statusCheck without the backend plugins list
+        // (it only has the health status); fall back to the youtube health
+        // probe there so the Streaming tab doesn't silently disappear.
+        const entry = plugins.find(p => p.id === 'youtube');
+        const enabled = entry ? !!entry.enabled : status?.youtube?.online !== false;
         return {
             status: enabled ? 'online' : 'offline',
             details: enabled ? "Enabled — ready to download streams" : "Disabled"

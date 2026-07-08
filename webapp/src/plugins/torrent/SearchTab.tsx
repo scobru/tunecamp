@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Download, ExternalLink, Globe, RefreshCw, Activity, Trash2, Copy } from 'lucide-react';
-import API from '../../../services/api';
-import { notify } from '../../../utils/notify';
+import API from '../../services/api';
+import { notify } from '../../utils/notify';
 import { confirm } from '@/utils/confirm';
 import clsx from 'clsx';
 

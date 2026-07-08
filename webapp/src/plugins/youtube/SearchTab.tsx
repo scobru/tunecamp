@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Search, Globe, Activity, Play, Pause, Download } from 'lucide-react';
-import API from '../../../services/api';
-import { notify } from '../../../utils/notify';
+import API from '../../services/api';
+import { notify } from '../../utils/notify';
 import clsx from 'clsx';
-import { usePlayerStore } from '../../../stores/usePlayerStore';
-import type { Track } from '../../../types';
+import { usePlayerStore } from '../../stores/usePlayerStore';
+import type { Track } from '../../types';
 
 export const StreamingSearchTab: React.FC = () => {
     const [query, setQuery] = useState('');

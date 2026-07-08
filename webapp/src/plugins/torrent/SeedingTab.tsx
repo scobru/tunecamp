@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Copy, Trash2 } from 'lucide-react';
-import API from '../../../services/api';
-import { notify } from '../../../utils/notify';
+import API from '../../services/api';
+import { notify } from '../../utils/notify';
 import { confirm } from '@/utils/confirm';
 
 export const TorrentSeedingTab: React.FC = () => {

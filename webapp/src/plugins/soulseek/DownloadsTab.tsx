@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
-import API from '../../../services/api';
+import API from '../../services/api';
 import { confirm } from '@/utils/confirm';
 
 const getPathSegments = (pathStr: string) => {
