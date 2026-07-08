@@ -35,7 +35,7 @@ describe('ContentSearch', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByText('Content Search')).toBeInTheDocument()
+    expect(screen.getByText('Plugins')).toBeInTheDocument()
     expect(screen.getByText('Soulseek')).toBeInTheDocument()
     expect(screen.getByText('Transfers')).toBeInTheDocument()
   })

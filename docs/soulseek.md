@@ -4,7 +4,7 @@ TuneCamp integrates with the **Soulseek** P2P network to allow administrators to
 
 ## 1. Architecture
 
-The Soulseek integration is implemented in `src/server/modules/integrations/soulseek.ts` (with a `DownloadProvider` wrapper at `src/server/providers/download/soulseek.provider.ts`). It uses a custom client to connect to the Soulseek server and handle peer-to-peer file transfers.
+The Soulseek integration is a self-contained plugin at `src/server/plugins/soulseek/` (`service.ts` for the client, `provider.ts` for the `DownloadProvider` wrapper). It uses a custom client to connect to the Soulseek server and handle peer-to-peer file transfers.
 
 > **Opt-in:** Soulseek is disabled by default for legal reasons and must be enabled
 > explicitly via the plugin toggles in the Admin panel.

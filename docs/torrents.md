@@ -4,7 +4,7 @@ TuneCamp integrates **WebTorrent** to allow administrators to download music via
 
 ## 1. Architecture
 
-The system is managed by the `TorrentService` (`src/server/modules/integrations/torrent.service.ts`), which wraps a WebTorrent client instance.
+The system is a self-contained plugin at `src/server/plugins/torrent/`, managed by `TorrentService` (`service.ts`, with a `DownloadProvider` wrapper in `provider.ts`), which wraps a WebTorrent client instance.
 
 > **No in-app search.** Searching public trackers from the server was removed:
 > it relied on reaching ThePirateBay/`apibay.org`, which is blocked at the ISP

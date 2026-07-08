@@ -283,7 +283,7 @@ export const Sidebar = () => {
                     <ul>
                       <li><Link to="/admin"><Settings size={16}/> Settings</Link></li>
                       {isRoot && <li><Link to="/browser"><Folder size={16}/> Files</Link></li>}
-                      {(isRoot || role === 'admin') && <li><Link to="/search/content"><Globe size={16}/> Search Content</Link></li>}
+                      {(isRoot || role === 'admin') && <li><Link to="/search/content"><Globe size={16}/> Plugins</Link></li>}
                     </ul>
                   </details>
                 </li>

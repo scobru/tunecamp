@@ -100,7 +100,8 @@ are plain JS; the signatures are shown in TypeScript for clarity, taken from
 
 Every provider also carries the base fields: `id`, `name`, `version`,
 `description?`, and optional `onEnable()` / `onDisable()` (see Lifecycle Hooks
-below).
+below). Providers may also declare `configSchema` (see Declarative
+Configuration below) and receive settings via `init()` at load time.
 
 ### 3. DownloadProvider
 
@@ -260,13 +261,53 @@ export default class OllamaAI {
 3.  **Injection**: The plugin is automatically registered into the appropriate singleton service (e.g., `MetadataService`).
 4.  **Execution**: When a user performs an action (like searching or streaming), TuneCamp iterates through all registered providers in parallel or in order of registration.
 
-## Advanced: Accessing Internal Services
+## Declarative Configuration (`configSchema` + `init()`)
 
-While plugins are designed to be decoupled, you can occasionally access internal services via the singleton exports if needed (though not recommended for maximum portability).
+Plugins can declare a `configSchema` array to get a settings form rendered
+automatically in the admin panel — no React code needed:
 
 ```javascript
-import { database } from '../dist/server/core/database.js'; // Use with caution
+export default class MyProvider {
+    id = 'my-dl'; name = 'My DL'; version = '1.0.0';
+
+    // Declarative — the admin UI renders text/password/boolean fields
+    configSchema = [
+        { key: 'apiKey',   label: 'API Key',      type: 'password', placeholder: 'sk-…' },
+        { key: 'endpoint', label: 'Base URL',      type: 'text',     placeholder: 'https://…' },
+        { key: 'verbose',  label: 'Verbose logs',  type: 'boolean' },
+    ];
+
+    // Called once at load time with scoped helpers
+    init({ getSetting, setSetting }) {
+        this.apiKey = getSetting('apiKey');
+        // setSetting('lastSeen', Date.now().toString());
+    }
+
+    async isAvailable() { return !!this.apiKey; }
+    async search(query) { /* … */ }
+    async download(result) { /* … */ }
+}
 ```
+
+Settings are stored in the TuneCamp database, scoped with the prefix
+`plugin_<id>_` (e.g. `plugin_my-dl_apiKey`). The `getSetting`/`setSetting`
+helpers passed to `init()` handle the prefix automatically.
+
+> **Replaces the old pattern**: You no longer need to
+> `import { database } from '../dist/server/core/database.js'` — the
+> scoped context is safer and survives refactors.
+
+## Generic Search Routes (DownloadProvider UI for free)
+
+Any registered `DownloadProvider` (built-in or community) automatically gets
+HTTP endpoints and a search tab in the Content Search page:
+
+- `GET  /api/search/content/provider/:id?q=…` — calls `provider.search(q)`
+- `POST /api/search/content/provider/:id/download` — calls `provider.download(result)` in background + auto-indexes into the library
+
+Both require admin/manager role and the provider to be enabled. The webapp
+renders a generic results table (title, artist, filename, size, bitrate) with
+a download button — the plugin author writes zero frontend code.
 
 ## Lifecycle Hooks
 
@@ -283,9 +324,13 @@ A plugin disabled by an admin stays disabled across restarts.
 
 ## Admin Panel
 
-You can see all loaded providers, their versions and enabled status — and toggle
-them on/off — in the **Admin Panel → Integrations** section of the TuneCamp web
-interface (root admin only).
+In the **Admin Panel → Integrations** section (root admin only), you can:
+
+- See all loaded providers, their versions and enabled status
+- Toggle providers on/off
+- See **real availability status** for external plugins (green dot = `isAvailable()` returned true, red = false/timeout, grey = disabled)
+- **Configure plugin settings** via a declarative form (when the plugin declares `configSchema`)
+- External download plugins also appear as **search tabs** in Content Search
 
 ---
 
@@ -340,3 +385,28 @@ You should see lines like:
 ```
 [PluginLoader] Loaded plugin: My Custom Source v1.0.0
 ```
+
+---
+
+## Known Gaps & Design Notes
+
+1. **`isAvailable` not on all provider types**: Only `DownloadProvider`,
+   `StreamingProvider`, and `AIProvider` define `isAvailable()` in the
+   contract. `MetadataProvider` and others lack it. The admin panel probes
+   whatever method exists (`isAvailable` → `isConfigured` → assume true).
+
+2. **External plugins default-enabled on first load**: When a new plugin file
+   is dropped in `plugins/`, it is enabled by default the first time TuneCamp
+   loads it (no persisted state yet). An admin must explicitly disable it if
+   needed. This matches the built-in behavior but may surprise operators.
+
+3. **No runtime frontend loading**: The webapp does not `import()` arbitrary
+   plugin JS at runtime. External plugins get UI via the generic search tab
+   and declarative config form. If a plugin genuinely needs bespoke UI (like
+   Soulseek's Transfers tab), an iframe-sandboxed approach with `postMessage`
+   is recommended over direct `import()` (XSS vector).
+
+4. **`init()` is fire-once**: The `init({ getSetting, setSetting })` hook
+   runs once at load time. If an admin changes plugin settings at runtime,
+   the plugin won't pick up the new values until the next restart (or until
+   the plugin's own code re-reads them via `getSetting`).

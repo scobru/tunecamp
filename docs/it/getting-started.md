@@ -25,6 +25,18 @@ Il percorso più rapido prevede l'uso di Docker. Avrai bisogno di:
 
 ## 2. Installazione ed esecuzione
 
+Scegli una delle seguenti opzioni di installazione:
+
+### Opzione A: VPS Auto-Installer (Consigliato)
+Se hai noleggiato una VPS Linux pulita (Ubuntu/Debian), esegui questo singolo comando per installare automaticamente Docker, Docker Compose, Nginx, Certbot (SSL), configurare il reverse proxy, clonare il repository e avviare TuneCamp:
+
+```bash
+curl -fsSL https://tunecamp.org/install.sh | sudo bash
+```
+
+### Opzione B: Configurazione manuale con Docker
+Se preferisci gestire autonomamente i prerequisiti e la configurazione:
+
 ```bash
 # 1. Clona il repository
 git clone https://github.com/scobru/tunecamp.git
@@ -38,7 +50,7 @@ cd tunecamp
 docker-compose up -d --build
 ```
 
-Quando il container è avviato correttamente, apri `http://localhost:1970` nel browser.
+Quando il container è avviato correttamente, apri `http://localhost:1970` (o il tuo dominio) nel browser.
 
 ## 3. Primo accesso e messa in sicurezza dell'istanza
 

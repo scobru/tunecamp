@@ -8,6 +8,13 @@ import clsx from "clsx";
 import { pluginRegistry } from "../../core/plugins";
 import type { SiteSettings } from "../../types";
 
+interface ConfigField {
+    key: string;
+    label: string;
+    type: 'text' | 'password' | 'boolean';
+    placeholder?: string;
+}
+
 interface PluginInfo {
     id: string;
     name: string;
@@ -17,6 +24,8 @@ interface PluginInfo {
     service: string;
     types: string[];
     isExternal: boolean;
+    available?: boolean;
+    configSchema?: ConfigField[];
 }
 
 export const IntegrationsPanel = () => {
@@ -29,6 +38,9 @@ export const IntegrationsPanel = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [expandedConfig, setExpandedConfig] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [pluginSettings, setPluginSettings] = useState<Record<string, Record<string, string>>>({});
+  const [expandedPluginConfig, setExpandedPluginConfig] = useState<string | null>(null);
+  const [isSavingPlugin, setIsSavingPlugin] = useState<string | null>(null);
 
   const isRootAdmin = role === 'root_admin' || user?.isRootAdmin;
 
@@ -252,7 +264,40 @@ export const IntegrationsPanel = () => {
               <Puzzle size={14} /> External Plugins
             </h4>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {external.map(plugin => (
+              {external.map(plugin => {
+                const hasConfig = plugin.configSchema && plugin.configSchema.length > 0;
+                const isConfigOpen = expandedPluginConfig === plugin.id;
+                const currentSettings = pluginSettings[plugin.id] || {};
+
+                const loadPluginSettings = async (pluginId: string) => {
+                    try {
+                        const data = await API.getPluginSettings(pluginId);
+                        setPluginSettings(prev => ({ ...prev, [pluginId]: data }));
+                    } catch { /* ignore */ }
+                };
+
+                const toggleConfig = () => {
+                    if (isConfigOpen) {
+                        setExpandedPluginConfig(null);
+                    } else {
+                        setExpandedPluginConfig(plugin.id);
+                        loadPluginSettings(plugin.id);
+                    }
+                };
+
+                const savePluginSettings = async () => {
+                    setIsSavingPlugin(plugin.id);
+                    try {
+                        await API.updatePluginSettings(plugin.id, currentSettings);
+                        notify.success(`Settings saved for ${plugin.name}`);
+                    } catch (e: any) {
+                        notify.error(e, 'Failed to save settings');
+                    } finally {
+                        setIsSavingPlugin(null);
+                    }
+                };
+
+                return (
                 <div key={plugin.id} className={clsx(
                   "card card-m3 border transition-all duration-300",
                   plugin.enabled ? "bg-base-200/50 border-base-content/5" : "bg-base-300/30 border-base-content/10 grayscale opacity-60"
@@ -279,26 +324,78 @@ export const IntegrationsPanel = () => {
                         </div>
                         <div className={clsx(
                           "w-2.5 h-2.5 rounded-full",
-                          plugin.enabled ? "bg-success" : "bg-base-content/20"
+                          !plugin.enabled ? "bg-base-content/20" :
+                          plugin.available === true ? "bg-success shadow-[0_0_6px] shadow-success/40" :
+                          plugin.available === false ? "bg-error shadow-[0_0_6px] shadow-error/40" :
+                          "bg-base-content/20"
                         )} />
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <h4 className="font-bold text-lg flex items-center gap-2">
-                        {plugin.name}
-                        <span className="text-xs opacity-30 font-mono">v{plugin.version}</span>
+                      <h4 className="font-bold text-lg flex items-center gap-2 justify-between">
+                        <span className="flex items-center gap-2">
+                          {plugin.name}
+                          <span className="text-xs opacity-30 font-mono">v{plugin.version}</span>
+                        </span>
+                        {hasConfig && isRootAdmin && (
+                          <button
+                            className="btn btn-xs btn-ghost btn-circle tooltip tooltip-left"
+                            onClick={toggleConfig}
+                            data-tip="Configure"
+                          >
+                            <Settings size={14} className={isConfigOpen ? "text-primary" : ""} />
+                          </button>
+                        )}
                       </h4>
                       <p className="text-xs opacity-60 leading-relaxed line-clamp-2">
                         {plugin.description || `External ${plugin.types.join('+')} provider`}
                       </p>
                     </div>
+
+                    {/* Declarative config form */}
+                    {isConfigOpen && hasConfig && (
+                      <div className="mt-3 space-y-2 animate-in fade-in slide-in-from-top-2">
+                        {plugin.configSchema!.map(field => (
+                          <div key={field.key} className="form-control">
+                            <label className="label py-1">
+                              <span className="label-text text-xs">{field.label}</span>
+                            </label>
+                            {field.type === 'boolean' ? (
+                              <input
+                                type="checkbox"
+                                className="toggle toggle-sm toggle-primary"
+                                checked={currentSettings[field.key] === 'true'}
+                                onChange={e => setPluginSettings(prev => ({ ...prev, [plugin.id]: { ...currentSettings, [field.key]: e.target.checked ? 'true' : 'false' } }))}
+                              />
+                            ) : (
+                              <input
+                                type={field.type === 'password' ? 'password' : 'text'}
+                                className="input input-sm input-bordered w-full"
+                                placeholder={field.placeholder || ''}
+                                value={currentSettings[field.key] || ''}
+                                onChange={e => setPluginSettings(prev => ({ ...prev, [plugin.id]: { ...currentSettings, [field.key]: e.target.value } }))}
+                              />
+                            )}
+                          </div>
+                        ))}
+                        <button
+                          className={clsx("btn btn-xs btn-primary gap-1 mt-1", isSavingPlugin === plugin.id && "loading")}
+                          onClick={savePluginSettings}
+                          disabled={isSavingPlugin === plugin.id}
+                        >
+                          {isSavingPlugin !== plugin.id && <Save size={12} />} Save
+                        </button>
+                      </div>
+                    )}
+
                     <div className="mt-4 text-[10px] font-mono p-2.5 rounded-lg border bg-base-content/5 border-base-content/10 text-base-content/50 flex items-center gap-2">
                       <span className="opacity-60">type:</span> {plugin.types.join(' · ')}
                       <span className="ml-auto opacity-40">{plugin.id}</span>
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         );
