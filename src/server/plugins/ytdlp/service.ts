@@ -6,9 +6,9 @@ import pLimit from "p-limit";
 const execFileAsync = promisify(execFile);
 
 import { type DatabaseService, type Track } from "../../core/database.types.js";
-import { type CatalogService } from "./catalog.service.js";
-import { type GoogleDriveService } from "../storage/google-drive.service.js";
-import { type StreamingService } from "../streaming/streaming.service.js";
+import { type CatalogService } from "../../modules/catalog/catalog.service.js";
+
+import { type StreamingService } from "../../modules/streaming/streaming.service.js";
 
 // A single yt-dlp run is CPU/network heavy. Auto-localizing a whole imported
 // album fires one localization per track; without a bound they would all run at
@@ -28,22 +28,17 @@ const BANDCAMP_SIGNED_STREAM_RE = /^https?:\/\/t\d+\.bcbits\.com\/stream\//;
  * Allows ripping external streams (YouTube, Bandcamp, SoundCloud, etc.)
  * into the local music library using yt-dlp.
  */
-export class LocalizationService {
+export class YtdlpService {
     constructor(
         private database: DatabaseService,
         private catalogService: CatalogService,
         private musicDir: string,
         private cookiesPath?: string,
-        private gdriveService?: GoogleDriveService,
+
         private streamingService?: StreamingService
     ) {}
 
-    /**
-     * Updates the Google Drive service for localization.
-     */
-    public setGDriveService(service: GoogleDriveService): void {
-        this.gdriveService = service;
-    }
+
 
     /**
      * Updates the cookies path for yt-dlp authentication.
@@ -76,15 +71,7 @@ export class LocalizationService {
             throw new Error("Track is already localized");
         }
 
-        // Handle Google Drive tracks directly without yt-dlp
-        if (track.file_path?.startsWith('gdrive://')) {
-            if (this.gdriveService) {
-                console.log(`🎬 [Localization] Track ${trackId} is on Google Drive, using direct copy...`);
-                return this.catalogService.localizeTrack(trackId, this.gdriveService);
-            } else {
-                throw new Error("Google Drive service not available for localization");
-            }
-        }
+
 
         // Determine the URL to download
         let url = track.url;

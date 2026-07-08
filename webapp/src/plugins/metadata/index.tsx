@@ -1,0 +1,39 @@
+
+import { Globe, Search } from 'lucide-react';
+import { pluginRegistry } from '../../core/plugins/registry';
+
+pluginRegistry.register({
+    id: 'itunes', name: 'iTunes API', icon: <Search className="text-info" />,
+    description: 'High-resolution covers and metadata search.',
+    statusCheck: (status) => ({ status: status?.itunes?.online ? 'online' : 'offline', details: status?.itunes?.online ? "Service reachable" : "Service unreachable" }),
+});
+
+pluginRegistry.register({
+    id: 'musicbrainz', name: 'MusicBrainz', icon: <Globe className="text-secondary" />,
+    description: 'Open encyclopedia for music metadata.',
+    statusCheck: (status) => ({ status: status?.musicbrainz?.online ? 'online' : 'offline', details: status?.musicbrainz?.online ? "Service reachable" : "Service unreachable" }),
+});
+
+pluginRegistry.register({
+    id: 'deezer', name: 'Deezer', icon: <Globe className="text-[#EF5466]" />,
+    description: 'External playlist import and metadata.',
+    statusCheck: (status) => ({ status: status?.deezer?.online ? 'online' : 'offline', details: status?.deezer?.online ? "Service reachable" : "Service unreachable" }),
+});
+
+pluginRegistry.register({
+    id: 'bandcamp', name: 'Bandcamp', icon: <Globe className="text-[#629aa9]" />,
+    description: 'Metadata fetching and high-quality streaming support via scraping.',
+    statusCheck: (status) => ({ status: status?.bandcamp?.online ? 'online' : 'offline', details: status?.bandcamp?.online ? "Service reachable" : "Service unreachable" }),
+});
+
+pluginRegistry.register({
+    id: 'spotify', name: 'Spotify', icon: <Globe className="text-[#1DB954]" />,
+    description: 'Metadata and playlist import from Spotify.',
+    statusCheck: (status) => ({ status: status?.spotify?.online ? 'online' : 'offline', details: status?.spotify?.online ? "Service reachable" : "Service unreachable" }),
+});
+
+pluginRegistry.register({
+    id: 'soundcloud', name: 'SoundCloud', icon: <Globe className="text-[#FF3300]" />,
+    description: 'Streaming and metadata from SoundCloud.',
+    statusCheck: (status) => ({ status: status?.soundcloud?.online ? 'online' : 'offline', details: status?.soundcloud?.online ? "Service reachable" : "Service unreachable" }),
+});

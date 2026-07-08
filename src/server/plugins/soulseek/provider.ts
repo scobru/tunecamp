@@ -1,5 +1,5 @@
 import type { DownloadProvider, DownloadResult } from "../../core/provider.js";
-import type { SoulseekService, SoulseekResult } from "../../modules/integrations/soulseek.js";
+import type { SoulseekService, SoulseekResult } from "./service.js";
 
 /**
  * SoulseekDownloadProvider wraps the existing SoulseekService

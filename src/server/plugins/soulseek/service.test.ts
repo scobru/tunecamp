@@ -6,7 +6,7 @@ const mockSearch = jest.fn();
 const mockDownload = jest.fn();
 const mockSearchAndDownload = jest.fn();
 
-jest.unstable_mockModule('andrade-soulseek-downloader/dist/index.js', () => ({
+jest.unstable_mockModule('andrade-soulseek-downloader', () => ({
     SoulseekDownloader: class {
         connect = mockConnect;
         search = mockSearch;
@@ -19,7 +19,7 @@ let SoulseekService: any;
 
 beforeAll(async () => {
     // Dynamic import to ensure the mock is picked up
-    const module = await import('../soulseek.js');
+    const module = await import('./service.js');
     SoulseekService = module.SoulseekService;
 });
 

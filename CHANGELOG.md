@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.21.0] - 2026-07-08
+
+### Added
+- **Dynamic plugin registry for grey-area integrations (white-label groundwork).** Soulseek, WebTorrent and yt-dlp are no longer hard-wired into the core: on the backend they moved to `src/server/plugins/{soulseek,torrent,ytdlp}/` and self-register at startup via `registerBuiltInDownloadProviders()` (dynamic imports — if a plugin's files or optional deps are missing, the server logs it and keeps running; the affected routes answer `501 Plugin not loaded`). On the frontend, `ContentSearch` and `IntegrationsPanel` no longer contain per-provider code: tabs and config panels are contributed by plugins in `webapp/src/plugins/` through a `pluginRegistry`. Removing a provider from a build is now: delete its two plugin folders and its import line in `webapp/src/core/plugins/index.ts`.
+- `LocalizationService` renamed to the `ytdlp` plugin service; gdrive-hosted track localization stays in core (`catalogService.localizeTrack`), external stream ripping requires the yt-dlp plugin.
+
+### Fixed
+- **Admin P2P opt-ins survive restarts.** The registry sync that restores each provider's persisted enabled/disabled state ran before the providers were registered, so Soulseek/WebTorrent silently reverted to disabled on every boot (and Soulseek never auto-connected). The sync now runs after plugin registration, and the Soulseek auto-connect check runs after the sync.
+- **Streaming (yt-dlp) tab no longer disappears from Content Search.** Its status check depended on a backend plugin list that Content Search doesn't have; it now falls back to the YouTube health probe.
+- Broken relative imports (`../../../` instead of `../../`) in the extracted plugin tab components, which failed the webapp build.
+
 ## [2.20.2] - 2026-07-08
 
 ### Fixed
