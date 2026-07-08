@@ -26,7 +26,11 @@ export async function registerBuiltInDownloadProviders(downloadService: Download
             const path = await import('path');
             
             soulseekService = new SoulseekService(context.config.musicDir, context.config.downloadDir || path.default.join(context.config.musicDir, "downloads"));
-            downloadService.getRegistry().register(new SoulseekDownloadProvider(soulseekService), false);
+            const getSoulseekCredentials = () => ({
+                username: context.database.getSetting("soulseek_username"),
+                password: context.database.getSetting("soulseek_password")
+            });
+            downloadService.getRegistry().register(new SoulseekDownloadProvider(soulseekService, getSoulseekCredentials), false);
 
             cleanups.push(() => soulseekService.disconnect());
             console.log("✅ Soulseek backend plugin registered");
@@ -77,12 +81,8 @@ export async function registerBuiltInDownloadProviders(downloadService: Download
     }
 
     // Soulseek only auto-connects when the admin has opted in via the plugin
-    // toggle (state restored by the sync above).
-    if (soulseekService && downloadService.getRegistry().isEnabled("soulseek")) {
-        const slskUser = context.database.getSetting("soulseek_username");
-        const slskPass = context.database.getSetting("soulseek_password");
-        soulseekService.connect(slskUser, slskPass).catch((err: any) => console.error("Soulseek initial connection failed:", err));
-    }
+    // toggle: the sync above fires the provider's onEnable() hook, which
+    // connects using the persisted credentials.
 
     return { cleanups, soulseekService, torrentService, ytdlpService };
 }

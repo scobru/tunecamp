@@ -2174,7 +2174,11 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
         // 1. Soulseek
         try {
-            results.soulseek = soulseekService ? await soulseekService.checkStatus() : { connected: false, error: "Plugin not loaded" };
+            if (soulseekService && isDownloadProviderEnabled("soulseek")) {
+                results.soulseek = await soulseekService.checkStatus();
+            } else {
+                results.soulseek = { connected: false, username: null, error: soulseekService ? "Disabled" : "Plugin not loaded" };
+            }
         } catch (e) {
             results.soulseek = { connected: false, error: "Service error" };
         }

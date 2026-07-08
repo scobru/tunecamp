@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.22.3] - 2026-07-08
+
+### Fixed
+- **Disabling the Soulseek integration now actually hides and disconnects it.** Turning the toggle off in Admin → Integrations blocked the API routes (403 via `requireDownloadProvider`) but nothing else: `/api/admin/system/health` kept calling `soulseekService.checkStatus()` without consulting the registry, so the frontend still saw `soulseek.connected: true`, kept the Soulseek/Transfers tabs in Content Search, and showed a green "Connected as …" badge on a disabled card. The health check now reports `connected: false, error: "Disabled"` when the plugin is off (same pattern the Torrent probe already used), and `SoulseekDownloadProvider` gained `onEnable()`/`onDisable()` lifecycle hooks: disabling disconnects the client from the Soulseek network, enabling (re)connects with the persisted credentials — no restart or credential re-save needed. The startup auto-connect block in `registerBuiltInDownloadProviders()` is gone; the registry sync's `onEnable()` hook covers it.
+
 ## [2.22.2] - 2026-07-08
 
 ### Changed

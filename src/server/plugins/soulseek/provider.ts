@@ -15,7 +15,27 @@ export class SoulseekDownloadProvider implements DownloadProvider {
     readonly version = "1.0.0";
     readonly description = "Search and download music via the Soulseek P2P network. Disabled by default: enable only for content you own the rights to.";
 
-    constructor(private readonly soulseekService: SoulseekService) {}
+    constructor(
+        private readonly soulseekService: SoulseekService,
+        private readonly getCredentials?: () => { username?: string; password?: string }
+    ) {}
+
+    /**
+     * Connect when the admin flips the toggle on (and at startup when the
+     * persisted state is enabled). Fire-and-forget: enable() awaits this hook,
+     * and a slow P2P handshake must not block server boot or the toggle request.
+     */
+    async onEnable(): Promise<void> {
+        const creds = this.getCredentials?.() ?? {};
+        this.soulseekService.connect(creds.username, creds.password)
+            .then(ok => { if (!ok) console.warn("[Soulseek] Enabled but connection failed (missing credentials?)"); })
+            .catch(err => console.error("[Soulseek] Connection on enable failed:", err));
+    }
+
+    /** Disabling the plugin must actually leave the Soulseek network, not just hide the routes. */
+    async onDisable(): Promise<void> {
+        this.soulseekService.disconnect();
+    }
 
     async isAvailable(): Promise<boolean> {
         const status = await this.soulseekService.checkStatus();
