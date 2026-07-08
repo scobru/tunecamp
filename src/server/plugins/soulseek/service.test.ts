@@ -6,7 +6,7 @@ const mockSearch = jest.fn();
 const mockDownload = jest.fn();
 const mockSearchAndDownload = jest.fn();
 
-jest.unstable_mockModule('andrade-soulseek-downloader', () => ({
+jest.unstable_mockModule('andrade-soulseek-downloader/dist/index.js', () => ({
     SoulseekDownloader: class {
         connect = mockConnect;
         search = mockSearch;
