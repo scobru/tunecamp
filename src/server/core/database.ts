@@ -547,7 +547,6 @@ export function createDatabase(dbPath: string): DatabaseService {
             allow_downloads INTEGER NOT NULL DEFAULT 1
         );
 
-        -- Transient shared catalog tracks
         CREATE TABLE IF NOT EXISTS peer_tracks (
             id TEXT NOT NULL,
             session_id TEXT NOT NULL REFERENCES peer_sessions(id) ON DELETE CASCADE,
@@ -559,6 +558,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             mime_type TEXT,
             allow_download INTEGER NOT NULL DEFAULT 1,
             created_at INTEGER NOT NULL,
+            magnet_uri TEXT,
             PRIMARY KEY (id, session_id)
         );
 
@@ -1082,6 +1082,13 @@ export function createDatabase(dbPath: string): DatabaseService {
                     db.exec("CREATE INDEX IF NOT EXISTS idx_peer_tracks_session ON peer_tracks(session_id)");
                     db.exec("CREATE INDEX IF NOT EXISTS idx_peer_tracks_search ON peer_tracks(title, artist)");
                 })();
+            }
+
+            // Migration for magnet_uri column
+            const updatedPtCols = db.prepare("PRAGMA table_info(peer_tracks)").all() as any[];
+            if (!updatedPtCols.some((c: any) => c.name === 'magnet_uri')) {
+                console.log("📦 [Database] Migrating peer_tracks: adding magnet_uri column...");
+                db.exec("ALTER TABLE peer_tracks ADD COLUMN magnet_uri TEXT");
             }
         }
 

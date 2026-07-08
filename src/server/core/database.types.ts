@@ -825,6 +825,7 @@ export interface PeerTrack {
     mime_type: string | null;
     allow_download: boolean;
     created_at: number;
+    magnet_uri?: string | null;
     username?: string;
     user_id?: number;
 }
