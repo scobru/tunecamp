@@ -71,7 +71,7 @@ export default defineConfig({
             items: [
               { text: 'Federation (ActivityPub)', link: '/FEDERATION' },
               { text: 'Plugins', link: '/PLUGINS' },
-              { text: 'Peer Sharing', link: '/peer-sharing' },
+              { text: 'Peer Sharing', link: '/sidecamp' },
               { text: 'Monitoring & Alerting', link: '/monitoring' },
               { text: 'Scaling', link: '/scaling' },
               { text: 'MCP Setup', link: '/mcp-setup-guide' },
@@ -165,7 +165,7 @@ export default defineConfig({
             items: [
               { text: 'Federazione (ActivityPub)', link: '/it/FEDERATION' },
               { text: 'Plugin', link: '/it/PLUGINS' },
-              { text: 'Peer Sharing', link: '/it/peer-sharing' },
+              { text: 'Peer Sharing', link: '/it/sidecamp' },
               { text: 'Monitoraggio e Allarmi', link: '/it/monitoring' },
               { text: 'Scalabilità', link: '/it/scaling' },
               { text: 'Configurazione MCP', link: '/it/mcp-setup-guide' },
