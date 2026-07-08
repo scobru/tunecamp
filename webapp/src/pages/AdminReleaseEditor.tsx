@@ -521,6 +521,10 @@ export default function AdminReleaseEditor() {
       if (exit) {
         navigate("/admin");
       } else {
+        if (!id) {
+          // If this was a new release, update the URL to point to the edit page
+          navigate(`/admin/release/${releaseId}/edit`, { replace: true });
+        }
         // Reload
         setFilesToUpload([]);
         // Reload release to get updated state (including new tracks if any were uploaded)
