@@ -57,8 +57,9 @@ const Social = () => {
         .then((data) => {
           setArtistData(data);
           if (data?.postParams) {
-            setMastodonInstance(data.postParams.instance || "");
-            setMastodonToken(data.postParams.token || "");
+            const params = data.postParams as { instance?: string; token?: string };
+            setMastodonInstance(params.instance || "");
+            setMastodonToken(params.token || "");
           }
           setManuallyApprovesFollowers(!!data?.manually_approves_followers);
         })
