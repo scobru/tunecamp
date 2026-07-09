@@ -194,52 +194,77 @@ describe('StringUtils.getFileExtension', () => {
 });
 
 describe('StringUtils.formatTimeAgo', () => {
-    const baseTime = 1600000000000; // Use a fixed time for deterministic tests
+    const mockCurrentTime = 1600000000000;
 
-    test('should return "just now" for times under 60 seconds', () => {
-        expect(StringUtils.formatTimeAgo(baseTime, baseTime)).toBe('just now');
-        expect(StringUtils.formatTimeAgo(baseTime - 30 * 1000, baseTime)).toBe('just now');
-        expect(StringUtils.formatTimeAgo(baseTime - 59 * 1000, baseTime)).toBe('just now');
+    beforeAll(() => {
+        jest.useFakeTimers();
+        jest.setSystemTime(mockCurrentTime);
     });
 
-    test('should return "just now" for future timestamps', () => {
-        // diffSeconds will be negative, which is < 60
-        expect(StringUtils.formatTimeAgo(baseTime + 10 * 1000, baseTime)).toBe('just now');
+    afterAll(() => {
+        jest.useRealTimers();
     });
 
-    test('should return minutes for times between 1 minute and 59 minutes', () => {
-        expect(StringUtils.formatTimeAgo(baseTime - 60 * 1000, baseTime)).toBe('1m ago');
-        expect(StringUtils.formatTimeAgo(baseTime - 120 * 1000, baseTime)).toBe('2m ago');
-        expect(StringUtils.formatTimeAgo(baseTime - 3599 * 1000, baseTime)).toBe('59m ago');
+    describe('when less than a minute has passed', () => {
+        it('returns "just now" for exactly 0 seconds difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime, mockCurrentTime)).toBe('just now');
+        });
+
+        it('returns "just now" for 59 seconds difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 59 * 1000, mockCurrentTime)).toBe('just now');
+        });
+
+        it('returns "just now" for future dates', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime + 10 * 1000, mockCurrentTime)).toBe('just now');
+        });
     });
 
-    test('should return hours for times between 1 hour and 23 hours', () => {
-        expect(StringUtils.formatTimeAgo(baseTime - 3600 * 1000, baseTime)).toBe('1h ago');
-        expect(StringUtils.formatTimeAgo(baseTime - 7200 * 1000, baseTime)).toBe('2h ago');
-        expect(StringUtils.formatTimeAgo(baseTime - 86399 * 1000, baseTime)).toBe('23h ago');
+    describe('when minutes have passed (1 to 59)', () => {
+        it('returns "1m ago" for exactly 60 seconds difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 60 * 1000, mockCurrentTime)).toBe('1m ago');
+        });
+
+        it('returns "59m ago" for 59 minutes and 59 seconds difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 3599 * 1000, mockCurrentTime)).toBe('59m ago');
+        });
     });
 
-    test('should return days for times between 1 day and 6 days', () => {
-        expect(StringUtils.formatTimeAgo(baseTime - 86400 * 1000, baseTime)).toBe('1d ago');
-        expect(StringUtils.formatTimeAgo(baseTime - 172800 * 1000, baseTime)).toBe('2d ago');
-        expect(StringUtils.formatTimeAgo(baseTime - 604799 * 1000, baseTime)).toBe('6d ago');
+    describe('when hours have passed (1 to 23)', () => {
+        it('returns "1h ago" for exactly 60 minutes difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 3600 * 1000, mockCurrentTime)).toBe('1h ago');
+        });
+
+        it('returns "23h ago" for 23 hours and 59 minutes difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 86399 * 1000, mockCurrentTime)).toBe('23h ago');
+        });
     });
 
-    test('should return locale date string for times 7 days or older', () => {
-        const timestamp7Days = baseTime - 604800 * 1000;
-        expect(StringUtils.formatTimeAgo(timestamp7Days, baseTime)).toBe(new Date(timestamp7Days).toLocaleDateString());
+    describe('when days have passed (1 to 6)', () => {
+        it('returns "1d ago" for exactly 24 hours difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 86400 * 1000, mockCurrentTime)).toBe('1d ago');
+        });
 
-        const timestamp30Days = baseTime - 30 * 86400 * 1000;
-        expect(StringUtils.formatTimeAgo(timestamp30Days, baseTime)).toBe(new Date(timestamp30Days).toLocaleDateString());
+        it('returns "6d ago" for exactly 6 days and 23 hours difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 604799 * 1000, mockCurrentTime)).toBe('6d ago');
+        });
     });
 
-    test('should use Date.now() when currentTimeMs is not provided', () => {
-        const mockNow = 1600000000000;
-        const spy = jest.spyOn(Date, 'now').mockReturnValue(mockNow);
+    describe('when 7 or more days have passed', () => {
+        it('returns formatted date string for exactly 7 days difference', () => {
+            const timestamp = mockCurrentTime - 604800 * 1000;
+            expect(StringUtils.formatTimeAgo(timestamp, mockCurrentTime)).toBe(new Date(timestamp).toLocaleDateString());
+        });
 
-        expect(StringUtils.formatTimeAgo(mockNow - 30 * 1000)).toBe('just now');
-        expect(StringUtils.formatTimeAgo(mockNow - 120 * 1000)).toBe('2m ago');
+        it('returns formatted date string for 30 days difference', () => {
+            const timestamp = mockCurrentTime - 30 * 86400 * 1000;
+            expect(StringUtils.formatTimeAgo(timestamp, mockCurrentTime)).toBe(new Date(timestamp).toLocaleDateString());
+        });
+    });
 
-        spy.mockRestore();
+    describe('default current time behavior', () => {
+        it('uses Date.now() when currentTimeMs is omitted', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 60 * 1000)).toBe('1m ago');
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 120 * 1000)).toBe('2m ago');
+        });
     });
 });
