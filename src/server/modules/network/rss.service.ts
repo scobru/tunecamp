@@ -138,16 +138,16 @@ export function createRssService(db: DatabaseService): RssService {
 
         async refreshAll() {
             const feeds = db.getFollowedActors().filter((a) => a.type === "rss");
-            await Promise.allSettled(
-                feeds.map(async (feed) => {
-                    try {
-                        const n = await this.refreshFeed(feed.uri);
-                        console.log(`📡 [RSS] Refreshed ${feed.uri}: ${n} items`);
-                    } catch (e: any) {
-                        console.error(`❌ [RSS] Refresh failed for ${feed.uri}: ${e?.message || e}`);
-                    }
-                })
-            );
+            const promises = [];
+            for (let i = 0; i < feeds.length; i++) {
+                const feed = feeds[i];
+                promises.push(
+                    this.refreshFeed(feed.uri)
+                        .then((n) => console.log(`📡 [RSS] Refreshed ${feed.uri}: ${n} items`))
+                        .catch((e: any) => console.error(`❌ [RSS] Refresh failed for ${feed.uri}: ${e?.message || e}`))
+                );
+            }
+            await Promise.allSettled(promises);
         },
 
         removeFeed(url: string) {
