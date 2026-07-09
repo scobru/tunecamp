@@ -1,5 +1,37 @@
 import { describe, it, expect } from 'vitest';
-import { canManageItem } from './permissions';
+import { canManageItem, canPublish } from './permissions';
+
+describe('canPublish', () => {
+  it('returns true if user is root admin', () => {
+    expect(canPublish({ isRootAdmin: true }, 'user')).toBe(true);
+  });
+
+  it('returns true if role is root_admin or admin', () => {
+    expect(canPublish(undefined, 'admin')).toBe(true);
+    expect(canPublish(undefined, 'root_admin')).toBe(true);
+  });
+
+  it('returns true if user has artistId and role is in PUBLISHING_ROLES', () => {
+    expect(canPublish({ artistId: '123' }, 'user')).toBe(true);
+    expect(canPublish({ artistId: '123' }, 'super_user')).toBe(true);
+  });
+
+  it('returns false if user has artistId but role is not in PUBLISHING_ROLES', () => {
+    expect(canPublish({ artistId: '123' }, null)).toBe(false);
+    expect(canPublish({ artistId: '123' }, undefined)).toBe(false);
+  });
+
+  it('returns false if user does not have artistId, even if role is in PUBLISHING_ROLES', () => {
+    expect(canPublish(undefined, 'user')).toBe(false);
+    expect(canPublish({ artistId: null }, 'user')).toBe(false);
+    expect(canPublish({ artistId: undefined }, 'user')).toBe(false);
+  });
+
+  it('returns false by default', () => {
+    expect(canPublish(undefined, null)).toBe(false);
+    expect(canPublish(undefined, undefined)).toBe(false);
+  });
+});
 
 describe('canManageItem', () => {
   it('returns true if user is root admin', () => {
