@@ -121,7 +121,11 @@ export function createDatabase(dbPath: string): DatabaseService {
             slsk_username TEXT,
             slsk_password TEXT,
             telegram_bot_token TEXT,
-            telegram_allowed_channels TEXT
+            telegram_allowed_channels TEXT,
+            security_q1 TEXT,
+            security_a1_hash TEXT,
+            security_q2 TEXT,
+            security_a2_hash TEXT
         );
 
         CREATE TABLE IF NOT EXISTS password_reset_tokens (
@@ -622,6 +626,16 @@ export function createDatabase(dbPath: string): DatabaseService {
 
     // Runtime Migrations (robust column checks)
     db.transaction(() => {
+        // --- Admin Security Questions Migration ---
+        const adminCols = db.prepare("PRAGMA table_info(admin)").all() as any[];
+        if (!adminCols.some(col => col.name === 'security_q1')) {
+            console.log("📦 [Database] Migrating admin table: adding security questions columns...");
+            db.exec("ALTER TABLE admin ADD COLUMN security_q1 TEXT");
+            db.exec("ALTER TABLE admin ADD COLUMN security_a1_hash TEXT");
+            db.exec("ALTER TABLE admin ADD COLUMN security_q2 TEXT");
+            db.exec("ALTER TABLE admin ADD COLUMN security_a2_hash TEXT");
+        }
+
         // --- Consolidation Migration ---
         const releasesTableInfo = db.prepare("SELECT type FROM sqlite_master WHERE type='table' AND name='releases'").get() as { type: string } | undefined;
         if (releasesTableInfo) {

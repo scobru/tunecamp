@@ -27,6 +27,7 @@ const Wallet = lazy(() => import("./pages/Wallet"));
 const Profile = lazy(() => import("./pages/Profile"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const ResetPasswordSecurity = lazy(() => import("./pages/ResetPasswordSecurity"));
 const MyMusic = lazy(() => import("./pages/MyMusic"));
 const Publish = lazy(() => import("./pages/Publish"));
 const Social = lazy(() => import("./pages/Social"));
@@ -243,6 +244,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/u/:username" element={<UserProfile />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/reset-password-security" element={<ResetPasswordSecurity />} />
             <Route path="/my-music" element={<MyMusic />} />
             <Route path="/publish" element={<Publish />} />
             <Route path="/social" element={<ModuleGuard flag="hideSocial"><Social /></ModuleGuard>} />

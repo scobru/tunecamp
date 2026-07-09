@@ -235,6 +235,56 @@ export function createAuthRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * GET /api/auth/security-questions
+     */
+    router.get("/security-questions", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), (req, res) => {
+        const username = req.query.username as string;
+        if (!username) return res.status(400).json({ error: "Username required" });
+        const qs = authService.getSecurityQuestions(username);
+        if (!qs) return res.status(404).json({ error: "No security questions set for this user" });
+        res.json(qs);
+    });
+
+    /**
+     * POST /api/auth/security-questions
+     */
+    router.post("/security-questions", rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }), authMiddleware.requireUser, async (req: AuthenticatedRequest, res) => {
+        try {
+            const { q1, a1, q2, a2 } = req.body;
+            if (!q1 || !a1 || !q2 || !a2) return res.status(400).json({ error: "Both questions and answers required" });
+            await authService.setSecurityQuestions(req.userId!, q1, a1, q2, a2);
+            res.json({ success: true });
+        } catch (error) {
+            console.error("Set security questions error:", error);
+            res.status(500).json({ error: "Failed to set security questions" });
+        }
+    });
+
+    /**
+     * POST /api/auth/reset-password-security
+     */
+    router.post("/reset-password-security", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req, res) => {
+        try {
+            const { username, a1, a2, newPassword } = req.body;
+            if (!username || !a1 || !a2 || !newPassword) return res.status(400).json({ error: "All fields required" });
+
+            const passwordValidation = validatePassword(newPassword);
+            if (!passwordValidation.valid) {
+                return res.status(400).json({ error: passwordValidation.error });
+            }
+
+            const success = await authService.resetPasswordWithSecurityQuestions(username, a1, a2, newPassword);
+            if (!success) {
+                return res.status(400).json({ error: "Incorrect answers" });
+            }
+            res.json({ message: "Password reset successfully. You can now log in." });
+        } catch (error) {
+            console.error("Reset password security error:", error);
+            res.status(500).json({ error: "Reset failed" });
+        }
+    });
+
+    /**
      * GET /api/auth/status
      * Check authentication status
      */

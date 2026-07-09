@@ -153,13 +153,23 @@ export const AuthModal = () => {
                             )}
                         </button>
 
-                        <button
-                            type="button"
-                            className="link link-hover text-sm w-full text-center block opacity-70"
-                            onClick={() => switchMode('login')}
-                        >
-                            Back to Sign In
-                        </button>
+                        <div className="flex flex-col gap-2 mt-4">
+                            <Link
+                                to="/reset-password-security"
+                                className="link link-hover text-sm w-full text-center block opacity-70"
+                                onClick={() => dialogRef.current?.close()}
+                            >
+                                Recover via Security Questions
+                            </Link>
+
+                            <button
+                                type="button"
+                                className="link link-hover text-sm w-full text-center block opacity-70"
+                                onClick={() => switchMode('login')}
+                            >
+                                Back to Sign In
+                            </button>
+                        </div>
                     </form>
                 ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
