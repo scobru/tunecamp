@@ -19,6 +19,7 @@ describe('createRssService', () => {
         mockDb = {
             upsertRemoteActor: jest.fn(),
             upsertRemoteContent: jest.fn(),
+            upsertRemoteContents: jest.fn(),
             transaction: jest.fn((fn) => fn()),
             getFollowedActors: jest.fn().mockReturnValue([]),
             unfollowActor: jest.fn(),
@@ -92,19 +93,21 @@ describe('createRssService', () => {
                 is_followed: true,
             });
 
-            expect(mockDb.upsertRemoteContent).toHaveBeenCalledTimes(2);
-            expect(mockDb.upsertRemoteContent).toHaveBeenNthCalledWith(1, expect.objectContaining({
-                ap_id: 'guid-1',
-                type: 'release',
-                title: 'Episode 1',
-                stream_url: 'https://example.com/audio.mp3'
-            }));
-            expect(mockDb.upsertRemoteContent).toHaveBeenNthCalledWith(2, expect.objectContaining({
-                ap_id: 'guid-2',
-                type: 'post',
-                title: 'Episode 2',
-                stream_url: null
-            }));
+            expect(mockDb.upsertRemoteContents).toHaveBeenCalledTimes(1);
+            expect(mockDb.upsertRemoteContents).toHaveBeenCalledWith([
+                expect.objectContaining({
+                    ap_id: 'guid-1',
+                    type: 'release',
+                    title: 'Episode 1',
+                    stream_url: 'https://example.com/audio.mp3'
+                }),
+                expect.objectContaining({
+                    ap_id: 'guid-2',
+                    type: 'post',
+                    title: 'Episode 2',
+                    stream_url: null
+                })
+            ]);
         });
 
         it('should perform autodiscovery if URL returns HTML', async () => {
@@ -187,8 +190,10 @@ describe('createRssService', () => {
                 outbox_url: 'https://example.com/atom',
                 // is_followed is omitted
             });
-            expect(mockDb.upsertRemoteContent).toHaveBeenCalledTimes(1);
-            expect(mockDb.upsertRemoteContent).toHaveBeenCalledWith(expect.objectContaining({ ap_id: 'atom-1' }));
+            expect(mockDb.upsertRemoteContents).toHaveBeenCalledTimes(1);
+            expect(mockDb.upsertRemoteContents).toHaveBeenCalledWith([
+                expect.objectContaining({ ap_id: 'atom-1' })
+            ]);
         });
 
         it('should return 0 if fetch fails', async () => {
@@ -229,7 +234,7 @@ describe('createRssService', () => {
             expect((global.fetch as jest.Mock).mock.calls[1][0]).toBe('https://example.com/feed2');
 
             // Should have parsed the first one
-            expect(mockDb.upsertRemoteContent).toHaveBeenCalledTimes(1);
+            expect(mockDb.upsertRemoteContents).toHaveBeenCalledTimes(1);
         });
 
         it('should not throw if a refresh fails', async () => {

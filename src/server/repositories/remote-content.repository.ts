@@ -5,31 +5,42 @@ export class RemoteContentRepository {
     constructor(protected db: DatabaseType) {}
 
     upsertRemoteContent(content: Omit<RemoteContent, "id" | "received_at">): void {
+        this.upsertRemoteContents([content]);
+    }
+
+    upsertRemoteContents(contents: Omit<RemoteContent, "id" | "received_at">[]): void {
+        if (contents.length === 0) return;
+
         const b = (val: any) => {
             if (val === null || val === undefined) return null;
             if (typeof val === 'string' || typeof val === 'number' || typeof val === 'bigint' || Buffer.isBuffer(val)) return val;
             return String(val);
         };
 
-        this.db.prepare(`
-            INSERT INTO remote_content (ap_id, actor_uri, type, title, content, url, cover_url, stream_url, artist_name, album_name, duration, published_at, received_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(ap_id) DO UPDATE SET
-                title=excluded.title,
-                content=excluded.content,
-                url=excluded.url,
-                cover_url=excluded.cover_url,
-                stream_url=excluded.stream_url,
-                artist_name=excluded.artist_name,
-                album_name=excluded.album_name,
-                duration=excluded.duration,
-                published_at=excluded.published_at,
-                received_at=CURRENT_TIMESTAMP
-        `).run(
-            content.ap_id, content.actor_uri, content.type,
-            b(content.title), b(content.content), b(content.url), b(content.cover_url), b(content.stream_url),
-            b(content.artist_name), b(content.album_name), b(content.duration), b(content.published_at)
-        );
+        this.db.transaction(() => {
+            const stmt = this.db.prepare(`
+                INSERT INTO remote_content (ap_id, actor_uri, type, title, content, url, cover_url, stream_url, artist_name, album_name, duration, published_at, received_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(ap_id) DO UPDATE SET
+                    title=excluded.title,
+                    content=excluded.content,
+                    url=excluded.url,
+                    cover_url=excluded.cover_url,
+                    stream_url=excluded.stream_url,
+                    artist_name=excluded.artist_name,
+                    album_name=excluded.album_name,
+                    duration=excluded.duration,
+                    published_at=excluded.published_at,
+                    received_at=CURRENT_TIMESTAMP
+            `);
+            for (const content of contents) {
+                stmt.run(
+                    content.ap_id, content.actor_uri, content.type,
+                    b(content.title), b(content.content), b(content.url), b(content.cover_url), b(content.stream_url),
+                    b(content.artist_name), b(content.album_name), b(content.duration), b(content.published_at)
+                );
+            }
+        })();
     }
 
     getRemoteContent(apId: string): RemoteContent | undefined {

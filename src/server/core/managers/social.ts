@@ -228,6 +228,7 @@ export function createSocialManager(
         getFollowedActors: () => remoteActorRepository.getFollowedActors(),
         upsertRemoteActor: (a: any) => { remoteActorRepository.upsertRemoteActor(a); },
         upsertRemoteContent: (c: any) => { remoteContentRepository.upsertRemoteContent(c); },
+        upsertRemoteContents: (c: any[]) => { remoteContentRepository.upsertRemoteContents(c); },
         getRemoteContent: (id: string) => remoteContentRepository.getRemoteContent(id),
         saveRemoteActor: (a: any) => { remoteActorRepository.saveRemoteActor(a); },
         saveRemotePost: (p: any) => { remoteContentRepository.saveRemotePost(p); },

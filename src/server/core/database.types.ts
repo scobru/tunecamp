@@ -737,6 +737,7 @@ export interface SocialManager {
     getFollowedActors(): RemoteActor[];
     upsertRemoteActor(actor: any): void;
     upsertRemoteContent(content: any): void;
+    upsertRemoteContents(contents: any[]): void;
     getRemoteContent(apId: string): RemoteContent | undefined;
     saveRemoteActor(actor: any): void;
     saveRemotePost(post: any): void;
