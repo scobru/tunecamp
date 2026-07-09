@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import { StringUtils } from './stringUtils.js';
 
 describe('StringUtils.escapeHtml', () => {
@@ -128,6 +129,46 @@ describe('StringUtils.generateUnlockCode', () => {
     });
 });
 
+describe('StringUtils.normalizeUrl', () => {
+    test('should return empty string for empty input', () => {
+        // @ts-ignore
+        expect(StringUtils.normalizeUrl(null)).toBe('');
+        // @ts-ignore
+        expect(StringUtils.normalizeUrl(undefined)).toBe('');
+        expect(StringUtils.normalizeUrl('')).toBe('');
+    });
+
+    test('should return original URL if no trailing slash', () => {
+        expect(StringUtils.normalizeUrl('https://example.com')).toBe('https://example.com');
+        expect(StringUtils.normalizeUrl('http://localhost:3000')).toBe('http://localhost:3000');
+    });
+
+    test('should remove a single trailing slash', () => {
+        expect(StringUtils.normalizeUrl('https://example.com/')).toBe('https://example.com');
+        expect(StringUtils.normalizeUrl('https://example.com/path/')).toBe('https://example.com/path');
+    });
+
+    test('should remove multiple trailing slashes', () => {
+        expect(StringUtils.normalizeUrl('https://example.com//')).toBe('https://example.com');
+        expect(StringUtils.normalizeUrl('https://example.com/path///')).toBe('https://example.com/path');
+    });
+
+    test('should handle URLs with query parameters and fragments', () => {
+        expect(StringUtils.normalizeUrl('https://example.com/search?q=test/')).toBe('https://example.com/search?q=test');
+        expect(StringUtils.normalizeUrl('https://example.com/#section/')).toBe('https://example.com/#section');
+    });
+
+    test('should return empty string if input is just slashes', () => {
+        expect(StringUtils.normalizeUrl('/')).toBe('');
+        expect(StringUtils.normalizeUrl('//')).toBe('');
+        expect(StringUtils.normalizeUrl('///')).toBe('');
+    });
+
+    test('should not modify slashes in the middle of the URL', () => {
+        expect(StringUtils.normalizeUrl('https://example.com/a/b/c')).toBe('https://example.com/a/b/c');
+    });
+});
+
 describe('StringUtils.getFileExtension', () => {
     test('should return empty string for filename with no extension', () => {
         expect(StringUtils.getFileExtension('filename')).toBe('');
@@ -149,5 +190,56 @@ describe('StringUtils.getFileExtension', () => {
         expect(StringUtils.getFileExtension('.hidden')).toBe('hidden');
         expect(StringUtils.getFileExtension('.gitignore')).toBe('gitignore');
         expect(StringUtils.getFileExtension('file.')).toBe('');
+    });
+});
+
+describe('StringUtils.formatTimeAgo', () => {
+    const baseTime = 1600000000000; // Use a fixed time for deterministic tests
+
+    test('should return "just now" for times under 60 seconds', () => {
+        expect(StringUtils.formatTimeAgo(baseTime, baseTime)).toBe('just now');
+        expect(StringUtils.formatTimeAgo(baseTime - 30 * 1000, baseTime)).toBe('just now');
+        expect(StringUtils.formatTimeAgo(baseTime - 59 * 1000, baseTime)).toBe('just now');
+    });
+
+    test('should return "just now" for future timestamps', () => {
+        // diffSeconds will be negative, which is < 60
+        expect(StringUtils.formatTimeAgo(baseTime + 10 * 1000, baseTime)).toBe('just now');
+    });
+
+    test('should return minutes for times between 1 minute and 59 minutes', () => {
+        expect(StringUtils.formatTimeAgo(baseTime - 60 * 1000, baseTime)).toBe('1m ago');
+        expect(StringUtils.formatTimeAgo(baseTime - 120 * 1000, baseTime)).toBe('2m ago');
+        expect(StringUtils.formatTimeAgo(baseTime - 3599 * 1000, baseTime)).toBe('59m ago');
+    });
+
+    test('should return hours for times between 1 hour and 23 hours', () => {
+        expect(StringUtils.formatTimeAgo(baseTime - 3600 * 1000, baseTime)).toBe('1h ago');
+        expect(StringUtils.formatTimeAgo(baseTime - 7200 * 1000, baseTime)).toBe('2h ago');
+        expect(StringUtils.formatTimeAgo(baseTime - 86399 * 1000, baseTime)).toBe('23h ago');
+    });
+
+    test('should return days for times between 1 day and 6 days', () => {
+        expect(StringUtils.formatTimeAgo(baseTime - 86400 * 1000, baseTime)).toBe('1d ago');
+        expect(StringUtils.formatTimeAgo(baseTime - 172800 * 1000, baseTime)).toBe('2d ago');
+        expect(StringUtils.formatTimeAgo(baseTime - 604799 * 1000, baseTime)).toBe('6d ago');
+    });
+
+    test('should return locale date string for times 7 days or older', () => {
+        const timestamp7Days = baseTime - 604800 * 1000;
+        expect(StringUtils.formatTimeAgo(timestamp7Days, baseTime)).toBe(new Date(timestamp7Days).toLocaleDateString());
+
+        const timestamp30Days = baseTime - 30 * 86400 * 1000;
+        expect(StringUtils.formatTimeAgo(timestamp30Days, baseTime)).toBe(new Date(timestamp30Days).toLocaleDateString());
+    });
+
+    test('should use Date.now() when currentTimeMs is not provided', () => {
+        const mockNow = 1600000000000;
+        const spy = jest.spyOn(Date, 'now').mockReturnValue(mockNow);
+
+        expect(StringUtils.formatTimeAgo(mockNow - 30 * 1000)).toBe('just now');
+        expect(StringUtils.formatTimeAgo(mockNow - 120 * 1000)).toBe('2m ago');
+
+        spy.mockRestore();
     });
 });

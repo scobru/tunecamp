@@ -2,33 +2,65 @@ import { describe, test, expect } from 'vitest';
 import { canPublish, canManageItem } from '../permissions';
 
 describe('canPublish', () => {
-    test('root admin and manager can always publish, even without an artist link', () => {
+    test('root admin flag bypasses all other checks', () => {
         expect(canPublish({ isRootAdmin: true }, 'root_admin')).toBe(true);
+        expect(canPublish({ isRootAdmin: true }, 'admin')).toBe(true);
+        expect(canPublish({ isRootAdmin: true }, 'super_user')).toBe(true);
+        expect(canPublish({ isRootAdmin: true }, 'user')).toBe(true);
         expect(canPublish({ isRootAdmin: true }, null)).toBe(true);
-        expect(canPublish({ artistId: undefined }, 'root_admin')).toBe(true);
-        expect(canPublish({ artistId: undefined }, 'admin')).toBe(true);
+        expect(canPublish({ isRootAdmin: true }, undefined)).toBe(true);
     });
 
-    test('self-publish listener (role "user" + artistId) can publish', () => {
+    test('root_admin and admin roles bypass user checks', () => {
+        expect(canPublish({ artistId: undefined }, 'root_admin')).toBe(true);
+        expect(canPublish(null, 'root_admin')).toBe(true);
+        expect(canPublish(undefined, 'root_admin')).toBe(true);
+
+        expect(canPublish({ artistId: undefined }, 'admin')).toBe(true);
+        expect(canPublish(null, 'admin')).toBe(true);
+        expect(canPublish(undefined, 'admin')).toBe(true);
+    });
+
+    test('self-publish listener (role "user" + valid artistId) can publish', () => {
         expect(canPublish({ artistId: 42 }, 'user')).toBe(true);
         expect(canPublish({ artistId: '42' }, 'user')).toBe(true);
     });
 
-    test('listener without an artist link cannot publish', () => {
+    test('curator (role "super_user" + valid artistId) can publish', () => {
+        expect(canPublish({ artistId: 1 }, 'super_user')).toBe(true);
+        expect(canPublish({ artistId: '1' }, 'super_user')).toBe(true);
+    });
+
+    test('listener/curator without an artist link cannot publish', () => {
         expect(canPublish({ artistId: undefined }, 'user')).toBe(false);
         expect(canPublish(null, 'user')).toBe(false);
         expect(canPublish({}, 'user')).toBe(false);
+
+        expect(canPublish({ artistId: undefined }, 'super_user')).toBe(false);
+        expect(canPublish(null, 'super_user')).toBe(false);
+        expect(canPublish({}, 'super_user')).toBe(false);
     });
 
-    test('curator can publish only when linked to an artist', () => {
-        expect(canPublish({ artistId: 1 }, 'super_user')).toBe(true);
-        expect(canPublish({ artistId: undefined }, 'super_user')).toBe(false);
+    test('falsy artistIds (0, "", null) evaluate to false and block publishing', () => {
+        expect(canPublish({ artistId: 0 }, 'user')).toBe(false);
+        expect(canPublish({ artistId: '' }, 'user')).toBe(false);
+        expect(canPublish({ artistId: null }, 'user')).toBe(false);
+
+        expect(canPublish({ artistId: 0 }, 'super_user')).toBe(false);
+        expect(canPublish({ artistId: '' }, 'super_user')).toBe(false);
+        expect(canPublish({ artistId: null }, 'super_user')).toBe(false);
+    });
+
+    test('explicit isRootAdmin: false does not grant access', () => {
+        expect(canPublish({ isRootAdmin: false }, 'user')).toBe(false);
+        expect(canPublish({ isRootAdmin: false, artistId: 1 }, 'user')).toBe(true);
     });
 
     test('unauthenticated / unknown role cannot publish', () => {
         expect(canPublish(null, null)).toBe(false);
         expect(canPublish(undefined, undefined)).toBe(false);
         expect(canPublish({ artistId: 5 }, null)).toBe(false);
+        expect(canPublish({ artistId: 5 }, undefined)).toBe(false);
     });
 });
 

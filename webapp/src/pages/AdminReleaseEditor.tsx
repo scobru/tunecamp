@@ -521,6 +521,10 @@ export default function AdminReleaseEditor() {
       if (exit) {
         navigate("/admin");
       } else {
+        if (!id) {
+          // If this was a new release, update the URL to point to the edit page
+          navigate(`/admin/release/${releaseId}/edit`, { replace: true });
+        }
         // Reload
         setFilesToUpload([]);
         // Reload release to get updated state (including new tracks if any were uploaded)
@@ -620,9 +624,10 @@ export default function AdminReleaseEditor() {
       setTracks(updatedTracks);
       
       notify.success(`Track "${track.title}" registered successfully.`);
-    } catch (e: any) {
-      console.error(e);
-      notify.error(e, "Registration failed");
+    } catch (e: unknown) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      console.error(err);
+      notify.error(err, "Registration failed");
       const updatedTracks = [...tracks];
       updatedTracks[idx].isRegistering = false;
       setTracks(updatedTracks);
@@ -683,10 +688,11 @@ export default function AdminReleaseEditor() {
       
       setSyncMessage("");
       notify.success(`Synchronized ${pricingData.length} track price(s) to the blockchain.`);
-    } catch (e: any) {
-      console.error(e);
+    } catch (e: unknown) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      console.error(err);
       setSyncMessage("");
-      notify.error(e, "Sync failed");
+      notify.error(err, "Sync failed");
     } finally {
       setIsSyncingPrices(false);
     }
