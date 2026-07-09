@@ -1004,8 +1004,9 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
 
       // Parse Mastodon config
       if (initialData.postParams) {
-        setMastodonInstance(initialData.postParams.instance || "");
-        setMastodonToken(initialData.postParams.token || "");
+        const params = initialData.postParams as { instance?: string; token?: string };
+        setMastodonInstance(params.instance || "");
+        setMastodonToken(params.token || "");
       }
 
       // Fetch followers count helper

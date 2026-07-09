@@ -551,12 +551,12 @@ export const ArtistFediversePanel = () => {
                                 </div>
 
                                 {/* 2. Mastodon cross-posting — separate, optional bridge to an external account */}
-                                {artist?.postParams?.instance ? (
+                                {(artist?.postParams as { instance?: string } | undefined)?.instance ? (
                                     <div className="flex items-center gap-2 p-3 rounded-xl bg-base-300/40 text-xs leading-normal">
                                         <Repeat size={16} className="text-success flex-shrink-0" />
                                         <span className="opacity-80">
                                             <span className="font-semibold">Mastodon cross-posting active.</span>{' '}
-                                            Mirroring to <span className="font-mono">{artist.postParams.instance}</span>.
+                                            Mirroring to <span className="font-mono">{(artist?.postParams as { instance?: string } | undefined)?.instance}</span>.
                                         </span>
                                     </div>
                                 ) : (
@@ -1145,7 +1145,7 @@ export const ArtistFediversePanel = () => {
                                                         </button>
 
                                                         {/* Share to Mastodon (only for releases when cross-posting is configured) */}
-                                                        {note.note_type === 'release' && artist?.postParams?.instance ? (
+                                                        {note.note_type === 'release' && (artist?.postParams as { instance?: string } | undefined)?.instance ? (
                                                             <button
                                                                 className="btn btn-xs btn-outline btn-primary rounded-full gap-1 font-semibold"
                                                                 onClick={async () => {

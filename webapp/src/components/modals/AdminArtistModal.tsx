@@ -66,8 +66,9 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                     if (typeof params === 'string') {
                         try { params = JSON.parse(params); } catch { params = {}; }
                     }
-                    setMastodonInstance(params.instance || '');
-                    setMastodonToken(params.token || '');
+                    const parsedParams = params as { instance?: string; token?: string };
+                    setMastodonInstance(parsedParams.instance || '');
+                    setMastodonToken(parsedParams.token || '');
                 } else {
                     setMastodonInstance('');
                     setMastodonToken('');
