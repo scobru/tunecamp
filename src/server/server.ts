@@ -148,7 +148,12 @@ export async function startServer(config: ServerConfig): Promise<void> {
         const isMutationPreflight = req.method === 'OPTIONS' && reqMethod &&
             typeof reqMethod === 'string' && !['GET', 'HEAD', 'OPTIONS'].includes(reqMethod.toUpperCase());
 
-        if (isMutation || isMutationPreflight) {
+        const hasCredentials = !!req.headers.cookie || !!req.headers.authorization;
+        const isCredentialsPreflight = req.method === 'OPTIONS' &&
+            typeof req.headers['access-control-request-headers'] === 'string' &&
+            req.headers['access-control-request-headers'].split(',').map(h => h.trim().toLowerCase()).includes('authorization');
+
+        if (isMutation || isMutationPreflight || hasCredentials || isCredentialsPreflight) {
             strictCors(req, res, next);
         } else {
             publicCors(req, res, (err?: any) => {

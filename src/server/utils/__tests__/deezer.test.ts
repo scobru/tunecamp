@@ -65,44 +65,63 @@ describe('deezerClient', () => {
 
 describe('deezer utils', () => {
     describe('extractDeezerPlaylistId', () => {
-        it('should extract playlist ID from standard URL', () => {
-            expect(extractDeezerPlaylistId('https://www.deezer.com/playlist/12345')).toBe('12345');
+        describe('valid URL parsing', () => {
+            it('extracts ID from standard format', () => {
+                expect(extractDeezerPlaylistId('https://www.deezer.com/playlist/12345')).toBe('12345');
+                expect(extractDeezerPlaylistId('http://www.deezer.com/playlist/9876')).toBe('9876');
+            });
+
+            it('extracts ID from URL with language prefix', () => {
+                expect(extractDeezerPlaylistId('https://www.deezer.com/us/playlist/67890')).toBe('67890');
+                expect(extractDeezerPlaylistId('https://www.deezer.com/fr/playlist/1111')).toBe('1111');
+            });
+
+            it('handles trailing slashes correctly', () => {
+                expect(extractDeezerPlaylistId('https://www.deezer.com/playlist/12345/')).toBe('12345');
+                expect(extractDeezerPlaylistId('https://www.deezer.com/playlist/12345//')).toBe('12345');
+            });
+
+            it('ignores extra segments after the playlist ID', () => {
+                expect(extractDeezerPlaylistId('https://www.deezer.com/playlist/12345/extra')).toBe('12345');
+                expect(extractDeezerPlaylistId('https://www.deezer.com/playlist/12345/info/details')).toBe('12345');
+            });
+
+            it('handles multiple consecutive slashes gracefully', () => {
+                expect(extractDeezerPlaylistId('https://www.deezer.com/playlist//12345')).toBe('12345');
+            });
+
+            it('handles URLs with query parameters and hash fragments', () => {
+                expect(extractDeezerPlaylistId('https://www.deezer.com/playlist/12345?theme=dark')).toBe('12345');
+                expect(extractDeezerPlaylistId('https://www.deezer.com/playlist/12345#section')).toBe('12345');
+                expect(extractDeezerPlaylistId('https://www.deezer.com/playlist/12345?q=1#top')).toBe('12345');
+            });
+
+            it('extracts non-numeric alphanumeric IDs', () => {
+                expect(extractDeezerPlaylistId('https://www.deezer.com/playlist/abc-123')).toBe('abc-123');
+                expect(extractDeezerPlaylistId('https://deezer.page.link/playlist/XYZ999')).toBe('XYZ999');
+            });
         });
 
-        it('should extract playlist ID from URL with language prefix', () => {
-            expect(extractDeezerPlaylistId('https://www.deezer.com/us/playlist/67890')).toBe('67890');
-        });
+        describe('error handling and edge cases', () => {
+            it('throws error for malformed URLs', () => {
+                expect(() => extractDeezerPlaylistId('not-a-url')).toThrow();
+                expect(() => extractDeezerPlaylistId('')).toThrow();
+            });
 
-        it('should extract playlist ID from URL with trailing slash', () => {
-            expect(extractDeezerPlaylistId('https://www.deezer.com/playlist/12345/')).toBe('12345');
-        });
+            it('throws error when "playlist" segment is missing', () => {
+                expect(() => extractDeezerPlaylistId('https://www.deezer.com/track/12345')).toThrow('Playlist ID not found in URL');
+                expect(() => extractDeezerPlaylistId('https://www.deezer.com/album/12345')).toThrow('Playlist ID not found in URL');
+            });
 
-        it('should extract playlist ID from URL with query parameters', () => {
-            expect(extractDeezerPlaylistId('https://www.deezer.com/playlist/12345?theme=dark')).toBe('12345');
-        });
+            it('throws error when "playlist" is the last segment', () => {
+                expect(() => extractDeezerPlaylistId('https://www.deezer.com/playlist')).toThrow('Playlist ID not found in URL');
+                expect(() => extractDeezerPlaylistId('https://www.deezer.com/us/playlist/')).toThrow('Playlist ID not found in URL');
+            });
 
-        it('should handle malformed URL by throwing error', () => {
-            expect(() => extractDeezerPlaylistId('not-a-url')).toThrow();
-        });
-
-        it('should throw an error if playlist is not in the path', () => {
-            expect(() => extractDeezerPlaylistId('https://www.deezer.com/track/12345')).toThrow('Playlist ID not found in URL');
-        });
-
-        it('should throw an error if playlist is the last segment', () => {
-            expect(() => extractDeezerPlaylistId('https://www.deezer.com/playlist')).toThrow('Playlist ID not found in URL');
-        });
-
-        it('should throw an error if URL has no path segments', () => {
-            expect(() => extractDeezerPlaylistId('https://www.deezer.com')).toThrow('Playlist ID not found in URL');
-        });
-
-        it('should ignore segments after the playlist ID', () => {
-            expect(extractDeezerPlaylistId('https://www.deezer.com/playlist/12345/extra')).toBe('12345');
-        });
-
-        it('should handle URL with multiple slashes correctly', () => {
-            expect(extractDeezerPlaylistId('https://www.deezer.com/playlist//12345')).toBe('12345');
+            it('throws error for base URLs with no segments', () => {
+                expect(() => extractDeezerPlaylistId('https://www.deezer.com')).toThrow('Playlist ID not found in URL');
+                expect(() => extractDeezerPlaylistId('https://www.deezer.com/')).toThrow('Playlist ID not found in URL');
+            });
         });
     });
 

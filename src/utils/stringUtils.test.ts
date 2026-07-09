@@ -130,42 +130,64 @@ describe('StringUtils.generateUnlockCode', () => {
 });
 
 describe('StringUtils.normalizeUrl', () => {
-    test('should return empty string for empty input', () => {
-        // @ts-ignore
-        expect(StringUtils.normalizeUrl(null)).toBe('');
-        // @ts-ignore
-        expect(StringUtils.normalizeUrl(undefined)).toBe('');
-        expect(StringUtils.normalizeUrl('')).toBe('');
+    describe('Falsy and empty edge cases', () => {
+        it('should correctly handle falsy inputs by returning an empty string', () => {
+            // @ts-ignore
+            expect(StringUtils.normalizeUrl(null)).toBe('');
+            // @ts-ignore
+            expect(StringUtils.normalizeUrl(undefined)).toBe('');
+            expect(StringUtils.normalizeUrl('')).toBe('');
+        });
+
+        it('should return empty string when input consists only of slashes', () => {
+            const inputs = ['/', '//', '///', '////'];
+            inputs.forEach(input => {
+                expect(StringUtils.normalizeUrl(input)).toBe('');
+            });
+        });
     });
 
-    test('should return original URL if no trailing slash', () => {
-        expect(StringUtils.normalizeUrl('https://example.com')).toBe('https://example.com');
-        expect(StringUtils.normalizeUrl('http://localhost:3000')).toBe('http://localhost:3000');
+    describe('Standard URL processing', () => {
+        it.each([
+            ['https://example.com', 'https://example.com'],
+            ['http://localhost:8080', 'http://localhost:8080'],
+            ['ftp://files.example.com', 'ftp://files.example.com'],
+            ['https://example.com/api/v1', 'https://example.com/api/v1']
+        ])('should leave URL unmodified if there is no trailing slash: %s', (input, expected) => {
+            expect(StringUtils.normalizeUrl(input)).toBe(expected);
+        });
+
+        it.each([
+            ['https://example.com/', 'https://example.com'],
+            ['https://example.com/path/', 'https://example.com/path'],
+            ['http://localhost/api/', 'http://localhost/api']
+        ])('should strip a single trailing slash: %s', (input, expected) => {
+            expect(StringUtils.normalizeUrl(input)).toBe(expected);
+        });
+
+        it.each([
+            ['https://example.com//', 'https://example.com'],
+            ['https://example.com/path///', 'https://example.com/path'],
+            ['http://localhost////', 'http://localhost']
+        ])('should strip multiple trailing slashes: %s', (input, expected) => {
+            expect(StringUtils.normalizeUrl(input)).toBe(expected);
+        });
     });
 
-    test('should remove a single trailing slash', () => {
-        expect(StringUtils.normalizeUrl('https://example.com/')).toBe('https://example.com');
-        expect(StringUtils.normalizeUrl('https://example.com/path/')).toBe('https://example.com/path');
-    });
+    describe('Complex paths with queries and fragments', () => {
+        it.each([
+            ['https://example.com/search?q=test/', 'https://example.com/search?q=test'],
+            ['https://example.com/#section/', 'https://example.com/#section'],
+            ['https://example.com/path/?query=1/', 'https://example.com/path/?query=1'],
+            ['https://example.com/api?a=b&c=d/', 'https://example.com/api?a=b&c=d']
+        ])('should strip trailing slash after queries or fragments: %s', (input, expected) => {
+            expect(StringUtils.normalizeUrl(input)).toBe(expected);
+        });
 
-    test('should remove multiple trailing slashes', () => {
-        expect(StringUtils.normalizeUrl('https://example.com//')).toBe('https://example.com');
-        expect(StringUtils.normalizeUrl('https://example.com/path///')).toBe('https://example.com/path');
-    });
-
-    test('should handle URLs with query parameters and fragments', () => {
-        expect(StringUtils.normalizeUrl('https://example.com/search?q=test/')).toBe('https://example.com/search?q=test');
-        expect(StringUtils.normalizeUrl('https://example.com/#section/')).toBe('https://example.com/#section');
-    });
-
-    test('should return empty string if input is just slashes', () => {
-        expect(StringUtils.normalizeUrl('/')).toBe('');
-        expect(StringUtils.normalizeUrl('//')).toBe('');
-        expect(StringUtils.normalizeUrl('///')).toBe('');
-    });
-
-    test('should not modify slashes in the middle of the URL', () => {
-        expect(StringUtils.normalizeUrl('https://example.com/a/b/c')).toBe('https://example.com/a/b/c');
+        it('should retain internal slashes without modification', () => {
+            const complexUrl = 'https://example.com/a/b/c//d?q=//test#//frag';
+            expect(StringUtils.normalizeUrl(complexUrl)).toBe(complexUrl);
+        });
     });
 });
 
@@ -194,52 +216,77 @@ describe('StringUtils.getFileExtension', () => {
 });
 
 describe('StringUtils.formatTimeAgo', () => {
-    const baseTime = 1600000000000; // Use a fixed time for deterministic tests
+    const mockCurrentTime = 1600000000000;
 
-    test('should return "just now" for times under 60 seconds', () => {
-        expect(StringUtils.formatTimeAgo(baseTime, baseTime)).toBe('just now');
-        expect(StringUtils.formatTimeAgo(baseTime - 30 * 1000, baseTime)).toBe('just now');
-        expect(StringUtils.formatTimeAgo(baseTime - 59 * 1000, baseTime)).toBe('just now');
+    beforeAll(() => {
+        jest.useFakeTimers();
+        jest.setSystemTime(mockCurrentTime);
     });
 
-    test('should return "just now" for future timestamps', () => {
-        // diffSeconds will be negative, which is < 60
-        expect(StringUtils.formatTimeAgo(baseTime + 10 * 1000, baseTime)).toBe('just now');
+    afterAll(() => {
+        jest.useRealTimers();
     });
 
-    test('should return minutes for times between 1 minute and 59 minutes', () => {
-        expect(StringUtils.formatTimeAgo(baseTime - 60 * 1000, baseTime)).toBe('1m ago');
-        expect(StringUtils.formatTimeAgo(baseTime - 120 * 1000, baseTime)).toBe('2m ago');
-        expect(StringUtils.formatTimeAgo(baseTime - 3599 * 1000, baseTime)).toBe('59m ago');
+    describe('when less than a minute has passed', () => {
+        it('returns "just now" for exactly 0 seconds difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime, mockCurrentTime)).toBe('just now');
+        });
+
+        it('returns "just now" for 59 seconds difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 59 * 1000, mockCurrentTime)).toBe('just now');
+        });
+
+        it('returns "just now" for future dates', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime + 10 * 1000, mockCurrentTime)).toBe('just now');
+        });
     });
 
-    test('should return hours for times between 1 hour and 23 hours', () => {
-        expect(StringUtils.formatTimeAgo(baseTime - 3600 * 1000, baseTime)).toBe('1h ago');
-        expect(StringUtils.formatTimeAgo(baseTime - 7200 * 1000, baseTime)).toBe('2h ago');
-        expect(StringUtils.formatTimeAgo(baseTime - 86399 * 1000, baseTime)).toBe('23h ago');
+    describe('when minutes have passed (1 to 59)', () => {
+        it('returns "1m ago" for exactly 60 seconds difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 60 * 1000, mockCurrentTime)).toBe('1m ago');
+        });
+
+        it('returns "59m ago" for 59 minutes and 59 seconds difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 3599 * 1000, mockCurrentTime)).toBe('59m ago');
+        });
     });
 
-    test('should return days for times between 1 day and 6 days', () => {
-        expect(StringUtils.formatTimeAgo(baseTime - 86400 * 1000, baseTime)).toBe('1d ago');
-        expect(StringUtils.formatTimeAgo(baseTime - 172800 * 1000, baseTime)).toBe('2d ago');
-        expect(StringUtils.formatTimeAgo(baseTime - 604799 * 1000, baseTime)).toBe('6d ago');
+    describe('when hours have passed (1 to 23)', () => {
+        it('returns "1h ago" for exactly 60 minutes difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 3600 * 1000, mockCurrentTime)).toBe('1h ago');
+        });
+
+        it('returns "23h ago" for 23 hours and 59 minutes difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 86399 * 1000, mockCurrentTime)).toBe('23h ago');
+        });
     });
 
-    test('should return locale date string for times 7 days or older', () => {
-        const timestamp7Days = baseTime - 604800 * 1000;
-        expect(StringUtils.formatTimeAgo(timestamp7Days, baseTime)).toBe(new Date(timestamp7Days).toLocaleDateString());
+    describe('when days have passed (1 to 6)', () => {
+        it('returns "1d ago" for exactly 24 hours difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 86400 * 1000, mockCurrentTime)).toBe('1d ago');
+        });
 
-        const timestamp30Days = baseTime - 30 * 86400 * 1000;
-        expect(StringUtils.formatTimeAgo(timestamp30Days, baseTime)).toBe(new Date(timestamp30Days).toLocaleDateString());
+        it('returns "6d ago" for exactly 6 days and 23 hours difference', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 604799 * 1000, mockCurrentTime)).toBe('6d ago');
+        });
     });
 
-    test('should use Date.now() when currentTimeMs is not provided', () => {
-        const mockNow = 1600000000000;
-        const spy = jest.spyOn(Date, 'now').mockReturnValue(mockNow);
+    describe('when 7 or more days have passed', () => {
+        it('returns formatted date string for exactly 7 days difference', () => {
+            const timestamp = mockCurrentTime - 604800 * 1000;
+            expect(StringUtils.formatTimeAgo(timestamp, mockCurrentTime)).toBe(new Date(timestamp).toLocaleDateString());
+        });
 
-        expect(StringUtils.formatTimeAgo(mockNow - 30 * 1000)).toBe('just now');
-        expect(StringUtils.formatTimeAgo(mockNow - 120 * 1000)).toBe('2m ago');
+        it('returns formatted date string for 30 days difference', () => {
+            const timestamp = mockCurrentTime - 30 * 86400 * 1000;
+            expect(StringUtils.formatTimeAgo(timestamp, mockCurrentTime)).toBe(new Date(timestamp).toLocaleDateString());
+        });
+    });
 
-        spy.mockRestore();
+    describe('default current time behavior', () => {
+        it('uses Date.now() when currentTimeMs is omitted', () => {
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 60 * 1000)).toBe('1m ago');
+            expect(StringUtils.formatTimeAgo(mockCurrentTime - 120 * 1000)).toBe('2m ago');
+        });
     });
 });

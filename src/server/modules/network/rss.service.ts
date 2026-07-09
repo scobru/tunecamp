@@ -100,11 +100,7 @@ export function createRssService(db: DatabaseService): RssService {
                 is_followed: true,
             });
 
-            db.transaction(() => {
-                for (const item of parsed.items) {
-                    db.upsertRemoteContent(item);
-                }
-            });
+            db.upsertRemoteContentsBatch(parsed.items);
             console.log(`📡 [RSS] Followed "${parsed.channel.name}" (${parsed.items.length} items) — ${effectiveUrl}`);
             return { name: parsed.channel.name || effectiveUrl, items: parsed.items.length };
         },
@@ -128,26 +124,22 @@ export function createRssService(db: DatabaseService): RssService {
                 outbox_url: feedUrl,
             });
 
-            db.transaction(() => {
-                for (const item of parsed.items) {
-                    db.upsertRemoteContent(item);
-                }
-            });
+            db.upsertRemoteContentsBatch(parsed.items);
             return parsed.items.length;
         },
 
         async refreshAll() {
             const feeds = db.getFollowedActors().filter((a) => a.type === "rss");
-            await Promise.allSettled(
-                feeds.map(async (feed) => {
-                    try {
-                        const n = await this.refreshFeed(feed.uri);
-                        console.log(`📡 [RSS] Refreshed ${feed.uri}: ${n} items`);
-                    } catch (e: any) {
-                        console.error(`❌ [RSS] Refresh failed for ${feed.uri}: ${e?.message || e}`);
-                    }
-                })
-            );
+            const promises = [];
+            for (let i = 0; i < feeds.length; i++) {
+                const feed = feeds[i];
+                promises.push(
+                    this.refreshFeed(feed.uri)
+                        .then((n) => console.log(`📡 [RSS] Refreshed ${feed.uri}: ${n} items`))
+                        .catch((e: any) => console.error(`❌ [RSS] Refresh failed for ${feed.uri}: ${e?.message || e}`))
+                );
+            }
+            await Promise.allSettled(promises);
         },
 
         removeFeed(url: string) {

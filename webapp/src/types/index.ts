@@ -118,7 +118,7 @@ export interface Artist {
     bio?: string;
     coverImage?: string;
     bannerImage?: string | null;
-    postParams?: any; // ActivityPub actor
+    postParams?: unknown; // ActivityPub actor
     albums?: Album[];
     releases?: Release[];
     tracks?: Track[];
