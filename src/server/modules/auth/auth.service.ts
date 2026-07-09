@@ -60,6 +60,9 @@ export interface AuthService {
     changePassword(username: string, newPassword: string): Promise<void>;
     /** Sets (or clears, with null) the account's email used for password-reset delivery. */
     setEmail(username: string, email: string | null): void;
+    setSecurityQuestions(userId: number, q1: string, a1: string, q2: string, a2: string): Promise<void>;
+    getSecurityQuestions(username: string): { q1: string, q2: string } | null;
+    resetPasswordWithSecurityQuestions(username: string, a1: string, a2: string, newPassword: string): Promise<boolean>;
     /** Generates a password reset token for the account with this email, valid 30 minutes. Returns null if no account has that email. */
     createPasswordResetToken(email: string): { token: string; username: string } | null;
     /** Validates a reset token and, if valid and unused, sets the new password. Returns false if the token is invalid/expired/used. */
@@ -686,6 +689,32 @@ export function createAuthService(
             db.prepare("UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(hash, row.admin_id);
             db.prepare("UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?").run(row.id);
             this.revokeTokens(row.admin_id);
+            return true;
+        },
+
+        async setSecurityQuestions(userId: number, q1: string, a1: string, q2: string, a2: string): Promise<void> {
+            const h1 = await this.hashPassword(a1.trim().toLowerCase());
+            const h2 = await this.hashPassword(a2.trim().toLowerCase());
+            db.prepare("UPDATE admin SET security_q1 = ?, security_a1_hash = ?, security_q2 = ?, security_a2_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(q1, h1, q2, h2, userId);
+        },
+
+        getSecurityQuestions(username: string): { q1: string, q2: string } | null {
+            const row = db.prepare("SELECT security_q1, security_q2 FROM admin WHERE username = ? COLLATE NOCASE AND is_active = 1").get(username) as { security_q1: string | null; security_q2: string | null } | undefined;
+            if (!row || !row.security_q1 || !row.security_q2) return null;
+            return { q1: row.security_q1, q2: row.security_q2 };
+        },
+
+        async resetPasswordWithSecurityQuestions(username: string, a1: string, a2: string, newPassword: string): Promise<boolean> {
+            const user = db.prepare("SELECT id, security_a1_hash, security_a2_hash FROM admin WHERE username = ? COLLATE NOCASE AND is_active = 1").get(username) as { id: number; security_a1_hash: string | null; security_a2_hash: string | null } | undefined;
+            if (!user || !user.security_a1_hash || !user.security_a2_hash) return false;
+            
+            const v1 = await this.verifyPassword(a1.trim().toLowerCase(), user.security_a1_hash);
+            const v2 = await this.verifyPassword(a2.trim().toLowerCase(), user.security_a2_hash);
+            if (!v1 || !v2) return false;
+
+            const hash = await this.hashPassword(newPassword);
+            db.prepare("UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(hash, user.id);
+            this.revokeTokens(user.id);
             return true;
         },
 

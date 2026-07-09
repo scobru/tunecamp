@@ -121,7 +121,11 @@ export function createDatabase(dbPath: string): DatabaseService {
             slsk_username TEXT,
             slsk_password TEXT,
             telegram_bot_token TEXT,
-            telegram_allowed_channels TEXT
+            telegram_allowed_channels TEXT,
+            security_q1 TEXT,
+            security_a1_hash TEXT,
+            security_q2 TEXT,
+            security_a2_hash TEXT
         );
 
         CREATE TABLE IF NOT EXISTS password_reset_tokens (
@@ -547,7 +551,6 @@ export function createDatabase(dbPath: string): DatabaseService {
             allow_downloads INTEGER NOT NULL DEFAULT 1
         );
 
-        -- Transient shared catalog tracks
         CREATE TABLE IF NOT EXISTS peer_tracks (
             id TEXT NOT NULL,
             session_id TEXT NOT NULL REFERENCES peer_sessions(id) ON DELETE CASCADE,
@@ -559,6 +562,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             mime_type TEXT,
             allow_download INTEGER NOT NULL DEFAULT 1,
             created_at INTEGER NOT NULL,
+            magnet_uri TEXT,
             PRIMARY KEY (id, session_id)
         );
 
@@ -622,6 +626,16 @@ export function createDatabase(dbPath: string): DatabaseService {
 
     // Runtime Migrations (robust column checks)
     db.transaction(() => {
+        // --- Admin Security Questions Migration ---
+        const adminCols = db.prepare("PRAGMA table_info(admin)").all() as any[];
+        if (!adminCols.some(col => col.name === 'security_q1')) {
+            console.log("📦 [Database] Migrating admin table: adding security questions columns...");
+            db.exec("ALTER TABLE admin ADD COLUMN security_q1 TEXT");
+            db.exec("ALTER TABLE admin ADD COLUMN security_a1_hash TEXT");
+            db.exec("ALTER TABLE admin ADD COLUMN security_q2 TEXT");
+            db.exec("ALTER TABLE admin ADD COLUMN security_a2_hash TEXT");
+        }
+
         // --- Consolidation Migration ---
         const releasesTableInfo = db.prepare("SELECT type FROM sqlite_master WHERE type='table' AND name='releases'").get() as { type: string } | undefined;
         if (releasesTableInfo) {
@@ -1082,6 +1096,13 @@ export function createDatabase(dbPath: string): DatabaseService {
                     db.exec("CREATE INDEX IF NOT EXISTS idx_peer_tracks_session ON peer_tracks(session_id)");
                     db.exec("CREATE INDEX IF NOT EXISTS idx_peer_tracks_search ON peer_tracks(title, artist)");
                 })();
+            }
+
+            // Migration for magnet_uri column
+            const updatedPtCols = db.prepare("PRAGMA table_info(peer_tracks)").all() as any[];
+            if (!updatedPtCols.some((c: any) => c.name === 'magnet_uri')) {
+                console.log("📦 [Database] Migrating peer_tracks: adding magnet_uri column...");
+                db.exec("ALTER TABLE peer_tracks ADD COLUMN magnet_uri TEXT");
             }
         }
 

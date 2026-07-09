@@ -189,7 +189,8 @@ export class PeerService {
             duration: m.duration || null,
             file_size: m.fileSizeBytes || null,
             mime_type: m.mimeType || null,
-            allow_download: m.allowDownload !== false
+            allow_download: m.allowDownload !== false,
+            magnet_uri: (m as any).magnetUri || null
         }));
 
         this.database.peer.replacePeerTracks(sessionId, peerTracks);

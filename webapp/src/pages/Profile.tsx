@@ -33,6 +33,7 @@ import AccountMigrationCard from "../components/AccountMigrationCard";
 import type { Track } from "../types";
 import clsx from "clsx";
 import { ChangePasswordCard } from "../components/ui/ChangePasswordCard";
+import { SecurityQuestionsCard } from "../components/ui/SecurityQuestionsCard";
 import { ArtistStripeConnectCard } from "../components/artist/ArtistStripeConnectCard";
 import { LinksEditor } from "../components/ui/LinksEditor";
 import { useSiteSettingsStore, truthy } from "../stores/useSiteSettingsStore";
@@ -535,6 +536,7 @@ const Profile = () => {
 
             {/* Security: change password (works for every authenticated user) */}
             <ChangePasswordCard />
+            <SecurityQuestionsCard />
 
             {/* Public profile opt-in (off by default for privacy) */}
             <div className="card bg-base-200 border border-base-content/10 p-6 space-y-4">

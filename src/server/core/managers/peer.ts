@@ -91,8 +91,8 @@ export function createPeerManager(db: DatabaseType): PeerManager {
             db.transaction(() => {
                 db.prepare("DELETE FROM peer_tracks WHERE session_id = ?").run(sessionId);
                 const stmt = db.prepare(
-                    `INSERT INTO peer_tracks (id, session_id, title, artist, album, duration, file_size, mime_type, allow_download, created_at) 
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                    `INSERT INTO peer_tracks (id, session_id, title, artist, album, duration, file_size, mime_type, allow_download, magnet_uri, created_at) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
                 );
                 const now = Date.now();
                 for (const t of tracks) {
@@ -106,6 +106,7 @@ export function createPeerManager(db: DatabaseType): PeerManager {
                         t.file_size || null,
                         t.mime_type || null,
                         t.allow_download ? 1 : 0,
+                        t.magnet_uri || null,
                         now
                     );
                 }
@@ -124,7 +125,8 @@ export function createPeerManager(db: DatabaseType): PeerManager {
                 file_size: row.file_size,
                 mime_type: row.mime_type,
                 allow_download: !!row.allow_download,
-                created_at: row.created_at
+                created_at: row.created_at,
+                magnet_uri: row.magnet_uri || null
             };
         },
         searchPeerTracks(query: string): PeerTrack[] {
@@ -149,7 +151,8 @@ export function createPeerManager(db: DatabaseType): PeerManager {
                 allow_download: !!row.allow_download,
                 created_at: row.created_at,
                 username: row.username,
-                user_id: row.user_id
+                user_id: row.user_id,
+                magnet_uri: row.magnet_uri || null
             }));
         },
         getTracksByPeerSession(sessionId: string): PeerTrack[] {
@@ -164,7 +167,8 @@ export function createPeerManager(db: DatabaseType): PeerManager {
                 file_size: row.file_size,
                 mime_type: row.mime_type,
                 allow_download: !!row.allow_download,
-                created_at: row.created_at
+                created_at: row.created_at,
+                magnet_uri: row.magnet_uri || null
             }));
         },
         getTracksByPeerSessions(sessionIds: string[]): PeerTrack[] {
@@ -188,7 +192,8 @@ export function createPeerManager(db: DatabaseType): PeerManager {
                     file_size: row.file_size,
                     mime_type: row.mime_type,
                     allow_download: !!row.allow_download,
-                    created_at: row.created_at
+                    created_at: row.created_at,
+                    magnet_uri: row.magnet_uri || null
                 })));
             }
 
