@@ -124,9 +124,11 @@ export function createRssService(db: DatabaseService): RssService {
                 outbox_url: feedUrl,
             });
 
+            // Prevent N+1 database updates by batching the item upserts
             if (parsed.items.length > 0) {
                 db.upsertRemoteContentsBatch(parsed.items);
             }
+
             return parsed.items.length;
         },
 

@@ -4,6 +4,7 @@ import type { RemoteContent } from "../core/database.types.js";
 export class RemoteContentRepository {
     constructor(protected db: DatabaseType) {}
 
+    /** Batched upsert for remote content to prevent N+1 queries */
     upsertRemoteContentsBatch(contents: Omit<RemoteContent, "id" | "received_at">[]): void {
         if (!contents.length) return;
         const b = (val: any) => {
