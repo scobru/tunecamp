@@ -63,6 +63,7 @@ export class SocialRepository {
     }
 
     removeAllFollowers(actorUri: string): void {
+        // Drop the actor as a follower across the entire instance
         this.db.prepare("DELETE FROM followers WHERE actor_uri = ?").run(actorUri);
     }
 

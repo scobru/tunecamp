@@ -86,6 +86,9 @@ export function createPeerWsHandler(server: http.Server, container: ServiceConta
                                 case "pong":
                                     container.peerService.handlePong(sessionId);
                                     break;
+                                case "chat":
+                                    container.peerService.relayChat(sessionId, message.to, message.text);
+                                    break;
                                 default:
                                     console.warn(`[PeerWS] Unknown message type: ${message.type}`);
                             }
