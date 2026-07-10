@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.22.4] - 2026-07-10
+
+### Fixed
+- **Admins can now use peer sharing.** The peer WebSocket handler required the per-user `can_peer` grant for everyone with no role bypass, while the `can-peer` toggle endpoint (and the users-list UI) refuse to modify user 1 — so the root admin was permanently locked out of connecting a peer daemon, and Managers needed an explicit grant like any listener. `canUsePeer()` in `peer.ws.ts` now allows Root Admin and Manager (`admin` role) implicitly; other roles still need the `can_peer` toggle. The Peer Sharing column in Admin → Users shows admin rows as always-on (disabled toggle with a tooltip) instead of a misleading "off" state.
+
 ## [2.22.3] - 2026-07-08
 
 ### Fixed
