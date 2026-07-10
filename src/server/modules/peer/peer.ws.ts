@@ -1,6 +1,15 @@
 import { WebSocketServer } from "ws";
 import type * as http from "http";
 import type { ServiceContainer } from "../../core/container.js";
+import { UserRole, VisibilityGuardian } from "../../common/visibility.js";
+
+// Admins (Manager/Root Admin) can always connect a peer daemon; other users
+// need the per-user can_peer grant. Root admin (id 1) has no other way in:
+// the can-peer endpoint refuses to modify user 1.
+export function canUsePeer(user: { can_peer: number; is_root: boolean; role: UserRole } | undefined): boolean {
+    if (!user) return false;
+    return !!user.can_peer || user.is_root || VisibilityGuardian.isAdminRole(user.role);
+}
 
 export function createPeerWsHandler(server: http.Server, container: ServiceContainer) {
     const wss = new WebSocketServer({ noServer: true });
@@ -24,9 +33,9 @@ export function createPeerWsHandler(server: http.Server, container: ServiceConta
                     return;
                 }
 
-                // Check can_peer permission in database
+                // Check peer permission (admins implicitly allowed)
                 const user = container.authService.getUserByUsername(payload.username);
-                if (!user || !user.can_peer) {
+                if (!canUsePeer(user)) {
                     socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
                     socket.destroy();
                     return;

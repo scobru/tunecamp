@@ -196,11 +196,12 @@ export const AdminUsersList = () => {
                 )}
               </td>
               <td>
-                <input 
-                  type="checkbox" 
-                  className="toggle toggle-xs toggle-primary" 
-                  checked={u.can_peer === 1}
-                  disabled={u.id === 1 || !isRootAdmin}
+                <input
+                  type="checkbox"
+                  className="toggle toggle-xs toggle-primary tooltip"
+                  data-tip={u.role === "root_admin" || u.role === "admin" ? "Admins can always use peer sharing" : undefined}
+                  checked={u.can_peer === 1 || u.role === "root_admin" || u.role === "admin"}
+                  disabled={u.id === 1 || u.role === "root_admin" || u.role === "admin" || !isRootAdmin}
                   onChange={async () => {
                     try {
                       await API.updateUserCanPeer(u.id, u.can_peer !== 1);
