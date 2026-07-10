@@ -238,7 +238,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
     router.post("/tracks", rejectAs400(upload.array("files", 50)), async (req: any, res: any) => {
         try {
             const files = req.files as Express.Multer.File[];
-            const { releaseSlug, artistId: bodyArtistId, artist: bodyArtistName, album: bodyAlbumTitle } = req.body;
+            const { releaseSlug, artistId: bodyArtistId, artist: bodyArtistName, album: bodyAlbumTitle, title: bodyTrackTitle } = req.body;
 
             // Get release if applicable
             const formalRelease = releaseSlug ? library.getReleaseBySlug(releaseSlug) : undefined;
@@ -404,9 +404,19 @@ export function createUploadRoutes(container: ServiceContainer): Router {
                     await storage.move(file.path, destPath, { overwrite: false });
                     movedCount++;
 
-                    // Process immediately to get Track ID, pass uploader's user ID as ownerId
-                    const uploaderId = req.userId;
-                    const scanResult = await scanner.processAudioFile(destPath, musicDir, targetArtistId, uploaderId, targetAlbumId);
+                    const scanResult = await scanner.processAudioFile(
+                        destPath, 
+                        musicDir, 
+                        targetArtistId, 
+                        req.userId, 
+                        targetAlbumId,
+                        undefined,
+                        {
+                            title: bodyTrackTitle || undefined,
+                            artist: bodyArtistName || undefined,
+                            album: bodyAlbumTitle || undefined
+                        }
+                    );
 
                     if (scanResult && scanResult.success && scanResult.trackId) {
                         scannerResults.push(scanResult);
