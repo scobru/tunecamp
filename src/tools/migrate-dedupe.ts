@@ -279,11 +279,11 @@ Options:
                 if (paths.length > 0) {
                     const placeholders = paths.map(() => '?').join(',');
 
-                    const tr = db.prepare(`SELECT COUNT(*) as count FROM tracks WHERE file_path IN (${placeholders})`).get(...paths) as { count: number };
-                    updatedTracks += (tr?.count || 0);
+                    const trackCountRes = db.prepare(`SELECT COUNT(*) as count FROM tracks WHERE file_path IN (${placeholders})`).get(...paths) as { count: number };
+                    updatedTracks += (trackCountRes?.count || 0);
 
-                    const rtr = db.prepare(`SELECT COUNT(*) as count FROM release_tracks WHERE file_path IN (${placeholders})`).get(...paths) as { count: number };
-                    updatedReleaseTracks += (rtr?.count || 0);
+                    const releaseTrackCountRes = db.prepare(`SELECT COUNT(*) as count FROM release_tracks WHERE file_path IN (${placeholders})`).get(...paths) as { count: number };
+                    updatedReleaseTracks += (releaseTrackCountRes?.count || 0);
                 }
             }
         }
