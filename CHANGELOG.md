@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.22.5] - 2026-07-10
+
+### Fixed
+- **Resolved merge conflict for the fedify `handleDeleteObject` optimization.** PR #954 restated the single-query `removeAllFollowers` optimization that already landed on `dev` via #952, colliding in `fedify.ts`. Kept `dev`'s version (the redundant `actorUri as string` cast is unnecessary since the enclosing guard already narrows it to `string`) and merged in the clarifying comments on `removeAllFollowers` in `database.types.ts` and `social.repository.ts`.
+
 ## [2.22.4] - 2026-07-10
 
 ### Fixed
