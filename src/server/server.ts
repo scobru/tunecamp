@@ -141,7 +141,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     // peer crawlers fetch from arbitrary origins. However, wildcard CORS should
     // only apply to safe read operations. Mutations (like POST /register) must
     // use strict CORS to prevent CSRF.
-    const publicCors = cors({ origin: '*', credentials: false });
+    const publicCors = cors({ origin: '*', credentials: false, methods: ['GET', 'HEAD', 'OPTIONS'] });
     const publicFederationCors = (req: express.Request, res: express.Response, next: express.NextFunction) => {
         const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
         const reqMethod = req.headers['access-control-request-method'];
