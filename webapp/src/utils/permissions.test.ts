@@ -8,11 +8,14 @@ describe('canPublish', () => {
 
   it('returns true if role is root_admin or admin', () => {
     expect(canPublish(undefined, 'admin')).toBe(true);
+    expect(canPublish(null, 'admin')).toBe(true);
     expect(canPublish(undefined, 'root_admin')).toBe(true);
+    expect(canPublish(null, 'root_admin')).toBe(true);
   });
 
   it('returns true if user has artistId and role is in PUBLISHING_ROLES', () => {
     expect(canPublish({ artistId: '123' }, 'user')).toBe(true);
+    expect(canPublish({ artistId: 123 }, 'user')).toBe(true);
     expect(canPublish({ artistId: '123' }, 'super_user')).toBe(true);
   });
 
@@ -27,8 +30,19 @@ describe('canPublish', () => {
     expect(canPublish({ artistId: undefined }, 'user')).toBe(false);
   });
 
+  it('handles falsy artistId values correctly', () => {
+    expect(canPublish({ artistId: 0 }, 'user')).toBe(false);
+    expect(canPublish({ artistId: '' }, 'user')).toBe(false);
+    expect(canPublish({ artistId: '0' }, 'user')).toBe(true);
+  });
+
+  it('handles isRootAdmin false correctly', () => {
+    expect(canPublish({ isRootAdmin: false }, 'user')).toBe(false);
+  });
+
   it('returns false by default', () => {
     expect(canPublish(undefined, null)).toBe(false);
+    expect(canPublish(null, null)).toBe(false);
     expect(canPublish(undefined, undefined)).toBe(false);
   });
 });
@@ -44,6 +58,11 @@ describe('canManageItem', () => {
       expect(canManageItem(null, 'admin', { owner_id: 99 })).toBe(true);
       expect(canManageItem(null, 'root_admin', null)).toBe(true);
     });
+
+    it('denies access if role is not in FULL_MANAGE_ROLES', () => {
+      expect(canManageItem(null, 'user', { owner_id: 99 })).toBe(false);
+      expect(canManageItem(null, 'super_user', { owner_id: 99 })).toBe(false);
+    });
   });
 
   describe('nullish item edge cases', () => {
@@ -51,11 +70,17 @@ describe('canManageItem', () => {
       expect(canManageItem({ userId: 1 }, 'user', null)).toBe(false);
       expect(canManageItem({ userId: 1 }, 'user', undefined)).toBe(false);
     });
+
+    it('denies access if item is an empty object', () => {
+      expect(canManageItem({ userId: 1 }, 'user', {})).toBe(false);
+    });
   });
 
   describe('owner-based permissions (direct matching)', () => {
     it('grants access when item.owner_id matches user.userId exactly', () => {
       expect(canManageItem({ userId: 123 }, 'user', { owner_id: 123 })).toBe(true);
+      expect(canManageItem({ userId: 123 }, null, { owner_id: 123 })).toBe(true);
+      expect(canManageItem({ userId: 123 }, undefined, { owner_id: 123 })).toBe(true);
     });
 
     it('denies access when item.owner_id does not match user.userId', () => {
@@ -103,6 +128,7 @@ describe('canManageItem', () => {
   describe('default fallback', () => {
     it('denies access by default for empty or non-matching inputs', () => {
       expect(canManageItem(null, null, { owner_id: 1 })).toBe(false);
+      expect(canManageItem(undefined, undefined, { owner_id: 1 })).toBe(false);
       expect(canManageItem({ userId: null, artistId: null }, 'user', { owner_id: 1, artist_id: 2 })).toBe(false);
     });
   });
