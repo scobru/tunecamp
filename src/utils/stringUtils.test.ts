@@ -184,6 +184,31 @@ describe('StringUtils.normalizeUrl', () => {
             expect(StringUtils.normalizeUrl(base + longPath + '///')).toBe(base + longPath);
         });
     });
+
+    it('handles URLs with basic authentication', () => {
+        expect(StringUtils.normalizeUrl('https://user:pass@example.com/')).toBe('https://user:pass@example.com');
+        expect(StringUtils.normalizeUrl('ftp://admin:12345@192.168.1.1//')).toBe('ftp://admin:12345@192.168.1.1');
+    });
+
+    it('handles URLs with unicode and internationalized characters', () => {
+        expect(StringUtils.normalizeUrl('https://ñandú.cl/')).toBe('https://ñandú.cl');
+        expect(StringUtils.normalizeUrl('https://example.com/こんにちは///')).toBe('https://example.com/こんにちは');
+        expect(StringUtils.normalizeUrl('https://example.com/path/música/')).toBe('https://example.com/path/música');
+    });
+
+    it('handles data URIs with trailing slashes', () => {
+        expect(StringUtils.normalizeUrl('data:text/plain;base64,SGVsbG8gV29ybGQh/')).toBe('data:text/plain;base64,SGVsbG8gV29ybGQh');
+    });
+
+    it('does not strip slashes if they are followed by whitespace', () => {
+        expect(StringUtils.normalizeUrl('https://example.com/ ')).toBe('https://example.com/ ');
+        expect(StringUtils.normalizeUrl('https://example.com/\n')).toBe('https://example.com/\n');
+    });
+
+    it('handles unusual schemes', () => {
+        expect(StringUtils.normalizeUrl('custom-scheme://host/path/')).toBe('custom-scheme://host/path');
+        expect(StringUtils.normalizeUrl('urn:isbn:0451450523/')).toBe('urn:isbn:0451450523');
+    });
 });
 
 describe('StringUtils.getFileExtension', () => {
