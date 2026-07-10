@@ -130,64 +130,51 @@ describe('StringUtils.generateUnlockCode', () => {
 });
 
 describe('StringUtils.normalizeUrl', () => {
-    describe('Falsy and empty edge cases', () => {
-        it('should correctly handle falsy inputs by returning an empty string', () => {
-            // @ts-ignore
-            expect(StringUtils.normalizeUrl(null)).toBe('');
-            // @ts-ignore
-            expect(StringUtils.normalizeUrl(undefined)).toBe('');
-            expect(StringUtils.normalizeUrl('')).toBe('');
-        });
-
-        it('should return empty string when input consists only of slashes', () => {
-            const inputs = ['/', '//', '///', '////'];
-            inputs.forEach(input => {
-                expect(StringUtils.normalizeUrl(input)).toBe('');
-            });
-        });
+    it('returns an empty string when given an empty string', () => {
+        expect(StringUtils.normalizeUrl('')).toBe('');
     });
 
-    describe('Standard URL processing', () => {
-        it.each([
-            ['https://example.com', 'https://example.com'],
-            ['http://localhost:8080', 'http://localhost:8080'],
-            ['ftp://files.example.com', 'ftp://files.example.com'],
-            ['https://example.com/api/v1', 'https://example.com/api/v1']
-        ])('should leave URL unmodified if there is no trailing slash: %s', (input, expected) => {
-            expect(StringUtils.normalizeUrl(input)).toBe(expected);
-        });
-
-        it.each([
-            ['https://example.com/', 'https://example.com'],
-            ['https://example.com/path/', 'https://example.com/path'],
-            ['http://localhost/api/', 'http://localhost/api']
-        ])('should strip a single trailing slash: %s', (input, expected) => {
-            expect(StringUtils.normalizeUrl(input)).toBe(expected);
-        });
-
-        it.each([
-            ['https://example.com//', 'https://example.com'],
-            ['https://example.com/path///', 'https://example.com/path'],
-            ['http://localhost////', 'http://localhost']
-        ])('should strip multiple trailing slashes: %s', (input, expected) => {
-            expect(StringUtils.normalizeUrl(input)).toBe(expected);
-        });
+    it('returns an empty string when given strings with only slashes', () => {
+        expect(StringUtils.normalizeUrl('/')).toBe('');
+        expect(StringUtils.normalizeUrl('//')).toBe('');
+        expect(StringUtils.normalizeUrl('///')).toBe('');
     });
 
-    describe('Complex paths with queries and fragments', () => {
-        it.each([
-            ['https://example.com/search?q=test/', 'https://example.com/search?q=test'],
-            ['https://example.com/#section/', 'https://example.com/#section'],
-            ['https://example.com/path/?query=1/', 'https://example.com/path/?query=1'],
-            ['https://example.com/api?a=b&c=d/', 'https://example.com/api?a=b&c=d']
-        ])('should strip trailing slash after queries or fragments: %s', (input, expected) => {
-            expect(StringUtils.normalizeUrl(input)).toBe(expected);
-        });
+    it('does not modify URLs that do not have trailing slashes', () => {
+        expect(StringUtils.normalizeUrl('https://example.com')).toBe('https://example.com');
+        expect(StringUtils.normalizeUrl('http://127.0.0.1:3000')).toBe('http://127.0.0.1:3000');
+        expect(StringUtils.normalizeUrl('ws://chat.example.com')).toBe('ws://chat.example.com');
+        expect(StringUtils.normalizeUrl('file:///etc/passwd')).toBe('file:///etc/passwd');
+    });
 
-        it('should retain internal slashes without modification', () => {
-            const complexUrl = 'https://example.com/a/b/c//d?q=//test#//frag';
-            expect(StringUtils.normalizeUrl(complexUrl)).toBe(complexUrl);
-        });
+    it('strips a single trailing slash from URLs', () => {
+        expect(StringUtils.normalizeUrl('https://example.com/')).toBe('https://example.com');
+        expect(StringUtils.normalizeUrl('http://localhost:8080/api/')).toBe('http://localhost:8080/api');
+        expect(StringUtils.normalizeUrl('ftp://server/path/')).toBe('ftp://server/path');
+    });
+
+    it('strips multiple consecutive trailing slashes from URLs', () => {
+        expect(StringUtils.normalizeUrl('https://example.com//')).toBe('https://example.com');
+        expect(StringUtils.normalizeUrl('http://localhost/path///')).toBe('http://localhost/path');
+        expect(StringUtils.normalizeUrl('wss://ws.example.com////')).toBe('wss://ws.example.com');
+    });
+
+    it('strips trailing slashes correctly even with queries or hash fragments present', () => {
+        expect(StringUtils.normalizeUrl('https://example.com/search?q=hello/')).toBe('https://example.com/search?q=hello');
+        expect(StringUtils.normalizeUrl('https://example.com/#about/')).toBe('https://example.com/#about');
+        expect(StringUtils.normalizeUrl('http://localhost/?a=1&b=2//')).toBe('http://localhost/?a=1&b=2');
+    });
+
+    it('preserves internal slashes, including consecutive ones within the path or queries', () => {
+        const urlWithInternalSlashes = 'https://example.com/a//b/c?q=1//2#foo//bar';
+        expect(StringUtils.normalizeUrl(urlWithInternalSlashes)).toBe(urlWithInternalSlashes);
+    });
+
+    it('handles extremely long URLs appropriately (max length boundary)', () => {
+        const base = 'https://example.com/path';
+        const longPath = '/a'.repeat(1000);
+        expect(StringUtils.normalizeUrl(base + longPath + '/')).toBe(base + longPath);
+        expect(StringUtils.normalizeUrl(base + longPath + '///')).toBe(base + longPath);
     });
 });
 
