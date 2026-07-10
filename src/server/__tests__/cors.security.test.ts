@@ -4,7 +4,7 @@ import { jest } from '@jest/globals';
 import cors from 'cors';
 // We just replicate the logic to test it easily.
 const strictCors = cors({ origin: false, credentials: true });
-const publicCors = cors({ origin: '*' });
+const publicCors = cors({ origin: '*', credentials: false });
 
 const publicFederationCors = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
