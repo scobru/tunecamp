@@ -22,8 +22,6 @@ import sqlite3 from 'better-sqlite3';
 import { loadConfig } from '../server/core/config.js';
 import { getFastFileHash, getFileHash, findAudioFiles } from '../utils/fileUtils.js';
 
-interface CountResult { count: number }
-
 async function main() {
     const args = process.argv.slice(2);
     const isDryRun = args.includes('--dry-run');
@@ -87,7 +85,7 @@ Options:
         console.warn(`⚠️  No audio files found in ${musicDir}. Please verify the path.`);
         
         // Let's check the database to see if we're missing something
-        const dbTracks = db.prepare("SELECT COUNT(*) as count FROM tracks").get() as CountResult;
+        const dbTracks = db.prepare("SELECT COUNT(*) as count FROM tracks").get() as { count: number };
         console.log(`📊 Database has ${dbTracks.count} track entries.`);
         
         if (dbTracks.count > 0) {
@@ -281,10 +279,10 @@ Options:
                 if (paths.length > 0) {
                     const placeholders = paths.map(() => '?').join(',');
 
-                    const tr = db.prepare(`SELECT COUNT(*) as count FROM tracks WHERE file_path IN (${placeholders})`).get(...paths) as CountResult;
+                    const tr = db.prepare(`SELECT COUNT(*) as count FROM tracks WHERE file_path IN (${placeholders})`).get(...paths) as { count: number };
                     updatedTracks += (tr?.count || 0);
 
-                    const rtr = db.prepare(`SELECT COUNT(*) as count FROM release_tracks WHERE file_path IN (${placeholders})`).get(...paths) as CountResult;
+                    const rtr = db.prepare(`SELECT COUNT(*) as count FROM release_tracks WHERE file_path IN (${placeholders})`).get(...paths) as { count: number };
                     updatedReleaseTracks += (rtr?.count || 0);
                 }
             }
