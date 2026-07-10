@@ -124,7 +124,9 @@ export function createRssService(db: DatabaseService): RssService {
                 outbox_url: feedUrl,
             });
 
-            db.upsertRemoteContentsBatch(parsed.items);
+            if (parsed.items.length > 0) {
+                db.upsertRemoteContentsBatch(parsed.items);
+            }
             return parsed.items.length;
         },
 
