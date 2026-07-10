@@ -58,6 +58,11 @@ describe('canManageItem', () => {
       expect(canManageItem(null, 'admin', { owner_id: 99 })).toBe(true);
       expect(canManageItem(null, 'root_admin', null)).toBe(true);
     });
+
+    it('denies access if role is not in FULL_MANAGE_ROLES', () => {
+      expect(canManageItem(null, 'user', { owner_id: 99 })).toBe(false);
+      expect(canManageItem(null, 'super_user', { owner_id: 99 })).toBe(false);
+    });
   });
 
   describe('nullish item edge cases', () => {
@@ -65,11 +70,17 @@ describe('canManageItem', () => {
       expect(canManageItem({ userId: 1 }, 'user', null)).toBe(false);
       expect(canManageItem({ userId: 1 }, 'user', undefined)).toBe(false);
     });
+
+    it('denies access if item is an empty object', () => {
+      expect(canManageItem({ userId: 1 }, 'user', {})).toBe(false);
+    });
   });
 
   describe('owner-based permissions (direct matching)', () => {
     it('grants access when item.owner_id matches user.userId exactly', () => {
       expect(canManageItem({ userId: 123 }, 'user', { owner_id: 123 })).toBe(true);
+      expect(canManageItem({ userId: 123 }, null, { owner_id: 123 })).toBe(true);
+      expect(canManageItem({ userId: 123 }, undefined, { owner_id: 123 })).toBe(true);
     });
 
     it('denies access when item.owner_id does not match user.userId', () => {
@@ -117,6 +128,7 @@ describe('canManageItem', () => {
   describe('default fallback', () => {
     it('denies access by default for empty or non-matching inputs', () => {
       expect(canManageItem(null, null, { owner_id: 1 })).toBe(false);
+      expect(canManageItem(undefined, undefined, { owner_id: 1 })).toBe(false);
       expect(canManageItem({ userId: null, artistId: null }, 'user', { owner_id: 1, artist_id: 2 })).toBe(false);
     });
   });
