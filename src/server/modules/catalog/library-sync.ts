@@ -59,21 +59,26 @@ export class LibrarySync {
       console.warn(`[LibrarySync] Failed to hash file: ${filePath}`);
     }
 
-    // 1. Check for existing track by Hash (Deduplication / Move detection)
-    if (hash) {
-      const existingByHash = this.database.getTrackByHash(hash);
-      if (existingByHash) {
-        return this.handleHashMatch(existingByHash, normalizedPath, ownerId);
-      }
-    }
-
-    // 2. Resolve Domain Entities
+    // 1. Resolve Domain Entities first so overrides apply even on hash match
     const common = metadata?.common || {};
     const format = metadata?.format || {};
     const albumArtist = common.albumartist;
 
     const artistId = await this.resolveArtist(common.artist, metadataHints?.artist, overrideArtistId);
     const albumId = await this.resolveAlbum(dir, common, metadataHints, overrideAlbumId, musicDir, ownerId, suggestedCoverPath, artistId, albumArtist);
+
+    // 2. Check for existing track by Hash (Deduplication / Move detection)
+    if (hash) {
+      const existingByHash = this.database.getTrackByHash(hash);
+      if (existingByHash) {
+        // Apply explicit overrides (artist/title/album hints) even on hash match
+        const hasOverrides = overrideArtistId || metadataHints?.artist || metadataHints?.title || metadataHints?.album;
+        if (hasOverrides) {
+          return this.updateExistingTrack(existingByHash, { hash, normalizedPath, ownerId, metadata, metadataHints, overrideArtistId, artistId, albumId, musicDir, duration: format.duration || null });
+        }
+        return this.handleHashMatch(existingByHash, normalizedPath, ownerId);
+      }
+    }
 
     // Resolve duration with FFmpeg fallback if missing/falsy
     let duration = format.duration || null;
