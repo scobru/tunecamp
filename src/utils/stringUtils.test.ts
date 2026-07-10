@@ -130,51 +130,84 @@ describe('StringUtils.generateUnlockCode', () => {
 });
 
 describe('StringUtils.normalizeUrl', () => {
-    it('returns an empty string when given an empty string', () => {
-        expect(StringUtils.normalizeUrl('')).toBe('');
+    describe('empty and edge cases', () => {
+        test.each([
+            ['', ''],
+            ['/', ''],
+            ['//', ''],
+            ['///', '']
+        ])('normalizes "%s" to "%s"', (input, expected) => {
+            expect(StringUtils.normalizeUrl(input)).toBe(expected);
+        });
     });
 
-    it('returns an empty string when given strings with only slashes', () => {
-        expect(StringUtils.normalizeUrl('/')).toBe('');
-        expect(StringUtils.normalizeUrl('//')).toBe('');
-        expect(StringUtils.normalizeUrl('///')).toBe('');
+    describe('URLs without trailing slashes', () => {
+        test.each([
+            ['https://example.com', 'https://example.com'],
+            ['http://127.0.0.1:3000', 'http://127.0.0.1:3000'],
+            ['ws://chat.example.com', 'ws://chat.example.com'],
+            ['file:///etc/passwd', 'file:///etc/passwd']
+        ])('preserves "%s"', (input, expected) => {
+            expect(StringUtils.normalizeUrl(input)).toBe(expected);
+        });
     });
 
-    it('does not modify URLs that do not have trailing slashes', () => {
-        expect(StringUtils.normalizeUrl('https://example.com')).toBe('https://example.com');
-        expect(StringUtils.normalizeUrl('http://127.0.0.1:3000')).toBe('http://127.0.0.1:3000');
-        expect(StringUtils.normalizeUrl('ws://chat.example.com')).toBe('ws://chat.example.com');
-        expect(StringUtils.normalizeUrl('file:///etc/passwd')).toBe('file:///etc/passwd');
+    describe('URLs with trailing slashes', () => {
+        test.each([
+            ['https://example.com/', 'https://example.com'],
+            ['http://localhost:8080/api/', 'http://localhost:8080/api'],
+            ['ftp://server/path/', 'ftp://server/path'],
+            ['https://example.com//', 'https://example.com'],
+            ['http://localhost/path///', 'http://localhost/path'],
+            ['wss://ws.example.com////', 'wss://ws.example.com']
+        ])('strips trailing slashes from "%s"', (input, expected) => {
+            expect(StringUtils.normalizeUrl(input)).toBe(expected);
+        });
     });
 
-    it('strips a single trailing slash from URLs', () => {
-        expect(StringUtils.normalizeUrl('https://example.com/')).toBe('https://example.com');
-        expect(StringUtils.normalizeUrl('http://localhost:8080/api/')).toBe('http://localhost:8080/api');
-        expect(StringUtils.normalizeUrl('ftp://server/path/')).toBe('ftp://server/path');
+    describe('complex URLs', () => {
+        test.each([
+            ['https://example.com/search?q=hello/', 'https://example.com/search?q=hello'],
+            ['https://example.com/#about/', 'https://example.com/#about'],
+            ['http://localhost/?a=1&b=2//', 'http://localhost/?a=1&b=2'],
+            ['https://example.com/a//b/c?q=1//2#foo//bar', 'https://example.com/a//b/c?q=1//2#foo//bar']
+        ])('correctly normalizes "%s"', (input, expected) => {
+            expect(StringUtils.normalizeUrl(input)).toBe(expected);
+        });
     });
 
-    it('strips multiple consecutive trailing slashes from URLs', () => {
-        expect(StringUtils.normalizeUrl('https://example.com//')).toBe('https://example.com');
-        expect(StringUtils.normalizeUrl('http://localhost/path///')).toBe('http://localhost/path');
-        expect(StringUtils.normalizeUrl('wss://ws.example.com////')).toBe('wss://ws.example.com');
+    describe('long URLs', () => {
+        it('handles extremely long URLs appropriately (max length boundary)', () => {
+            const base = 'https://example.com/path';
+            const longPath = '/a'.repeat(1000);
+            expect(StringUtils.normalizeUrl(base + longPath + '/')).toBe(base + longPath);
+            expect(StringUtils.normalizeUrl(base + longPath + '///')).toBe(base + longPath);
+        });
     });
 
-    it('strips trailing slashes correctly even with queries or hash fragments present', () => {
-        expect(StringUtils.normalizeUrl('https://example.com/search?q=hello/')).toBe('https://example.com/search?q=hello');
-        expect(StringUtils.normalizeUrl('https://example.com/#about/')).toBe('https://example.com/#about');
-        expect(StringUtils.normalizeUrl('http://localhost/?a=1&b=2//')).toBe('http://localhost/?a=1&b=2');
+    it('handles URLs with basic authentication', () => {
+        expect(StringUtils.normalizeUrl('https://user:pass@example.com/')).toBe('https://user:pass@example.com');
+        expect(StringUtils.normalizeUrl('ftp://admin:12345@192.168.1.1//')).toBe('ftp://admin:12345@192.168.1.1');
     });
 
-    it('preserves internal slashes, including consecutive ones within the path or queries', () => {
-        const urlWithInternalSlashes = 'https://example.com/a//b/c?q=1//2#foo//bar';
-        expect(StringUtils.normalizeUrl(urlWithInternalSlashes)).toBe(urlWithInternalSlashes);
+    it('handles URLs with unicode and internationalized characters', () => {
+        expect(StringUtils.normalizeUrl('https://ñandú.cl/')).toBe('https://ñandú.cl');
+        expect(StringUtils.normalizeUrl('https://example.com/こんにちは///')).toBe('https://example.com/こんにちは');
+        expect(StringUtils.normalizeUrl('https://example.com/path/música/')).toBe('https://example.com/path/música');
     });
 
-    it('handles extremely long URLs appropriately (max length boundary)', () => {
-        const base = 'https://example.com/path';
-        const longPath = '/a'.repeat(1000);
-        expect(StringUtils.normalizeUrl(base + longPath + '/')).toBe(base + longPath);
-        expect(StringUtils.normalizeUrl(base + longPath + '///')).toBe(base + longPath);
+    it('handles data URIs with trailing slashes', () => {
+        expect(StringUtils.normalizeUrl('data:text/plain;base64,SGVsbG8gV29ybGQh/')).toBe('data:text/plain;base64,SGVsbG8gV29ybGQh');
+    });
+
+    it('does not strip slashes if they are followed by whitespace', () => {
+        expect(StringUtils.normalizeUrl('https://example.com/ ')).toBe('https://example.com/ ');
+        expect(StringUtils.normalizeUrl('https://example.com/\n')).toBe('https://example.com/\n');
+    });
+
+    it('handles unusual schemes', () => {
+        expect(StringUtils.normalizeUrl('custom-scheme://host/path/')).toBe('custom-scheme://host/path');
+        expect(StringUtils.normalizeUrl('urn:isbn:0451450523/')).toBe('urn:isbn:0451450523');
     });
 });
 
