@@ -100,6 +100,7 @@ export function createRssService(db: DatabaseService): RssService {
                 is_followed: true,
             });
 
+            // Batch insert RSS items to avoid N+1 queries
             db.upsertRemoteContentsBatch(parsed.items);
             console.log(`📡 [RSS] Followed "${parsed.channel.name}" (${parsed.items.length} items) — ${effectiveUrl}`);
             return { name: parsed.channel.name || effectiveUrl, items: parsed.items.length };
