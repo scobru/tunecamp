@@ -564,9 +564,9 @@ const API = {
                     }));
                     lastError = null;
                     break;
-                } catch (e: unknown) {
-                    lastError = e instanceof Error ? e : new Error(String(e));
-                    console.warn(`Chunk ${i} upload failed (attempt ${attempt + 1}/${MAX_RETRIES}):`, lastError.message);
+                } catch (error: unknown) {
+                    lastError = error instanceof Error ? error : new Error(String(error));
+                    console.warn(`Chunk ${i} upload failed (attempt ${attempt + 1} of ${MAX_RETRIES}):`, lastError.message);
                     if (attempt < MAX_RETRIES - 1) {
                         // Exponential backoff: 2s, 4s, 8s
                         await new Promise(r => setTimeout(r, 2000 * Math.pow(2, attempt)));
