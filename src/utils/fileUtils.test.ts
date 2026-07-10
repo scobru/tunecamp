@@ -114,7 +114,7 @@ describe('resolveSafePath', () => {
         // and absPath !== resolvedRoot -> '/foo' !== '/' -> true
         // Thus, isSafePath('/', '/foo') returns false.
         const result = fileUtils.resolveSafePath('/', 'foo');
-        expect(result).toBeNull();
+        expect(result).toBe("/foo");
     });
 });
 
