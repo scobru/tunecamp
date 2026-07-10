@@ -994,7 +994,7 @@ export function handleDeleteObject(
     // Drop them as a follower everywhere (per-artist + the site actor).
     if (actorUri && objectId === actorUri) {
         dbService.removeAllFollowers(actorUri);
-        console.log(`🗑️ Remote actor deleted (optimized); removed as follower: ${actorUri}`);
+        console.log(`🗑️ Remote actor deleted (optimized with single query); removed as follower: ${actorUri}`);
         return;
     }
 
