@@ -202,78 +202,109 @@ describe('StringUtils.getFileExtension', () => {
     });
 });
 
+describe('StringUtils.slugify', () => {
+    it('returns empty string for falsy input', () => {
+        // @ts-ignore
+        expect(StringUtils.slugify(null)).toBe('');
+        // @ts-ignore
+        expect(StringUtils.slugify(undefined)).toBe('');
+        expect(StringUtils.slugify('')).toBe('');
+    });
+
+    it('converts to lowercase', () => {
+        expect(StringUtils.slugify('HELLO')).toBe('hello');
+    });
+
+    it('replaces non-alphanumeric characters with dashes', () => {
+        expect(StringUtils.slugify('hello world!')).toBe('hello-world');
+        expect(StringUtils.slugify('hello_world')).toBe('hello-world');
+        expect(StringUtils.slugify('hello@#$world')).toBe('hello-world');
+    });
+
+    it('trims leading and trailing dashes', () => {
+        expect(StringUtils.slugify('-hello-world-')).toBe('hello-world');
+        expect(StringUtils.slugify('---hello---world---')).toBe('hello-world');
+    });
+});
+
+describe('StringUtils.validateUsername', () => {
+    it('returns error if username is empty', () => {
+        expect(StringUtils.validateUsername('')).toEqual({ ok: false, error: 'Username is required' });
+        // @ts-ignore
+        expect(StringUtils.validateUsername(null)).toEqual({ ok: false, error: 'Username is required' });
+    });
+
+    it('returns error if username is too short', () => {
+        expect(StringUtils.validateUsername('ab')).toEqual({ ok: false, error: 'Username must be at least 3 characters' });
+    });
+
+    it('returns error if username is too long', () => {
+        expect(StringUtils.validateUsername('a'.repeat(21))).toEqual({ ok: false, error: 'Username must be at most 20 characters' });
+    });
+
+    it('returns error if username contains invalid characters', () => {
+        expect(StringUtils.validateUsername('user!name')).toEqual({ ok: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(StringUtils.validateUsername('user-name')).toEqual({ ok: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(StringUtils.validateUsername('user name')).toEqual({ ok: false, error: 'Username must contain only letters, numbers, and underscores' });
+    });
+
+    it('returns ok and value if username is valid', () => {
+        expect(StringUtils.validateUsername('user_name123')).toEqual({ ok: true, value: 'user_name123' });
+        expect(StringUtils.validateUsername('USR_NME')).toEqual({ ok: true, value: 'USR_NME' });
+        expect(StringUtils.validateUsername('abc')).toEqual({ ok: true, value: 'abc' });
+        expect(StringUtils.validateUsername('a'.repeat(20))).toEqual({ ok: true, value: 'a'.repeat(20) });
+    });
+});
+
 describe('StringUtils.formatTimeAgo', () => {
-    const mockCurrentTime = 1600000000000;
+    const NOW = 1700000000000;
 
     beforeAll(() => {
         jest.useFakeTimers();
-        jest.setSystemTime(mockCurrentTime);
+        jest.setSystemTime(NOW);
     });
 
     afterAll(() => {
         jest.useRealTimers();
     });
 
-    describe('when less than a minute has passed', () => {
-        it('returns "just now" for exactly 0 seconds difference', () => {
-            expect(StringUtils.formatTimeAgo(mockCurrentTime, mockCurrentTime)).toBe('just now');
-        });
-
-        it('returns "just now" for 59 seconds difference', () => {
-            expect(StringUtils.formatTimeAgo(mockCurrentTime - 59 * 1000, mockCurrentTime)).toBe('just now');
-        });
-
-        it('returns "just now" for future dates', () => {
-            expect(StringUtils.formatTimeAgo(mockCurrentTime + 10 * 1000, mockCurrentTime)).toBe('just now');
-        });
+    it('formats times less than 60 seconds ago as "just now"', () => {
+        expect(StringUtils.formatTimeAgo(NOW, NOW)).toBe('just now');
+        expect(StringUtils.formatTimeAgo(NOW - 1, NOW)).toBe('just now');
+        expect(StringUtils.formatTimeAgo(NOW - 59999, NOW)).toBe('just now');
     });
 
-    describe('when minutes have passed (1 to 59)', () => {
-        it('returns "1m ago" for exactly 60 seconds difference', () => {
-            expect(StringUtils.formatTimeAgo(mockCurrentTime - 60 * 1000, mockCurrentTime)).toBe('1m ago');
-        });
-
-        it('returns "59m ago" for 59 minutes and 59 seconds difference', () => {
-            expect(StringUtils.formatTimeAgo(mockCurrentTime - 3599 * 1000, mockCurrentTime)).toBe('59m ago');
-        });
+    it('formats times between 1 and 59 minutes ago', () => {
+        expect(StringUtils.formatTimeAgo(NOW - 60000, NOW)).toBe('1m ago');
+        expect(StringUtils.formatTimeAgo(NOW - 60001, NOW)).toBe('1m ago');
+        expect(StringUtils.formatTimeAgo(NOW - 3599999, NOW)).toBe('59m ago');
     });
 
-    describe('when hours have passed (1 to 23)', () => {
-        it('returns "1h ago" for exactly 60 minutes difference', () => {
-            expect(StringUtils.formatTimeAgo(mockCurrentTime - 3600 * 1000, mockCurrentTime)).toBe('1h ago');
-        });
-
-        it('returns "23h ago" for 23 hours and 59 minutes difference', () => {
-            expect(StringUtils.formatTimeAgo(mockCurrentTime - 86399 * 1000, mockCurrentTime)).toBe('23h ago');
-        });
+    it('formats times between 1 and 23 hours ago', () => {
+        expect(StringUtils.formatTimeAgo(NOW - 3600000, NOW)).toBe('1h ago');
+        expect(StringUtils.formatTimeAgo(NOW - 3600001, NOW)).toBe('1h ago');
+        expect(StringUtils.formatTimeAgo(NOW - 86399999, NOW)).toBe('23h ago');
     });
 
-    describe('when days have passed (1 to 6)', () => {
-        it('returns "1d ago" for exactly 24 hours difference', () => {
-            expect(StringUtils.formatTimeAgo(mockCurrentTime - 86400 * 1000, mockCurrentTime)).toBe('1d ago');
-        });
-
-        it('returns "6d ago" for exactly 6 days and 23 hours difference', () => {
-            expect(StringUtils.formatTimeAgo(mockCurrentTime - 604799 * 1000, mockCurrentTime)).toBe('6d ago');
-        });
+    it('formats times between 1 and 6 days ago', () => {
+        expect(StringUtils.formatTimeAgo(NOW - 86400000, NOW)).toBe('1d ago');
+        expect(StringUtils.formatTimeAgo(NOW - 86400001, NOW)).toBe('1d ago');
+        expect(StringUtils.formatTimeAgo(NOW - 604799999, NOW)).toBe('6d ago');
     });
 
-    describe('when 7 or more days have passed', () => {
-        it('returns formatted date string for exactly 7 days difference', () => {
-            const timestamp = mockCurrentTime - 604800 * 1000;
-            expect(StringUtils.formatTimeAgo(timestamp, mockCurrentTime)).toBe(new Date(timestamp).toLocaleDateString());
-        });
+    it('formats times 7 or more days ago as local date string', () => {
+        const _7DaysAgo = NOW - 604800000;
+        expect(StringUtils.formatTimeAgo(_7DaysAgo, NOW)).toBe(new Date(_7DaysAgo).toLocaleDateString());
 
-        it('returns formatted date string for 30 days difference', () => {
-            const timestamp = mockCurrentTime - 30 * 86400 * 1000;
-            expect(StringUtils.formatTimeAgo(timestamp, mockCurrentTime)).toBe(new Date(timestamp).toLocaleDateString());
-        });
+        const _30DaysAgo = NOW - (30 * 86400000);
+        expect(StringUtils.formatTimeAgo(_30DaysAgo, NOW)).toBe(new Date(_30DaysAgo).toLocaleDateString());
     });
 
-    describe('default current time behavior', () => {
-        it('uses Date.now() when currentTimeMs is omitted', () => {
-            expect(StringUtils.formatTimeAgo(mockCurrentTime - 60 * 1000)).toBe('1m ago');
-            expect(StringUtils.formatTimeAgo(mockCurrentTime - 120 * 1000)).toBe('2m ago');
-        });
+    it('handles negative diffs (future times) gracefully as "just now"', () => {
+        expect(StringUtils.formatTimeAgo(NOW + 10000, NOW)).toBe('just now');
+    });
+
+    it('uses Date.now() when currentTimeMs is omitted', () => {
+        expect(StringUtils.formatTimeAgo(NOW - 60000)).toBe('1m ago');
     });
 });
