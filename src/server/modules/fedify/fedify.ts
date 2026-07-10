@@ -993,8 +993,8 @@ export function handleDeleteObject(
     // Account deletion: Delete(Actor) — the deleted object IS the actor.
     // Drop them as a follower everywhere (per-artist + the site actor).
     if (actorUri && objectId === actorUri) {
-        dbService.removeAllFollowers(actorUri);
-        console.log(`🗑️ Remote actor deleted (optimized); removed as follower: ${actorUri}`);
+        dbService.removeAllFollowers(actorUri as string);
+        console.log(`🗑️ Remote actor deleted (optimized, single query); removed as follower: ${actorUri}`);
         return;
     }
 
