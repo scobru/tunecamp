@@ -90,16 +90,9 @@ export function resolveSafePath(rootDir: string, userPath: string): string | nul
  * Validates whether an absolute path is safely contained within a root directory.
  */
 function isSafePath(resolvedRoot: string, absPath: string): boolean {
-  const relative = path.relative(resolvedRoot, absPath);
-
-  // Check if it escapes the directory
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    return false;
-  }
-
-  // Double check the absolute path to be absolutely sure
-  if (!absPath.startsWith(resolvedRoot + path.sep) && absPath !== resolvedRoot) {
-    return false;
-  }
-  return true;
+  if (absPath === resolvedRoot) return true;
+  const expectedPrefix = resolvedRoot.endsWith(path.sep)
+    ? resolvedRoot
+    : resolvedRoot + path.sep;
+  return absPath.startsWith(expectedPrefix);
 }
