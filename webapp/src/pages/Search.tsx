@@ -456,6 +456,11 @@ const Search = () => {
                             </h2>
                             <div className="flex flex-col gap-2 bg-base-200/20 p-4 rounded-2xl border border-base-content/5">
                                 {results.peers.map((track) => {
+                                    // Remote (federated) peer tracks carry `origin` and stream via the
+                                    // other instance's public /federated-stream; local ones use the token tunnel.
+                                    const peerStreamUrl = (t: any) => t.origin
+                                        ? `${t.origin}/api/peers/${t.session_id}/tracks/${t.id}/federated-stream`
+                                        : `/api/peers/${t.session_id}/tracks/${t.id}/stream?token=${API.getToken()}`;
                                     const peerTrackId = `peer:${track.session_id}:${track.id}`;
                                     const isCurrent = currentTrack?.id === peerTrackId;
                                     const isCurrentlyPlaying = isCurrent && isPlaying;
@@ -464,7 +469,7 @@ const Search = () => {
                                         title: track.title,
                                         artistName: track.artist || track.username || "Unknown Artist",
                                         albumTitle: track.album || "Peer Share",
-                                        streamUrl: `/api/peers/${track.session_id}/tracks/${track.id}/stream?token=${API.getToken()}`,
+                                        streamUrl: peerStreamUrl(track),
                                         coverUrl: "",
                                         coverImage: "",
                                         duration: track.duration || 0,
@@ -480,7 +485,7 @@ const Search = () => {
                                                 title: t.title,
                                                 artistName: t.artist || t.username || "Unknown Artist",
                                                 albumTitle: t.album || "Peer Share",
-                                                streamUrl: `/api/peers/${t.session_id}/tracks/${t.id}/stream?token=${API.getToken()}`,
+                                                streamUrl: peerStreamUrl(t),
                                                 coverUrl: "",
                                                 coverImage: "",
                                                 duration: t.duration || 0,
