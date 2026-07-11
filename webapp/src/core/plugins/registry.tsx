@@ -18,15 +18,6 @@ export interface FrontendPlugin {
         details: string;
     };
 
-    // Inject tabs in ContentSearch (if applicable)
-    searchTabs?: {
-        id: string;
-        label: string;
-        icon: React.ReactNode;
-        component: React.ComponentType<any>; // Tab content component
-        colorClass?: string; // e.g., "bg-success text-success-content"
-    }[];
-    
     // Inject form fields in IntegrationsPanel
     configPanel?: React.ComponentType<PluginConfigProps>;
     
@@ -56,19 +47,6 @@ class PluginRegistry {
         return Array.from(this.plugins.values());
     }
 
-    getSearchTabs(status?: any) {
-        return this.getAll()
-            .filter(p => p.searchTabs)
-            .filter(p => {
-                if (!status || !p.statusCheck) return true; // If no status provided, assume online
-                const check = p.statusCheck(status, []); // We pass [] for plugins since frontend doesn't have the full backend plugins list here easily
-                return check.status === 'online';
-            })
-            .flatMap(p => p.searchTabs!.map(tab => ({
-                pluginId: p.id,
-                ...tab
-            })));
-    }
 }
 
 export const pluginRegistry = new PluginRegistry();

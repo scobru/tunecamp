@@ -36,7 +36,6 @@ const Legal = lazy(() => import("./pages/Legal"));
 const Guide = lazy(() => import("./pages/Guide"));
 const Changelog = lazy(() => import("./pages/Changelog"));
 const SharePage = lazy(() => import("./pages/SharePage"));
-const ContentSearch = lazy(() => import("./pages/ContentSearch"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AdminReleaseEditor = lazy(() => import("./pages/AdminReleaseEditor"));
 const Files = lazy(() => import("./pages/Files"));
@@ -259,8 +258,6 @@ function App() {
               element={<EditorGuard><AdminReleaseEditor /></EditorGuard>}
             />
             <Route path="/browser" element={<RootAdminGuard><Files /></RootAdminGuard>} />
-
-            <Route path="/search/content" element={<ManagerOrRootGuard><ContentSearch /></ManagerOrRootGuard>} />
 
             {/* Store */}
             <Route path="/store" element={<ModuleGuard flag="hideStore"><Store /></ModuleGuard>} />

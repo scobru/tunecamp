@@ -39,7 +39,7 @@ docker-compose up -d --build
 - 🔍 **Full-text Search**: Search across artists, albums, and tracks with fuzzy matching.
 - 📈 **Scrobbling**: Optional Last.fm and ListenBrainz scrobbling (configured per-user in settings).
 - 🧩 **Metadata Providers**: Discogs, MusicBrainz, iTunes, TheAudioDB, Spotify, Bandcamp, and SoundCloud for tagging and enrichment.
-- 🔊 **Smart Streaming**: Provider fallback for missing local files via SoundCloud and Bandcamp, with caching and automatic retries. Additional providers (e.g. YouTube) can be added through the [plugin system](docs/PLUGINS.md).
+- 🔊 **Smart Streaming**: Provider fallback for missing local files via SoundCloud and Bandcamp, with caching and automatic retries.
 
 ### Decentralization & Federation
 
@@ -75,7 +75,6 @@ docker-compose up -d --build
 - ✏️ **Batch Editing**: Edit cover art, metadata, and pricing across multiple tracks at once.
 - 📁 **File Browser**: Browse the server filesystem and attach files to the library.
 - 🤖 **Telegram Bot**: Rapid ingestion of music files and remote management. See [telegram.md](docs/telegram.md).
-- 🧩 **Plugins**: Load custom providers (streaming, metadata, storage) from a plugins directory. See [PLUGINS.md](docs/PLUGINS.md).
 - 💾 **Backup & Restore**: Full database backup/restore via the admin panel or CLI.
 - 📊 **Statistics**: Play counts, listening time, top tracks/artists, and library stats.
 - 📟 **Monitoring & System Diagnostics**: Live CPU, memory, storage, and background task metrics via the admin System panel, plus `/health` endpoints and Sentry reporting. See [monitoring.md](docs/monitoring.md).
@@ -84,7 +83,7 @@ docker-compose up -d --build
 
 - 🏷️ **Discogs Metadata**: Match tracks against the Discogs database for accurate tagging.
 - ☁️ **Google Drive Storage**: Optional Google Drive backend for media storage. See [google-drive.md](docs/google-drive.md).
-- 🔌 **Download Provider Hooks**: The server exposes a download-provider registry that external tools (like [Sidecamp](#tunecamp-ecosystem)) can connect to for Soulseek, BitTorrent, and yt-dlp acquisition. See [PLUGINS.md](docs/PLUGINS.md).
+- 🔌 **Sidecamp Acquisition**: Music acquisition (Soulseek, BitTorrent, yt-dlp, Internet Archive) lives in [Sidecamp](#tunecamp-ecosystem), the desktop companion app — the server stays a pure host.
 
 ### Deployment
 
@@ -184,7 +183,6 @@ Configuration is managed via environment variables (or an `.env` file).
 | `TUNECAMP_SITE_NAME`    | Human-readable instance name                           | `My TuneCamp Server`                                     |
 | `TUNECAMP_CORS_ORIGINS` | Comma-separated allowed CORS origins                   | _all_                                                    |
 | `TUNECAMP_DOWNLOAD_DIR` | Directory for download-provider plugins (e.g. Sidecamp) | `./music/downloads` (local) / `/data/downloads` (Docker) |
-| `TUNECAMP_PLUGINS_DIR`  | Directory to load provider plugins from                | `./plugins`                                              |
 
 **Federation & Network**
 

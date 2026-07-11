@@ -16,7 +16,7 @@ TuneCamp è una piattaforma musicale federata e self-hosted che combina un serve
 - **Accesso tramite IA (MCP)**: un server basato su Model Context Protocol che consente ai client IA (es. Claude Desktop) di effettuare ricerche nel catalogo e avviare azioni tramite un canale sicuro protetto da token. Vedi [mcp-setup-guide.md](./mcp-setup-guide.md).
 - **Lab**: incorpora strumenti audio sperimentali basati su browser in iFrame sandbox isolati, senza toccare la base di codice principale. Vedi [LAB.md](./LAB.md).
 - **Pannello di Sistema Amministratore**: metriche in tempo reale di CPU/RAM/archiviazione/attività in background per rilevare eventuali perdite di memoria (memory leak). Vedi [monitoring.md](./monitoring.md).
-- **Estensibilità**: supporto per provider backend (metadati, streaming, archiviazione, …) tramite un caricatore di plugin. Vedi [PLUGINS.md](./PLUGINS.md).
+- **Estensibilità**: provider backend integrati (metadati, streaming, archiviazione, …) dietro registry per-provider. L'acquisizione (ricerca/download da sorgenti esterne) vive in Sidecamp, l'app desktop companion.
 
 ## Stack Tecnologico
 
