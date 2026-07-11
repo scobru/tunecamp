@@ -14,6 +14,7 @@ import { ActivityPubTransport } from "./activitypub.transport.js";
 import { DeliveryQueue } from "./activitypub.delivery-queue.js";
 import { getSiteHandle, SITE_ACTOR_ID } from "../../core/site-actor.js";
 import { StringUtils } from "../../../utils/stringUtils.js";
+import pLimit from "p-limit";
 
 export class ActivityPubService {
     private renderer: ActivityPubRenderer;
@@ -120,8 +121,9 @@ export class ActivityPubService {
     public async generateKeysForAllArtists(): Promise<void> {
         const artists = this.db.getArtists(VisibilityProfile.ALL_ACCESS);
 
-        // Generate keys for all artists concurrently
-        await Promise.all(artists.map(artist => this.ensureArtistKeys(artist.id)));
+        // Generate keys for all artists concurrently with a limit to avoid CPU spikes
+        const limit = pLimit(10);
+        await Promise.all(artists.map(artist => limit(() => this.ensureArtistKeys(artist.id))));
 
         // Generate keys for the Site Actor if they don't exist
         if (!this.db.getSetting("site_public_key")) {
