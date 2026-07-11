@@ -1314,12 +1314,12 @@ export function createDatabase(dbPath: string): DatabaseService {
         }
         if (toDelete.length > 0) {
             console.log(`🧹 [Database Cleanup] Removing ${toDelete.length} incorrectly imported artwork track entries...`);
-            const deleteStmt = db.prepare("DELETE FROM tracks WHERE id = ?");
-            const deleteOwnershipStmt = db.prepare("DELETE FROM track_ownership WHERE track_id = ?");
             db.transaction(() => {
-                for (const id of toDelete) {
-                    deleteOwnershipStmt.run(id);
-                    deleteStmt.run(id);
+                for (let i = 0; i < toDelete.length; i += 500) {
+                    const chunk = toDelete.slice(i, i + 500);
+                    const placeholders = chunk.map(() => '?').join(',');
+                    db.prepare(`DELETE FROM track_ownership WHERE track_id IN (${placeholders})`).run(chunk);
+                    db.prepare(`DELETE FROM tracks WHERE id IN (${placeholders})`).run(chunk);
                 }
             })();
         }
