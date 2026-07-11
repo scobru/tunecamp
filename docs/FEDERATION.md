@@ -14,6 +14,7 @@ Tunecamp discovers other instances by **gossip over HTTP** — there is no centr
 - **Liveness check**: a peer is only added if it answers as a live TuneCamp (NodeInfo type-check), not merely HTTP 200.
 - **Music Discovery**: the "Network" page reads the federated set, then fetches catalogs directly via HTTP (`/api/catalog`), cached stale-while-revalidate.
 - **Peer-track federation** (opt-in): when an instance enables *Federate Peer Tracks*, its currently-shared peer tracks ride along in `/api/catalog/full` and appear on remote Network pages (tagged `PEER`), streamable — and, if downloads are allowed, importable — cross-instance. These entries are ephemeral and use a short cache window so they vanish quickly when the peer disconnects. See [Sidecamp](./sidecamp.md#federating-peer-tracks-across-instances).
+- **Cross-instance peer search** (opt-in): under the same *Federate Peer Tracks* flag, a logged-in user's global search fans out server-side to known federated instances (bounded 10, parallel, 3s timeout, SSRF-guarded) and merges their connected peers' matching tracks, tagged with `origin`. **Single hop only**; remote hits stream from the origin's public `federated-stream` endpoint (search + stream, no download). Exposed as `GET /api/peers/federated-search`.
 - **One-click follow**: an admin can follow an instance directly by URL.
 
 ### Public endpoints

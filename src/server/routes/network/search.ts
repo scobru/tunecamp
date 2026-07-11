@@ -10,6 +10,7 @@ import type { StreamingService } from "../../modules/streaming/streaming.service
 import { VisibilityGuardian, UserRole, Capability, VisibilityProfile } from "../../common/visibility.js";
 import { requireDownloadProvider } from "../../middleware/provider-gate.js";
 import { getDownloadService } from "../../modules/catalog/download.service.js";
+import { fetchJsonSafe } from "../../common/network.js";
 
 import type { ServiceContainer } from "../../core/container.js";
 
@@ -203,6 +204,29 @@ export function createSearchRoutes(container: ServiceContainer): Router {
                     const peerService = (container as any).peerService;
                     if (peerService && typeof peerService.searchTracks === 'function') {
                         peerResults = peerService.searchTracks(query);
+                    }
+
+                    // Cross-instance peer search: fan out to known federated instances
+                    // that also opted into peer federation, so their connected pir
+                    // daemons' shares show up here too. Each remote hit is tagged with
+                    // `origin` so the client streams it via that instance's public
+                    // /federated-stream endpoint. Bounded parallel + short timeout so a
+                    // slow/dead peer can't stall the whole search.
+                    const peerFederation = identity.getSetting("peerFederation") === "true";
+                    if (peerFederation && container.federatedDiscoveryService) {
+                        const origins = container.federatedDiscoveryService.getCommunitySites()
+                            .map(s => s.url).filter(Boolean).slice(0, 10);
+                        const remote = await Promise.allSettled(origins.map(async (origin) => {
+                            const url = `${origin}/api/peers/federated-search?q=${encodeURIComponent(query)}`;
+                            const tracks = await fetchJsonSafe<any[]>(url, {
+                                signal: AbortSignal.timeout(3000),
+                                headers: { "User-Agent": "TuneCamp-Federation/2.0" },
+                            });
+                            return Array.isArray(tracks) ? tracks.map(t => ({ ...t, origin })) : [];
+                        }));
+                        for (const r of remote) {
+                            if (r.status === "fulfilled") peerResults.push(...r.value);
+                        }
                     }
                 }
             }
