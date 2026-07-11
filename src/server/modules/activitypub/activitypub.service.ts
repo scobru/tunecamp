@@ -120,8 +120,12 @@ export class ActivityPubService {
     public async generateKeysForAllArtists(): Promise<void> {
         const artists = this.db.getArtists(VisibilityProfile.ALL_ACCESS);
 
-        // Generate keys for all artists concurrently
-        await Promise.all(artists.map(artist => this.ensureArtistKeys(artist.id)));
+        // Generate keys for all artists in chunks to prevent CPU/event loop spikes
+        const CHUNK_SIZE = 10;
+        for (let i = 0; i < artists.length; i += CHUNK_SIZE) {
+            const chunk = artists.slice(i, i + CHUNK_SIZE);
+            await Promise.all(chunk.map(artist => this.ensureArtistKeys(artist.id)));
+        }
 
         // Generate keys for the Site Actor if they don't exist
         if (!this.db.getSetting("site_public_key")) {
