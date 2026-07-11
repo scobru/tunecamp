@@ -244,8 +244,7 @@ export function createUsersRoutes(container: ServiceContainer): Router {
      */
     router.get("/me/api-tokens", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
         try {
-            const role = req.role;
-            if (role !== UserRole.ROOT_ADMIN && role !== UserRole.ADMIN && role !== UserRole.SUPER_USER) {
+            if (!req.isAdmin && !req.isSuperUser) {
                 return res.status(403).json({ error: "Access denied: API tokens are only available for Curators, Managers, and Admins" });
             }
 
@@ -279,8 +278,7 @@ export function createUsersRoutes(container: ServiceContainer): Router {
      */
     router.post("/me/api-tokens", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
         try {
-            const role = req.role;
-            if (role !== UserRole.ROOT_ADMIN && role !== UserRole.ADMIN && role !== UserRole.SUPER_USER) {
+            if (!req.isAdmin && !req.isSuperUser) {
                 return res.status(403).json({ error: "Access denied: API tokens are only available for Curators, Managers, and Admins" });
             }
 
@@ -308,8 +306,7 @@ export function createUsersRoutes(container: ServiceContainer): Router {
      */
     router.delete("/me/api-tokens/:id", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
         try {
-            const role = req.role;
-            if (role !== UserRole.ROOT_ADMIN && role !== UserRole.ADMIN && role !== UserRole.SUPER_USER) {
+            if (!req.isAdmin && !req.isSuperUser) {
                 return res.status(403).json({ error: "Access denied: API tokens are only available for Curators, Managers, and Admins" });
             }
 
