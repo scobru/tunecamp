@@ -193,27 +193,35 @@ export function createAuthService(
                 `);
 
                 // 3. Migrate data - existing users keep role='admin' and unlimited quota (0)
-                const oldAdmins = db.prepare("SELECT * FROM admin_old").all() as any[];
-                const insertStmt = db.prepare("INSERT INTO admin (id, username, password_hash, created_at, updated_at, artist_id, role, storage_quota, storage_used, gun_pub, gun_priv, subsonic_token, subsonic_password, is_active, token_version) VALUES (?, ?, ?, ?, ?, ?, 'admin', 0, 0, ?, ?, ?, ?, ?, ?)");
+                const hasCreatedAt = columns.some(c => c.name === 'created_at');
+                const hasUpdatedAt = columns.some(c => c.name === 'updated_at');
 
-                for (const old of oldAdmins) {
-                    let username = old.username;
-                    if (!hasUsername && old.id === 1) username = 'admin';
-                    insertStmt.run(
-                        old.id, 
-                        username, 
-                        old.password_hash, 
-                        old.created_at, 
-                        old.updated_at, 
-                        old.artist_id || null, 
-                        old.gun_pub || null, 
-                        old.gun_priv || null,
-                        old.subsonic_token || null,
-                        old.subsonic_password || null,
-                        old.is_active !== undefined ? old.is_active : 1,
-                        old.token_version || 0
-                    );
-                }
+                const insertQuery = `
+                    INSERT INTO admin (
+                        id, username, password_hash, created_at, updated_at,
+                        artist_id, role, storage_quota, storage_used,
+                        gun_pub, gun_priv, subsonic_token, subsonic_password,
+                        is_active, token_version
+                    )
+                    SELECT
+                        id,
+                        CASE WHEN ${!hasUsername ? 'id = 1' : '0'} THEN 'admin' ELSE ${!hasUsername ? 'NULL' : 'username'} END,
+                        password_hash,
+                        ${hasCreatedAt ? 'created_at' : 'CURRENT_TIMESTAMP'},
+                        ${hasUpdatedAt ? 'updated_at' : 'CURRENT_TIMESTAMP'},
+                        ${!hasArtistId ? 'NULL' : "NULLIF(artist_id, 0)"},
+                        'admin',
+                        0,
+                        0,
+                        ${!hasGunPub ? 'NULL' : "NULLIF(gun_pub, '')"},
+                        ${!hasGunPub ? 'NULL' : "NULLIF(gun_priv, '')"},
+                        ${!hasSubsonic ? 'NULL' : "NULLIF(subsonic_token, '')"},
+                        ${!hasSubsonic ? 'NULL' : "NULLIF(subsonic_password, '')"},
+                        ${!hasIsActive ? '1' : "IFNULL(is_active, 1)"},
+                        ${!hasTokenVersion ? '0' : "IFNULL(token_version, 0)"}
+                    FROM admin_old
+                `;
+                db.exec(insertQuery);
 
                 // 4. Drop old table
                 db.exec("DROP TABLE admin_old");

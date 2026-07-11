@@ -144,7 +144,6 @@ export function createFederatedDiscoveryService(
     `);
     // A successful probe always clears offline_since — being reachable again matters more than when it happened.
     const markOfflineStmt = db.prepare("UPDATE federated_instances SET offline_since = ? WHERE fetched_at < ? AND offline_since IS NULL");
-    const selectPurgeableStmt = db.prepare("SELECT origin FROM federated_instances WHERE offline_since IS NOT NULL AND offline_since < ?");
     const deleteStmt = db.prepare("DELETE FROM federated_instances WHERE origin = ?");
 
     let crawling = false;
@@ -357,8 +356,12 @@ export function createFederatedDiscoveryService(
                     .map(normalizeOrigin)
                     .filter((o): o is string => !!o)
             );
-            for (const row of selectPurgeableStmt.all(now - PURGE_AFTER_MS) as any[]) {
-                if (!followed.has(row.origin)) deleteStmt.run(row.origin);
+            const followedArr = Array.from(followed);
+            if (followedArr.length === 0) {
+                db.prepare(`DELETE FROM federated_instances WHERE offline_since IS NOT NULL AND offline_since < ?`).run(now - PURGE_AFTER_MS);
+            } else {
+                const placeholders = followedArr.map(() => '?').join(',');
+                db.prepare(`DELETE FROM federated_instances WHERE offline_since IS NOT NULL AND offline_since < ? AND origin NOT IN (${placeholders})`).run(now - PURGE_AFTER_MS, ...followedArr);
             }
         } catch (e) {
             console.error("❌ [FederatedDiscovery] Prune failed:", e);

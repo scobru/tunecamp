@@ -85,17 +85,22 @@ export function recomputeFileSizes(db: DatabaseType, musicDir: string): Recomput
     let updated = 0;
     let missing = 0;
 
+    const updates: Array<{ id: number; size: number }> = [];
+    for (const row of rows) {
+        const size = trackDiskSize(musicDir, row.file_path, row.lossless_path);
+        if (size === 0) {
+            missing++;
+            continue;
+        }
+        if (size !== (row.file_size || 0)) {
+            updates.push({ id: row.id, size });
+            updated++;
+        }
+    }
+
     const run = db.transaction(() => {
-        for (const row of rows) {
-            const size = trackDiskSize(musicDir, row.file_path, row.lossless_path);
-            if (size === 0) {
-                missing++;
-                continue;
-            }
-            if (size !== (row.file_size || 0)) {
-                update.run(size, row.id);
-                updated++;
-            }
+        for (const u of updates) {
+            update.run(u.size, u.id);
         }
     });
     run();
