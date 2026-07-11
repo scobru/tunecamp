@@ -73,7 +73,6 @@ Per chi gestisce un'istanza TuneCamp.
 | Documento | Descrizione |
 |-----|-------------|
 | [Federazione](./FEDERATION.md) | Scoperta ActivityPub e HTTP gossip — come le istanze si trovano a vicenda |
-| [Plugin](./PLUGINS.md) | Caricamento di provider di streaming, metadati e archiviazione personalizzati |
 | [Sidecamp Desktop](./sidecamp.md) | App Desktop per la Condivisione Peer, Soulseek e Torrents |
 | [Monitoraggio](./monitoring.md) | Endpoint `/health`, pannello delle risorse di sistema dell'amministratore, report sui crash Sentry e controlli di uptime |
 | [Scalabilità](./scaling.md) | Limiti del singolo processo e di SQLite e relative mitigazioni |

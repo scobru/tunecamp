@@ -361,4 +361,3 @@ This would save the mix directly into the user's TuneCamp library without leavin
 | **Loaded by** | React frontend at runtime | Server plugin loader at startup |
 | **Examples** | 4-Track Recorder, Patchcab, ComposeYogi | Custom metadata source, Soulseek, S3 storage |
 
-See [`PLUGINS.md`](./PLUGINS.md) for backend plugin documentation.

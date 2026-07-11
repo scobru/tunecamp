@@ -70,7 +70,7 @@ Once connected, your AI chatbot will have access to the following tools:
 
 ## 4. Adding a new MCP Tool (for developers)
 
-The tools are not loaded from an external folder like the [plugin providers](./PLUGINS.md): they are defined directly in the MCP server, in a single file: [`src/server/routes/api/mcp.ts`](../src/server/routes/api/mcp.ts).
+The tools are defined directly in the MCP server, in a single file: [`src/server/routes/api/mcp.ts`](../src/server/routes/api/mcp.ts).
 
 Adding a tool requires **two changes** in the same file, plus a rebuild.
 

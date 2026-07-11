@@ -145,15 +145,4 @@ describe('Search Routes', () => {
         });
     });
 
-    describe('Soulseek P2P gate', () => {
-        test('blocks /content/soulseek with 403 while the integration is disabled by default', async () => {
-            const app = buildApp(
-                { library: { search: jest.fn() }, streamingService: makeStreaming(), metadataService: makeMetadata() },
-                (req) => { req.isAdmin = true; req.role = UserRole.ROOT_ADMIN; },
-            );
-            const res = await request(app).get('/api/search/content/provider/soulseek?q=test');
-            expect(res.status).toBe(403);
-            expect(res.body.error).toContain("'soulseek' integration is disabled");
-        });
-    });
 });

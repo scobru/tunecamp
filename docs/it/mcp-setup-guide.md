@@ -70,7 +70,7 @@ Una volta effettuata la connessione, il tuo chatbot IA avrà accesso ai seguenti
 
 ## 4. Aggiunta di un nuovo strumento MCP (per sviluppatori)
 
-Gli strumenti non vengono caricati da una cartella esterna come i [provider di plugin](./PLUGINS.md): sono definiti direttamente all'interno del server MCP, in un unico file: [`src/server/routes/api/mcp.ts`](../../src/server/routes/api/mcp.ts).
+Gli strumenti sono definiti direttamente all'interno del server MCP, in un unico file: [`src/server/routes/api/mcp.ts`](../../src/server/routes/api/mcp.ts).
 
 L'aggiunta di uno strumento richiede **due modifiche** nello stesso file, seguite da una ricompilazione del progetto.
 

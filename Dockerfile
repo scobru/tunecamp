@@ -108,7 +108,6 @@ RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/webapp/dist ./webapp/dist
 COPY --from=builder /app/webapp/public ./webapp/public
-COPY --from=builder /app/plugins ./plugins
 COPY --from=builder /app/CHANGELOG.md ./CHANGELOG.md
 
 # Create directories for data persistence
@@ -138,7 +137,6 @@ ENV NODE_ENV=production
 ENV TUNECAMP_GIT_SHA=$CAPROVER_GIT_COMMIT_SHA
 ENV TUNECAMP_DB_PATH=/data/tunecamp.db
 ENV TUNECAMP_MUSIC_DIR=/music
-ENV TUNECAMP_PLUGINS_DIR=/app/plugins
 ENV SKIP_STARTUP_MAINTENANCE=true
 
 # Inject build args as runtime env variables

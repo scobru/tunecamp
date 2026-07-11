@@ -74,7 +74,6 @@ For people running a TuneCamp instance.
 | Doc | Description |
 |-----|-------------|
 | [Federation](./FEDERATION.md) | ActivityPub and HTTP gossip discovery — how instances find each other |
-| [Plugins](./PLUGINS.md) | Loading custom streaming, metadata, and storage providers |
 | [Sidecamp Desktop](./sidecamp.md) | Desktop application for Sidecamp, Soulseek, and Torrents |
 | [Monitoring](./monitoring.md) | `/health` endpoint, the admin System Resources panel, Sentry crash reporting, and uptime checks |
 | [Scaling](./scaling.md) | SQLite / single-process limits and mitigations |
