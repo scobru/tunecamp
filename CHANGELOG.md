@@ -2,7 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.22.5] - 2026-07-10
+## [2.23.0] - 2026-07-11
+
+### Added
+- **Cross-instance peer search: pir shares now surface across federated instances.** Peer (pir/sidecamp) manifests were scoped to the single instance a daemon connected to — instance B's users could only see pir tracks from daemons connected to B, never those on a federated instance A. B's global search now fans out to known federated instances (`getCommunitySites()`, bounded to 10, parallel with a 3s per-instance timeout, SSRF-guarded via `fetchJsonSafe`) and merges their peer tracks into the `peers` results, each tagged with its `origin`. A new public `GET /api/peers/federated-search?q=` exposes an instance's connected-pir tracks to remote instances, gated behind the same `peerEnabled` + `peerFederation` opt-in as the existing `federated-stream`/`federated-download` routes (search + stream only, no download tunnel). Remote peer results stream directly from the hosting instance's public `federated-stream` endpoint (no token) instead of the local token tunnel. Requires the instance *hosting* the pir (A) to have `peerFederation` enabled; with the flag off its pir shares stay invisible. Single hop only — no multi-hop propagation (C does not see A's pir via B).
 
 ### Fixed
 - **Resolved merge conflict for the fedify `handleDeleteObject` optimization.** PR #954 restated the single-query `removeAllFollowers` optimization that already landed on `dev` via #952, colliding in `fedify.ts`. Kept `dev`'s version (the redundant `actorUri as string` cast is unnecessary since the enclosing guard already narrows it to `string`) and merged in the clarifying comments on `removeAllFollowers` in `database.types.ts` and `social.repository.ts`.

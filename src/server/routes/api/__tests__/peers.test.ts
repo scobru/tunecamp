@@ -143,6 +143,35 @@ describe("Peers API Routes Tests", () => {
         expect(mockPrepare).not.toHaveBeenCalled();
     });
 
+    test("GET federated-search returns peer tracks when federation is enabled", async () => {
+        mockIdentity.getSetting.mockImplementation((k: string) => {
+            if (k === "peerEnabled") return "true";
+            if (k === "peerFederation") return "true";
+            return null;
+        });
+        const mockResults = [{ id: "track-1", title: "Remote Song", session_id: "sess-9" }];
+        mockPeerService.searchTracks.mockReturnValue(mockResults);
+
+        const response = await request(app).get("/api/peers/federated-search?q=remote");
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual(mockResults);
+        expect(mockPeerService.searchTracks).toHaveBeenCalledWith("remote");
+    });
+
+    test("GET federated-search is blocked when peer federation is disabled", async () => {
+        mockIdentity.getSetting.mockImplementation((k: string) => {
+            if (k === "peerEnabled") return "true";
+            if (k === "peerFederation") return "false";
+            return null;
+        });
+
+        const response = await request(app).get("/api/peers/federated-search?q=remote");
+
+        expect(response.status).toBe(403);
+        expect(mockPeerService.searchTracks).not.toHaveBeenCalled();
+    });
+
     test("GET federated-stream streams when peer federation is enabled", async () => {
         mockIdentity.getSetting.mockImplementation((k: string) => {
             if (k === "peerEnabled") return "true";

@@ -76,6 +76,30 @@ export function createPeersRoutes(container: ServiceContainer): Router {
         }
     });
 
+    // Public, cross-instance peer-track search. Lets a remote federated instance
+    // discover what THIS instance's connected pir daemons are sharing, so its
+    // users can stream them via /federated-stream. Same gate as the other
+    // federated-* routes (peerEnabled + peerFederation opt-in). No download
+    // tunnel is exposed here — search + stream only.
+    router.get("/federated-search", (req, res) => {
+        const peerEnabled = identity.getSetting("peerEnabled") === "true";
+        const peerFederation = identity.getSetting("peerFederation") === "true";
+        if (!peerEnabled || !peerFederation) {
+            return res.status(403).json({ error: "Peer federation is disabled on this instance" });
+        }
+        const query = req.query.q;
+        if (typeof query !== "string" || !query.trim()) {
+            return res.status(400).json({ error: "Query parameter 'q' is required" });
+        }
+        try {
+            // Cap to keep a single federated fan-out cheap for the caller.
+            res.json(peerService.searchTracks(query.trim()).slice(0, 50));
+        } catch (error) {
+            console.error("[PeersRoute] Federated peer search failed:", error);
+            res.status(500).json({ error: "Failed to search peer tracks" });
+        }
+    });
+
     // All other routes require user authentication
     router.use(authMiddleware.requireUser);
 
