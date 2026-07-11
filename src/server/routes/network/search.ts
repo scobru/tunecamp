@@ -8,8 +8,6 @@ import { streamingService as defaultStreamingService } from "../../modules/strea
 import type { MetadataService } from "../../modules/catalog/metadata.service.js";
 import type { StreamingService } from "../../modules/streaming/streaming.service.js";
 import { VisibilityGuardian, UserRole, Capability, VisibilityProfile } from "../../common/visibility.js";
-import { requireDownloadProvider } from "../../middleware/provider-gate.js";
-import { getDownloadService } from "../../modules/catalog/download.service.js";
 import { fetchJsonSafe } from "../../common/network.js";
 
 import type { ServiceContainer } from "../../core/container.js";
@@ -24,100 +22,6 @@ export function createSearchRoutes(container: ServiceContainer): Router {
     const database = container.database;
     const router = Router();
     router.use(json());
-
-    // ─── Generic Download Provider routes ───────────────────────────────
-    // Any registered DownloadProvider (including community plugins) gets
-    // search + download endpoints automatically via these two routes.
-
-    /**
-     * GET /api/search/content/provider/:providerId
-     * Search a download provider by id
-     */
-    router.get("/content/provider/:providerId", async (req: AuthenticatedRequest, res) => {
-        const isAdmin = req.isAdmin || (req.role && VisibilityGuardian.isAdminRole(req.role));
-        if (!isAdmin) {
-            return res.status(403).json({ error: "Access denied: Root Admin or Manager only" });
-        }
-
-        const { providerId } = req.params;
-        const registry = getDownloadService()?.getRegistry();
-        if (!registry || !registry.isEnabled(providerId)) {
-            return res.status(403).json({
-                error: `The '${providerId}' integration is disabled. An administrator can enable it under Admin → Integrations.`
-            });
-        }
-
-        const provider = registry.get(providerId);
-        if (!provider) {
-            return res.status(404).json({ error: `Provider '${providerId}' not found` });
-        }
-
-        const query = req.query.q as string;
-        if (!query) return res.status(400).json({ error: "Query required" });
-
-        try {
-            const results = await provider.search(query);
-            res.json(results);
-        } catch (error: any) {
-            console.error(`❌ Provider ${providerId} search failed:`, error);
-            res.status(500).json({ error: `Search failed for provider ${providerId}` });
-        }
-    });
-
-    /**
-     * POST /api/search/content/provider/:providerId/download
-     * Download a result from any download provider
-     */
-    router.post("/content/provider/:providerId/download", async (req: AuthenticatedRequest, res) => {
-        const isAdmin = req.isAdmin || (req.role && VisibilityGuardian.isAdminRole(req.role));
-        if (!isAdmin) {
-            return res.status(403).json({ error: "Access denied: Root Admin or Manager only" });
-        }
-
-        const { providerId } = req.params;
-        const registry = getDownloadService()?.getRegistry();
-        if (!registry || !registry.isEnabled(providerId)) {
-            return res.status(403).json({
-                error: `The '${providerId}' integration is disabled.`
-            });
-        }
-
-        const provider = registry.get(providerId);
-        if (!provider) {
-            return res.status(404).json({ error: `Provider '${providerId}' not found` });
-        }
-
-        const { result } = req.body;
-        if (!result) {
-            return res.status(400).json({ error: "A valid DownloadResult is required in body.result" });
-        }
-
-        if (!req.userId) {
-            return res.status(401).json({ error: "Unauthorized: User ID missing" });
-        }
-
-        try {
-            // Start download in background + auto-index (same pattern as Soulseek)
-            provider.download(result).then(async (dest) => {
-                console.log(`📡 Provider ${providerId} download finished: ${dest}`);
-                try {
-                    const settings = identity.getAllSettings();
-                    const musicDir = settings.musicDir || process.env.TUNECAMP_MUSIC_DIR || "music";
-                    await scanner.processAudioFile(dest, musicDir, undefined, req.userId!);
-                    console.log(`✅ Provider ${providerId} auto-sync completed: ${dest}`);
-                } catch (syncErr) {
-                    console.error(`⚠️ Provider ${providerId} auto-sync failed:`, syncErr);
-                }
-            }).catch(err => {
-                console.error(`❌ Provider ${providerId} background download failed:`, err);
-            });
-
-            res.json({ success: true, provider: providerId });
-        } catch (error: any) {
-            console.error(`❌ Provider ${providerId} download error:`, error);
-            res.status(500).json({ error: "Download failed", details: error.message });
-        }
-    });
 
     // Native TuneCamp Network Search
     // ...

@@ -19,12 +19,6 @@ services:
       - /path/to/your/music:/music
       # Persistent data (database, uploads)
       - tunecamp_data:/data
-      # Plugins: named volume so custom .js plugins survive image rebuilds.
-      # To add a plugin: copy your .js file into this volume, then restart.
-      #   docker cp my-plugin.js tunecamp:/app/plugins/
-      # To mount a local folder instead, replace with:
-      #   - ./plugins:/app/plugins
-      - tunecamp_plugins:/app/plugins
     env_file:
       - .env
     environment:
@@ -56,5 +50,4 @@ services:
 volumes:
   tunecamp_data:
     driver: local
-  tunecamp_plugins:
     driver: local

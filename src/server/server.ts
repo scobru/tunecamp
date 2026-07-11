@@ -60,7 +60,6 @@ import { LastFmProvider } from "./providers/scrobble/lastfm.provider.js";
 import { ListenBrainzProvider } from "./providers/scrobble/listenbrainz.provider.js";
 import { metadataService } from "./modules/catalog/metadata.service.js";
 import { initDownloadService } from "./modules/catalog/download.service.js";
-import { loadPlugins } from "./core/plugin-loader.js";
 import { storageService, initStorageService } from "./modules/storage/storage.service.js";
 import { aiService, initAIService } from "./modules/ai/ai.service.js";
 import { createFederatedDiscoveryService } from "./modules/network/federated-discovery.service.js";
@@ -612,8 +611,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
             // after the first federated crawl (~45s) so the directory is populated.
             setTimeout(async () => { await publishingService.syncCommunityFollows().catch(() => {}); }, 90000);
         }
-
-        loadPlugins(undefined, database).catch(() => {});
     });
 
     const gracefulShutdown = async (signal: string) => {

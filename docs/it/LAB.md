@@ -361,4 +361,3 @@ Ciò salverebbe la traccia direttamente nella libreria TuneCamp dell'utente senz
 | **Come vengono caricate** | Dal frontend React a runtime | Dal caricatore dei plugin del server all'avvio |
 | **Esempi** | 4-Track Recorder, Patchcab, ComposeYogi | Provider di metadati personalizzato, Soulseek, storage S3 |
 
-Vedi [`PLUGINS.md`](./PLUGINS.md) per la documentazione sui plugin backend.

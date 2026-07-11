@@ -70,7 +70,6 @@ export default defineConfig({
             text: '🛠️ Administrator Guide',
             items: [
               { text: 'Federation (ActivityPub)', link: '/FEDERATION' },
-              { text: 'Plugins', link: '/PLUGINS' },
               { text: 'Peer Sharing', link: '/sidecamp' },
               { text: 'Monitoring & Alerting', link: '/monitoring' },
               { text: 'Scaling', link: '/scaling' },
@@ -162,7 +161,6 @@ export default defineConfig({
             text: '🛠️ Guida Amministratore',
             items: [
               { text: 'Federazione (ActivityPub)', link: '/it/FEDERATION' },
-              { text: 'Plugin', link: '/it/PLUGINS' },
               { text: 'Peer Sharing', link: '/it/sidecamp' },
               { text: 'Monitoraggio e Allarmi', link: '/it/monitoring' },
               { text: 'Scalabilità', link: '/it/scaling' },

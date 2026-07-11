@@ -11,7 +11,6 @@ import { VisibilityGuardian, Capability, UserRole, VisibilityProfile } from "../
 import multer from "multer";
 
 import { getDownloadService } from "../../modules/catalog/download.service.js";
-import { getExternalProviderIds } from "../../core/plugin-loader.js";
 import { isDownloadProviderEnabled } from "../../middleware/provider-gate.js";
 import { aiService } from "../../modules/ai/ai.service.js";
 import { taskManager } from "../../modules/workers/task-manager.js";
@@ -2526,7 +2525,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             return res.status(403).json({ error: "Super Root access required" });
         }
 
-        const externalIds = getExternalProviderIds();
         const flat = [
             ...scanner.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'scanner' })),
             ...metadataService.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'metadata' })),
@@ -2542,39 +2540,11 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             if (byId.has(p.id)) {
                 byId.get(p.id).types.push(p.type);
             } else {
-                byId.set(p.id, { ...p, types: [p.type], isExternal: externalIds.has(p.id) });
+                // External JS plugins were removed (acquisition moved to Sidecamp);
+                // every remaining provider is built-in.
+                byId.set(p.id, { ...p, types: [p.type], isExternal: false });
             }
         }
-
-        // Probe real availability for external providers (3s timeout)
-        const STATUS_TIMEOUT = 3000;
-        const probes: Promise<void>[] = [];
-        for (const [id, entry] of byId) {
-            if (!externalIds.has(id) || !entry.enabled) continue;
-            // Look up the actual provider instance to call isAvailable/isConfigured
-            const allRegistries = [
-                getDownloadService()?.getRegistry(),
-                metadataService.getRegistry(),
-                streamingService.getRegistry(),
-                scanner.getRegistry(),
-                aiService?.getRegistry(),
-            ].filter(Boolean);
-
-            const instance: any = allRegistries.map(r => r?.get(id)).find(Boolean);
-            if (!instance) continue;
-
-            const probe = Promise.race([
-                (async () => {
-                    if (typeof instance.isAvailable === 'function') return instance.isAvailable();
-                    if (typeof instance.isConfigured === 'function') return instance.isConfigured();
-                    return true; // no probe method → assume available
-                })(),
-                new Promise<boolean>(resolve => setTimeout(() => resolve(false), STATUS_TIMEOUT))
-            ]).then(available => { entry.available = available; })
-             .catch(() => { entry.available = false; });
-            probes.push(probe);
-        }
-        await Promise.all(probes);
 
         res.json([...byId.values()]);
     });
