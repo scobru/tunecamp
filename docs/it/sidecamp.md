@@ -64,6 +64,8 @@ Quando l'opzione **Federate Peer Tracks** è attiva (Settings → Customize Modu
 
 Queste voci sono effimere: esistono solo finché il daemon peer è connesso. Poiché un catalogo che pubblicizza tracce peer viene rivalidato su una finestra breve (~2 minuti, contro ~1 ora per i cataloghi di sole release), un peer disconnesso scompare dalle pagine Network remote entro un paio di minuti; tentare di riprodurre una traccia ormai offline restituisce semplicemente un errore.
 
+**Ricerca tra istanze.** Oltre al piggyback passivo del catalogo qui sopra, la **ricerca globale** di un utente autenticato fa attivamente fan-out verso le istanze federate note (limite 10, in parallelo, timeout 3s, protetta da SSRF) e unisce le tracce corrispondenti dei loro peer connessi, ognuna taggata con il proprio `origin`. È esposta pubblicamente come `GET /api/peers/federated-search?q=...`, protetta dallo stesso opt-in **Federate Peer Tracks** di `federated-stream`, ed è a **singolo hop** — l'istanza A non fa da proxy alla federazione dell'istanza B. Gli hit remoti si riproducono dall'endpoint pubblico `federated-stream` dell'istanza di origine; solo ricerca e streaming, nessun download.
+
 ---
 
 ## Esecuzione di Sidecamp

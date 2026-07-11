@@ -64,6 +64,8 @@ When **Federate Peer Tracks** is enabled (Settings → Customize Modules, off by
 
 These entries are ephemeral: they exist only while the peer daemon is connected. Because a catalog advertising peer tracks is revalidated on a short window (~2 minutes, versus ~1 hour for release-only catalogs), a disconnected peer drops from remote Network pages within a couple of minutes; attempting to play a track that has since gone offline simply returns an error.
 
+**Cross-instance search.** Beyond the passive catalog piggyback above, a logged-in user's **global search** actively fans out to known federated instances (bounded to 10, parallel, 3s timeout, SSRF-guarded) and merges their connected peers' matching tracks, each tagged with its `origin`. This is exposed publicly as `GET /api/peers/federated-search?q=...`, gated behind the same **Federate Peer Tracks** opt-in as `federated-stream`, and is **single hop only** — instance A does not proxy instance B's federation. Remote hits stream from the origin instance's public `federated-stream` endpoint; search and stream only, no download.
+
 ---
 
 ## Running Sidecamp
