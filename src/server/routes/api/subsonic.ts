@@ -142,6 +142,14 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         const t = ensureString(req.query.t);
         const s = ensureString(req.query.s);
 
+        // Security: Redact passwords and tokens from URLs to prevent credential leakage in access logs
+        if (req.originalUrl) {
+            req.originalUrl = req.originalUrl.replace(/([?&])([pts])=[^&]*/g, '$1$2=***');
+        }
+        if (req.url) {
+            req.url = req.url.replace(/([?&])([pts])=[^&]*/g, '$1$2=***');
+        }
+
         if (!u) return sendError(res, req, 10, 'Parameter u is missing');
 
         let authorized = false;
