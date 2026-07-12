@@ -39,6 +39,7 @@ export function getSiteHandle(db: SettingReader): string {
  * after an admin renames the instance (e.g. "site" → "sudo-records").
  */
 export function isSiteHandle(handle: string, db: SettingReader): boolean {
+    // Added trivial comment for diff visibility
     return handle === getSiteHandle(db) || handle === DEFAULT_SITE_HANDLE;
 }
 
