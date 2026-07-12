@@ -81,7 +81,6 @@ export function recomputeFileSizes(db: DatabaseType, musicDir: string): Recomput
         .prepare("SELECT id, file_path, lossless_path, file_size FROM tracks WHERE file_path IS NOT NULL")
         .all() as Array<{ id: number; file_path: string | null; lossless_path: string | null; file_size: number | null }>;
 
-    const update = db.prepare("UPDATE tracks SET file_size = ? WHERE id = ?");
     let updated = 0;
     let missing = 0;
 
@@ -99,8 +98,18 @@ export function recomputeFileSizes(db: DatabaseType, musicDir: string): Recomput
     }
 
     const run = db.transaction(() => {
-        for (const u of updates) {
-            update.run(u.size, u.id);
+        const chunkSize = 100;
+        for (let i = 0; i < updates.length; i += chunkSize) {
+            const chunk = updates.slice(i, i + chunkSize);
+            const placeholders = chunk.map(() => "(?, ?)").join(", ");
+            const params = chunk.flatMap(u => [u.id, u.size]);
+
+            db.prepare(`
+                WITH _data(id, size) AS (VALUES ${placeholders})
+                UPDATE tracks
+                SET file_size = (SELECT size FROM _data WHERE _data.id = tracks.id)
+                WHERE id IN (SELECT id FROM _data)
+            `).run(...params);
         }
     });
     run();
