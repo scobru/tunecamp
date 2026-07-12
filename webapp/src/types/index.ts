@@ -471,6 +471,13 @@ export interface SystemResources {
     tasks: Array<{ taskId: string; status: string; startedAt: string; progress?: { current: number; total: number; message?: string } }>;
 }
 
+export interface UpdateCheck {
+    currentVersion: string;
+    latestVersion: string | null;
+    updateAvailable: boolean;
+    checkedAt: number | null;
+}
+
 
 export interface UserPlaylistTrack {
     id: string;

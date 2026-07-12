@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Cpu, MemoryStick, Activity, Database, Clock, RefreshCw, Server, Loader } from 'lucide-react';
+import { Cpu, MemoryStick, Activity, Database, Clock, RefreshCw, Server, Loader, ArrowUpCircle } from 'lucide-react';
 import API from '../../services/api';
-import type { SystemResources } from '../../types';
+import type { SystemResources, UpdateCheck } from '../../types';
 
 const formatBytes = (bytes: number): string => {
     if (!bytes || bytes <= 0) return '0 B';
@@ -39,6 +39,7 @@ export const SystemPanel = () => {
     const [cpuPct, setCpuPct] = useState<number | null>(null);
     const [heapHistory, setHeapHistory] = useState<number[]>([]);
     const [rssHistory, setRssHistory] = useState<number[]>([]);
+    const [update, setUpdate] = useState<UpdateCheck | null>(null);
     const prev = useRef<SystemResources | null>(null);
 
     const load = async () => {
@@ -64,6 +65,8 @@ export const SystemPanel = () => {
     useEffect(() => {
         load();
         const id = setInterval(load, POLL_MS);
+        // Once per mount is enough — the server caches the GitHub lookup for 24h.
+        API.checkForUpdate().then(setUpdate).catch(() => { /* offline or gated; no banner */ });
         return () => clearInterval(id);
     }, []);
 
@@ -78,6 +81,15 @@ export const SystemPanel = () => {
 
     return (
         <div className="space-y-6">
+            {update?.updateAvailable && (
+                <div className="alert alert-info text-sm">
+                    <ArrowUpCircle size={18} />
+                    <span>
+                        TuneCamp <strong>{update.latestVersion}</strong> is available (you are running {update.currentVersion}).{' '}
+                        <a href="https://github.com/scobru/tunecamp/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer" className="link">Changelog</a>
+                    </span>
+                </div>
+            )}
             <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
                     <h2 className="text-2xl font-bold flex items-center gap-2"><Server /> System Resources</h2>

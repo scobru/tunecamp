@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.24.0] - 2026-07-12
+
+### Added
+- **Upstream update check for admins.** New `GET /api/admin/system/update-check` endpoint (root/system admins only) compares the running version against the latest `package.json` on GitHub `main`, with the lookup cached in memory for 24h so polling never hits GitHub rate limits. The admin System Resources panel now shows an update banner ("TuneCamp X.Y.Z is available") with a link to the changelog when the instance is behind. Network failures are not cached, so a transient outage retries on the next check; the banner simply stays hidden when the check can't run.
+
 ## [2.23.0] - 2026-07-11
 
 ### Added
