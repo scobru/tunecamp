@@ -2,7 +2,7 @@ import axios from 'axios';
 import type {
     AuthStatus, Track, Album, Artist, Playlist, SiteSettings, User,
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
-    StorageAccount, GoogleDriveFile, InstanceStorage, RecomputeStorageResult, SystemResources,
+    StorageAccount, GoogleDriveFile, InstanceStorage, RecomputeStorageResult, SystemResources, UpdateCheck,
     DigStrategy, DigSearchResult, DigResult, DigSession, DigCrateItem, DigCrateInput, DigHistoryItem,
     LiveSession, ArtistEvent, ArtistEventInput, LabAppRecord, Report, LegalPages
 } from '../types';
@@ -657,6 +657,7 @@ const API = {
     getStorageOverview: () => handleResponse(api.get<InstanceStorage>('admin/storage/overview')),
     recomputeStorage: () => handleResponse(api.post<RecomputeStorageResult>('admin/storage/recompute')),
     getSystemResources: () => handleResponse(api.get<SystemResources>('admin/system/resources')),
+    checkForUpdate: () => handleResponse(api.get<UpdateCheck>('admin/system/update-check')),
     
     // --- Torrents ---
     getTorrents: () => handleResponse(api.get<any[]>('admin/torrents')),

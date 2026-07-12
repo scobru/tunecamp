@@ -20,6 +20,45 @@ import { getInstanceStorage, recomputeFileSizes, recomputeUserStorage } from "..
 
 const upload = multer({ dest: "uploads/" });
 
+// --- Upstream update check -------------------------------------------------
+// Compares the running version (package.json) against the latest version on
+// GitHub main. Cached in memory for 24h so the endpoint can be polled freely
+// without hitting GitHub rate limits.
+const UPDATE_CHECK_URL = "https://raw.githubusercontent.com/scobru/tunecamp/main/package.json";
+const UPDATE_CHECK_TTL_MS = 24 * 60 * 60 * 1000;
+
+let localVersion = "0.0.0";
+try {
+    localVersion = JSON.parse(fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8")).version ?? "0.0.0";
+} catch { /* dev layout without package.json in cwd; report 0.0.0 */ }
+
+let updateCheckCache: { fetchedAt: number, latestVersion: string | null } | null = null;
+
+function compareSemver(a: string, b: string): number {
+    const pa = a.split(".").map(n => parseInt(n, 10) || 0);
+    const pb = b.split(".").map(n => parseInt(n, 10) || 0);
+    for (let i = 0; i < 3; i++) {
+        if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) - (pb[i] ?? 0);
+    }
+    return 0;
+}
+
+async function fetchLatestVersion(): Promise<string | null> {
+    if (updateCheckCache && Date.now() - updateCheckCache.fetchedAt < UPDATE_CHECK_TTL_MS) {
+        return updateCheckCache.latestVersion;
+    }
+    try {
+        const res = await fetch(UPDATE_CHECK_URL, { signal: AbortSignal.timeout(10_000) });
+        const latestVersion = res.ok ? ((await res.json() as { version?: string }).version ?? null) : null;
+        updateCheckCache = { fetchedAt: Date.now(), latestVersion };
+        return latestVersion;
+    } catch {
+        // Network failure: cache the miss briefly is wrong — just don't cache,
+        // so the next poll retries.
+        return null;
+    }
+}
+
 export function createAdminRoutes(container: ServiceContainer): Router {
     const scanner = container.scannerService;
     const musicDir = container.musicDir;
@@ -340,6 +379,24 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             },
             db: { path: dbPath, size: dbSize },
             tasks: taskManager.getRunningTasks(),
+        });
+    });
+
+    /**
+     * GET /api/admin/system/update-check
+     * Compare the running version against the latest on GitHub main.
+     * Result is cached server-side for 24h. Root/system admins only.
+     */
+    router.get("/system/update-check", async (req: AuthenticatedRequest, res: any) => {
+        if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
+            return res.status(403).json({ error: "Super Root access required" });
+        }
+        const latestVersion = await fetchLatestVersion();
+        res.json({
+            currentVersion: localVersion,
+            latestVersion,
+            updateAvailable: latestVersion !== null && compareSemver(latestVersion, localVersion) > 0,
+            checkedAt: updateCheckCache?.fetchedAt ?? null,
         });
     });
 
