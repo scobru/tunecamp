@@ -147,4 +147,24 @@ describe('WaveformPeakService', () => {
 
         consoleSpy.mockRestore();
     });
+
+    it('should calculate bucketSize based on default fallback if size is 0 and no duration provided', async () => {
+        (fsMock.default.existsSync as jest.Mock).mockReturnValue(true);
+
+        // Call with only inputPath to trigger bucketSize=0 path with no duration
+        const generatePromise = WaveformPeakService.generateWaveform('valid.mp3', 100);
+
+        await new Promise(resolve => process.nextTick(resolve));
+
+        const buffer = Buffer.alloc(4);
+        buffer.writeInt16LE(16384, 0);
+        buffer.writeInt16LE(8192, 2);
+
+        mockStream.emit('data', buffer);
+        mockStream.emit('end');
+
+        const result = await generatePromise;
+        expect(result).toHaveLength(100);
+        expect(ffmpegMediaMock.releaseTaskSlot).toHaveBeenCalled();
+    });
 });
