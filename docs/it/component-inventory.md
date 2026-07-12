@@ -32,7 +32,6 @@ Qui sono raccolte le finestre di dialogo dell'applicazione. Le principali:
 - **Pubblicazione**: `UploadTracksModal`, `AdminReleaseModal`, `AdminTrackModal`, `AdminArtistModal`, `AdminAssetModal`, `BatchTrackEditModal`, `ArtistMetadataPickerModal`, `CreatePostModal`.
 - **Acquisto/Sblocco**: `CheckoutModal`, `UnlockModal`, `UnlockCodeManager`, `SubscriptionModal`.
 - **Playlist e tracce**: `CreateUserPlaylistModal`, `PlaylistModal`, `AddTrackToUserPlaylistModal`, `TrackPickerModal`, `AddBandcampTrackModal`, `AddYouTubeTrackModal`.
-- **`CommandPalette.tsx`**: Tavolozza dei comandi rapidi (ricerca/azioni rapide).
 
 ## Interfaccia Base (`components/ui/`)
 

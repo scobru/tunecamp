@@ -93,9 +93,8 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 | `GET` | `/api/admin/stats` | Server and database usage statistics |
 | `GET` | `/api/admin/system/resources` | Live process/host resource snapshot — CPU, memory, host RAM, SQLite DB size, and running background tasks (root admin only) |
 | `GET` | `/api/admin/storage/overview` | Instance-wide disk usage and per-user breakdown (root admin only) |
-| `GET` | `/api/admin/torrents` | List active and completed torrents |
-| `POST` | `/api/admin/torrents/add` | Add a magnet link to the download queue |
-| `DELETE` | `/api/admin/torrents/:hash` | Remove a torrent and optionally its downloaded data |
+
+> P2P content acquisition (Soulseek, BitTorrent, yt-dlp) has moved out of the backend into the [Sidecamp desktop app](./sidecamp.md); the former `/api/admin/torrents*` endpoints no longer exist.
 
 ### Radio (`/api/radio`)
 

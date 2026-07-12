@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.24.1] - 2026-07-12
+
+### Fixed
+- **Documentation consistency: removed references to endpoints and components that no longer exist.** Audited the docs against the current routes in `src/server/`. Removed the `/api/admin/torrents*` endpoints from `api-contracts.md` and the `/search/content` (torrents/Soulseek) and `/ap/remote-actors` operations from `openapi.yml` — torrent/P2P acquisition moved to the Sidecamp desktop app and those backend routes no longer exist. Corrected three stale paths in `openapi.yml` to match the actual routes: `/auth/me` → `/auth/status`, `/admin/scan` → `/admin/system/rescan`, and `/comments` → `/comments/track/{trackId}`. Dropped the non-existent `CommandPalette.tsx` entry from `component-inventory.md`. Italian mirrors updated to match.
+
 ## [2.24.0] - 2026-07-12
 
 ### Added

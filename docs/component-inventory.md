@@ -39,7 +39,6 @@ The dialog windows are collected here. The main ones:
 - **Purchase/unlock**: `CheckoutModal`, `UnlockModal`, `UnlockCodeManager`, `SubscriptionModal`.
 - **Playlists & tracks**: `CreateUserPlaylistModal`, `PlaylistModal`,
   `AddTrackToUserPlaylistModal`, `TrackPickerModal`, `AddBandcampTrackModal`, `AddYouTubeTrackModal`.
-- **`CommandPalette.tsx`**: Quick command palette (search/actions).
 
 ## Base UI (`components/ui/`)
 
