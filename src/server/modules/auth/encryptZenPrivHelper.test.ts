@@ -46,4 +46,11 @@ describe('encryptZenPrivHelper', () => {
         const decrypted = decryptZenPrivHelper(encrypted, TEST_SECRET);
         expect(decrypted).toEqual(arrayData);
     });
+
+    test('should handle null data correctly', () => {
+        const nullData = null;
+        const encrypted = encryptZenPrivHelper(nullData, TEST_SECRET);
+        const decrypted = decryptZenPrivHelper(encrypted, TEST_SECRET);
+        expect(decrypted).toBeNull();
+    });
 });
