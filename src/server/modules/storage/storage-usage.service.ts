@@ -81,29 +81,43 @@ export function recomputeFileSizes(db: DatabaseType, musicDir: string): Recomput
         .prepare("SELECT id, file_path, lossless_path, file_size FROM tracks WHERE file_path IS NOT NULL")
         .all() as Array<{ id: number; file_path: string | null; lossless_path: string | null; file_size: number | null }>;
 
-    const update = db.prepare("UPDATE tracks SET file_size = ? WHERE id = ?");
     let updated = 0;
     let missing = 0;
 
     const updates: Array<{ id: number; size: number }> = [];
     for (const row of rows) {
-        const size = trackDiskSize(musicDir, row.file_path, row.lossless_path);
-        if (size === 0) {
-            missing++;
-            continue;
-        }
-        if (size !== (row.file_size || 0)) {
-            updates.push({ id: row.id, size });
-            updated++;
+        try {
+            const size = trackDiskSize(musicDir, row.file_path, row.lossless_path);
+            if (size === 0) {
+                missing++;
+                continue;
+            }
+            if (size !== (row.file_size || 0)) {
+                updates.push({ id: row.id, size });
+                updated++;
+            }
+        } catch (err) {
+            // Ignore
         }
     }
 
-    const run = db.transaction(() => {
-        for (const u of updates) {
-            update.run(u.size, u.id);
-        }
-    });
-    run();
+    if (updates.length > 0) {
+        const BATCH_SIZE = 500;
+        const updateQuery = db.prepare(`
+            UPDATE tracks
+            SET file_size = CAST(json_extract(value, '$.size') AS INTEGER)
+            FROM (SELECT value FROM json_each(?)) as updates
+            WHERE tracks.id = CAST(json_extract(updates.value, '$.id') AS INTEGER)
+        `);
+
+        const run = db.transaction(() => {
+            for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+                const batch = updates.slice(i, i + BATCH_SIZE);
+                updateQuery.run(JSON.stringify(batch));
+            }
+        });
+        run();
+    }
 
     return { scanned: rows.length, updated, missing };
 }
