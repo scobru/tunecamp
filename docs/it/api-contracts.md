@@ -93,9 +93,8 @@ Authorization: Bearer <token>
 | `GET`  | `/api/admin/stats` | Statistiche di utilizzo del server e del database |
 | `GET`  | `/api/admin/system/resources` | Snapshot in tempo reale delle risorse del processo/host — CPU, memoria, RAM dell'host, dimensioni del database SQLite e attività in background in esecuzione (solo per amministratori root) |
 | `GET`  | `/api/admin/storage/overview` | Utilizzo del disco a livello di istanza e suddivisione per utente (solo per amministratori root) |
-| `GET`  | `/api/admin/torrents` | Elenca i torrent attivi e completati |
-| `POST` | `/api/admin/torrents/add` | Aggiunge un link magnet alla coda di download |
-| `DELETE` | `/api/admin/torrents/:hash` | Rimuove un torrent e facoltativamente i relativi dati scaricati |
+
+> L'acquisizione di contenuti P2P (Soulseek, BitTorrent, yt-dlp) è stata spostata dal backend all'[app desktop Sidecamp](./sidecamp.md); i precedenti endpoint `/api/admin/torrents*` non esistono più.
 
 ### Radio (`/api/radio`)
 

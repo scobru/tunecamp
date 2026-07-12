@@ -48,11 +48,11 @@ paths:
         '401':
           description: Invalid username or password.
 
-  /auth/me:
+  /auth/status:
     get:
       summary: Get Current User
       tags: [Authentication]
-      description: Returns the currently authenticated user's profile.
+      description: Returns the current session and the authenticated user's profile.
       operationId: getCurrentUser
       security:
         - bearerAuth: []
@@ -477,12 +477,18 @@ paths:
           description: Library statistics.
 
   # ── Comments ────────────────────────────────────────────────────────────────
-  /comments:
+  /comments/track/{trackId}:
     get:
       summary: Get Comments
       tags: [Comments]
-      description: Get comments for a track or album from the local database.
+      description: Get comments for a track from the local database.
       operationId: getComments
+      parameters:
+        - name: trackId
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: List of comments.
@@ -511,7 +517,7 @@ paths:
           description: Code validation result.
 
   # ── Admin ───────────────────────────────────────────────────────────────────
-  /admin/scan:
+  /admin/system/rescan:
     post:
       summary: Scan Music Library
       tags: [Admin]
@@ -744,18 +750,6 @@ paths:
         '200':
           description: List of followers.
 
-  /ap/remote-actors:
-    get:
-      summary: List Remote Actors
-      tags: [ActivityPub]
-      description: Get all known remote ActivityPub actors.
-      operationId: getRemoteActors
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: List of remote actors.
-
   # ── Waveform ────────────────────────────────────────────────────────────────
   /waveform/{id}:
     get:
@@ -794,24 +788,6 @@ paths:
       responses:
         '200':
           description: Search results grouped by type.
-
-  /search/content:
-    get:
-      summary: Search External Content
-      tags: [Search]
-      description: Search torrents and Soulseek for music content (admin only).
-      operationId: searchContent
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: q
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: External search results.
 
   # ── Proxy ───────────────────────────────────────────────────────────────────
   /proxy:
