@@ -58,6 +58,400 @@ interface ApInteractionItem {
     actor: ApActorRef | null;
 }
 
+
+interface FediverseNoteItemProps {
+    note: any;
+    artist: any;
+    processingId: number | null;
+    showReplies: Record<string, boolean>;
+    repliesByNote: Record<string, any[]>;
+    repliesLoading: Record<string, boolean>;
+    newReplyTexts: Record<string, string>;
+    replySending: Record<string, boolean>;
+    deletingReply: Record<string, boolean>;
+    handleEditPost: (note: any) => void;
+    handleDelete: (note: any) => void;
+    toggleReplies: (noteId: string) => void;
+    handlePostReply: (noteId: string) => void;
+    handleDeleteReply: (noteId: string, replyUri: string) => void;
+    openInteractions: (noteId: string, type: 'like' | 'announce') => void;
+    setNewReplyTexts: any;
+    getRelativeTime: (dateStr: string) => string;
+    stripHtml: (html: string) => string;
+}
+
+
+const FediverseNoteItem = ({
+    note,
+    artist,
+    processingId,
+    showReplies,
+    repliesByNote,
+    repliesLoading,
+    newReplyTexts,
+    replySending,
+    deletingReply,
+    handleEditPost,
+    handleDelete,
+    toggleReplies,
+    handlePostReply,
+    handleDeleteReply,
+    openInteractions,
+    setNewReplyTexts,
+    getRelativeTime,
+    stripHtml
+}: FediverseNoteItemProps) => {
+
+                                    const likesCount = note.likes_count ?? 0;
+                                    const announcesCount = note.announces_count ?? 0;
+                                    const repliesCount = note.replies_count ?? 0;
+                                    const isRepliesOpen = !!showReplies[note.note_id];
+                                    const comments = repliesByNote[note.note_id] || [];
+                                    const isRepliesLoading = !!repliesLoading[note.note_id];
+
+                                    return (
+                                        <div
+                                            key={note.id}
+                                            className="card-m3 bg-base-200/20 hover:bg-base-200/40 border border-base-content/5 rounded-2xl transition-all duration-medium-2 shadow-sm"
+                                        >
+                                            <div className="p-6 space-y-4">
+
+                                                {/* Post Header */}
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div className="flex gap-3">
+                                                        {/* Circular Avatar */}
+                                                        <div className="avatar flex-shrink-0">
+                                                            <div className="w-11 h-11 rounded-full border border-base-content/5 bg-base-300 shadow-inner">
+                                                                <img
+                                                                    src={artist
+                                                                        ? API.getArtistCoverUrl(artist.id)
+                                                                        : `https://api.dicebear.com/7.x/initials/svg?seed=TC`}
+                                                                    alt={artist?.name}
+                                                                    onError={(e) => {
+                                                                        (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(artist?.name || 'TC')}`;
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Artist info & dynamic handle */}
+                                                        <div>
+                                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                                <span className="font-bold text-sm text-base-content hover:underline cursor-pointer">{artist?.name}</span>
+                                                                <span className="text-xs opacity-40 font-mono">
+                                                                    @{artist?.slug || 'artist'}@{window.location.hostname}
+                                                                </span>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                {/* Relative timestamp */}
+                                                                <span className="text-xs opacity-50" title={new Date(note.published_at).toLocaleString()}>
+                                                                    {getRelativeTime(note.published_at)}
+                                                                </span>
+                                                                <span className="opacity-30 text-xs">•</span>
+                                                                {/* Visibility settings */}
+                                                                <div className="flex items-center opacity-50" title={`Visibility: ${note.visibility}`}>
+                                                                    {note.visibility === 'public' && <Globe size={11} />}
+                                                                    {note.visibility === 'unlisted' && <Eye size={11} />}
+                                                                    {note.visibility === 'private' && <Lock size={11} />}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex gap-1">
+                                                        {/* Edit button (only for posts, not releases) */}
+                                                        {note.note_type === 'post' && (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-square btn-ghost btn-sm text-base-content/60 hover:text-primary hover:bg-primary/10 rounded-full"
+                                                                onClick={() => handleEditPost(note)}
+                                                                disabled={!!processingId}
+                                                                title="Edit Activity"
+                                                            >
+                                                                <Edit size={15} />
+                                                            </button>
+                                                        )}
+
+                                                        {/* Delete button (with processing check) */}
+                                                        <button
+                                                            className="btn btn-square btn-ghost btn-sm text-error/60 hover:text-error hover:bg-error/10 rounded-full"
+                                                            onClick={() => handleDelete(note)}
+                                                            disabled={!!processingId}
+                                                            title="Delete Activity"
+                                                        >
+                                                            {processingId === note.id ? (
+                                                                <span className="loading loading-spinner loading-xs" />
+                                                            ) : (
+                                                                <Trash2 size={15} />
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Post Content Body */}
+                                                <div className="space-y-3 pl-0 sm:pl-14">
+                                                    {/* If simple post or premium Article */}
+                                                    {note.note_type === 'post' && (
+                                                        note.postTitle ? (
+                                                            <div className="p-5 rounded-2xl bg-gradient-to-br from-base-300/40 to-base-200/10 border border-primary/10 space-y-3 shadow-inner hover:border-primary/20 transition-all duration-300">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="badge badge-primary badge-xs py-1.5 px-2.5 font-bold tracking-normal text-[11px] rounded-full">
+                                                                        Article
+                                                                    </span>
+                                                                </div>
+                                                                <h4 className="text-xl font-serif font-black text-prominent hover:text-primary transition-colors leading-snug">
+                                                                    <Link to={`/post/${note.content_slug}`} className="hover:underline">
+                                                                        {note.postTitle}
+                                                                    </Link>
+                                                                </h4>
+                                                                {note.postSummary && (
+                                                                    <p className="text-sm italic opacity-75 border-l-2 border-primary/40 pl-3 font-serif py-0.5 leading-relaxed">
+                                                                        {note.postSummary}
+                                                                    </p>
+                                                                )}
+                                                                <div
+                                                                    className="text-sm opacity-90 line-clamp-3 leading-relaxed font-serif pt-1 prose prose-sm prose-invert max-w-none"
+                                                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(note.postContent)) }}
+                                                                />
+                                                                <div className="pt-2">
+                                                                    <Link
+                                                                        to={`/post/${note.content_slug}`}
+                                                                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary-hover font-bold hover:underline"
+                                                                    >
+                                                                        <span>Read Full Article</span>
+                                                                        <ExternalLink size={12} />
+                                                                    </Link>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div
+                                                                className="text-base leading-relaxed text-base-content/90 prose prose-sm prose-invert max-w-none select-text"
+                                                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(note.postContent)) }}
+                                                            />
+                                                        )
+                                                    )}
+
+                                                    {/* If release (Embedded premium card) */}
+                                                    {note.note_type === 'release' && (
+                                                        <div className="space-y-2">
+                                                            <p className="text-sm opacity-70">Published a new musical work to the grid:</p>
+
+                                                            {note.releaseData ? (
+                                                                <div className="flex flex-col sm:flex-row gap-4 p-4 bg-base-100 border border-base-content/5 rounded-2xl hover:border-primary/20 transition-all duration-medium-2 group shadow-inner">
+                                                                    {/* Cover image with scale hover */}
+                                                                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-base-200 shadow-md relative group/cover flex-shrink-0 mx-auto sm:mx-0">
+                                                                        <img
+                                                                            src={API.getReleaseCoverUrl(note.releaseData.id)}
+                                                                            alt={note.releaseData.title}
+                                                                            className="object-cover w-full h-full transition-transform duration-medium-4 group-hover/cover:scale-105"
+                                                                            onError={(e) => {
+                                                                                // Try album cover URL fallback
+                                                                                (e.currentTarget as HTMLImageElement).src = API.getAlbumCoverUrl(note.releaseData.id) || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(note.releaseData.title)}`;
+                                                                            }}
+                                                                        />
+                                                                    </div>
+
+                                                                    {/* Release Details */}
+                                                                    <div className="flex-1 flex flex-col justify-between text-center sm:text-left">
+                                                                        <div className="space-y-1">
+                                                                            <h4 className="font-bold text-base-content text-lg hover:text-primary transition-colors">
+                                                                                {note.releaseData.title}
+                                                                            </h4>
+
+                                                                            <div className="flex items-center gap-1.5 justify-center sm:justify-start flex-wrap">
+                                                                                <span className="badge badge-primary badge-outline badge-xs py-1.5 font-bold tracking-normal">
+                                                                                    {note.releaseData.type || 'Release'}
+                                                                                </span>
+                                                                                {note.releaseData.genre && (
+                                                                                    <span className="badge badge-accent badge-xs py-1.5">
+                                                                                        {note.releaseData.genre}
+                                                                                    </span>
+                                                                                )}
+                                                                                {note.releaseData.year && (
+                                                                                    <span className="text-xs opacity-50 font-medium">
+                                                                                        ({note.releaseData.year})
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+
+                                                                            <p className="text-xs opacity-60 line-clamp-2 pt-1 font-medium leading-relaxed">
+                                                                                {note.releaseData.description || 'Listen to our brand new production direct in the network grid, supporting sovereign artists.'}
+                                                                            </p>
+                                                                        </div>
+
+                                                                        {/* Listen CTA */}
+                                                                        <a
+                                                                            href={`#/release/${note.releaseData.slug || note.content_slug}`}
+                                                                            className="btn btn-xs sm:btn-sm btn-primary rounded-full w-fit gap-1.5 mt-3 mx-auto sm:mx-0 shadow-sm border-none bg-primary hover:bg-primary-hover"
+                                                                        >
+                                                                            <Disc size={13} className="animate-spin" style={{ animationDuration: '4s' }} />
+                                                                            <span>Listen on Tunecamp</span>
+                                                                            <ExternalLink size={11} className="opacity-70" />
+                                                                        </a>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                // Generic Release Fallback
+                                                                <div className="flex items-center gap-4 p-4 bg-base-100 border border-base-content/5 rounded-2xl">
+                                                                    <div className="p-4 bg-secondary/10 rounded-xl text-secondary flex-shrink-0">
+                                                                        <Music size={28} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <h4 className="font-bold text-base-content text-base">{note.content_title || 'Untitled Release'}</h4>
+                                                                        <span className="badge badge-ghost badge-sm mt-1">External Fediverse Broadcast</span>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Mastodon action footer (counts are real federated data) */}
+                                                    <div className="flex items-center justify-between text-base-content/55 pt-3 max-w-md select-none">
+
+                                                        {/* Reply: opens the federated thread */}
+                                                        <button
+                                                            className={`flex items-center gap-1.5 hover:text-primary transition-colors text-xs font-semibold py-1.5 px-2.5 rounded-full hover:bg-primary/5 cursor-pointer ${isRepliesOpen ? 'text-primary' : ''}`}
+                                                            onClick={() => toggleReplies(note.note_id)}
+                                                            title="View and write replies"
+                                                        >
+                                                            <MessageCircle size={15} />
+                                                            <span>{repliesCount}</span>
+                                                        </button>
+
+                                                        {/* Boosts received (read-only) — click to see who boosted */}
+                                                        <button
+                                                            className="flex items-center gap-1.5 hover:text-success transition-all text-xs font-semibold py-1.5 px-2.5 rounded-full hover:bg-success/5 cursor-pointer"
+                                                            onClick={() => openInteractions(note.note_id, 'announce')}
+                                                            title={announcesCount > 0 ? 'See who boosted' : 'No boosts yet'}
+                                                        >
+                                                            <Repeat size={15} />
+                                                            <span>{announcesCount}</span>
+                                                        </button>
+
+                                                        {/* Likes received (read-only) — click to see who liked */}
+                                                        <button
+                                                            className="flex items-center gap-1.5 hover:text-error transition-all text-xs font-semibold py-1.5 px-2.5 rounded-full hover:bg-error/5 cursor-pointer"
+                                                            onClick={() => openInteractions(note.note_id, 'like')}
+                                                            title={likesCount > 0 ? 'See who liked' : 'No likes yet'}
+                                                        >
+                                                            <Heart size={15} fill={likesCount > 0 ? 'currentColor' : 'transparent'} />
+                                                            <span>{likesCount}</span>
+                                                        </button>
+
+                                                        {/* Share to Mastodon (only for releases when cross-posting is configured) */}
+                                                        {note.note_type === 'release' && (artist?.postParams as { instance?: string } | undefined)?.instance ? (
+                                                            <button
+                                                                className="btn btn-xs btn-outline btn-primary rounded-full gap-1 font-semibold"
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        await API.shareReleaseToMastodon(note.content_id);
+                                                                        notify.success('Shared to Mastodon!');
+                                                                    } catch (e: any) {
+                                                                        notify.error(e, 'Failed to share');
+                                                                    }
+                                                                }}
+                                                                title="Share this release to your connected Mastodon account"
+                                                            >
+                                                                <Repeat size={11} /> Share
+                                                            </button>
+                                                        ) : (
+                                                            <div className="text-xs font-semibold opacity-40 px-2 py-0.5 rounded-full bg-base-300">
+                                                                ActivityPub Note
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Federated replies thread */}
+                                                    {isRepliesOpen && (
+                                                        <div className="mt-4 pt-4 border-t border-base-content/5 space-y-3 animate-slide-down">
+                                                            {isRepliesLoading && comments.length === 0 ? (
+                                                                <div className="flex justify-center py-4">
+                                                                    <span className="loading loading-spinner loading-sm opacity-40" />
+                                                                </div>
+                                                            ) : comments.length === 0 ? (
+                                                                <div className="text-center text-xs opacity-40 py-2">
+                                                                    No replies yet. Start the conversation below.
+                                                                </div>
+                                                            ) : (
+                                                                <div className="space-y-3">
+                                                                    {comments.map(c => {
+                                                                        const isOwn = c.actor_uri?.includes(`/users/${artist?.slug}`);
+                                                                        const displayName = c.actor?.name || (isOwn ? (artist?.name || 'You') : 'Fediverse user');
+                                                                        const handle = c.actor?.username
+                                                                            ? `@${c.actor.username}`
+                                                                            : (isOwn ? `@${artist?.slug}@${window.location.hostname}` : c.actor_uri);
+                                                                        return (
+                                                                            <div key={c.reply_uri} className="flex gap-3 bg-base-100/30 p-3 rounded-xl border border-base-content/5">
+                                                                                <div className="avatar flex-shrink-0">
+                                                                                    <div className="w-8 h-8 rounded-full bg-neutral flex items-center justify-center text-xs font-semibold overflow-hidden">
+                                                                                        {c.actor?.icon_url ? (
+                                                                                            <img src={c.actor.icon_url} alt={displayName} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                                                                                        ) : (
+                                                                                            <span>{displayName[0]?.toUpperCase()}</span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="flex-1 text-xs min-w-0">
+                                                                                    <div className="flex items-center justify-between gap-2">
+                                                                                        <span className="font-bold text-base-content truncate">{displayName}</span>
+                                                                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                                                                            <span className="opacity-40">{getRelativeTime(c.published_at)}</span>
+                                                                                            {isOwn && (
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    className="btn btn-ghost btn-xs btn-circle text-error/50 hover:text-error hover:bg-error/10"
+                                                                                                    onClick={() => handleDeleteReply(note.note_id, c.reply_uri)}
+                                                                                                    disabled={!!deletingReply[c.reply_uri]}
+                                                                                                    title="Delete your reply"
+                                                                                                >
+                                                                                                    {deletingReply[c.reply_uri]
+                                                                                                        ? <span className="loading loading-spinner loading-xs" />
+                                                                                                        : <Trash2 size={12} />}
+                                                                                                </button>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className="font-mono opacity-50 mt-0.5 truncate" title={c.actor_uri}>{handle}</div>
+                                                                                    <p className="mt-1.5 opacity-85 leading-normal break-words">{stripHtml(c.content)}</p>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Add Reply Input (federated) */}
+                                                            <div className="flex gap-2 pt-2 items-center">
+                                                                <input
+                                                                    type="text"
+                                                                    className="input input-sm select-bordered w-full rounded-full bg-base-100/50 border-base-content/10 px-4 focus:outline-none focus:border-primary/50 text-xs"
+                                                                    placeholder="Write a reply to your followers..."
+                                                                    value={newReplyTexts[note.note_id] || ''}
+                                                                    disabled={!!replySending[note.note_id]}
+                                                                    onChange={e => setNewReplyTexts((prev: any) => ({ ...prev, [note.note_id]: e.target.value }))}
+                                                                    onKeyDown={e => {
+                                                                        if (e.key === 'Enter') handlePostReply(note.note_id);
+                                                                    }}
+                                                                />
+                                                                <button
+                                                                    className="btn btn-sm btn-circle btn-primary shadow-sm"
+                                                                    onClick={() => handlePostReply(note.note_id)}
+                                                                    disabled={!!replySending[note.note_id] || !(newReplyTexts[note.note_id] || '').trim()}
+                                                                    title="Send federated reply"
+                                                                >
+                                                                    {replySending[note.note_id] ? <span className="loading loading-spinner loading-xs" /> : <Send size={11} />}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+
+};
+
 export const ArtistFediversePanel = () => {
     const { adminUser, user, role } = useAuthStore();
     const [notes, setNotes] = useState<ApNote[]>([]);
@@ -906,355 +1300,29 @@ export const ArtistFediversePanel = () => {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {correlatedNotes.map(note => {
-                                    const likesCount = note.likes_count ?? 0;
-                                    const announcesCount = note.announces_count ?? 0;
-                                    const repliesCount = note.replies_count ?? 0;
-                                    const isRepliesOpen = !!showReplies[note.note_id];
-                                    const comments = repliesByNote[note.note_id] || [];
-                                    const isRepliesLoading = !!repliesLoading[note.note_id];
-
-                                    return (
-                                        <div 
-                                            key={note.id} 
-                                            className="card-m3 bg-base-200/20 hover:bg-base-200/40 border border-base-content/5 rounded-2xl transition-all duration-medium-2 shadow-sm"
-                                        >
-                                            <div className="p-6 space-y-4">
-                                                
-                                                {/* Post Header */}
-                                                <div className="flex items-start justify-between gap-4">
-                                                    <div className="flex gap-3">
-                                                        {/* Circular Avatar */}
-                                                        <div className="avatar flex-shrink-0">
-                                                            <div className="w-11 h-11 rounded-full border border-base-content/5 bg-base-300 shadow-inner">
-                                                                <img
-                                                                    src={artist
-                                                                        ? API.getArtistCoverUrl(artist.id)
-                                                                        : `https://api.dicebear.com/7.x/initials/svg?seed=TC`}
-                                                                    alt={artist?.name}
-                                                                    onError={(e) => {
-                                                                        (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(artist?.name || 'TC')}`;
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Artist info & dynamic handle */}
-                                                        <div>
-                                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                                                <span className="font-bold text-sm text-base-content hover:underline cursor-pointer">{artist?.name}</span>
-                                                                <span className="text-xs opacity-40 font-mono">
-                                                                    @{artist?.slug || 'artist'}@{window.location.hostname}
-                                                                </span>
-                                                            </div>
-
-                                                            <div className="flex items-center gap-2 mt-0.5">
-                                                                {/* Relative timestamp */}
-                                                                <span className="text-xs opacity-50" title={new Date(note.published_at).toLocaleString()}>
-                                                                    {getRelativeTime(note.published_at)}
-                                                                </span>
-                                                                <span className="opacity-30 text-xs">•</span>
-                                                                {/* Visibility settings */}
-                                                                <div className="flex items-center opacity-50" title={`Visibility: ${note.visibility}`}>
-                                                                    {note.visibility === 'public' && <Globe size={11} />}
-                                                                    {note.visibility === 'unlisted' && <Eye size={11} />}
-                                                                    {note.visibility === 'private' && <Lock size={11} />}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex gap-1">
-                                                        {/* Edit button (only for posts, not releases) */}
-                                                        {note.note_type === 'post' && (
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-square btn-ghost btn-sm text-base-content/60 hover:text-primary hover:bg-primary/10 rounded-full"
-                                                                onClick={() => handleEditPost(note)}
-                                                                disabled={!!processingId}
-                                                                title="Edit Activity"
-                                                            >
-                                                                <Edit size={15} />
-                                                            </button>
-                                                        )}
-
-                                                        {/* Delete button (with processing check) */}
-                                                        <button
-                                                            className="btn btn-square btn-ghost btn-sm text-error/60 hover:text-error hover:bg-error/10 rounded-full"
-                                                            onClick={() => handleDelete(note)}
-                                                            disabled={!!processingId}
-                                                            title="Delete Activity"
-                                                        >
-                                                            {processingId === note.id ? (
-                                                                <span className="loading loading-spinner loading-xs" />
-                                                            ) : (
-                                                                <Trash2 size={15} />
-                                                            )}
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                {/* Post Content Body */}
-                                                <div className="space-y-3 pl-0 sm:pl-14">
-                                                    {/* If simple post or premium Article */}
-                                                    {note.note_type === 'post' && (
-                                                        note.postTitle ? (
-                                                            <div className="p-5 rounded-2xl bg-gradient-to-br from-base-300/40 to-base-200/10 border border-primary/10 space-y-3 shadow-inner hover:border-primary/20 transition-all duration-300">
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className="badge badge-primary badge-xs py-1.5 px-2.5 font-bold tracking-normal text-[11px] rounded-full">
-                                                                        Article
-                                                                    </span>
-                                                                </div>
-                                                                <h4 className="text-xl font-serif font-black text-prominent hover:text-primary transition-colors leading-snug">
-                                                                    <Link to={`/post/${note.content_slug}`} className="hover:underline">
-                                                                        {note.postTitle}
-                                                                    </Link>
-                                                                </h4>
-                                                                {note.postSummary && (
-                                                                    <p className="text-sm italic opacity-75 border-l-2 border-primary/40 pl-3 font-serif py-0.5 leading-relaxed">
-                                                                        {note.postSummary}
-                                                                    </p>
-                                                                )}
-                                                                <div 
-                                                                    className="text-sm opacity-90 line-clamp-3 leading-relaxed font-serif pt-1 prose prose-sm prose-invert max-w-none"
-                                                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(note.postContent)) }}
-                                                                />
-                                                                <div className="pt-2">
-                                                                    <Link 
-                                                                        to={`/post/${note.content_slug}`}
-                                                                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary-hover font-bold hover:underline"
-                                                                    >
-                                                                        <span>Read Full Article</span>
-                                                                        <ExternalLink size={12} />
-                                                                    </Link>
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <div 
-                                                                className="text-base leading-relaxed text-base-content/90 prose prose-sm prose-invert max-w-none select-text"
-                                                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(note.postContent)) }}
-                                                            />
-                                                        )
-                                                    )}
-
-                                                    {/* If release (Embedded premium card) */}
-                                                    {note.note_type === 'release' && (
-                                                        <div className="space-y-2">
-                                                            <p className="text-sm opacity-70">Published a new musical work to the grid:</p>
-                                                            
-                                                            {note.releaseData ? (
-                                                                <div className="flex flex-col sm:flex-row gap-4 p-4 bg-base-100 border border-base-content/5 rounded-2xl hover:border-primary/20 transition-all duration-medium-2 group shadow-inner">
-                                                                    {/* Cover image with scale hover */}
-                                                                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-base-200 shadow-md relative group/cover flex-shrink-0 mx-auto sm:mx-0">
-                                                                        <img 
-                                                                            src={API.getReleaseCoverUrl(note.releaseData.id)} 
-                                                                            alt={note.releaseData.title}
-                                                                            className="object-cover w-full h-full transition-transform duration-medium-4 group-hover/cover:scale-105"
-                                                                            onError={(e) => {
-                                                                                // Try album cover URL fallback
-                                                                                (e.currentTarget as HTMLImageElement).src = API.getAlbumCoverUrl(note.releaseData.id) || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(note.releaseData.title)}`;
-                                                                            }}
-                                                                        />
-                                                                    </div>
-
-                                                                    {/* Release Details */}
-                                                                    <div className="flex-1 flex flex-col justify-between text-center sm:text-left">
-                                                                        <div className="space-y-1">
-                                                                            <h4 className="font-bold text-base-content text-lg hover:text-primary transition-colors">
-                                                                                {note.releaseData.title}
-                                                                            </h4>
-                                                                            
-                                                                            <div className="flex items-center gap-1.5 justify-center sm:justify-start flex-wrap">
-                                                                                <span className="badge badge-primary badge-outline badge-xs py-1.5 font-bold tracking-normal">
-                                                                                    {note.releaseData.type || 'Release'}
-                                                                                </span>
-                                                                                {note.releaseData.genre && (
-                                                                                    <span className="badge badge-accent badge-xs py-1.5">
-                                                                                        {note.releaseData.genre}
-                                                                                    </span>
-                                                                                )}
-                                                                                {note.releaseData.year && (
-                                                                                    <span className="text-xs opacity-50 font-medium">
-                                                                                        ({note.releaseData.year})
-                                                                                    </span>
-                                                                                )}
-                                                                            </div>
-                                                                            
-                                                                            <p className="text-xs opacity-60 line-clamp-2 pt-1 font-medium leading-relaxed">
-                                                                                {note.releaseData.description || 'Listen to our brand new production direct in the network grid, supporting sovereign artists.'}
-                                                                            </p>
-                                                                        </div>
-
-                                                                        {/* Listen CTA */}
-                                                                        <a 
-                                                                            href={`#/release/${note.releaseData.slug || note.content_slug}`}
-                                                                            className="btn btn-xs sm:btn-sm btn-primary rounded-full w-fit gap-1.5 mt-3 mx-auto sm:mx-0 shadow-sm border-none bg-primary hover:bg-primary-hover"
-                                                                        >
-                                                                            <Disc size={13} className="animate-spin" style={{ animationDuration: '4s' }} />
-                                                                            <span>Listen on Tunecamp</span>
-                                                                            <ExternalLink size={11} className="opacity-70" />
-                                                                        </a>
-                                                                    </div>
-                                                                </div>
-                                                            ) : (
-                                                                // Generic Release Fallback
-                                                                <div className="flex items-center gap-4 p-4 bg-base-100 border border-base-content/5 rounded-2xl">
-                                                                    <div className="p-4 bg-secondary/10 rounded-xl text-secondary flex-shrink-0">
-                                                                        <Music size={28} />
-                                                                    </div>
-                                                                    <div>
-                                                                        <h4 className="font-bold text-base-content text-base">{note.content_title || 'Untitled Release'}</h4>
-                                                                        <span className="badge badge-ghost badge-sm mt-1">External Fediverse Broadcast</span>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-
-                                                    {/* Mastodon action footer (counts are real federated data) */}
-                                                    <div className="flex items-center justify-between text-base-content/55 pt-3 max-w-md select-none">
-
-                                                        {/* Reply: opens the federated thread */}
-                                                        <button
-                                                            className={`flex items-center gap-1.5 hover:text-primary transition-colors text-xs font-semibold py-1.5 px-2.5 rounded-full hover:bg-primary/5 cursor-pointer ${isRepliesOpen ? 'text-primary' : ''}`}
-                                                            onClick={() => toggleReplies(note.note_id)}
-                                                            title="View and write replies"
-                                                        >
-                                                            <MessageCircle size={15} />
-                                                            <span>{repliesCount}</span>
-                                                        </button>
-
-                                                        {/* Boosts received (read-only) — click to see who boosted */}
-                                                        <button
-                                                            className="flex items-center gap-1.5 hover:text-success transition-all text-xs font-semibold py-1.5 px-2.5 rounded-full hover:bg-success/5 cursor-pointer"
-                                                            onClick={() => openInteractions(note.note_id, 'announce')}
-                                                            title={announcesCount > 0 ? 'See who boosted' : 'No boosts yet'}
-                                                        >
-                                                            <Repeat size={15} />
-                                                            <span>{announcesCount}</span>
-                                                        </button>
-
-                                                        {/* Likes received (read-only) — click to see who liked */}
-                                                        <button
-                                                            className="flex items-center gap-1.5 hover:text-error transition-all text-xs font-semibold py-1.5 px-2.5 rounded-full hover:bg-error/5 cursor-pointer"
-                                                            onClick={() => openInteractions(note.note_id, 'like')}
-                                                            title={likesCount > 0 ? 'See who liked' : 'No likes yet'}
-                                                        >
-                                                            <Heart size={15} fill={likesCount > 0 ? 'currentColor' : 'transparent'} />
-                                                            <span>{likesCount}</span>
-                                                        </button>
-
-                                                        {/* Share to Mastodon (only for releases when cross-posting is configured) */}
-                                                        {note.note_type === 'release' && (artist?.postParams as { instance?: string } | undefined)?.instance ? (
-                                                            <button
-                                                                className="btn btn-xs btn-outline btn-primary rounded-full gap-1 font-semibold"
-                                                                onClick={async () => {
-                                                                    try {
-                                                                        await API.shareReleaseToMastodon(note.content_id);
-                                                                        notify.success('Shared to Mastodon!');
-                                                                    } catch (e: any) {
-                                                                        notify.error(e, 'Failed to share');
-                                                                    }
-                                                                }}
-                                                                title="Share this release to your connected Mastodon account"
-                                                            >
-                                                                <Repeat size={11} /> Share
-                                                            </button>
-                                                        ) : (
-                                                            <div className="text-xs font-semibold opacity-40 px-2 py-0.5 rounded-full bg-base-300">
-                                                                ActivityPub Note
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Federated replies thread */}
-                                                    {isRepliesOpen && (
-                                                        <div className="mt-4 pt-4 border-t border-base-content/5 space-y-3 animate-slide-down">
-                                                            {isRepliesLoading && comments.length === 0 ? (
-                                                                <div className="flex justify-center py-4">
-                                                                    <span className="loading loading-spinner loading-sm opacity-40" />
-                                                                </div>
-                                                            ) : comments.length === 0 ? (
-                                                                <div className="text-center text-xs opacity-40 py-2">
-                                                                    No replies yet. Start the conversation below.
-                                                                </div>
-                                                            ) : (
-                                                                <div className="space-y-3">
-                                                                    {comments.map(c => {
-                                                                        const isOwn = c.actor_uri?.includes(`/users/${artist?.slug}`);
-                                                                        const displayName = c.actor?.name || (isOwn ? (artist?.name || 'You') : 'Fediverse user');
-                                                                        const handle = c.actor?.username
-                                                                            ? `@${c.actor.username}`
-                                                                            : (isOwn ? `@${artist?.slug}@${window.location.hostname}` : c.actor_uri);
-                                                                        return (
-                                                                            <div key={c.reply_uri} className="flex gap-3 bg-base-100/30 p-3 rounded-xl border border-base-content/5">
-                                                                                <div className="avatar flex-shrink-0">
-                                                                                    <div className="w-8 h-8 rounded-full bg-neutral flex items-center justify-center text-xs font-semibold overflow-hidden">
-                                                                                        {c.actor?.icon_url ? (
-                                                                                            <img src={c.actor.icon_url} alt={displayName} onError={e => { e.currentTarget.style.display = 'none'; }} />
-                                                                                        ) : (
-                                                                                            <span>{displayName[0]?.toUpperCase()}</span>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </div>
-                                                                                <div className="flex-1 text-xs min-w-0">
-                                                                                    <div className="flex items-center justify-between gap-2">
-                                                                                        <span className="font-bold text-base-content truncate">{displayName}</span>
-                                                                                        <div className="flex items-center gap-1 flex-shrink-0">
-                                                                                            <span className="opacity-40">{getRelativeTime(c.published_at)}</span>
-                                                                                            {isOwn && (
-                                                                                                <button
-                                                                                                    type="button"
-                                                                                                    className="btn btn-ghost btn-xs btn-circle text-error/50 hover:text-error hover:bg-error/10"
-                                                                                                    onClick={() => handleDeleteReply(note.note_id, c.reply_uri)}
-                                                                                                    disabled={!!deletingReply[c.reply_uri]}
-                                                                                                    title="Delete your reply"
-                                                                                                >
-                                                                                                    {deletingReply[c.reply_uri]
-                                                                                                        ? <span className="loading loading-spinner loading-xs" />
-                                                                                                        : <Trash2 size={12} />}
-                                                                                                </button>
-                                                                                            )}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    <div className="font-mono opacity-50 mt-0.5 truncate" title={c.actor_uri}>{handle}</div>
-                                                                                    <p className="mt-1.5 opacity-85 leading-normal break-words">{stripHtml(c.content)}</p>
-                                                                                </div>
-                                                                            </div>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            )}
-
-                                                            {/* Add Reply Input (federated) */}
-                                                            <div className="flex gap-2 pt-2 items-center">
-                                                                <input
-                                                                    type="text"
-                                                                    className="input input-sm select-bordered w-full rounded-full bg-base-100/50 border-base-content/10 px-4 focus:outline-none focus:border-primary/50 text-xs"
-                                                                    placeholder="Write a reply to your followers..."
-                                                                    value={newReplyTexts[note.note_id] || ''}
-                                                                    disabled={!!replySending[note.note_id]}
-                                                                    onChange={e => setNewReplyTexts(prev => ({ ...prev, [note.note_id]: e.target.value }))}
-                                                                    onKeyDown={e => {
-                                                                        if (e.key === 'Enter') handlePostReply(note.note_id);
-                                                                    }}
-                                                                />
-                                                                <button
-                                                                    className="btn btn-sm btn-circle btn-primary shadow-sm"
-                                                                    onClick={() => handlePostReply(note.note_id)}
-                                                                    disabled={!!replySending[note.note_id] || !(newReplyTexts[note.note_id] || '').trim()}
-                                                                    title="Send federated reply"
-                                                                >
-                                                                    {replySending[note.note_id] ? <span className="loading loading-spinner loading-xs" /> : <Send size={11} />}
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                {correlatedNotes.map(note => (
+                                    <FediverseNoteItem
+                                        key={note.id}
+                                        note={note}
+                                        artist={artist}
+                                        processingId={processingId}
+                                        showReplies={showReplies}
+                                        repliesByNote={repliesByNote}
+                                        repliesLoading={repliesLoading}
+                                        newReplyTexts={newReplyTexts}
+                                        replySending={replySending}
+                                        deletingReply={deletingReply}
+                                        handleEditPost={handleEditPost}
+                                        handleDelete={handleDelete}
+                                        toggleReplies={toggleReplies}
+                                        handlePostReply={handlePostReply}
+                                        handleDeleteReply={handleDeleteReply}
+                                        openInteractions={openInteractions}
+                                        setNewReplyTexts={setNewReplyTexts}
+                                        getRelativeTime={getRelativeTime}
+                                        stripHtml={stripHtml}
+                                    />
+                                ))}
                             </div>
                         )}
                     </div>
