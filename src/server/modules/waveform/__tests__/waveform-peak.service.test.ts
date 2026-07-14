@@ -167,4 +167,55 @@ describe('WaveformPeakService', () => {
         expect(result).toHaveLength(100);
         expect(ffmpegMediaMock.releaseTaskSlot).toHaveBeenCalled();
     });
+
+    it('should swallow errors when killing the command fails', async () => {
+        (fsMock.default.existsSync as jest.Mock).mockReturnValue(true);
+
+        const generatePromise = WaveformPeakService.generateWaveform('error.mp3', 10);
+
+        await new Promise(resolve => process.nextTick(resolve));
+
+        mockCommand.kill.mockImplementationOnce(() => {
+            throw new Error('kill failed');
+        });
+
+        // Need to suppress the expected console.error output so it doesn't clutter
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+        mockStream.emit('error', new Error('ffmpeg failed'));
+
+        const result = await generatePromise;
+        expect(result).toEqual(new Array(10).fill(0));
+        expect(mockCommand.kill).toHaveBeenCalledWith('SIGKILL');
+        expect(ffmpegMediaMock.releaseTaskSlot).toHaveBeenCalled();
+
+        consoleSpy.mockRestore();
+    });
+
+    it('should cap the bucket at samples - 1 when duration is provided and current bucket exceeds samples', async () => {
+        (fsMock.default.existsSync as jest.Mock).mockReturnValue(true);
+
+        // samples = 2, duration = 1.
+        // bucketSize = Math.max(1, Math.floor((1 * 4000) / 2)) = 2000 samples.
+        // We want totalProcessedSamples to be >= 4000 to trigger currentBucket >= 2.
+        const generatePromise = WaveformPeakService.generateWaveform('valid.mp3', 2, 1);
+
+        await new Promise(resolve => process.nextTick(resolve));
+
+        // Create a buffer with enough samples to overflow the 2 buckets.
+        // 4002 samples = 8004 bytes.
+        const buffer = Buffer.alloc(8004);
+        // Let's set a value at the end of the buffer to see if it's capped at samples - 1 (index 1)
+        buffer.writeInt16LE(16384, 8000); // Sample 4000 (Bucket 2)
+        buffer.writeInt16LE(32767, 8002); // Sample 4001 (Bucket 2)
+
+        mockStream.emit('data', buffer);
+        mockStream.emit('end');
+
+        const result = await generatePromise;
+        expect(result).toHaveLength(2);
+        // Index 1 (last bucket) should contain the maximum value (32767 / 32768 = 0.99997 => parsed to 1.0)
+        expect(result[1]).toBe(1);
+        expect(ffmpegMediaMock.releaseTaskSlot).toHaveBeenCalled();
+    });
 });
