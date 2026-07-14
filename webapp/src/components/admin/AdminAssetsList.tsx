@@ -91,11 +91,12 @@ export const AdminAssetsList = () => {
                             {filtered.map(asset => {
                                 const Icon = TYPE_ICON[asset.type] || FileText;
                                 const artistName = asset.artist_name || asset.artistName;
-                                const priceLabel = asset.price_usdc || asset.priceUsdc
-                                    ? `$${asset.price_usdc || asset.priceUsdc} USDC`
-                                    : asset.price
-                                        ? `${asset.price} ${asset.currency || 'ETH'}`
-                                        : 'Free';
+                                let priceLabel = 'Free';
+                                if (asset.price_usdc || asset.priceUsdc) {
+                                    priceLabel = `$${asset.price_usdc || asset.priceUsdc} USDC`;
+                                } else if (asset.price) {
+                                    priceLabel = `${asset.price} ${asset.currency || 'ETH'}`;
+                                }
 
                                 return (
                                     <tr key={asset.id} className="hover cursor-pointer" onClick={() => openEdit(asset)}>
