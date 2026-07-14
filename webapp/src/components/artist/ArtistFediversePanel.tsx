@@ -328,6 +328,12 @@ export const ArtistFediversePanel = () => {
         }
     };
 
+    const handleReplyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, noteId: string) => {
+        if (e.key === 'Enter') {
+            handlePostReply(noteId);
+        }
+    };
+
     // Delete one of your own replies (sends a federated Delete(Note))
     const handleDeleteReply = async (noteId: string, replyUri: string) => {
         if (deletingReply[replyUri]) return;
@@ -1235,9 +1241,7 @@ export const ArtistFediversePanel = () => {
                                                                     value={newReplyTexts[note.note_id] || ''}
                                                                     disabled={!!replySending[note.note_id]}
                                                                     onChange={e => setNewReplyTexts(prev => ({ ...prev, [note.note_id]: e.target.value }))}
-                                                                    onKeyDown={e => {
-                                                                        if (e.key === 'Enter') handlePostReply(note.note_id);
-                                                                    }}
+                                                                    onKeyDown={e => handleReplyKeyDown(e, note.note_id)}
                                                                 />
                                                                 <button
                                                                     className="btn btn-sm btn-circle btn-primary shadow-sm"
