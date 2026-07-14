@@ -162,6 +162,12 @@ export const AdminMaintenancePanel = () => {
         }
     };
 
+    const handlePickerOpen = (item: any) => {
+        if (mode === 'tracks') setPickerTrack(item);
+        else if (mode === 'artists') setPickerArtist(item);
+        else setPickerAlbum(item);
+    };
+
     const handleAutofill = async (ids: number[]) => {
         if (ids.length === 0) return;
         if (!await confirm(`Are you sure you want to attempt autofill for ${ids.length} tracks?`)) return;
@@ -800,11 +806,7 @@ export const AdminMaintenancePanel = () => {
                                         <div className="flex justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
                                             <button
                                                 className="btn btn-xs btn-ghost"
-                                                onClick={() => {
-                                                    if (mode === 'tracks') setPickerTrack(item);
-                                                    else if (mode === 'artists') setPickerArtist(item);
-                                                    else setPickerAlbum(item);
-                                                }}
+                                                onClick={() => handlePickerOpen(item)}
                                             >
                                                 <Wand2 size={12} /> {mode === 'tracks' ? 'Match' : mode === 'albums' ? 'Match' : 'Enrich'}
                                             </button>
