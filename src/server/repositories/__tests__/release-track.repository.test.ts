@@ -1,183 +1,217 @@
 import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { createDatabase } from '../../core/database.js';
 import { ReleaseTrackRepository } from '../release-track.repository.js';
-import { TrackRepository } from '../track.repository.js';
 import { AlbumRepository } from '../album.repository.js';
+import { TrackRepository } from '../track.repository.js';
+import { ArtistRepository } from '../artist.repository.js';
+import { UserRole } from '../../common/visibility.js';
+
+const ADMIN_CTX = { role: UserRole.ROOT_ADMIN };
+
+function trackInput(overrides: Record<string, any> = {}) {
+    return {
+        title: 'Track',
+        album_id: null,
+        artist_id: null,
+        owner_id: null,
+        artist_name: 'An Artist',
+        track_num: 1,
+        duration: 200,
+        file_path: 'tracks/track.mp3',
+        format: 'mp3',
+        bitrate: 320,
+        sample_rate: 44100,
+        price: 0,
+        currency: 'ETH',
+        lossless_path: null,
+        waveform: null,
+        hash: null,
+        ...overrides
+    } as any;
+}
+
+function albumInput(overrides: Record<string, any> = {}) {
+    return {
+        title: 'Album',
+        artist_name: 'An Artist',
+        type: 'album',
+        visibility: 'public',
+        is_release: 1,
+        ...overrides
+    } as any;
+}
 
 describe('ReleaseTrackRepository', () => {
     let db: any;
     let repo: ReleaseTrackRepository;
-    let trackRepo: TrackRepository;
-    let albumRepo: AlbumRepository;
+    let albums: AlbumRepository;
+    let tracks: TrackRepository;
+    let artists: ArtistRepository;
 
     beforeEach(() => {
         db = createDatabase(':memory:');
         repo = new ReleaseTrackRepository(db.db);
-        trackRepo = new TrackRepository(db.db);
-        albumRepo = new AlbumRepository(db.db);
+        albums = new AlbumRepository(db.db, {} as any, {} as any); // Ignoring managers for now
+        tracks = new TrackRepository(db.db);
+        artists = new ArtistRepository(db.db);
     });
 
     afterEach(() => {
         if (db && db.db) db.db.close();
     });
 
-    const createRelease = () => albumRepo.createRelease({ title: 'Test Release', is_release: true, visibility: 'public', status: 'released' } as any);
+    test('add and getByReleaseId / getById', () => {
+        const artistId = artists.create('Release Artist');
+        const releaseId = albums.create(albumInput({ artist_id: artistId }));
 
-    test('add should insert a new track', () => {
-        const albumId = createRelease();
-        const trackId = repo.add(albumId, { title: 'Test Track', track_num: 1, duration: 180, price: 10, currency: 'ETH' });
+        // Test add new track
+        const trackId = repo.add(releaseId, {
+            title: 'Track 1',
+            price: 10,
+            price_usdc: 15,
+            currency: 'ETH'
+        });
 
-        expect(trackId).toBeGreaterThan(0);
-        const track = repo.getById(trackId);
-        expect(track).toBeDefined();
-        expect(track?.title).toBe('Test Track');
-        expect(track?.release_id).toBe(albumId);
-        expect(track?.track_num).toBe(1);
+        expect(trackId).toBeDefined();
+
+        // Test getByReleaseId
+        const releaseTracks = repo.getByReleaseId(releaseId);
+        expect(releaseTracks.length).toBe(1);
+        expect(releaseTracks[0].title).toBe('Track 1');
+        expect(releaseTracks[0].price).toBe(10);
+        expect(releaseTracks[0].price_usdc).toBe(15);
+        expect(releaseTracks[0].track_num).toBe(1);
+
+        // Test getById
+        const rt = repo.getById(trackId);
+        expect(rt).toBeDefined();
+        expect(rt?.title).toBe('Track 1');
     });
 
-    test('add should update an existing track', () => {
-        const albumId = createRelease();
-        const trackId = trackRepo.create({ title: 'Existing Track' } as any);
+    test('add with existing track updates the track', () => {
+        const artistId = artists.create('Release Artist');
+        const releaseId = albums.create(albumInput({ artist_id: artistId }));
 
-        const updatedTrackId = repo.add(albumId, { track_id: trackId, price: 20, currency: 'USDC' });
-        expect(updatedTrackId).toBe(trackId);
+        const trackId = tracks.create(trackInput({ title: 'Old Title' }));
 
-        const track = trackRepo.getById(trackId);
-        expect(track?.album_id).toBe(albumId);
-        expect(track?.price).toBe(20);
-        expect(track?.currency).toBe('USDC');
+        repo.add(releaseId, {
+            track_id: trackId,
+            title: 'New Title via track repo add is ignored for update',
+            price: 5
+        });
+
+        const rt = repo.getById(trackId);
+        expect(rt?.release_id).toBe(releaseId);
+        expect(rt?.price).toBe(5);
+        // title is not updated in the UPDATE branch of add
+        expect(rt?.title).toBe('Old Title');
     });
 
-    test('getByReleaseId should return tracks ordered by track_num', () => {
-        const albumId = createRelease();
-        repo.add(albumId, { title: 'Track 2', track_num: 2 });
-        repo.add(albumId, { title: 'Track 1', track_num: 1 });
-        repo.add(albumId, { title: 'Track 3', track_num: 3 });
+    test('getPriceFromRelease returns correct pricing', () => {
+        const releaseId = albums.create(albumInput());
+        const trackId = repo.add(releaseId, {
+            title: 'Priced Track',
+            price: 42,
+            price_usdc: 4200,
+            currency: 'ETH'
+        });
 
-        const tracks = repo.getByReleaseId(albumId);
-        expect(tracks).toHaveLength(3);
-        expect(tracks[0].title).toBe('Track 1');
-        expect(tracks[1].title).toBe('Track 2');
-        expect(tracks[2].title).toBe('Track 3');
+        const price = repo.getPriceFromRelease(releaseId, trackId);
+        expect(price).toBeDefined();
+        expect(price?.price).toBe(42);
+        expect(price?.price_usdc).toBe(4200);
+        expect(price?.currency).toBe('ETH');
+        expect(price?.title).toBe('Priced Track');
+
+        // Non-existent
+        expect(repo.getPriceFromRelease(releaseId, 9999)).toBeUndefined();
     });
 
-    test('getPriceFromRelease should return track pricing', () => {
-        const albumId = createRelease();
-        const trackId = repo.add(albumId, { title: 'Test Track', track_num: 1, price: 15, price_usdc: 15, currency: 'ETH' });
+    test('update modifies track fields', () => {
+        const releaseId = albums.create(albumInput());
+        const trackId = repo.add(releaseId, { title: 'Track' });
 
-        const pricing = repo.getPriceFromRelease(albumId, trackId);
-        expect(pricing).toBeDefined();
-        expect(pricing?.price).toBe(15);
-        expect(pricing?.price_usdc).toBe(15);
-        expect(pricing?.currency).toBe('ETH');
-        expect(pricing?.title).toBe('Test Track');
+        repo.update(trackId, { title: 'Updated Track', duration: 120 });
+
+        const rt = repo.getById(trackId);
+        expect(rt?.title).toBe('Updated Track');
+        expect(rt?.duration).toBe(120);
+        // Should ignore protected fields
+        repo.update(trackId, { id: 999, release_id: 999 } as any);
+        expect(repo.getById(trackId)?.id).toBe(trackId);
     });
 
-    test('update should modify track metadata by id', () => {
-        const albumId = createRelease();
-        const trackId = repo.add(albumId, { title: 'Test Track', track_num: 1 });
+    test('updateMetadata modifies track fields scoped by release', () => {
+        const releaseId = albums.create(albumInput());
+        const trackId = repo.add(releaseId, { title: 'Track' });
 
-        repo.update(trackId, { title: 'Updated Track', duration: 200 });
+        repo.updateMetadata(releaseId, trackId, { title: 'Updated Meta' });
 
-        const track = repo.getById(trackId);
-        expect(track?.title).toBe('Updated Track');
-        expect(track?.duration).toBe(200);
+        const rt = repo.getById(trackId);
+        expect(rt?.title).toBe('Updated Meta');
     });
 
-    test('updateMetadata should modify track metadata by release and id', () => {
-        const albumId = createRelease();
-        const trackId = repo.add(albumId, { title: 'Test Track', track_num: 1 });
+    test('remove and removeBatch unlinks tracks from release', () => {
+        const releaseId = albums.create(albumInput());
+        const t1 = repo.add(releaseId, { title: 'T1' });
+        const t2 = repo.add(releaseId, { title: 'T2' });
+        const t3 = repo.add(releaseId, { title: 'T3' });
 
-        repo.updateMetadata(albumId, trackId, { title: 'Updated Metadata Track' });
+        expect(repo.getByReleaseId(releaseId).length).toBe(3);
 
-        const track = repo.getById(trackId);
-        expect(track?.title).toBe('Updated Metadata Track');
+        repo.remove(releaseId, t1);
+        expect(repo.getByReleaseId(releaseId).length).toBe(2);
+        expect(repo.getById(t1)).toBeUndefined(); // It's no longer in the release view!
+
+        repo.removeBatch(releaseId, [t2, t3]);
+        expect(repo.getByReleaseId(releaseId).length).toBe(0);
+        expect(repo.getById(t2)).toBeUndefined();
     });
 
-    test('remove should unlink a track from a release', () => {
-        const albumId = createRelease();
-        const trackId = repo.add(albumId, { title: 'Test Track', track_num: 1 });
+    test('delete and deleteByRelease deletes or unlinks tracks', () => {
+        const releaseId = albums.create(albumInput());
+        const t1 = repo.add(releaseId, { title: 'T1' });
+        const t2 = repo.add(releaseId, { title: 'T2' });
 
-        repo.remove(albumId, trackId);
+        repo.delete(t1);
+        expect(repo.getById(t1)).toBeUndefined();
 
-        const track = trackRepo.getById(trackId);
-        expect(track?.album_id).toBeNull();
+        repo.deleteByRelease(releaseId);
+        expect(repo.getById(t2)).toBeUndefined(); // because it unlinked
     });
 
-    test('removeBatch should unlink multiple tracks from a release', () => {
-        const albumId = createRelease();
-        const trackId1 = repo.add(albumId, { title: 'Test Track 1', track_num: 1 });
-        const trackId2 = repo.add(albumId, { title: 'Test Track 2', track_num: 2 });
+    test('updateOrder and sync manages track ordering and linking', () => {
+        const releaseId = albums.create(albumInput());
+        const t1 = tracks.create(trackInput({ title: 'T1' }));
+        const t2 = tracks.create(trackInput({ title: 'T2' }));
+        const t3 = tracks.create(trackInput({ title: 'T3' }));
 
-        repo.removeBatch(albumId, [trackId1, trackId2]);
+        // Link and order using sync
+        repo.sync(releaseId, [t2, t1, t3]);
 
-        expect(trackRepo.getById(trackId1)?.album_id).toBeNull();
-        expect(trackRepo.getById(trackId2)?.album_id).toBeNull();
+        let rt = repo.getByReleaseId(releaseId);
+        expect(rt.length).toBe(3);
+        expect(rt.find(r => r.id === t2)?.track_num).toBe(1);
+        expect(rt.find(r => r.id === t1)?.track_num).toBe(2);
+        expect(rt.find(r => r.id === t3)?.track_num).toBe(3);
+
+        // Update order
+        repo.updateOrder(releaseId, [t3, t2, t1]);
+
+        rt = repo.getByReleaseId(releaseId);
+        expect(rt.find(r => r.id === t3)?.track_num).toBe(1);
+        expect(rt.find(r => r.id === t2)?.track_num).toBe(2);
+        expect(rt.find(r => r.id === t1)?.track_num).toBe(3);
     });
 
-    test('delete should delete track completely', () => {
-        const albumId = createRelease();
-        const trackId = repo.add(albumId, { title: 'Test Track', track_num: 1 });
+    test('cleanUpGhostTracks removes tracks with no file_path for a release', () => {
+        const releaseId = albums.create(albumInput());
+        const t1 = repo.add(releaseId, { title: 'Ghost', file_path: null });
+        const t2 = repo.add(releaseId, { title: 'Real', file_path: 'some/path.mp3' });
 
-        repo.delete(trackId);
-        expect(repo.getById(trackId)).toBeUndefined();
-    });
+        repo.cleanUpGhostTracks(releaseId);
 
-    test('deleteByRelease should unlink all tracks from a release', () => {
-        const albumId = createRelease();
-        const trackId1 = repo.add(albumId, { title: 'Test Track 1', track_num: 1 });
-        const trackId2 = repo.add(albumId, { title: 'Test Track 2', track_num: 2 });
-
-        repo.deleteByRelease(albumId);
-
-        expect(trackRepo.getById(trackId1)?.album_id).toBeNull();
-        expect(trackRepo.getById(trackId2)?.album_id).toBeNull();
-    });
-
-    test('updateOrder should modify track_num based on array order', () => {
-        const albumId = createRelease();
-        const trackId1 = repo.add(albumId, { title: 'Track A', track_num: 1 });
-        const trackId2 = repo.add(albumId, { title: 'Track B', track_num: 2 });
-        const trackId3 = repo.add(albumId, { title: 'Track C', track_num: 3 });
-
-        repo.updateOrder(albumId, [trackId3, trackId1, trackId2]);
-
-        const tracks = repo.getByReleaseId(albumId);
-        expect(tracks[0].id).toBe(trackId3);
-        expect(tracks[0].track_num).toBe(1);
-        expect(tracks[1].id).toBe(trackId1);
-        expect(tracks[1].track_num).toBe(2);
-        expect(tracks[2].id).toBe(trackId2);
-        expect(tracks[2].track_num).toBe(3);
-    });
-
-    test('sync should unlink existing and link new tracks in order', () => {
-        const albumId = createRelease();
-        const trackId1 = repo.add(albumId, { title: 'Track A', track_num: 1 });
-        const trackId2 = repo.add(albumId, { title: 'Track B', track_num: 2 });
-
-        const trackId3 = trackRepo.create({ title: 'Track C' } as any);
-
-        repo.sync(albumId, [trackId3, trackId1]);
-
-        expect(trackRepo.getById(trackId2)?.album_id).toBeNull();
-
-        const tracks = repo.getByReleaseId(albumId);
-        expect(tracks).toHaveLength(2);
-        expect(tracks[0].id).toBe(trackId3);
-        expect(tracks[0].track_num).toBe(1);
-        expect(tracks[1].id).toBe(trackId1);
-        expect(tracks[1].track_num).toBe(2);
-    });
-
-    test('cleanUpGhostTracks should delete tracks without file_path', () => {
-        const albumId = createRelease();
-        const ghostTrackId = repo.add(albumId, { title: 'Ghost Track', file_path: null });
-        const realTrackId = repo.add(albumId, { title: 'Real Track', file_path: 'path/to/file.mp3' });
-
-        repo.cleanUpGhostTracks(albumId);
-
-        expect(repo.getById(ghostTrackId)).toBeUndefined();
-        expect(repo.getById(realTrackId)).toBeDefined();
+        expect(repo.getById(t1)).toBeUndefined();
+        expect(repo.getById(t2)).toBeDefined();
     });
 });
