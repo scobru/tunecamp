@@ -58,6 +58,85 @@ interface ApInteractionItem {
     actor: ApActorRef | null;
 }
 
+const getRelativeTime = (dateStr: string) => {
+    const now = new Date();
+    const date = new Date(dateStr);
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHr = Math.floor(diffMin / 60);
+    const diffDays = Math.floor(diffHr / 24);
+
+    if (diffSec < 60) return 'Just now';
+    if (diffMin < 60) return `${diffMin}m`;
+    if (diffHr < 24) return `${diffHr}h`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d`;
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+const stripHtml = (html: string) => (html || '').replace(/<[^>]*>/g, '').trim();
+
+
+interface FediverseReplyProps {
+    reply: ApReplyItem;
+    artist: Artist | null;
+    noteId: string;
+    isDeleting: boolean;
+    onDelete: (noteId: string, replyUri: string) => void;
+}
+
+const FediverseReply = ({
+    reply,
+    artist,
+    noteId,
+    isDeleting,
+    onDelete
+}: FediverseReplyProps) => {
+    const isOwn = reply.actor_uri?.includes(`/users/${artist?.slug}`);
+    const displayName = reply.actor?.name || (isOwn ? (artist?.name || 'You') : 'Fediverse user');
+    const handle = reply.actor?.username
+        ? `@${reply.actor.username}`
+        : (isOwn ? `@${artist?.slug}@${window.location.hostname}` : reply.actor_uri);
+
+    return (
+        <div className="flex gap-3 bg-base-100/30 p-3 rounded-xl border border-base-content/5">
+            <div className="avatar flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-neutral flex items-center justify-center text-xs font-semibold overflow-hidden">
+                    {reply.actor?.icon_url ? (
+                        <img src={reply.actor.icon_url} alt={displayName} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                    ) : (
+                        <span>{displayName[0]?.toUpperCase()}</span>
+                    )}
+                </div>
+            </div>
+            <div className="flex-1 text-xs min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-base-content truncate">{displayName}</span>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                        <span className="opacity-40">{getRelativeTime(reply.published_at)}</span>
+                        {isOwn && (
+                            <button
+                                type="button"
+                                className="btn btn-ghost btn-xs btn-circle text-error/50 hover:text-error hover:bg-error/10"
+                                onClick={() => onDelete(noteId, reply.reply_uri)}
+                                disabled={isDeleting}
+                                title="Delete your reply"
+                            >
+                                {isDeleting
+                                    ? <span className="loading loading-spinner loading-xs" />
+                                    : <Trash2 size={12} />}
+                            </button>
+                        )}
+                    </div>
+                </div>
+                <div className="font-mono opacity-50 mt-0.5 truncate" title={reply.actor_uri}>{handle}</div>
+                <p className="mt-1.5 opacity-85 leading-normal break-words">{stripHtml(reply.content)}</p>
+            </div>
+        </div>
+    );
+};
+
 export const ArtistFediversePanel = () => {
     const { adminUser, user, role } = useAuthStore();
     const [notes, setNotes] = useState<ApNote[]>([]);
@@ -352,7 +431,6 @@ export const ArtistFediversePanel = () => {
 
 
 
-    const stripHtml = (html: string) => (html || '').replace(/<[^>]*>/g, '').trim();
 
     // Correlate AP notes with database entities
     const correlatedNotes = useMemo(() => {
@@ -1180,49 +1258,16 @@ export const ArtistFediversePanel = () => {
                                                                 </div>
                                                             ) : (
                                                                 <div className="space-y-3">
-                                                                    {comments.map(c => {
-                                                                        const isOwn = c.actor_uri?.includes(`/users/${artist?.slug}`);
-                                                                        const displayName = c.actor?.name || (isOwn ? (artist?.name || 'You') : 'Fediverse user');
-                                                                        const handle = c.actor?.username
-                                                                            ? `@${c.actor.username}`
-                                                                            : (isOwn ? `@${artist?.slug}@${window.location.hostname}` : c.actor_uri);
-                                                                        return (
-                                                                            <div key={c.reply_uri} className="flex gap-3 bg-base-100/30 p-3 rounded-xl border border-base-content/5">
-                                                                                <div className="avatar flex-shrink-0">
-                                                                                    <div className="w-8 h-8 rounded-full bg-neutral flex items-center justify-center text-xs font-semibold overflow-hidden">
-                                                                                        {c.actor?.icon_url ? (
-                                                                                            <img src={c.actor.icon_url} alt={displayName} onError={e => { e.currentTarget.style.display = 'none'; }} />
-                                                                                        ) : (
-                                                                                            <span>{displayName[0]?.toUpperCase()}</span>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </div>
-                                                                                <div className="flex-1 text-xs min-w-0">
-                                                                                    <div className="flex items-center justify-between gap-2">
-                                                                                        <span className="font-bold text-base-content truncate">{displayName}</span>
-                                                                                        <div className="flex items-center gap-1 flex-shrink-0">
-                                                                                            <span className="opacity-40">{getRelativeTime(c.published_at)}</span>
-                                                                                            {isOwn && (
-                                                                                                <button
-                                                                                                    type="button"
-                                                                                                    className="btn btn-ghost btn-xs btn-circle text-error/50 hover:text-error hover:bg-error/10"
-                                                                                                    onClick={() => handleDeleteReply(note.note_id, c.reply_uri)}
-                                                                                                    disabled={!!deletingReply[c.reply_uri]}
-                                                                                                    title="Delete your reply"
-                                                                                                >
-                                                                                                    {deletingReply[c.reply_uri]
-                                                                                                        ? <span className="loading loading-spinner loading-xs" />
-                                                                                                        : <Trash2 size={12} />}
-                                                                                                </button>
-                                                                                            )}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    <div className="font-mono opacity-50 mt-0.5 truncate" title={c.actor_uri}>{handle}</div>
-                                                                                    <p className="mt-1.5 opacity-85 leading-normal break-words">{stripHtml(c.content)}</p>
-                                                                                </div>
-                                                                            </div>
-                                                                        );
-                                                                    })}
+                                                                    {comments.map(c => (
+                                                                        <FediverseReply
+                                                                            key={c.reply_uri}
+                                                                            reply={c}
+                                                                            artist={artist}
+                                                                            noteId={note.note_id}
+                                                                            isDeleting={!!deletingReply[c.reply_uri]}
+                                                                            onDelete={handleDeleteReply}
+                                                                        />
+                                                                    ))}
                                                                 </div>
                                                             )}
 
