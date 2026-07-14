@@ -35,6 +35,18 @@ describe('ReleaseTrackRepository', () => {
         expect(track?.track_num).toBe(1);
     });
 
+    test('add should automatically assign track_num if not provided', () => {
+        const albumId = createRelease();
+        const trackId1 = repo.add(albumId, { title: 'Track 1' });
+        const trackId2 = repo.add(albumId, { title: 'Track 2' });
+
+        const track1 = repo.getById(trackId1);
+        const track2 = repo.getById(trackId2);
+
+        expect(track1?.track_num).toBe(1);
+        expect(track2?.track_num).toBe(2);
+    });
+
     test('add should update an existing track', () => {
         const albumId = createRelease();
         const trackId = trackRepo.create({ title: 'Existing Track' } as any);
@@ -71,6 +83,18 @@ describe('ReleaseTrackRepository', () => {
         expect(pricing?.price_usdc).toBe(15);
         expect(pricing?.currency).toBe('ETH');
         expect(pricing?.title).toBe('Test Track');
+    });
+
+    test('update should handle empty metadata gracefully without crashing', () => {
+        const albumId = createRelease();
+        const trackId = repo.add(albumId, { title: 'Test Track', track_num: 1 });
+
+        expect(() => {
+            repo.update(trackId, {});
+        }).not.toThrow();
+
+        const track = repo.getById(trackId);
+        expect(track?.title).toBe('Test Track');
     });
 
     test('update should modify track metadata by id', () => {
