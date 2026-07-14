@@ -12,6 +12,29 @@ const formatBytes = (bytes: number): string => {
     return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
 };
 
+const UserStorageRowItem = ({ u }: { u: InstanceStorage['byUser'][0] }) => {
+    const pct = u.quota > 0 ? Math.min(100, Math.round((u.used / u.quota) * 100)) : 0;
+    return (
+        <tr className="hover:bg-base-content/5">
+            <td className="text-xs font-bold truncate max-w-[160px]">{u.username}</td>
+            <td className="text-xs opacity-60">{u.role}</td>
+            <td className="text-right text-xs">{u.trackCount}</td>
+            <td className="text-right text-xs">{formatBytes(u.used)}</td>
+            <td className="text-right text-xs opacity-70">{u.quota > 0 ? formatBytes(u.quota) : '∞'}</td>
+            <td>
+                {u.quota > 0 ? (
+                    <progress
+                        className={`progress w-full ${pct >= 90 ? 'progress-error' : pct >= 70 ? 'progress-warning' : 'progress-success'}`}
+                        value={pct} max={100}
+                    />
+                ) : (
+                    <span className="text-xs opacity-30">unlimited</span>
+                )}
+            </td>
+        </tr>
+    );
+};
+
 export const StoragePanel = () => {
     const [accounts, setAccounts] = useState<StorageAccount[]>([]);
     const [files, setFiles] = useState<GoogleDriveFile[]>([]);
@@ -202,28 +225,9 @@ export const StoragePanel = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {instance.byUser.map(u => {
-                                        const pct = u.quota > 0 ? Math.min(100, Math.round((u.used / u.quota) * 100)) : 0;
-                                        return (
-                                            <tr key={u.id} className="hover:bg-base-content/5">
-                                                <td className="text-xs font-bold truncate max-w-[160px]">{u.username}</td>
-                                                <td className="text-xs opacity-60">{u.role}</td>
-                                                <td className="text-right text-xs">{u.trackCount}</td>
-                                                <td className="text-right text-xs">{formatBytes(u.used)}</td>
-                                                <td className="text-right text-xs opacity-70">{u.quota > 0 ? formatBytes(u.quota) : '∞'}</td>
-                                                <td>
-                                                    {u.quota > 0 ? (
-                                                        <progress
-                                                            className={`progress w-full ${pct >= 90 ? 'progress-error' : pct >= 70 ? 'progress-warning' : 'progress-success'}`}
-                                                            value={pct} max={100}
-                                                        />
-                                                    ) : (
-                                                        <span className="text-xs opacity-30">unlimited</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
+                                    {instance.byUser.map(u => (
+                                        <UserStorageRowItem key={u.id} u={u} />
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
