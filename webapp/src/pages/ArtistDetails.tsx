@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { SyntheticEvent } from 'react';
 import API from '../services/api';
 import { useParams, Link } from 'react-router-dom';
 import { Play, Disc, Globe, Shield, Wallet, Copy, Twitter, Instagram, Youtube, Facebook, Github, Mail, Heart, ShoppingBag, Rss, Calendar, MapPin, Ticket } from 'lucide-react';
@@ -22,6 +23,14 @@ const PlatformIcon = ({ platform }: { platform: string }) => {
     if (p.includes('github')) return <Github size={16} />;
     if (p.includes('mail')) return <Mail size={16} />;
     return <Globe size={16} />;
+};
+
+const handleImageError = (e: SyntheticEvent<HTMLImageElement, Event>) => {
+    const target = e.target as HTMLImageElement;
+    target.style.display = 'none';
+    if (target.nextElementSibling) {
+        (target.nextElementSibling as HTMLElement).style.display = 'flex';
+    }
 };
 
 const ArtistDetails = () => {
@@ -388,13 +397,7 @@ const ArtistDetails = () => {
                                         src={API.getReleaseCoverUrl(album.id, cacheBuster)} 
                                         alt={album.title} 
                                         className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform" 
-                                        onError={(e) => {
-                                           const target = e.target as HTMLImageElement;
-                                           target.style.display = 'none';
-                                           if (target.nextElementSibling) {
-                                              (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                                           }
-                                        }}
+                                        onError={handleImageError}
                                     />
                                     <div className="hidden absolute inset-0 bg-neutral w-full h-full items-center justify-center opacity-30">
                                         <Disc size={32} />
@@ -423,13 +426,7 @@ const ArtistDetails = () => {
                                          src={API.getAlbumCoverUrl(album.id, cacheBuster)} 
                                          alt={album.title} 
                                          className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform" 
-                                         onError={(e) => {
-                                            const target = e.target as HTMLImageElement;
-                                            target.style.display = 'none';
-                                            if (target.nextElementSibling) {
-                                               (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                                            }
-                                         }}
+                                         onError={handleImageError}
                                      />
                                      <div className="hidden absolute inset-0 bg-neutral w-full h-full items-center justify-center opacity-30">
                                          <Disc size={32} />
