@@ -1,3 +1,4 @@
+import { handleImageError } from '../utils/imageUtils';
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useSearchParams, Link } from 'react-router-dom';
@@ -264,13 +265,7 @@ const Search = () => {
                                                      src={artist.coverImage || API.getArtistCoverUrl(artist.slug || artist.id)}
                                                      alt={artist.name}
                                                      className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform"
-                                                     onError={(e) => {
-                                                        const target = e.target as HTMLImageElement;
-                                                        target.style.display = 'none';
-                                                        if (target.nextElementSibling) {
-                                                           (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                                                        }
-                                                     }}
+                                                     onError={handleImageError}
                                                  />
                                                  <div className="hidden absolute inset-0 w-full h-full bg-neutral items-center justify-center text-4xl font-bold opacity-30">
                                                      {artist.name ? artist.name[0] : '?'}
@@ -319,13 +314,7 @@ const Search = () => {
                                                             src={coverUrl} 
                                                             alt={album.title} 
                                                             className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform" 
-                                                            onError={(e) => {
-                                                               const target = e.target as HTMLImageElement;
-                                                               target.style.display = 'none';
-                                                               if (target.nextElementSibling) {
-                                                                  (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                                                               }
-                                                            }}
+                                                            onError={handleImageError}
                                                         />
                                                         <div className="hidden absolute inset-0 bg-neutral w-full h-full items-center justify-center opacity-30">
                                                             <Disc size={40} />

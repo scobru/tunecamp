@@ -1,3 +1,4 @@
+import { handleImageError } from '../utils/imageUtils';
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useParams, Link } from 'react-router-dom';
@@ -388,13 +389,7 @@ const ArtistDetails = () => {
                                         src={API.getReleaseCoverUrl(album.id, cacheBuster)} 
                                         alt={album.title} 
                                         className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform" 
-                                        onError={(e) => {
-                                           const target = e.target as HTMLImageElement;
-                                           target.style.display = 'none';
-                                           if (target.nextElementSibling) {
-                                              (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                                           }
-                                        }}
+                                        onError={handleImageError}
                                     />
                                     <div className="hidden absolute inset-0 bg-neutral w-full h-full items-center justify-center opacity-30">
                                         <Disc size={32} />
@@ -423,13 +418,7 @@ const ArtistDetails = () => {
                                          src={API.getAlbumCoverUrl(album.id, cacheBuster)} 
                                          alt={album.title} 
                                          className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform" 
-                                         onError={(e) => {
-                                            const target = e.target as HTMLImageElement;
-                                            target.style.display = 'none';
-                                            if (target.nextElementSibling) {
-                                               (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                                            }
-                                         }}
+                                         onError={handleImageError}
                                      />
                                      <div className="hidden absolute inset-0 bg-neutral w-full h-full items-center justify-center opacity-30">
                                          <Disc size={32} />

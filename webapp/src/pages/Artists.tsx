@@ -1,3 +1,4 @@
+import { handleImageError } from '../utils/imageUtils';
 import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -188,13 +189,7 @@ const Artists = () => {
                                         src={API.getArtistCoverUrl(artist.id, cacheBuster)}
                                         alt={artist.name}
                                         className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                                        onError={(e) => {
-                                            const target = e.target as HTMLImageElement;
-                                            target.style.display = 'none';
-                                            if (target.nextElementSibling) {
-                                                (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                                            }
-                                        }}
+                                        onError={handleImageError}
                                     />
                                 ) : null}
                                 <div className={clsx(

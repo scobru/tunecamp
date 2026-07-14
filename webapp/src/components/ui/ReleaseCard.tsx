@@ -1,3 +1,4 @@
+import { handleImageError } from '../../utils/imageUtils';
 import { Link } from 'react-router-dom';
 import { Disc, Download } from 'lucide-react';
 import clsx from 'clsx';
@@ -40,13 +41,7 @@ export const ReleaseCard = ({ item, viewMode = 'grid', type = 'release' }: Relea
                     src={coverUrl}
                     alt={item.title}
                     className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-medium-4 [transition-timing-function:var(--ease-spring)]"
-                    onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        if (target.nextElementSibling) {
-                            (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                        }
-                    }}
+                    onError={handleImageError}
                 />
                 <div className="hidden absolute inset-0 bg-neutral items-center justify-center opacity-30">
                     <Disc size={viewMode === 'grid' ? 48 : 20}/>
