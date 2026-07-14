@@ -167,4 +167,38 @@ describe('WaveformPeakService', () => {
         expect(result).toHaveLength(100);
         expect(ffmpegMediaMock.releaseTaskSlot).toHaveBeenCalled();
     });
+
+    it('should silently catch error if command.kill throws during error handling', async () => {
+        (fsMock.default.existsSync as jest.Mock).mockReturnValue(true);
+        mockCommand.kill.mockImplementationOnce(() => { throw new Error('kill failed'); });
+
+        const generatePromise = WaveformPeakService.generateWaveform('error.mp3', 10);
+        await new Promise(resolve => process.nextTick(resolve));
+
+        mockStream.emit('error', new Error('ffmpeg failed'));
+
+        const result = await generatePromise;
+        expect(result).toEqual(new Array(10).fill(0));
+        expect(mockCommand.kill).toHaveBeenCalledWith('SIGKILL');
+        expect(ffmpegMediaMock.releaseTaskSlot).toHaveBeenCalled();
+    });
+
+    it('should cap at last bucket if samples exceed expected duration', async () => {
+        (fsMock.default.existsSync as jest.Mock).mockReturnValue(true);
+
+        const generatePromise = WaveformPeakService.generateWaveform('overflow.mp3', 1, 1);
+        await new Promise(resolve => process.nextTick(resolve));
+
+        const buffer = Buffer.alloc(8004); // 4002 samples
+        buffer.writeInt16LE(16384, 8000); // Set value at index 4000 (overflow bucket)
+
+        mockStream.emit('data', buffer);
+        mockStream.emit('end');
+
+        const result = await generatePromise;
+
+        expect(result).toHaveLength(1);
+        expect(result[0]).toBe(0.5);
+        expect(ffmpegMediaMock.releaseTaskSlot).toHaveBeenCalled();
+    });
 });
