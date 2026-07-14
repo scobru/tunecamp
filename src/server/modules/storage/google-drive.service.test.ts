@@ -284,5 +284,29 @@ describe('GoogleDriveService', () => {
                 })
             );
         });
+
+        test('gets file stream without range', async () => {
+             mockDb.getStorageAccountByProvider.mockReturnValue({
+                id: 1, access_token: 'valid-token', expiry_date: Date.now() + 120000
+            });
+            const mockStream = new Readable();
+            const axios = (await import('axios')).default;
+            (axios.get as jest.Mock).mockResolvedValueOnce({
+                data: mockStream,
+                status: 200,
+                headers: { 'content-type': 'audio/mpeg' }
+            });
+
+            const result = await service.getFileStream(1, 'file-1');
+            expect(result.stream).toBe(mockStream);
+            expect(result.status).toBe(200);
+            expect(axios.get).toHaveBeenCalledWith(
+                'https://www.googleapis.com/drive/v3/files/file-1',
+                expect.objectContaining({
+                    headers: { Authorization: 'Bearer valid-token' },
+                    responseType: 'stream'
+                })
+            );
+        });
     });
 });
