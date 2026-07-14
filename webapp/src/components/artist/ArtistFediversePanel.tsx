@@ -58,6 +58,33 @@ interface ApInteractionItem {
     actor: ApActorRef | null;
 }
 
+
+const ActorProfile = ({ actor, uri }: { actor: ApActorRef | null | undefined, uri: string }) => (
+    <div className="flex items-center gap-3 overflow-hidden">
+        <div className="avatar placeholder flex-shrink-0">
+            <div className="w-9 h-9 rounded-full bg-neutral text-neutral-content shadow-sm overflow-hidden">
+                {actor?.icon_url ? (
+                    <img
+                        src={actor.icon_url}
+                        alt={actor.name}
+                        onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                        }}
+                    />
+                ) : (
+                    <span className="text-sm font-semibold">{actor?.name?.[0] || '?'}</span>
+                )}
+            </div>
+        </div>
+        <div className="overflow-hidden">
+            <div className="font-bold text-xs truncate text-base-content">{actor?.name || 'Anonymous listener'}</div>
+            <div className="text-xs opacity-50 truncate font-mono" title={uri}>
+                @{actor?.username || 'unknown'}
+            </div>
+        </div>
+    </div>
+);
+
 export const ArtistFediversePanel = () => {
     const { adminUser, user, role } = useAuthStore();
     const [notes, setNotes] = useState<ApNote[]>([]);
@@ -581,29 +608,7 @@ export const ArtistFediversePanel = () => {
                             <div className="grid gap-3">
                                 {pendingRequests.map(req => (
                                     <div key={req.uri} className="flex items-center justify-between gap-3 p-2 bg-base-100/50 rounded-xl border border-base-content/5 hover:border-warning/20 transition-all duration-short-4">
-                                        <div className="flex items-center gap-3 overflow-hidden">
-                                            <div className="avatar placeholder flex-shrink-0">
-                                                <div className="w-9 h-9 rounded-full bg-neutral text-neutral-content shadow-sm overflow-hidden">
-                                                    {req.actor?.icon_url ? (
-                                                        <img 
-                                                            src={req.actor.icon_url} 
-                                                            alt={req.actor.name} 
-                                                            onError={(e) => {
-                                                                e.currentTarget.style.display = 'none';
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <span className="text-sm font-semibold">{req.actor?.name?.[0] || '?'}</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="overflow-hidden">
-                                                <div className="font-bold text-xs truncate text-base-content">{req.actor?.name || 'Anonymous listener'}</div>
-                                                <div className="text-xs opacity-50 truncate font-mono" title={req.uri}>
-                                                    @{req.actor?.username || 'unknown'}
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <ActorProfile actor={req.actor} uri={req.uri} />
                                         <div className="flex gap-1.5 flex-shrink-0">
                                             <button 
                                                 className="btn btn-xs btn-success rounded-full text-xs font-bold px-3 border-none hover:opacity-90"
@@ -640,29 +645,7 @@ export const ArtistFediversePanel = () => {
                                     const key = follower.uri;
                                     return (
                                         <div key={key} className="flex items-center justify-between gap-3 p-2 bg-base-100/50 rounded-xl border border-base-content/5 hover:border-primary/20 transition-all duration-short-4">
-                                            <div className="flex items-center gap-3 overflow-hidden">
-                                                <div className="avatar placeholder flex-shrink-0">
-                                                    <div className="w-9 h-9 rounded-full bg-neutral text-neutral-content shadow-sm overflow-hidden">
-                                                        {follower.actor?.icon_url ? (
-                                                            <img 
-                                                                src={follower.actor.icon_url} 
-                                                                alt={follower.actor.name} 
-                                                                onError={(e) => {
-                                                                    e.currentTarget.style.display = 'none';
-                                                                }}
-                                                            />
-                                                        ) : (
-                                                            <span className="text-sm font-semibold">{follower.actor?.name?.[0] || '?'}</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="overflow-hidden">
-                                                    <div className="font-bold text-xs truncate text-base-content">{follower.actor?.name || 'Anonymous listener'}</div>
-                                                    <div className="text-xs opacity-50 truncate font-mono" title={follower.uri}>
-                                                        @{follower.actor?.username || 'unknown'}
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <ActorProfile actor={follower.actor} uri={follower.uri} />
 
 
                                         </div>
