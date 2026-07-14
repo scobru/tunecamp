@@ -22,15 +22,12 @@ describe('GoogleDriveService', () => {
             redirectUri: 'http://test/cb'
         });
 
-        // Use spyOn for standard mocks to avoid experimental VM issues
         const axios = (await import('axios')).default;
-
         originalAxiosPost = axios.post;
         originalAxiosGet = axios.get;
 
         jest.spyOn(axios, 'post').mockResolvedValue({ data: {} });
         jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
-
         jest.clearAllMocks();
     });
 
@@ -41,11 +38,22 @@ describe('GoogleDriveService', () => {
         jest.restoreAllMocks();
     });
 
-    test('getAuthUrl returns correct URL', () => {
-        const url = service.getAuthUrl('test-state');
-        expect(url).toContain('client_id=test-id');
-        expect(url).toContain('redirect_uri=http%3A%2F%2Ftest%2Fcb');
-        expect(url).toContain('state=test-state');
+    describe('getAuthUrl', () => {
+        test('getAuthUrl returns correct URL', () => {
+            const url = service.getAuthUrl('test-state');
+            expect(url).toContain('client_id=test-id');
+            expect(url).toContain('redirect_uri=http%3A%2F%2Ftest%2Fcb');
+            expect(url).toContain('state=test-state');
+            expect(url).toContain('access_type=offline');
+        });
+
+        test('getAuthUrl returns correct URL without state', () => {
+            const url = service.getAuthUrl();
+            expect(url).toContain('client_id=test-id');
+            expect(url).toContain('redirect_uri=http%3A%2F%2Ftest%2Fcb');
+            expect(url).not.toContain('state=');
+            expect(url).toContain('access_type=offline');
+        });
     });
 
     describe('getValidToken', () => {
@@ -179,6 +187,26 @@ describe('GoogleDriveService', () => {
                 account_email: 'test@example.com'
             }));
         });
+
+        test('handles missing refresh token gracefully during exchange', async () => {
+            const axios = (await import('axios')).default;
+            (axios.post as jest.Mock).mockResolvedValueOnce({
+                data: { access_token: 'acc-token', expires_in: 3600 } // No refresh_token
+            });
+            (axios.get as jest.Mock).mockResolvedValueOnce({
+                data: { email: 'test@example.com' }
+            });
+            mockDb.getStorageAccountByProvider.mockReturnValue({
+                id: 5, refresh_token: 'old-ref'
+            });
+
+            await service.exchangeCode('auth-code', 1);
+
+            expect(mockDb.updateStorageAccount).toHaveBeenCalledWith(5, expect.objectContaining({
+                access_token: 'acc-token',
+                refresh_token: 'old-ref', // Keeps existing
+            }));
+        });
     });
 
     describe('listFiles', () => {
@@ -207,7 +235,7 @@ describe('GoogleDriveService', () => {
 
     describe('listAudioFilesRecursive', () => {
         test('recursively finds audio files', async () => {
-             mockDb.getStorageAccountByProvider.mockReturnValue({
+            mockDb.getStorageAccountByProvider.mockReturnValue({
                 id: 1, access_token: 'valid-token', expiry_date: Date.now() + 120000
             });
 
@@ -247,7 +275,7 @@ describe('GoogleDriveService', () => {
 
     describe('getFile', () => {
         test('gets file metadata', async () => {
-             mockDb.getStorageAccountByProvider.mockReturnValue({
+            mockDb.getStorageAccountByProvider.mockReturnValue({
                 id: 1, access_token: 'valid-token', expiry_date: Date.now() + 120000
             });
             const axios = (await import('axios')).default;
@@ -262,7 +290,7 @@ describe('GoogleDriveService', () => {
 
     describe('getFileStream', () => {
         test('gets file stream with range', async () => {
-             mockDb.getStorageAccountByProvider.mockReturnValue({
+            mockDb.getStorageAccountByProvider.mockReturnValue({
                 id: 1, access_token: 'valid-token', expiry_date: Date.now() + 120000
             });
             const mockStream = new Readable();
@@ -280,6 +308,30 @@ describe('GoogleDriveService', () => {
                 'https://www.googleapis.com/drive/v3/files/file-1',
                 expect.objectContaining({
                     headers: { Authorization: 'Bearer valid-token', Range: 'bytes=0-100' },
+                    responseType: 'stream'
+                })
+            );
+        });
+
+        test('gets file stream without range', async () => {
+            mockDb.getStorageAccountByProvider.mockReturnValue({
+                id: 1, access_token: 'valid-token', expiry_date: Date.now() + 120000
+            });
+            const mockStream = new Readable();
+            const axios = (await import('axios')).default;
+            (axios.get as jest.Mock).mockResolvedValueOnce({
+                data: mockStream,
+                status: 200,
+                headers: { 'content-type': 'audio/mpeg' }
+            });
+
+            const result = await service.getFileStream(1, 'file-1');
+            expect(result.stream).toBe(mockStream);
+            expect(result.status).toBe(200);
+            expect(axios.get).toHaveBeenCalledWith(
+                'https://www.googleapis.com/drive/v3/files/file-1',
+                expect.objectContaining({
+                    headers: { Authorization: 'Bearer valid-token' },
                     responseType: 'stream'
                 })
             );

@@ -21,12 +21,14 @@ export class GoogleDriveService {
         private database: DatabaseService,
         config: { clientId: string; clientSecret: string; redirectUri: string }
     ) {
+
         this.clientId = config.clientId;
         this.clientSecret = config.clientSecret;
         this.redirectUri = config.redirectUri;
     }
 
     getAuthUrl(state?: string): string {
+        // Generate OAuth authorization URL
         const scopes = [
             "https://www.googleapis.com/auth/drive.readonly",
             "https://www.googleapis.com/auth/drive.file",
