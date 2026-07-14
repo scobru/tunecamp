@@ -194,6 +194,22 @@ export const AdminMaintenancePanel = () => {
         }
     };
 
+    const handleArtistAutofill = async (ids: number[]) => {
+        if (ids.length === 0) return;
+        if (!await confirm(`Are you sure you want to attempt autofill for ${ids.length} artists?`)) return;
+
+        setIsProcessing(true);
+        try {
+            const res = await API.autofillArtistMetadata(ids);
+            setResults(res);
+            loadArtists(); // Refresh list
+        } catch (e: any) {
+            notify.error(e, "Artist Autofill failed");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     const handleAlbumAutofill = async (ids: number[]) => {
         if (ids.length === 0) return;
         if (!await confirm(`Are you sure you want to attempt autofill for ${ids.length} albums?`)) return;
@@ -661,21 +677,7 @@ export const AdminMaintenancePanel = () => {
                             <button 
                                 className="btn btn-sm btn-primary"
                                 disabled={selectedIds.length === 0 || isProcessing}
-                                onClick={async () => {
-                                    if (selectedIds.length === 0) return;
-                                    if (!await confirm(`Are you sure you want to attempt autofill for ${selectedIds.length} artists?`)) return;
-
-                                    setIsProcessing(true);
-                                    try {
-                                        const res = await API.autofillArtistMetadata(selectedIds);
-                                        setResults(res);
-                                        loadArtists(); // Refresh list
-                                    } catch (e: any) {
-                                        notify.error(e, "Artist Autofill failed");
-                                    } finally {
-                                        setIsProcessing(false);
-                                    }
-                                }}
+                                onClick={() => handleArtistAutofill(selectedIds)}
                             >
                                 {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Wand2 size={18} />}
                                 Autofill ({selectedIds.length})
