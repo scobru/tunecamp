@@ -48,6 +48,7 @@ const Live = lazy(() => import("./pages/Live"));
 const RadioPage = lazy(() => import("./pages/Radio"));
 const NowListening = lazy(() => import("./pages/NowListening"));
 const Board = lazy(() => import("./pages/Board"));
+const SsoAuthorize = lazy(() => import("./pages/SsoAuthorize"));
 
 
 const LoadingSpinner = () => (
@@ -242,6 +243,7 @@ function App() {
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/u/:username" element={<UserProfile />} />
+            <Route path="/oauth/authorize" element={<SsoAuthorize />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/reset-password-security" element={<ResetPasswordSecurity />} />
             <Route path="/my-music" element={<MyMusic />} />
