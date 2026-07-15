@@ -230,7 +230,7 @@ export class RadioService {
             m3u8,
         ];
 
-        const proc = spawn(ffmpegBin, args, { stdio: ["ignore", "ignore", "pipe"] });
+        const proc = spawn(ffmpegBin, args, { stdio: ["ignore", "ignore", "pipe"], shell: false });
 
         proc.stderr?.on("data", (d: Buffer) => {
             const msg = d.toString().trim();
