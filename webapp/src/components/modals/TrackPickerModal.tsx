@@ -64,6 +64,72 @@ export const TrackPickerModal = ({ onTracksSelected, onClose, isOpen, excludeTra
         (t.artist_name && t.artist_name.toLowerCase().includes(search.toLowerCase()))
     );
 
+    const renderContent = () => {
+        if (loading) {
+            return <div className="text-center py-8 opacity-50">Loading tracks...</div>;
+        }
+
+        if (error) {
+            return (
+                <div className="text-center py-8 text-error">
+                    <div className="font-bold mb-1">Error loading tracks</div>
+                    <div className="text-xs opacity-70">{error}</div>
+                    <button className="btn btn-sm btn-ghost mt-3" onClick={loadTracks}>Retry</button>
+                </div>
+            );
+        }
+
+        if (filteredTracks.length === 0 && search) {
+            return <div className="text-center py-8 opacity-50">No tracks match your search.</div>;
+        }
+
+        if (filteredTracks.length === 0) {
+            return (
+                <div className="text-center py-8 opacity-50">
+                    <div className="mb-1">No tracks in your library.</div>
+                    <div className="text-xs">Upload tracks from the Library section first.</div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="grid gap-2">
+                {filteredTracks.map(track => {
+                    const isSelected = !!selectedTracks.find(t => t.id === track.id);
+                    return (
+                        <div
+                            key={track.id}
+                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'bg-primary/10 border-primary' : 'bg-base-200/50 border-transparent hover:bg-base-200'}`}
+                            onClick={() => toggleTrack(track)}
+                        >
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-primary-content' : 'border-base-content/30'}`}>
+                                {isSelected && <Check size={14} />}
+                            </div>
+                            <div className="flex-1">
+                                <div className="font-bold flex items-center gap-2">
+                                    {track.title}
+                                    {(track.losslessPath || track.lossless_path) ? (
+                                        <span className="badge badge-xs badge-outline opacity-50 font-mono">
+                                            {(track.losslessPath || track.lossless_path || '').toLowerCase().endsWith('.wav') ? 'WAV' : 'FLAC'}
+                                        </span>
+                                    ) : (
+                                        <span className="badge badge-xs badge-outline opacity-50 font-mono">
+                                            {track.format || 'MP3'}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="text-xs opacity-60">{track.artistName || track.artist_name || 'Unknown Artist'} • {track.albumName || track.album_title || 'Unknown Album'}</div>
+                            </div>
+                            <div className="text-xs font-mono opacity-50">
+                                {track.duration ? formatDuration(track.duration) : '-'}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
     return (
         <dialog ref={dialogRef} className="modal">
             <div className="modal-box w-11/12 max-w-3xl h-[80vh] flex flex-col p-0">
@@ -88,57 +154,7 @@ export const TrackPickerModal = ({ onTracksSelected, onClose, isOpen, excludeTra
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4">
-                    {loading ? (
-                        <div className="text-center py-8 opacity-50">Loading tracks...</div>
-                    ) : error ? (
-                        <div className="text-center py-8 text-error">
-                            <div className="font-bold mb-1">Error loading tracks</div>
-                            <div className="text-xs opacity-70">{error}</div>
-                            <button className="btn btn-sm btn-ghost mt-3" onClick={loadTracks}>Retry</button>
-                        </div>
-                    ) : filteredTracks.length === 0 && search ? (
-                        <div className="text-center py-8 opacity-50">No tracks match your search.</div>
-                    ) : filteredTracks.length === 0 ? (
-                        <div className="text-center py-8 opacity-50">
-                            <div className="mb-1">No tracks in your library.</div>
-                            <div className="text-xs">Upload tracks from the Library section first.</div>
-                        </div>
-                    ) : (
-                        <div className="grid gap-2">
-                            {filteredTracks.map(track => {
-                                const isSelected = !!selectedTracks.find(t => t.id === track.id);
-                                return (
-                                    <div 
-                                        key={track.id} 
-                                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'bg-primary/10 border-primary' : 'bg-base-200/50 border-transparent hover:bg-base-200'}`}
-                                        onClick={() => toggleTrack(track)}
-                                    >
-                                        <div className={`w-5 h-5 rounded border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-primary-content' : 'border-base-content/30'}`}>
-                                            {isSelected && <Check size={14} />}
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="font-bold flex items-center gap-2">
-                                                {track.title}
-                                                {(track.losslessPath || track.lossless_path) ? (
-                                                    <span className="badge badge-xs badge-outline opacity-50 font-mono">
-                                                        {(track.losslessPath || track.lossless_path || '').toLowerCase().endsWith('.wav') ? 'WAV' : 'FLAC'}
-                                                    </span>
-                                                ) : (
-                                                    <span className="badge badge-xs badge-outline opacity-50 font-mono">
-                                                        {track.format || 'MP3'}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="text-xs opacity-60">{track.artistName || track.artist_name || 'Unknown Artist'} • {track.albumName || track.album_title || 'Unknown Album'}</div>
-                                        </div>
-                                        <div className="text-xs font-mono opacity-50">
-                                            {track.duration ? formatDuration(track.duration) : '-'}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                    {renderContent()}
                 </div>
 
                 <div className="p-4 border-t border-base-content/10 bg-base-200 flex justify-end gap-2">
