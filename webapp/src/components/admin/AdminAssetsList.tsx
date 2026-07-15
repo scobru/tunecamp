@@ -16,6 +16,16 @@ const TYPE_LABEL: Record<string, string> = {
     membership: 'Membership',
 };
 
+const formatPriceLabel = (asset: Asset): string => {
+    if (asset.price_usdc || asset.priceUsdc) {
+        return `$${asset.price_usdc || asset.priceUsdc} USDC`;
+    }
+    if (asset.price) {
+        return `${asset.price} ${asset.currency || 'ETH'}`;
+    }
+    return 'Free';
+};
+
 export const AdminAssetsList = () => {
     const [assets, setAssets] = useState<Asset[]>([]);
     const [loading, setLoading] = useState(true);
@@ -91,11 +101,7 @@ export const AdminAssetsList = () => {
                             {filtered.map(asset => {
                                 const Icon = TYPE_ICON[asset.type] || FileText;
                                 const artistName = asset.artist_name || asset.artistName;
-                                const priceLabel = asset.price_usdc || asset.priceUsdc
-                                    ? `$${asset.price_usdc || asset.priceUsdc} USDC`
-                                    : asset.price
-                                        ? `${asset.price} ${asset.currency || 'ETH'}`
-                                        : 'Free';
+                                const priceLabel = formatPriceLabel(asset);
 
                                 return (
                                     <tr key={asset.id} className="hover cursor-pointer" onClick={() => openEdit(asset)}>

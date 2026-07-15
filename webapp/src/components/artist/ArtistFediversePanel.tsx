@@ -58,6 +58,28 @@ interface ApInteractionItem {
     actor: ApActorRef | null;
 }
 
+const InteractionItem = ({ item }: { item: ApInteractionItem }) => {
+    const name = item.actor?.name || 'Fediverse user';
+    const handle = item.actor?.username ? `@${item.actor.username}` : item.actor_uri;
+
+    return (
+        <a href={item.actor_uri} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 bg-base-100/50 rounded-xl border border-base-content/5 hover:border-primary/20 transition-colors">
+            <div className="avatar placeholder flex-shrink-0">
+                <div className="w-9 h-9 rounded-full bg-neutral text-neutral-content overflow-hidden">
+                    {item.actor?.icon_url
+                        ? <img src={item.actor.icon_url} alt={name} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                        : <span className="text-sm font-semibold">{name[0]?.toUpperCase()}</span>}
+                </div>
+            </div>
+            <div className="min-w-0">
+                <div className="font-bold text-sm truncate">{name}</div>
+                <div className="text-xs opacity-50 font-mono truncate" title={item.actor_uri}>{handle}</div>
+            </div>
+            <ExternalLink size={12} className="ml-auto opacity-40 flex-shrink-0" />
+        </a>
+    );
+};
+
 export const ArtistFediversePanel = () => {
     const { adminUser, user, role } = useAuthStore();
     const [notes, setNotes] = useState<ApNote[]>([]);
@@ -325,6 +347,12 @@ export const ArtistFediversePanel = () => {
             notify.error(e, "Failed to send reply");
         } finally {
             setReplySending(prev => ({ ...prev, [noteId]: false }));
+        }
+    };
+
+    const handleReplyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, noteId: string) => {
+        if (e.key === 'Enter') {
+            handlePostReply(noteId);
         }
     };
 
@@ -1235,9 +1263,7 @@ export const ArtistFediversePanel = () => {
                                                                     value={newReplyTexts[note.note_id] || ''}
                                                                     disabled={!!replySending[note.note_id]}
                                                                     onChange={e => setNewReplyTexts(prev => ({ ...prev, [note.note_id]: e.target.value }))}
-                                                                    onKeyDown={e => {
-                                                                        if (e.key === 'Enter') handlePostReply(note.note_id);
-                                                                    }}
+                                                                    onKeyDown={e => handleReplyKeyDown(e, note.note_id)}
                                                                 />
                                                                 <button
                                                                     className="btn btn-sm btn-circle btn-primary shadow-sm"
@@ -1277,26 +1303,9 @@ export const ArtistFediversePanel = () => {
                             </div>
                         ) : (
                             <div className="grid gap-2 max-h-[400px] overflow-y-auto scrollbar-thin">
-                                {interactionsList.map(i => {
-                                    const name = i.actor?.name || 'Fediverse user';
-                                    const handle = i.actor?.username ? `@${i.actor.username}` : i.actor_uri;
-                                    return (
-                                        <a key={i.actor_uri} href={i.actor_uri} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 bg-base-100/50 rounded-xl border border-base-content/5 hover:border-primary/20 transition-colors">
-                                            <div className="avatar placeholder flex-shrink-0">
-                                                <div className="w-9 h-9 rounded-full bg-neutral text-neutral-content overflow-hidden">
-                                                    {i.actor?.icon_url
-                                                        ? <img src={i.actor.icon_url} alt={name} onError={e => { e.currentTarget.style.display = 'none'; }} />
-                                                        : <span className="text-sm font-semibold">{name[0]?.toUpperCase()}</span>}
-                                                </div>
-                                            </div>
-                                            <div className="min-w-0">
-                                                <div className="font-bold text-sm truncate">{name}</div>
-                                                <div className="text-xs opacity-50 font-mono truncate" title={i.actor_uri}>{handle}</div>
-                                            </div>
-                                            <ExternalLink size={12} className="ml-auto opacity-40 flex-shrink-0" />
-                                        </a>
-                                    );
-                                })}
+                                {interactionsList.map(i => (
+                                    <InteractionItem key={i.actor_uri} item={i} />
+                                ))}
                             </div>
                         )}
                         <div className="modal-action">

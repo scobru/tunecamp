@@ -60,6 +60,14 @@ export default function Dig() {
         setBpms((b) => ({ ...b, [previewUrl]: bpm ?? 0 }));
     };
 
+    const handleCreateSession = () => {
+        const trimmed = newSessionName.trim();
+        if (trimmed) {
+            createSession(trimmed);
+            setNewSessionName("");
+        }
+    };
+
     const onSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const q = query.trim();
@@ -207,7 +215,7 @@ export default function Dig() {
                             />
                             <button
                                 className="btn btn-xs btn-primary"
-                                onClick={() => { if (newSessionName.trim()) { createSession(newSessionName.trim()); setNewSessionName(""); } }}
+                                onClick={handleCreateSession}
                             >
                                 <Plus className="w-3 h-3" />
                             </button>

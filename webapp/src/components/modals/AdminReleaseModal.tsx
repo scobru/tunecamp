@@ -140,6 +140,11 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
         }
     };
 
+    const handlePriceChange = (value: string) => {
+        if (currency === 'USDC') setPriceUsdc(value);
+        else setPrice(value);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -308,10 +313,7 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                                     step="any"
                                     className="input input-bordered w-full" 
                                     value={currency === 'USDC' ? priceUsdc : price}
-                                    onChange={e => {
-                                        if (currency === 'USDC') setPriceUsdc(e.target.value);
-                                        else setPrice(e.target.value);
-                                    }}
+                                    onChange={e => handlePriceChange(e.target.value)}
                                     placeholder="0.00"
                                 />
                             </div>

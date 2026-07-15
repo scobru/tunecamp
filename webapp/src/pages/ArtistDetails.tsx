@@ -12,6 +12,7 @@ import { AssetCard, AssetViewerModal } from './Store';
 import { SubscriptionModal } from '../components/modals/SubscriptionModal';
 import { renderMarkdown } from '../utils/markdown';
 import { sanitizeHtml } from '../utils/sanitize';
+import { handleImageFallback } from '../utils/imageFallback';
 
 const PlatformIcon = ({ platform }: { platform: string }) => {
     const p = platform.toLowerCase();
@@ -388,13 +389,7 @@ const ArtistDetails = () => {
                                         src={API.getReleaseCoverUrl(album.id, cacheBuster)} 
                                         alt={album.title} 
                                         className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform" 
-                                        onError={(e) => {
-                                           const target = e.target as HTMLImageElement;
-                                           target.style.display = 'none';
-                                           if (target.nextElementSibling) {
-                                              (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                                           }
-                                        }}
+                                        onError={handleImageFallback}
                                     />
                                     <div className="hidden absolute inset-0 bg-neutral w-full h-full items-center justify-center opacity-30">
                                         <Disc size={32} />
@@ -423,13 +418,7 @@ const ArtistDetails = () => {
                                          src={API.getAlbumCoverUrl(album.id, cacheBuster)} 
                                          alt={album.title} 
                                          className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform" 
-                                         onError={(e) => {
-                                            const target = e.target as HTMLImageElement;
-                                            target.style.display = 'none';
-                                            if (target.nextElementSibling) {
-                                               (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                                            }
-                                         }}
+                                         onError={handleImageFallback}
                                      />
                                      <div className="hidden absolute inset-0 bg-neutral w-full h-full items-center justify-center opacity-30">
                                          <Disc size={32} />

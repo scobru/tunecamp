@@ -194,6 +194,22 @@ export const AdminMaintenancePanel = () => {
         }
     };
 
+    const handleArtistAutofill = async (ids: number[]) => {
+        if (ids.length === 0) return;
+        if (!await confirm(`Are you sure you want to attempt autofill for ${ids.length} artists?`)) return;
+
+        setIsProcessing(true);
+        try {
+            const res = await API.autofillArtistMetadata(ids);
+            setResults(res);
+            loadArtists(); // Refresh list
+        } catch (e: any) {
+            notify.error(e, "Artist Autofill failed");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     const handleAlbumAutofill = async (ids: number[]) => {
         if (ids.length === 0) return;
         if (!await confirm(`Are you sure you want to attempt autofill for ${ids.length} albums?`)) return;
@@ -311,6 +327,12 @@ export const AdminMaintenancePanel = () => {
         } finally {
             setIsRescanning(false);
         }
+    };
+
+    const handleMatchClick = (item: any) => {
+        if (mode === 'tracks') setPickerTrack(item);
+        else if (mode === 'artists') setPickerArtist(item);
+        else setPickerAlbum(item);
     };
 
     return (
@@ -661,21 +683,7 @@ export const AdminMaintenancePanel = () => {
                             <button 
                                 className="btn btn-sm btn-primary"
                                 disabled={selectedIds.length === 0 || isProcessing}
-                                onClick={async () => {
-                                    if (selectedIds.length === 0) return;
-                                    if (!await confirm(`Are you sure you want to attempt autofill for ${selectedIds.length} artists?`)) return;
-
-                                    setIsProcessing(true);
-                                    try {
-                                        const res = await API.autofillArtistMetadata(selectedIds);
-                                        setResults(res);
-                                        loadArtists(); // Refresh list
-                                    } catch (e: any) {
-                                        notify.error(e, "Artist Autofill failed");
-                                    } finally {
-                                        setIsProcessing(false);
-                                    }
-                                }}
+                                onClick={() => handleArtistAutofill(selectedIds)}
                             >
                                 {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Wand2 size={18} />}
                                 Autofill ({selectedIds.length})
@@ -800,11 +808,7 @@ export const AdminMaintenancePanel = () => {
                                         <div className="flex justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
                                             <button
                                                 className="btn btn-xs btn-ghost"
-                                                onClick={() => {
-                                                    if (mode === 'tracks') setPickerTrack(item);
-                                                    else if (mode === 'artists') setPickerArtist(item);
-                                                    else setPickerAlbum(item);
-                                                }}
+                                                onClick={() => handleMatchClick(item)}
                                             >
                                                 <Wand2 size={12} /> {mode === 'tracks' ? 'Match' : mode === 'albums' ? 'Match' : 'Enrich'}
                                             </button>

@@ -6,6 +6,7 @@ import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { PageHeader } from '../components/ui/PageHeader';
 import { formatDuration } from '../utils/format';
+import { AlbumResultCard } from '../components/ui/AlbumResultCard';
 import { notify } from '../utils/notify';
 import clsx from 'clsx';
 import type { Track, Album, Artist, Playlist } from '../types';
@@ -307,65 +308,15 @@ const Search = () => {
                         <section>
                             <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Disc size={20}/> Albums</h2>
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                {results.albums.map(album => {
-                                    const isRelease = album.is_release || (album as any).is_formal_release;
-                                    const linkTo = isRelease ? `/releases/${album.slug || album.id}` : `/albums/${album.slug || album.id}`;
-                                    const coverUrl = album.coverImage || (isRelease ? API.getReleaseCoverUrl(album.id) : API.getAlbumCoverUrl(album.id));
-                                    return (
-                                            <div key={album.id} className="group card-m3 overflow-hidden">
-                                                <Link to={linkTo} className="flex-1">
-                                                    <figure className="aspect-square relative">
-                                                        <img 
-                                                            src={coverUrl} 
-                                                            alt={album.title} 
-                                                            className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform" 
-                                                            onError={(e) => {
-                                                               const target = e.target as HTMLImageElement;
-                                                               target.style.display = 'none';
-                                                               if (target.nextElementSibling) {
-                                                                  (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                                                               }
-                                                            }}
-                                                        />
-                                                        <div className="hidden absolute inset-0 bg-neutral w-full h-full items-center justify-center opacity-30">
-                                                            <Disc size={40} />
-                                                        </div>
-                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                            <button 
-                                                                className="btn btn-circle btn-primary btn-sm scale-90 group-hover:scale-100 transition-transform tooltip tooltip-top"
-                                                                onClick={(e) => {
-                                                                    e.preventDefault();
-                                                                    e.stopPropagation();
-                                                                    playTrack({ ...album, albumId: album.id, albumName: album.title } as any);
-                                                                }}
-                                                                data-tip="Play Album"
-                                                            >
-                                                                <Play size={16} fill="currentColor" />
-                                                            </button>
-                                                            <button 
-                                                                className={clsx(
-                                                                    "btn btn-circle btn-ghost btn-sm tooltip tooltip-top",
-                                                                    starredAlbums.has(String(album.id)) ? "text-primary opacity-100" : "text-white"
-                                                                )}
-                                                                onClick={(e) => {
-                                                                    e.preventDefault();
-                                                                    e.stopPropagation();
-                                                                    handleToggleStarAlbum(album);
-                                                                }}
-                                                                data-tip={starredAlbums.has(String(album.id)) ? "Remove from Favorites" : "Add to Favorites"}
-                                                            >
-                                                                <Heart size={16} fill={starredAlbums.has(String(album.id)) ? "currentColor" : "none"} />
-                                                            </button>
-                                                        </div>
-                                                    </figure>
-                                                    <div className="card-body p-3">
-                                                        <h3 className="font-bold truncate">{album.title}</h3>
-                                                        <p className="text-xs opacity-60 truncate">{album.artistName || album.artist_name}</p>
-                                                    </div>
-                                                </Link>
-                                            </div>
-                                    );
-                                })}
+                                {results.albums.map(album => (
+                                    <AlbumResultCard
+                                        key={album.id}
+                                        album={album}
+                                        starredAlbums={starredAlbums}
+                                        handleToggleStarAlbum={handleToggleStarAlbum}
+                                        playTrack={playTrack}
+                                    />
+                                ))}
                             </div>
                         </section>
                     )}
