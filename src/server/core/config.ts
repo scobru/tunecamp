@@ -16,6 +16,9 @@ export interface ServerConfig {
     // instances). Used alongside ActivityPub-followed instances; no central
     // default — discovery is gossip-based from these starting points.
     federationSeeds?: string[];
+    // SSO redirect_uri allowlist (e.g. https://sso.tunecamp.org/auth/callback)
+    // — /oauth/authorize refuses to sign an assertion for any other origin.
+    ssoRedirectUris?: string[];
     adminUser?: string;
     adminPass?: string;
     downloadDir?: string;
@@ -124,6 +127,7 @@ export async function loadConfig(overrides?: Partial<ServerConfig>): Promise<Ser
         publicUrl: process.env.TUNECAMP_PUBLIC_URL || overrides?.publicUrl,
         siteName: process.env.TUNECAMP_SITE_NAME || overrides?.siteName,
         federationSeeds: process.env.TUNECAMP_FEDERATION_SEEDS?.split(/[,\s]+/).map(p => p.trim()).filter(p => p.length > 0) || overrides?.federationSeeds,
+        ssoRedirectUris: process.env.TUNECAMP_SSO_REDIRECT_URIS?.split(/[,\s]+/).map(p => p.trim()).filter(p => p.length > 0) || overrides?.ssoRedirectUris,
         adminUser: process.env.TUNECAMP_ADMIN_USER || overrides?.adminUser || "admin",
         adminPass: process.env.TUNECAMP_ADMIN_PASS || overrides?.adminPass || "admin",
         downloadDir: process.env.TUNECAMP_DOWNLOAD_DIR || overrides?.downloadDir || defaultDownloadDir,
