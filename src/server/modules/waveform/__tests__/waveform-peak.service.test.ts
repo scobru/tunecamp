@@ -201,4 +201,26 @@ describe('WaveformPeakService', () => {
         expect(result[0]).toBe(0.5);
         expect(ffmpegMediaMock.releaseTaskSlot).toHaveBeenCalled();
     });
+
+    it('should wait for next chunk if data.length < 2', async () => {
+        (fsMock.default.existsSync as jest.Mock).mockReturnValue(true);
+
+        const generatePromise = WaveformPeakService.generateWaveform('short_chunk.mp3', 2, 1);
+        await new Promise(resolve => process.nextTick(resolve));
+
+        const buffer1 = Buffer.alloc(1);
+        buffer1.writeUInt8(64, 0); // Just 1 byte
+
+        const buffer2 = Buffer.alloc(1);
+        buffer2.writeUInt8(0, 0); // Second byte
+
+        mockStream.emit('data', buffer1);
+        mockStream.emit('data', buffer2);
+        mockStream.emit('end');
+
+        const result = await generatePromise;
+
+        expect(result).toHaveLength(2);
+        expect(ffmpegMediaMock.releaseTaskSlot).toHaveBeenCalled();
+    });
 });
