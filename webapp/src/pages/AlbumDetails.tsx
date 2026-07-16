@@ -186,6 +186,29 @@ const AlbumDetails = () => {
     }
   };
 
+  const handlePurchaseTrack = (track: any) => {
+    if (!isAdmin && !useAuthStore.getState().isAuthenticated) return window.dispatchEvent(new CustomEvent("open-auth-modal"));
+    window.dispatchEvent(new CustomEvent("open-checkout-modal", {
+      detail: {
+        track: {
+          ...track,
+          id: String(track.id).replace("tr_", ""),
+          albumId: album.id,
+          artist: track.artistName || track.artist_name || album.artist_name || "Unknown Artist"
+        }
+      }
+    }));
+  };
+
+  const handleDownloadTrack = async (track: any) => {
+    if (isAdmin || (user?.artistId && (String(track.artistId) === String(user.artistId) || String(album?.artistId) === String(user.artistId)))) {
+      window.open(API.getTrackDownloadUrl(track.id), "_blank");
+      return;
+    }
+    const code = await verifyAndGetCode(track.id);
+    if (code) window.open(`/api/payments/download/${track.id}?code=${code}`, "_blank");
+  };
+
 
 
 
@@ -499,6 +522,11 @@ const AlbumDetails = () => {
           {album.tracks?.map((track: any, i: number) => {
             if (!track) return null;
             const unlocked = isTrackUnlocked(track);
+            const showExternalBuy = isExternalShowcase && !!externalBuyUrl;
+            const showDownload = !isExternalShowcase && unlocked;
+            const showFreeDownload = !isExternalShowcase && !unlocked && album.download === "free";
+            const showPurchase = !unlocked && album.download !== "free" && album.download !== "external" && isRelease;
+
             return (
               <div
                 key={track.id}
@@ -620,7 +648,7 @@ const AlbumDetails = () => {
                         </a>
                       </li>
 
-                      {isExternalShowcase && externalBuyUrl && (
+                      {showExternalBuy && (
                         <li>
                           <a href={externalBuyUrl} target="_blank" rel="noopener noreferrer" className="text-secondary">
                             <ExternalLink size={16} /> {buyLabel}
@@ -628,25 +656,15 @@ const AlbumDetails = () => {
                         </li>
                       )}
 
-                      {!isExternalShowcase && unlocked && (
+                      {showDownload && (
                         <li>
-                          <a
-                            className="text-success"
-                            onClick={async () => {
-                              if (isAdmin || (user?.artistId && (String(track.artistId) === String(user.artistId) || String(album?.artistId) === String(user.artistId)))) {
-                                window.open(API.getTrackDownloadUrl(track.id), "_blank");
-                                return;
-                              }
-                              const code = await verifyAndGetCode(track.id);
-                              if (code) window.open(`/api/payments/download/${track.id}?code=${code}`, "_blank");
-                            }}
-                          >
+                          <a className="text-success" onClick={() => handleDownloadTrack(track)}>
                             <CheckCircle2 size={16} /> Download
                           </a>
                         </li>
                       )}
 
-                      {!isExternalShowcase && !unlocked && album.download === "free" && (
+                      {showFreeDownload && (
                         <li>
                           <a href={`/api/albums/${album.slug || album.id}/download?format=${downloadFormat}`} target="_blank" className="text-success">
                             <Download size={16} /> Free Download
@@ -654,24 +672,9 @@ const AlbumDetails = () => {
                         </li>
                       )}
 
-                      {!unlocked && album.download !== "free" && album.download !== "external" && isRelease && (
+                      {showPurchase && (
                         <li>
-                          <a
-                            className="text-secondary"
-                            onClick={() => {
-                              if (!isAdmin && !useAuthStore.getState().isAuthenticated) return window.dispatchEvent(new CustomEvent("open-auth-modal"));
-                              window.dispatchEvent(new CustomEvent("open-checkout-modal", {
-                                detail: {
-                                  track: {
-                                    ...track,
-                                    id: String(track.id).replace("tr_", ""),
-                                    albumId: album.id,
-                                    artist: track.artistName || track.artist_name || album.artist_name || "Unknown Artist"
-                                  }
-                                }
-                              }));
-                            }}
-                          >
+                          <a className="text-secondary" onClick={() => handlePurchaseTrack(track)}>
                             <Wallet size={16} /> Purchase
                           </a>
                         </li>
