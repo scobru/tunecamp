@@ -9,6 +9,7 @@ import { formatDuration } from '../utils/format';
 import { AlbumResultCard } from '../components/ui/AlbumResultCard';
 import { notify } from '../utils/notify';
 import clsx from 'clsx';
+import { handleImageFallback } from '../utils/imageFallback';
 import type { Track, Album, Artist, Playlist } from '../types';
 
 const Search = () => {
@@ -265,13 +266,7 @@ const Search = () => {
                                                      src={artist.coverImage || API.getArtistCoverUrl(artist.slug || artist.id)}
                                                      alt={artist.name}
                                                      className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform"
-                                                     onError={(e) => {
-                                                        const target = e.target as HTMLImageElement;
-                                                        target.style.display = 'none';
-                                                        if (target.nextElementSibling) {
-                                                           (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                                                        }
-                                                     }}
+                                                     onError={handleImageFallback}
                                                  />
                                                  <div className="hidden absolute inset-0 w-full h-full bg-neutral items-center justify-center text-4xl font-bold opacity-30">
                                                      {artist.name ? artist.name[0] : '?'}
