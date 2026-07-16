@@ -230,6 +230,7 @@ export class RadioService {
             m3u8,
         ];
 
+        // Explicitly disable shell to prevent SAST false positive command injection warnings
         const proc = spawn(ffmpegBin, args, { stdio: ["ignore", "ignore", "pipe"], shell: false });
 
         proc.stderr?.on("data", (d: Buffer) => {
