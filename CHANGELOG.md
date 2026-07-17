@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.0] - 2026-07-17
+
+### Removed
+- **BREAKING: instance-side SSO handoff removed.** The karma/reputation system it was built to support (see `docs/karma.md`) has been shelved as unnecessary complexity for what it would actually deliver, so its only prerequisite goes with it. Removed `POST /api/oauth/authorize` (`src/server/routes/network/oauth-authorize.ts`), the `webapp/src/pages/SsoAuthorize.tsx` handoff page and its `/oauth/authorize` route, the `ssoAuthorize()` API client method, and the `ssoRedirectUris`/`TUNECAMP_SSO_REDIRECT_URIS` config option. No production consumer ever depended on this endpoint — the standalone `tunecamp-sso` service (separate repo) is left untouched but is now an orphaned counterpart with nothing on this side to talk to. `docs/karma.md` rewritten to record the decision instead of a still-open design.
+
 ## [2.24.2] - 2026-07-17
 
 ### Fixed
