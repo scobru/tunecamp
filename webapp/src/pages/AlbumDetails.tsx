@@ -180,6 +180,15 @@ const AlbumDetails = () => {
     }));
   };
 
+  const handleTrackDownload = async (track: any) => {
+    if (isAdmin || (user?.artistId && (String(track.artistId) === String(user.artistId) || String(album?.artistId) === String(user.artistId)))) {
+      window.open(API.getTrackDownloadUrl(track.id), "_blank");
+      return;
+    }
+    const code = await verifyAndGetCode(track.id);
+    if (code) window.open(`/api/payments/download/${track.id}?code=${code}`, "_blank");
+  };
+
   const handlePlay = () => {
     if (album?.tracks && album.tracks.length > 0) {
       playTrack(album.tracks[0], album.tracks);
@@ -632,14 +641,7 @@ const AlbumDetails = () => {
                         <li>
                           <a
                             className="text-success"
-                            onClick={async () => {
-                              if (isAdmin || (user?.artistId && (String(track.artistId) === String(user.artistId) || String(album?.artistId) === String(user.artistId)))) {
-                                window.open(API.getTrackDownloadUrl(track.id), "_blank");
-                                return;
-                              }
-                              const code = await verifyAndGetCode(track.id);
-                              if (code) window.open(`/api/payments/download/${track.id}?code=${code}`, "_blank");
-                            }}
+                            onClick={() => handleTrackDownload(track)}
                           >
                             <CheckCircle2 size={16} /> Download
                           </a>
