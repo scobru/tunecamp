@@ -86,6 +86,8 @@ const API = {
         handleResponse(api.post('auth/security-questions', { q1, a1, q2, a2 })),
     resetPasswordSecurity: (username: string, a1: string, a2: string, newPassword: string) =>
         handleResponse(api.post<{ message: string }>('auth/reset-password-security', { username, a1, a2, newPassword })),
+    ssoAuthorize: (redirect_uri: string, state: string) =>
+        handleResponse(api.post<{ redirectUrl: string }>('oauth/authorize', { redirect_uri, state })),
     logout: () => {
         API.setToken(null);
     },

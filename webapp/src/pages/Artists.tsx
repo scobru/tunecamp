@@ -1,5 +1,6 @@
 import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from 'react';
+import type { SyntheticEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import API from '../services/api';
 import { Link } from 'react-router-dom';
@@ -27,6 +28,14 @@ const Artists = () => {
             .then(setCurrentUser)
             .catch(console.error);
     }, []);
+
+    const handleImageError = (e: SyntheticEvent<HTMLImageElement>) => {
+        const target = e.target as HTMLImageElement;
+        target.style.display = 'none';
+        if (target.nextElementSibling) {
+            (target.nextElementSibling as HTMLElement).style.display = 'flex';
+        }
+    };
 
     const handleEdit = (e: React.MouseEvent, artist: Artist) => {
         e.preventDefault();
@@ -188,13 +197,7 @@ const Artists = () => {
                                         src={API.getArtistCoverUrl(artist.id, cacheBuster)}
                                         alt={artist.name}
                                         className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                                        onError={(e) => {
-                                            const target = e.target as HTMLImageElement;
-                                            target.style.display = 'none';
-                                            if (target.nextElementSibling) {
-                                                (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                                            }
-                                        }}
+                                        onError={handleImageError}
                                     />
                                 ) : null}
                                 <div className={clsx(
