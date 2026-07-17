@@ -98,8 +98,7 @@ separate `ContentSearch` page), `Network`, `Social`, `Post`, `Board`, `Dig`
 `Legal`, `Changelog`, `Guide`, `SharePage`, `Files` (root-admin file
 browser), `Archive` (manager/root-only), `Publish`, `Admin`,
 `AdminReleaseEditor`, `Lab` / `LabApp` (sandboxed browser audio tools),
-`SsoAuthorize` (instance-side SSO handoff), `ResetPassword` /
-`ResetPasswordSecurity`.
+`ResetPassword` / `ResetPasswordSecurity`.
 
 Several routes are gated by wrapper components rather than logic inside the
 page itself: `AdminGuard`, `EditorGuard`, `RootAdminGuard`,
