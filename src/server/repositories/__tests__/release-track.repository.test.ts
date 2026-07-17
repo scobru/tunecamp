@@ -85,6 +85,27 @@ describe('ReleaseTrackRepository', () => {
         expect(pricing?.title).toBe('Test Track');
     });
 
+    test('getPriceFromRelease should return undefined for missing track', () => {
+        const albumId = createRelease();
+        const pricing = repo.getPriceFromRelease(albumId, 9999);
+        expect(pricing).toBeUndefined();
+    });
+
+    test('getPriceFromRelease should return default values for missing pricing fields', () => {
+        const albumId = createRelease();
+        const trackId = repo.add(albumId, { title: 'Test Track', track_num: 1 });
+
+        // Force nulls in the database for the defaults to kick in
+        db.db.prepare("UPDATE tracks SET price = NULL, price_usdc = NULL, currency = NULL WHERE id = ?").run(trackId);
+
+        const pricing = repo.getPriceFromRelease(albumId, trackId);
+        expect(pricing).toBeDefined();
+        expect(pricing?.price).toBe(0);
+        expect(pricing?.price_usdc).toBe(0);
+        expect(pricing?.currency).toBe('ETH');
+        expect(pricing?.title).toBe('Test Track');
+    });
+
     test('update should handle empty metadata gracefully without crashing', () => {
         const albumId = createRelease();
         const trackId = repo.add(albumId, { title: 'Test Track', track_num: 1 });
@@ -108,6 +129,21 @@ describe('ReleaseTrackRepository', () => {
         expect(track?.duration).toBe(200);
     });
 
+    test('update should ignore protected keys', () => {
+        const albumId = createRelease();
+        const trackId = repo.add(albumId, { title: 'Test Track', track_num: 1 });
+
+        repo.update(trackId, { id: 999, release_id: 999, track_id: 999, created_at: '2020-01-01', title: 'Updated' } as any);
+
+        const track = repo.getById(trackId);
+        expect(track?.id).toBe(trackId);
+        expect(track?.title).toBe('Updated');
+
+        expect(() => {
+            repo.update(trackId, { id: 999, release_id: 999, track_id: 999, created_at: '2020-01-01' } as any);
+        }).not.toThrow();
+    });
+
     test('updateMetadata should modify track metadata by release and id', () => {
         const albumId = createRelease();
         const trackId = repo.add(albumId, { title: 'Test Track', track_num: 1 });
@@ -116,6 +152,25 @@ describe('ReleaseTrackRepository', () => {
 
         const track = repo.getById(trackId);
         expect(track?.title).toBe('Updated Metadata Track');
+    });
+
+    test('updateMetadata should ignore protected keys and handle empty payload', () => {
+        const albumId = createRelease();
+        const trackId = repo.add(albumId, { title: 'Test Track', track_num: 1 });
+
+        expect(() => {
+            repo.updateMetadata(albumId, trackId, {});
+        }).not.toThrow();
+
+        expect(() => {
+            repo.updateMetadata(albumId, trackId, { id: 999, release_id: 999, track_id: 999, created_at: '2020-01-01' } as any);
+        }).not.toThrow();
+
+        repo.updateMetadata(albumId, trackId, { id: 999, title: 'Updated Metadata' } as any);
+
+        const track = repo.getById(trackId);
+        expect(track?.id).toBe(trackId);
+        expect(track?.title).toBe('Updated Metadata');
     });
 
     test('remove should unlink a track from a release', () => {
@@ -137,6 +192,13 @@ describe('ReleaseTrackRepository', () => {
 
         expect(trackRepo.getById(trackId1)?.album_id).toBeNull();
         expect(trackRepo.getById(trackId2)?.album_id).toBeNull();
+    });
+
+    test('removeBatch should handle empty array gracefully', () => {
+        const albumId = createRelease();
+        expect(() => {
+            repo.removeBatch(albumId, []);
+        }).not.toThrow();
     });
 
     test('delete should delete track completely', () => {
