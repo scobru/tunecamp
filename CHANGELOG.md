@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.24.2] - 2026-07-17
+
+### Fixed
+- **Webapp architecture docs rewritten to match the current frontend.** `architecture-webapp.md` and `component-inventory.md` (plus their Italian mirrors) had drifted significantly from `webapp/src/`: they still described a removed `ContentSearch` page and `Tracks`/`Favorites`/`Playlists`/`Albums` as standalone pages (now redirects into the merged `Library` page), a nonexistent `components/auth/` folder, modals that no longer exist (`AddBandcampTrackModal`, `ArtistKeysModal`, `MyPlaylistDetails`), and omitted entire areas added since: the frontend plugin registry (`core/plugins/`, `plugins/builtins|metadata|youtube`), TanStack Query data layer (`hooks/queries.ts`, `lib/queryClient.ts`), several stores (`useAuthStore`, `useSiteSettingsStore`, `useNowPlayingStore`, `useConfirmStore`), the `network/` components, and route guard components (`AdminGuard`, `ModuleGuard`, etc.). Both docs were rewritten against the actual directory tree and route table.
+
 ## [2.24.1] - 2026-07-12
 
 ### Fixed
