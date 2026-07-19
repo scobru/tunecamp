@@ -4,6 +4,7 @@ import fs from "fs-extra";
 import { readFile } from "fs/promises";
 import type { ServiceContainer } from "../../core/container.js";
 import { VisibilityGuardian, VisibilityProfile } from "../../common/visibility.js";
+import { resolveSafePath } from "../../../utils/fileUtils.js";
 import { create } from "xmlbuilder2";
 import { getSiteHandle } from "../../core/site-actor.js";
 
@@ -278,9 +279,9 @@ export function createMiscRoutes(container: ServiceContainer): Router {
             }
 
             const mediaDir = path.resolve(path.join(config.musicDir, "assets", "posts"));
-            const filePath = path.resolve(path.join(mediaDir, filename));
+            const filePath = resolveSafePath(mediaDir, filename);
 
-            if (!filePath.startsWith(mediaDir + path.sep)) {
+            if (!filePath) {
                 return res.status(400).json({ error: "Invalid filename" });
             }
 
