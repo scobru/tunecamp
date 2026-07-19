@@ -290,12 +290,11 @@ export class Scanner implements ScannerService {
         let coverPath: string | null = forcedCoverPath ? this.normalizePath(forcedCoverPath, musicDir) : null;
         if (!coverPath) {
             const coverNames = ["cover.jpg", "cover.png", "folder.jpg", "folder.png", "artwork/cover.jpg", "artwork/cover.png", "artwork.jpg", "artwork.png"];
-            for (const name of coverNames) {
-                const p = path.resolve(dir, name);
-                if (await this.storage.pathExists(p)) {
-                    coverPath = this.normalizePath(p, musicDir);
-                    break;
-                }
+            const paths = coverNames.map(name => path.resolve(dir, name));
+            const exists = await Promise.all(paths.map(p => this.storage.pathExists(p)));
+            const index = exists.findIndex(e => e);
+            if (index !== -1) {
+                coverPath = this.normalizePath(paths[index], musicDir);
             }
         }
 
