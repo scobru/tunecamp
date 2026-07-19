@@ -700,7 +700,9 @@ export class Scanner implements ScannerService {
             await this.processGlobalConfigs(path.dirname(f), dir);
         }
         const releaseConfigs = yamlFiles.filter(f => f.endsWith("release.yaml"));
-        for (const f of releaseConfigs) await this.processReleaseConfig(f, dir);
+        for (let i = 0; i < releaseConfigs.length; i += 50) {
+            await Promise.all(releaseConfigs.slice(i, i + 50).map(f => this.processReleaseConfig(f, dir)));
+        }
         
         const successful = [], failed = [];
         for (let i = 0; i < audioFiles.length; i += 50) {
