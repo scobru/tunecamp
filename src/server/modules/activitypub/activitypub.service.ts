@@ -1812,9 +1812,15 @@ export class ActivityPubService {
             // Only try well-known generic handles — NOT our own local handle,
             // which has no reason to exist on a remote instance.
             const wellKnownAliases = ["site", "instance", domain];
-            for (const alias of wellKnownAliases) {
-                const actorId = await this.getActorIdFromWebFinger(domain, alias);
+            try {
+                const actorId = await Promise.any(wellKnownAliases.map(async (alias) => {
+                    const id = await this.getActorIdFromWebFinger(domain, alias);
+                    if (id) return id;
+                    throw new Error("Alias not found");
+                }));
                 if (actorId) return actorId;
+            } catch (e) {
+                // Ignore AggregateError and continue to NodeInfo fallback
             }
 
             // Fedify-served NodeInfo at /.well-known/nodeinfo → /nodeinfo/2.1
