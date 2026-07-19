@@ -86,8 +86,29 @@ async function main() {
     let skipped = 0;
 
     // We need some helping data from DB
+    let primaryAdminId: number = 1;
+    try {
+        const admin = db.prepare("SELECT id FROM admin WHERE role IN ('admin', 'super_user', 'root_admin') ORDER BY id ASC LIMIT 1").get() as { id: number } | undefined;
+        if (admin) primaryAdminId = admin.id;
+    } catch (e) {
+        // Fallback to 1
+    }
+
     const artistStmt = db.prepare("SELECT id FROM artists WHERE name = ?");
     const createArtistStmt = db.prepare("INSERT INTO artists (name, slug) VALUES (?, ?)");
+    const albumBySlugStmt = db.prepare("SELECT id FROM albums WHERE slug = ?");
+    const albumByTitleStmt = db.prepare("SELECT id FROM albums WHERE title = ? AND artist_id = ?");
+    const createAlbumStmt = db.prepare(`
+        INSERT INTO albums (
+            title, slug, artist_id, album_artist, owner_id, date, year,
+            genre, description, type, price, price_usdc, currency,
+            is_public, visibility, is_release, published_to_gundb, published_to_ap, status
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?
+        )
+    `);
     const createTrackStmt = db.prepare(`
         INSERT INTO tracks (
             title, album_id, artist_id, owner_id, track_num, duration, 
@@ -99,6 +120,25 @@ async function main() {
             ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
     `);
+
+    const slugify = (text: string) => (text || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+    // Helper to get or create album
+    const getAlbumId = (albumTitle: string, artistId: number, albumArtist: string | null, year: number | null, genre: string | null): number => {
+        let existing = albumByTitleStmt.get(albumTitle, artistId) as { id: number };
+        if (existing) return existing.id;
+
+        const slug = slugify("tag-" + artistId + "-" + albumTitle);
+        existing = albumBySlugStmt.get(slug) as { id: number };
+        if (existing) return existing.id;
+
+        const info = createAlbumStmt.run(
+            albumTitle, slug, artistId, albumArtist, primaryAdminId, year ? `${year}-01-01` : null, year,
+            genre || 'Imported', 'Imported from tags', 'album', 0, 0, 'ETH',
+            0, 'private', 0, 0, 0, 'draft'
+        );
+        return info.lastInsertRowid as number;
+    };
 
     // Helper to get or create artist
     const getArtistId = (name: string): number => {
@@ -119,13 +159,24 @@ async function main() {
             const artistName = common.artist || "Unknown Artist";
             const artistId = getArtistId(artistName);
 
+            let albumId: number | null = null;
+            if (common.album && common.album.trim() !== '') {
+                albumId = getAlbumId(
+                    common.album.trim(),
+                    artistId,
+                    common.albumartist || common.artist || null,
+                    common.year || (common.date ? new Date(common.date).getFullYear() : null) || null,
+                    common.genre ? common.genre.join(", ") : null
+                );
+            }
+
             const hash = await getFastFileHash(fullPath);
 
             createTrackStmt.run(
                 common.title || path.basename(file, path.extname(file)),
-                null, // No album link for now, server scan will fix it
+                albumId,
                 artistId,
-                null,
+                primaryAdminId,
                 common.track.no || null,
                 format.duration || null,
                 file,

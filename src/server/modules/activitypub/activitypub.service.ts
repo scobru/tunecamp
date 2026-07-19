@@ -1718,8 +1718,17 @@ export class ActivityPubService {
             const pending = this.db.getPendingFollowers ? this.db.getPendingFollowers(artistId) : [];
             if (pending.length > 0) {
                 console.log(`  👥 Auto-accepting ${pending.length} pending follower(s)...`);
-                // Batch accept pending followers to avoid N+1 query bottlenecks
-                this.db.acceptPendingFollowers(artistId);
+                // We process them individually through the normal accept flow,
+                // so we attempt to resolve their inbox and actually send the Accept activity.
+                // This completes the Follow handshake instead of just silently changing state in DB,
+                // while avoiding Promise.all concurrency issues.
+                for (const follower of pending) {
+                    try {
+                        await this.acceptFollowRequest(artist, follower.actor_uri);
+                    } catch (e) {
+                        console.warn(`  ⚠️ Failed to auto-accept pending follower ${follower.actor_uri}:`, e);
+                    }
+                }
             }
         }
 
@@ -1812,9 +1821,15 @@ export class ActivityPubService {
             // Only try well-known generic handles — NOT our own local handle,
             // which has no reason to exist on a remote instance.
             const wellKnownAliases = ["site", "instance", domain];
-            for (const alias of wellKnownAliases) {
-                const actorId = await this.getActorIdFromWebFinger(domain, alias);
+            try {
+                const actorId = await Promise.any(wellKnownAliases.map(async (alias) => {
+                    const id = await this.getActorIdFromWebFinger(domain, alias);
+                    if (id) return id;
+                    throw new Error("Alias not found");
+                }));
                 if (actorId) return actorId;
+            } catch (e) {
+                // Ignore AggregateError and continue to NodeInfo fallback
             }
 
             // Fedify-served NodeInfo at /.well-known/nodeinfo → /nodeinfo/2.1

@@ -1,5 +1,6 @@
 import path from "path";
 import fs from "fs-extra";
+import pLimit from "p-limit";
 import chokidar, { type FSWatcher } from "chokidar";
 import { parseFile } from "music-metadata";
 import { parse } from "yaml";
@@ -290,12 +291,11 @@ export class Scanner implements ScannerService {
         let coverPath: string | null = forcedCoverPath ? this.normalizePath(forcedCoverPath, musicDir) : null;
         if (!coverPath) {
             const coverNames = ["cover.jpg", "cover.png", "folder.jpg", "folder.png", "artwork/cover.jpg", "artwork/cover.png", "artwork.jpg", "artwork.png"];
-            for (const name of coverNames) {
-                const p = path.resolve(dir, name);
-                if (await this.storage.pathExists(p)) {
-                    coverPath = this.normalizePath(p, musicDir);
-                    break;
-                }
+            const paths = coverNames.map(name => path.resolve(dir, name));
+            const exists = await Promise.all(paths.map(p => this.storage.pathExists(p)));
+            const index = exists.findIndex(e => e);
+            if (index !== -1) {
+                coverPath = this.normalizePath(paths[index], musicDir);
             }
         }
 
@@ -700,26 +700,29 @@ export class Scanner implements ScannerService {
             await this.processGlobalConfigs(path.dirname(f), dir);
         }
         const releaseConfigs = yamlFiles.filter(f => f.endsWith("release.yaml"));
-        for (const f of releaseConfigs) await this.processReleaseConfig(f, dir);
+        for (let i = 0; i < releaseConfigs.length; i += 50) {
+            await Promise.all(releaseConfigs.slice(i, i + 50).map(f => this.processReleaseConfig(f, dir)));
+        }
         
-        const successful = [], failed = [];
-        for (let i = 0; i < audioFiles.length; i += 50) {
-            const batch = audioFiles.slice(i, i + 50);
-            for (const file of batch) {
-                const result = await this.processAudioFile(file, dir, undefined, this.primaryAdminId || undefined);
-                if (result) {
-                    if (result.success) successful.push(result); else failed.push(result);
-                    if (result.queuedConversion && ['.wav', '.flac'].includes(path.extname(file).toLowerCase())) {
-                        knownFiles.add(this.normalizePath(file.replace(/\.[^/.]+$/, ".mp3"), dir).toLowerCase());
-                    }
+        const successful: any[] = [], failed: any[] = [];
+        const limit = pLimit(10);
+        let processedFiles = 0;
+        await Promise.all(audioFiles.map(file => limit(async () => {
+            const result = await this.processAudioFile(file, dir, undefined, this.primaryAdminId || undefined);
+            if (result) {
+                if (result.success) successful.push(result); else failed.push(result);
+                if (result.queuedConversion && ['.wav', '.flac'].includes(path.extname(file).toLowerCase())) {
+                    knownFiles.add(this.normalizePath(file.replace(/\.[^/.]+$/, ".mp3"), dir).toLowerCase());
                 }
             }
-            
-            if (onProgress) {
-                onProgress(Math.min(i + batch.length, audioFiles.length), audioFiles.length);
+            processedFiles++;
+            if (onProgress && processedFiles % 50 === 0) {
+                onProgress(Math.min(processedFiles, audioFiles.length), audioFiles.length);
             }
-
-            if (i % 100 === 0 && (global as any).gc) (global as any).gc();
+            if (processedFiles % 100 === 0 && (global as any).gc) (global as any).gc();
+        })));
+        if (onProgress && processedFiles % 50 !== 0) {
+            onProgress(processedFiles, audioFiles.length);
         }
 
         await this.deduplicateLibraryTracks();
