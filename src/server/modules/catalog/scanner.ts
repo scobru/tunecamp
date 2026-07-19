@@ -1,5 +1,6 @@
 import path from "path";
 import fs from "fs-extra";
+import pLimit from "p-limit";
 import chokidar, { type FSWatcher } from "chokidar";
 import { parseFile } from "music-metadata";
 import { parse } from "yaml";
@@ -703,23 +704,24 @@ export class Scanner implements ScannerService {
         for (const f of releaseConfigs) await this.processReleaseConfig(f, dir);
         
         const successful = [], failed = [];
-        for (let i = 0; i < audioFiles.length; i += 50) {
-            const batch = audioFiles.slice(i, i + 50);
-            for (const file of batch) {
-                const result = await this.processAudioFile(file, dir, undefined, this.primaryAdminId || undefined);
-                if (result) {
-                    if (result.success) successful.push(result); else failed.push(result);
-                    if (result.queuedConversion && ['.wav', '.flac'].includes(path.extname(file).toLowerCase())) {
-                        knownFiles.add(this.normalizePath(file.replace(/\.[^/.]+$/, ".mp3"), dir).toLowerCase());
-                    }
+        const limit = pLimit(10);
+        let processedFiles = 0;
+        await Promise.all(audioFiles.map(file => limit(async () => {
+            const result = await this.processAudioFile(file, dir, undefined, this.primaryAdminId || undefined);
+            if (result) {
+                if (result.success) successful.push(result); else failed.push(result);
+                if (result.queuedConversion && ['.wav', '.flac'].includes(path.extname(file).toLowerCase())) {
+                    knownFiles.add(this.normalizePath(file.replace(/\.[^/.]+$/, ".mp3"), dir).toLowerCase());
                 }
             }
-            
-            if (onProgress) {
-                onProgress(Math.min(i + batch.length, audioFiles.length), audioFiles.length);
+            processedFiles++;
+            if (onProgress && processedFiles % 50 === 0) {
+                onProgress(Math.min(processedFiles, audioFiles.length), audioFiles.length);
             }
-
-            if (i % 100 === 0 && (global as any).gc) (global as any).gc();
+            if (processedFiles % 100 === 0 && (global as any).gc) (global as any).gc();
+        })));
+        if (onProgress && processedFiles % 50 !== 0) {
+            onProgress(processedFiles, audioFiles.length);
         }
 
         await this.deduplicateLibraryTracks();
