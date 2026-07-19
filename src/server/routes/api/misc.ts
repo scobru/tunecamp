@@ -127,7 +127,9 @@ export function createMiscRoutes(container: ServiceContainer): Router {
             // First normalize the input cover_path to remove leading slashes if we want it to always be relative
             // However, the database might contain valid absolute paths already inside the music dir.
             const resolvedPath = path.resolve(resolvedMusicDir, asset.cover_path);
-            if (!resolvedPath.startsWith(expectedDir + path.sep)) {
+            const relative = path.relative(expectedDir, resolvedPath);
+            const isInside = relative !== '' && !relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative);
+            if (!isInside) {
                 return res.status(403).json({ error: "Access denied" });
             }
 
@@ -280,7 +282,9 @@ export function createMiscRoutes(container: ServiceContainer): Router {
             const mediaDir = path.resolve(path.join(config.musicDir, "assets", "posts"));
             const filePath = path.resolve(path.join(mediaDir, filename));
 
-            if (!filePath.startsWith(mediaDir + path.sep)) {
+            const relative = path.relative(mediaDir, filePath);
+            const isInside = relative !== '' && !relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative);
+            if (!isInside) {
                 return res.status(400).json({ error: "Invalid filename" });
             }
 
