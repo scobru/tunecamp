@@ -271,10 +271,17 @@ export class Scanner implements ScannerService {
                 let coverPath = forcedCoverPath ? this.normalizePath(forcedCoverPath, musicDir) : null;
                 if (!coverPath) {
                     const coverNames = ["cover.jpg", "cover.png", "folder.jpg", "folder.png", "artwork/cover.jpg", "artwork/cover.png", "artwork.jpg", "artwork.png"];
+                    const existResults = await Promise.all(
+                        coverNames.map(async (name) => {
+                            const p = path.resolve(dir, name);
+                            const exists = await this.storage.pathExists(p);
+                            return { name, p, exists };
+                        })
+                    );
                     for (const name of coverNames) {
-                        const p = path.resolve(dir, name);
-                        if (await this.storage.pathExists(p)) {
-                            coverPath = this.normalizePath(p, musicDir);
+                        const result = existResults.find(r => r.name === name);
+                        if (result && result.exists) {
+                            coverPath = this.normalizePath(result.p, musicDir);
                             break;
                         }
                     }
@@ -290,10 +297,17 @@ export class Scanner implements ScannerService {
         let coverPath: string | null = forcedCoverPath ? this.normalizePath(forcedCoverPath, musicDir) : null;
         if (!coverPath) {
             const coverNames = ["cover.jpg", "cover.png", "folder.jpg", "folder.png", "artwork/cover.jpg", "artwork/cover.png", "artwork.jpg", "artwork.png"];
+            const existResults = await Promise.all(
+                coverNames.map(async (name) => {
+                    const p = path.resolve(dir, name);
+                    const exists = await this.storage.pathExists(p);
+                    return { name, p, exists };
+                })
+            );
             for (const name of coverNames) {
-                const p = path.resolve(dir, name);
-                if (await this.storage.pathExists(p)) {
-                    coverPath = this.normalizePath(p, musicDir);
+                const result = existResults.find(r => r.name === name);
+                if (result && result.exists) {
+                    coverPath = this.normalizePath(result.p, musicDir);
                     break;
                 }
             }
@@ -420,10 +434,17 @@ export class Scanner implements ScannerService {
                 }
             } else {
                 const coverNames = ["cover.jpg", "cover.png", "folder.jpg", "folder.png", "artwork/cover.jpg", "artwork/cover.png"];
+                const existResults = await Promise.all(
+                    coverNames.map(async (name) => {
+                        const p = path.resolve(dir, name);
+                        const exists = await this.storage.pathExists(p);
+                        return { name, p, exists };
+                    })
+                );
                 for (const name of coverNames) {
-                    const p = path.resolve(dir, name);
-                    if (await this.storage.pathExists(p)) {
-                        coverPath = this.normalizePath(p, musicDir);
+                    const result = existResults.find(r => r.name === name);
+                    if (result && result.exists) {
+                        coverPath = this.normalizePath(result.p, musicDir);
                         break;
                     }
                 }
