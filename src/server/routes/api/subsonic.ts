@@ -305,11 +305,6 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
             }
             const sanitizedImagePath = imagePath.replace(/^@@[a-z0-9]+\\?/, "").replace(/\\/g, "/").replace(/\/+/g, "/");
             let fullPath = resolveSafePath(musicDir, sanitizedImagePath);
-            if (!fullPath || !await fileExists(fullPath)) {
-                const projectRoot = path.dirname(musicDir);
-                const altPath = resolveSafePath(projectRoot, sanitizedImagePath);
-                if (altPath && await fileExists(altPath)) fullPath = altPath;
-            }
             if (fullPath && await fileExists(fullPath)) {
                 res.setHeader('Cache-Control', 'public, max-age=86400');
                 return res.sendFile(fullPath);

@@ -104,6 +104,27 @@ describe('Subsonic Security', () => {
         }
     });
 
+    it('should prevent path traversal in getCoverArt.view (accessing project root files)', async () => {
+        // Create an album with a path pointing to a file in the project root
+        // Prior to the fix, the altPath fallback would resolve this successfully against projectRoot
+        const albumId = database.library.createAlbum({
+            title: 'Malicious Album 2',
+            artist_id: testArtistId,
+            cover_path: 'package.json'
+        });
+
+        const authQuery = 'u=user&p=password&v=1.16.1&c=test';
+        const response = await request(app)
+            .get(`/rest/getCoverArt.view?${authQuery}&id=al_${albumId}`);
+
+        if (response.status === 200) {
+            expect(response.text).toContain('error');
+            expect(response.text).not.toContain('name="tunecamp"');
+        } else {
+            expect(response.status).not.toBe(200);
+        }
+    });
+
     it('should prevent path traversal in stream.view', async () => {
         // Create a track with a traversal path
         const trackId = database.library.createTrack({
