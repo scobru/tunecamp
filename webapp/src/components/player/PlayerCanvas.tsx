@@ -51,7 +51,7 @@ export const PlayerCanvas = () => {
         (currentTrack.artistId ? API.getArtistCoverUrl(currentTrack.artistId, cacheBuster) : "")
     ) : "";
 
-    // Fix relative paths
+    // Fix relative paths that might be missing the root / or /api
     coverUrl = fixRelativeUrl(coverUrl);
 
     return (
