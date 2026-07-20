@@ -2,6 +2,7 @@ import express, { Router } from "express";
 import fs from "fs-extra";
 import path from "path";
 import { parseFile } from "music-metadata";
+import { resolveSafePath } from "../../../utils/fileUtils.js";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
 import type { Album, Release, Track, TrackDTO, AlbumDTO } from "../../core/database.js";
@@ -363,7 +364,8 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         if (!track) throw new NotFoundError("Track not found");
         if (!track.file_path) return res.json({ lyrics: track.lyrics || "" });
 
-        const trackPath = path.join(musicDir, track.file_path);
+        const trackPath = resolveSafePath(musicDir, track.file_path);
+        if (!trackPath) throw new BadRequestError("Invalid path");
         if (!await fs.pathExists(trackPath)) throw new NotFoundError("File not found");
 
         const metadata = await parseFile(trackPath).catch(() => null);
@@ -390,7 +392,8 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         if (!track) throw new NotFoundError("Track not found");
         if (track.external_artwork) {
             if (track.external_artwork.startsWith('http')) return res.redirect(track.external_artwork);
-            const artworkPath = path.join(musicDir, track.external_artwork);
+            const artworkPath = resolveSafePath(musicDir, track.external_artwork);
+            if (!artworkPath) throw new BadRequestError("Invalid path");
             if (await fs.pathExists(artworkPath)) return res.sendFile(path.resolve(artworkPath), { maxAge: 86400000 });
         }
         if (track.album_id) return res.redirect(`/api/albums/${track.album_id}/cover`);
@@ -415,7 +418,8 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         }
 
         if (!track || !track.file_path) throw new NotFoundError("Track or file not found");
-        const trackPath = path.join(musicDir, track.file_path);
+        const trackPath = resolveSafePath(musicDir, track.file_path);
+        if (!trackPath) throw new BadRequestError("Invalid path");
         const metadata = await parseFile(trackPath).catch(() => null);
         if (!metadata) throw new Error("Failed to parse metadata");
 
@@ -537,14 +541,22 @@ export function createTracksRoutes(container: ServiceContainer): Router {
             return;
         }
 
-        let trackPath = path.join(musicDir, track.file_path);
+        let trackPath = resolveSafePath(musicDir, track.file_path);
+        if (!trackPath) throw new BadRequestError("Invalid path");
+
         if (!await fs.pathExists(trackPath)) {
-            const decoded = decodeURIComponent(trackPath);
-            if (await fs.pathExists(decoded)) trackPath = decoded;
+            const decodedRel = decodeURIComponent(track.file_path);
+            const decoded = resolveSafePath(musicDir, decodedRel);
+            if (decoded && await fs.pathExists(decoded)) trackPath = decoded;
             else if (track.lossless_path) {
-                let lp = path.join(musicDir, track.lossless_path);
-                if (!await fs.pathExists(lp)) lp = decodeURIComponent(lp);
-                if (await fs.pathExists(lp)) trackPath = lp;
+                let lp = resolveSafePath(musicDir, track.lossless_path);
+                if (!lp) throw new BadRequestError("Invalid path");
+
+                if (!await fs.pathExists(lp)) {
+                    const decodedLpRel = decodeURIComponent(track.lossless_path);
+                    lp = resolveSafePath(musicDir, decodedLpRel);
+                }
+                if (lp && await fs.pathExists(lp)) trackPath = lp;
                 else throw new NotFoundError("Audio file not found");
             } else throw new NotFoundError("Audio file not found");
         }
