@@ -46,6 +46,7 @@ Authorization: Bearer <token>
 | Metodo | Percorso | Descrizione |
 |--------|----------|-------------|
 | `POST` | `/api/payments/stripe/create-session` | Crea una sessione di Stripe Checkout per acquisti in valuta fiat |
+| `POST` | `/api/payments/stripe/create-trackcap-session` | Crea una sessione di Stripe Checkout per acquistare slot aggiuntivi per il caricamento di tracce |
 | `GET`  | `/api/payments/onramp-config` | Configurazione di Stripe Crypto Onramp |
 | `POST` | `/api/payments/verify` | Verifica una transazione on-chain (ETH/USDC) su Base |
 | `GET`  | `/api/payments/download/:trackId?code=...` | Scarica una traccia acquistata tramite codice di sblocco |

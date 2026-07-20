@@ -47,6 +47,11 @@ export interface AuthService {
     updateAdmin(id: number, artistId: number | null, role?: UserRole, storageQuota?: number): void;
     updateStorageUsed(userId: number, bytesUsed: number): void;
     getStorageInfo(userId: number): { storage_quota: number; storage_used: number } | null;
+    getTrackQuotaInfo(userId: number): { track_quota: number | null; track_quota_floor: number } | null;
+    /** Sets the per-user track quota override. Clamped up to track_quota_floor unless trackQuota is 0 (unlimited). */
+    updateTrackQuota(id: number, trackQuota: number | null): void;
+    /** Grants purchased track slots: raises both track_quota and track_quota_floor to currentEffectiveQuota + count. */
+    addPurchasedTracks(userId: number, count: number, currentEffectiveQuota: number): void;
     getAdminById(id: number): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean; can_peer: number } | undefined;
     getUserByUsername(username: string): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean; can_peer: number } | undefined;
     listAdmins(): { id: number; username: string; artist_id: number | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; can_peer: number }[];
@@ -493,6 +498,24 @@ export function createAuthService(
 
         getStorageInfo(userId: number): { storage_quota: number; storage_used: number } | null {
             return db.prepare("SELECT storage_quota, storage_used FROM admin WHERE id = ?").get(userId) as { storage_quota: number; storage_used: number } | null;
+        },
+
+        getTrackQuotaInfo(userId: number): { track_quota: number | null; track_quota_floor: number } | null {
+            return db.prepare("SELECT track_quota, track_quota_floor FROM admin WHERE id = ?").get(userId) as { track_quota: number | null; track_quota_floor: number } | null;
+        },
+
+        updateTrackQuota(id: number, trackQuota: number | null): void {
+            const row = db.prepare("SELECT track_quota_floor FROM admin WHERE id = ?").get(id) as { track_quota_floor: number } | undefined;
+            const floor = row?.track_quota_floor || 0;
+            const effective = (trackQuota !== null && trackQuota !== 0 && floor > 0)
+                ? Math.max(trackQuota, floor)
+                : trackQuota;
+            db.prepare("UPDATE admin SET track_quota = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(effective, id);
+        },
+
+        addPurchasedTracks(userId: number, count: number, currentEffectiveQuota: number): void {
+            const newQuota = currentEffectiveQuota + count;
+            db.prepare("UPDATE admin SET track_quota = ?, track_quota_floor = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(newQuota, newQuota, userId);
         },
 
         getAdminById(id: number): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean; can_peer: number } | undefined {

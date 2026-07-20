@@ -353,6 +353,24 @@ export function createUploadRoutes(container: ServiceContainer): Router {
                 }
             }
 
+            // Track-count cap check for non-admin users (independent from storage quota)
+            if (currentUser && authService) {
+                const trackQuotaInfo = authService.getTrackQuotaInfo(currentUser.id);
+                const effectiveTrackCap = (trackQuotaInfo && trackQuotaInfo.track_quota !== null)
+                    ? trackQuotaInfo.track_quota
+                    : Number(identity.getSetting("listenerTrackCap") || 0);
+
+                if (effectiveTrackCap > 0) {
+                    const currentTrackCount = library.getTrackCountByOwner(currentUser.id);
+                    if (currentTrackCount + files.length > effectiveTrackCap) {
+                        await Promise.all(files.map(file => safeRemove(file.path)));
+                        return res.status(413).json({
+                            error: `Track limit exceeded. You have ${currentTrackCount}/${effectiveTrackCap} tracks. Upgrade your plan to add more.`
+                        });
+                    }
+                }
+            }
+
             if (releaseSlug && !release) {
                 console.warn(`⚠️ Target release not found: ${releaseSlug}`);
             }

@@ -198,6 +198,33 @@ describe('TrackRepository', () => {
         });
     });
 
+    describe('countByOwner', () => {
+        const makeOwner = (username: string) =>
+            Number(db.db.prepare('INSERT INTO admin (username, password_hash) VALUES (?, ?)').run(username, 'hash').lastInsertRowid);
+
+        test('counts tracks with a direct owner_id', () => {
+            const ownerId = makeOwner('owner-direct');
+            expect(repo.countByOwner(ownerId)).toBe(0);
+            repo.create(trackInput({ title: 'O1', hash: 'co1', owner_id: ownerId }));
+            repo.create(trackInput({ title: 'O2', hash: 'co2', owner_id: ownerId }));
+            expect(repo.countByOwner(ownerId)).toBe(2);
+        });
+
+        test('counts tracks owned via the track_ownership table', () => {
+            const ownerId = makeOwner('owner-shared');
+            const id = repo.create(trackInput({ title: 'Shared', hash: 'co3' }));
+            repo.addOwner(id, ownerId);
+            expect(repo.countByOwner(ownerId)).toBe(1);
+        });
+
+        test('does not count tracks owned by someone else', () => {
+            const ownerA = makeOwner('owner-a');
+            const ownerB = makeOwner('owner-b');
+            repo.create(trackInput({ title: 'A1', hash: 'co4', owner_id: ownerA }));
+            expect(repo.countByOwner(ownerB)).toBe(0);
+        });
+    });
+
     describe('getAll', () => {
         test('returns created tracks for an admin context', () => {
             repo.create(trackInput({ title: 'Visible', hash: 'v1' }));

@@ -26,6 +26,7 @@ describe('Payments Routes', () => {
     let mockStripe: any;
     let mockProvider: any;
     let mockInterface: any;
+    let mockAuthService: any;
     let consoleErrorSpy: any;
     let consoleWarnSpy: any;
 
@@ -62,6 +63,11 @@ describe('Payments Routes', () => {
             jwtSecret: 'test-jwt-secret'
         };
 
+        mockAuthService = {
+            getTrackQuotaInfo: jest.fn(),
+            addPurchasedTracks: jest.fn()
+        };
+
         app = express();
         app.use('/api/payments', createPaymentsRoutes({
             database: mockDatabase,
@@ -69,7 +75,8 @@ describe('Payments Routes', () => {
             library: mockDatabase,
             integration: mockDatabase,
             musicDir: '/tmp/music',
-            config: mockConfig
+            config: mockConfig,
+            authService: mockAuthService
         } as any));
 
         mockStripe = mockStripeInstance;
@@ -638,6 +645,168 @@ describe('Payments Routes', () => {
             expect(res.status).toBe(200);
             expect(res.body.toString()).toBe('subscriber-data');
             expect(fsExtra.createReadStream).toHaveBeenCalledWith(expect.stringContaining('song.mp3'));
+        });
+    });
+
+    describe('Track-cap topup', () => {
+        let jwtToken: string;
+
+        beforeEach(async () => {
+            const jwtLib = (await import('jsonwebtoken')) as any;
+            jwtToken = jwtLib.default.sign({ userId: 42 }, 'test-jwt-secret');
+        });
+
+        describe('Stripe Webhook processes checkout.session.completed for a trackcap_topup', () => {
+            test('grants the purchased tracks via authService.addPurchasedTracks', async () => {
+                const mockEvent = {
+                    type: 'checkout.session.completed',
+                    data: {
+                        object: {
+                            id: 'cs_trackcap_1',
+                            metadata: {
+                                type: 'trackcap_topup',
+                                userId: '42',
+                                tracksGranted: '10',
+                                effectiveQuotaAtPurchase: '5'
+                            }
+                        }
+                    }
+                };
+                mockStripe.webhooks.constructEvent.mockReturnValue(mockEvent);
+
+                const res = await request(app)
+                    .post('/api/payments/stripe/webhook')
+                    .set('stripe-signature', 'valid-sig')
+                    .send({ id: 'evt_trackcap_1' });
+
+                expect(res.status).toBe(200);
+                expect(res.body.received).toBe(true);
+                expect(mockAuthService.addPurchasedTracks).toHaveBeenCalledWith(42, 10, 5);
+                expect(mockDatabase.createUnlockCode).toHaveBeenCalledWith(
+                    expect.any(String), undefined, undefined, 'stripe:cs_trackcap_1'
+                );
+            });
+
+            test('is idempotent for a duplicate webhook delivery', async () => {
+                mockDatabase.getUnlockCodeByTxHash.mockReturnValue({ code: 'ALREADY-GRANTED' });
+                const mockEvent = {
+                    type: 'checkout.session.completed',
+                    data: {
+                        object: {
+                            id: 'cs_trackcap_dupe',
+                            metadata: {
+                                type: 'trackcap_topup',
+                                userId: '42',
+                                tracksGranted: '10',
+                                effectiveQuotaAtPurchase: '5'
+                            }
+                        }
+                    }
+                };
+                mockStripe.webhooks.constructEvent.mockReturnValue(mockEvent);
+
+                const res = await request(app)
+                    .post('/api/payments/stripe/webhook')
+                    .set('stripe-signature', 'valid-sig')
+                    .send({ id: 'evt_trackcap_dupe' });
+
+                expect(res.status).toBe(200);
+                expect(mockAuthService.addPurchasedTracks).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('POST /api/payments/stripe/create-trackcap-session', () => {
+            test('returns 401 if unauthenticated', async () => {
+                const res = await request(app)
+                    .post('/api/payments/stripe/create-trackcap-session')
+                    .send({ successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no' });
+
+                expect(res.status).toBe(401);
+            });
+
+            test('rejects external return URLs', async () => {
+                const res = await request(app)
+                    .post('/api/payments/stripe/create-trackcap-session')
+                    .set('Authorization', `Bearer ${jwtToken}`)
+                    .send({ successUrl: 'https://evil.com/ok', cancelUrl: 'https://site.com/no' });
+
+                expect(res.status).toBe(400);
+                expect(res.body.error).toMatch(/must point to this instance/);
+            });
+
+            test('returns 501 if Stripe is not configured', async () => {
+                mockDatabase.getSetting.mockImplementation(() => null);
+                const guestConfig = { ...mockConfig, stripeSecretKey: '' };
+                const guestApp = express();
+                guestApp.use('/api/payments', createPaymentsRoutes({
+                    database: mockDatabase,
+                    identity: mockDatabase,
+                    library: mockDatabase,
+                    integration: mockDatabase,
+                    musicDir: '/tmp/music',
+                    config: guestConfig,
+                    authService: mockAuthService
+                } as any));
+
+                const res = await request(guestApp)
+                    .post('/api/payments/stripe/create-trackcap-session')
+                    .set('Authorization', `Bearer ${jwtToken}`)
+                    .send({ successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no' });
+
+                expect(res.status).toBe(501);
+            });
+
+            test('creates a session using the global listenerTrackCap when the user has no per-user override', async () => {
+                mockAuthService.getTrackQuotaInfo.mockReturnValue({ track_quota: null, track_quota_floor: 0 });
+                mockDatabase.getSetting.mockImplementation((k: string) => {
+                    if (k === 'listenerTrackCap') return '20';
+                    if (k === 'trackcapTopupPriceUsd') return '4.99';
+                    if (k === 'trackcapTopupTracksGranted') return '10';
+                    return null;
+                });
+                mockStripe.checkout.sessions.create.mockResolvedValue({
+                    id: 'sess_trackcap',
+                    url: 'https://checkout.stripe.com/sess_trackcap'
+                });
+
+                const res = await request(app)
+                    .post('/api/payments/stripe/create-trackcap-session')
+                    .set('Authorization', `Bearer ${jwtToken}`)
+                    .send({ successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no' });
+
+                expect(res.status).toBe(200);
+                expect(res.body.id).toBe('sess_trackcap');
+                const [params] = mockStripe.checkout.sessions.create.mock.calls[0];
+                expect(params.line_items[0].price_data.unit_amount).toBe(499);
+                expect(params.metadata).toEqual({
+                    type: 'trackcap_topup',
+                    userId: '42',
+                    tracksGranted: '10',
+                    effectiveQuotaAtPurchase: '20'
+                });
+            });
+
+            test('creates a session using the per-user track quota override when present', async () => {
+                mockAuthService.getTrackQuotaInfo.mockReturnValue({ track_quota: 35, track_quota_floor: 25 });
+                mockDatabase.getSetting.mockImplementation((k: string) => {
+                    if (k === 'trackcapTopupPriceUsd') return '4.99';
+                    if (k === 'trackcapTopupTracksGranted') return '10';
+                    return null;
+                });
+                mockStripe.checkout.sessions.create.mockResolvedValue({
+                    id: 'sess_trackcap2',
+                    url: 'https://checkout.stripe.com/sess_trackcap2'
+                });
+
+                const res = await request(app)
+                    .post('/api/payments/stripe/create-trackcap-session')
+                    .set('Authorization', `Bearer ${jwtToken}`)
+                    .send({ successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no' });
+
+                expect(res.status).toBe(200);
+                const [params] = mockStripe.checkout.sessions.create.mock.calls[0];
+                expect(params.metadata.effectiveQuotaAtPurchase).toBe('35');
+            });
         });
     });
 });

@@ -453,6 +453,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 scheduledScanHour,
                 listenerSelfPublish,
                 listenerSelfPublishQuota,
+                listenerTrackCap,
                 hideLive,
                 hideStore,
                 hideSocial,
@@ -460,6 +461,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 hideDig,
                 hideDj,
                 membershipMonthlyPrice,
+                trackcapTopupPriceUsd,
+                trackcapTopupTracksGranted,
                 peerEnabled,
                 peerAllowDownloads,
                 peerFederation,
@@ -622,6 +625,20 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 }
                 identity.setSetting("membershipMonthlyPrice", price.toFixed(2));
             }
+            if (trackcapTopupPriceUsd !== undefined) {
+                const price = parseFloat(trackcapTopupPriceUsd);
+                if (!Number.isFinite(price) || price < 0) {
+                    return res.status(400).json({ error: "trackcapTopupPriceUsd must be a non-negative number" });
+                }
+                identity.setSetting("trackcapTopupPriceUsd", price.toFixed(2));
+            }
+            if (trackcapTopupTracksGranted !== undefined) {
+                const tracks = parseInt(trackcapTopupTracksGranted, 10);
+                if (!Number.isInteger(tracks) || tracks <= 0) {
+                    return res.status(400).json({ error: "trackcapTopupTracksGranted must be a positive integer" });
+                }
+                identity.setSetting("trackcapTopupTracksGranted", String(tracks));
+            }
             if (soulseek_username !== undefined) {
                 identity.setSetting("soulseek_username", soulseek_username);
             }
@@ -655,6 +672,14 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                     return res.status(400).json({ error: "listenerSelfPublishQuota must be a non-negative number (MB)" });
                 }
                 identity.setSetting("listenerSelfPublishQuota", String(Math.floor(quotaMb)));
+            }
+
+            if (listenerTrackCap !== undefined) {
+                const trackCap = Number(listenerTrackCap);
+                if (isNaN(trackCap) || trackCap < 0) {
+                    return res.status(400).json({ error: "listenerTrackCap must be a non-negative number (0 = unlimited)" });
+                }
+                identity.setSetting("listenerTrackCap", String(Math.floor(trackCap)));
             }
 
             if (lastfm_api_key !== undefined) {
@@ -1590,7 +1615,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
                 return res.status(403).json({ error: "Only the primary admin can create new admins" });
             }
-            const { username, password, artistId, isAdmin, role, storageQuota } = req.body;
+            const { username, password, artistId, isAdmin, role, storageQuota, trackQuota } = req.body;
             if (!username) {
                 return res.status(400).json({ error: "Username is required" });
             }
@@ -1603,14 +1628,20 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             const targetRole: UserRole = role || (isAdmin ? UserRole.ADMIN : UserRole.NORMAL_USER);
             const quota = storageQuota !== undefined ? Number(storageQuota) : (targetRole === UserRole.NORMAL_USER ? 1024 * 1024 * 1024 : 0);
 
+            let newUserId: number;
             if (targetRole === UserRole.ADMIN || targetRole === UserRole.SUPER_USER) {
                 const { id } = await authService.createAdmin(username, password, artistId, targetRole);
+                newUserId = id;
                 if (storageQuota !== undefined) {
                     authService.updateAdmin(id, artistId, targetRole, quota);
                 }
             } else {
                 // Listeners (NORMAL_USER) cannot have an artist profile linked
-                await authService.createUser(username, password, null, quota, undefined, targetRole);
+                const { id } = await authService.createUser(username, password, null, quota, undefined, targetRole);
+                newUserId = id;
+            }
+            if (trackQuota !== undefined) {
+                authService.updateTrackQuota(newUserId, Number(trackQuota));
             }
             res.json({ message: "Admin user created" });
         } catch (error: any) {
@@ -1632,7 +1663,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 return res.status(403).json({ error: "Only the primary admin can manage users" });
             }
             const id = parseInt(req.params.id, 10);
-            const { artistId, isAdmin, role, storageQuota } = req.body;
+            const { artistId, isAdmin, role, storageQuota, trackQuota } = req.body;
 
             const currentAdmin = authService.getAdminById(id);
             const targetRole = role || (isAdmin === undefined ? (currentAdmin?.role || 'user') : (isAdmin ? 'admin' : 'user'));
@@ -1640,6 +1671,9 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             // Standard users CAN have an artist profile linked (community
             // artists): uploads work via the link and stay owner-scoped.
             authService.updateAdmin(id, artistId, targetRole as UserRole, quota);
+            if (trackQuota !== undefined) {
+                authService.updateTrackQuota(id, Number(trackQuota));
+            }
             res.json({ message: "Admin user updated" });
         } catch (error) {
             console.error("Error updating admin:", error);

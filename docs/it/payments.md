@@ -45,6 +45,15 @@ Ogni album/release sceglie **una sola** modalità di distribuzione nell'editor (
 - Selezionando questa modalità si forza `use_nft = false` e si azzera il prezzo — TuneCamp non trattiene mai una quota su una vendita fuori piattaforma.
 - Lo streaming su TuneCamp continua a funzionare per l'audio eventualmente caricato sulla release; solo la *vendita* avviene fuori piattaforma. Caricare l'audio è facoltativo e serve solo se si vuole anche la riproduzione in-app (il modello di pubblicazione/streaming è invariato — TuneCamp non streamma da Bandcamp).
 
+### Ricarica Slot Tracce (Stripe)
+- **Scopo**: Consente a un ascoltatore di acquistare slot aggiuntivi per il caricamento di tracce quando raggiunge il proprio `listenerTrackCap` (o l'eventuale override `track_quota` personale).
+- **Rotta**: `POST /api/payments/stripe/create-trackcap-session`
+- **Meccanismo**:
+  1. Richiede un utente autenticato; l'URL di ritorno deve puntare a questa istanza.
+  2. Prezzo e numero di slot provengono dalle impostazioni admin `trackcapTopupPriceUsd` e `trackcapTopupTracksGranted`.
+  3. Viene sempre addebitato sull'account Stripe dell'istanza (mai instradato tramite Connect — è una quota di piattaforma, non una vendita d'artista).
+  4. Al completamento (`checkout.session.completed`), il webhook chiama `AuthService.addPurchasedTracks`, che aumenta sia `track_quota` sia il suo minimo `track_quota_floor`, così un successivo override amministrativo non può mai ridurre un acquisto già pagato.
+
 ## 2. Codici di Sblocco
 
 Quando un pagamento viene verificato (tramite webhook di Stripe o verifica on-chain), il sistema genera un codice alfanumerico univoco di 10 caratteri.

@@ -107,6 +107,8 @@ export function createDatabase(dbPath: string): DatabaseService {
             role TEXT NOT NULL DEFAULT 'admin',
             storage_quota INTEGER NOT NULL DEFAULT 0,
             storage_used INTEGER NOT NULL DEFAULT 0,
+            track_quota INTEGER DEFAULT NULL,
+            track_quota_floor INTEGER NOT NULL DEFAULT 0,
             subsonic_token TEXT,
             subsonic_password TEXT,
             gun_pub TEXT,
@@ -945,6 +947,14 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating admin table: adding email column...");
                 db.exec("ALTER TABLE admin ADD COLUMN email TEXT");
                 db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_email ON admin(email COLLATE NOCASE) WHERE email IS NOT NULL");
+            }
+            if (!cols.some(col => col.name === 'track_quota')) {
+                console.log("📦 [Database] Migrating admin table: adding track_quota column...");
+                db.exec("ALTER TABLE admin ADD COLUMN track_quota INTEGER DEFAULT NULL");
+            }
+            if (!cols.some(col => col.name === 'track_quota_floor')) {
+                console.log("📦 [Database] Migrating admin table: adding track_quota_floor column...");
+                db.exec("ALTER TABLE admin ADD COLUMN track_quota_floor INTEGER NOT NULL DEFAULT 0");
             }
             // Repair stale artist links: artist_id pointing to a deleted artist.
             const artistsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='artists'").get();

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.0] - 2026-07-20
+
+### Added
+- **Per-listener track-count cap, with a Stripe track-slot topup to raise it.** Listeners are now limited to `listenerTrackCap` tracks (a new global admin setting, 0 = unlimited) unless a per-user `track_quota` override is set on their admin row. `POST /tracks` upload now enforces the effective cap independently from the existing storage-quota check, returning 413 with the current usage when exceeded. Root admins can set `trackQuota` per user via `POST/PUT /admin/system/users`; a value below the user's purchased floor (`track_quota_floor`) is clamped up rather than rejected. `POST /api/payments/stripe/create-trackcap-session` lets an authenticated listener buy `trackcapTopupTracksGranted` extra slots for `trackcapTopupPriceUsd` (both new admin settings); the Stripe webhook's `trackcap_topup` branch calls `AuthService.addPurchasedTracks` on completion, which raises both the quota and its floor so a later admin override can't undercut a paid purchase.
+
 ## [3.0.1] - 2026-07-20
 
 ### Fixed

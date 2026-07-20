@@ -46,6 +46,7 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/api/payments/stripe/create-session` | Create a Stripe Checkout session for fiat purchases |
+| `POST` | `/api/payments/stripe/create-trackcap-session` | Create a Stripe Checkout session to buy extra track-upload slots |
 | `GET` | `/api/payments/onramp-config` | Stripe Crypto Onramp configuration |
 | `POST` | `/api/payments/verify` | Verify an on-chain transaction (ETH/USDC) on Base |
 | `GET` | `/api/payments/download/:trackId?code=...` | Download a purchased track via unlock code |

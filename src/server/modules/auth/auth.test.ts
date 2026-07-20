@@ -3,6 +3,7 @@ import sqlite3 from "better-sqlite3";
 import { jest } from '@jest/globals';
 jest.setTimeout(30000);
 import jwt from "jsonwebtoken";
+import { createDatabase } from "../../core/database.js";
 
 const Database = sqlite3;
 
@@ -171,5 +172,69 @@ describe("AuthService", () => {
             const decrypted = decryptZenPrivHelper(encrypted, TEST_SECRET);
             expect(decrypted).toBeNull();
         });
+    });
+});
+
+describe("AuthService - track quota", () => {
+    let database: any;
+    let authService: any;
+    let userId: number;
+
+    beforeEach(async () => {
+        database = createDatabase(':memory:');
+        authService = createAuthService(database.db, "secret", "admin", "tunecamp");
+        await authService.init();
+        const passHash = await authService.hashPassword('password');
+        userId = Number(database.db.prepare(
+            "INSERT INTO admin (username, password_hash) VALUES (?, ?)"
+        ).run('quotauser', passHash).lastInsertRowid);
+    });
+
+    afterEach(() => {
+        if (database && database.db) database.db.close();
+    });
+
+    test('getTrackQuotaInfo returns null quota and zero floor by default', () => {
+        const info = authService.getTrackQuotaInfo(userId);
+        expect(info).toEqual({ track_quota: null, track_quota_floor: 0 });
+    });
+
+    test('getTrackQuotaInfo returns null for a non-existent user', () => {
+        expect(authService.getTrackQuotaInfo(999999)).toBeUndefined();
+    });
+
+    test('updateTrackQuota sets the override when there is no floor', () => {
+        authService.updateTrackQuota(userId, 20);
+        expect(authService.getTrackQuotaInfo(userId)).toEqual({ track_quota: 20, track_quota_floor: 0 });
+    });
+
+    test('updateTrackQuota allows setting quota to unlimited (0)', () => {
+        authService.updateTrackQuota(userId, 20);
+        authService.updateTrackQuota(userId, 0);
+        expect(authService.getTrackQuotaInfo(userId)?.track_quota).toBe(0);
+    });
+
+    test('updateTrackQuota allows clearing the override back to null', () => {
+        authService.updateTrackQuota(userId, 20);
+        authService.updateTrackQuota(userId, null);
+        expect(authService.getTrackQuotaInfo(userId)?.track_quota).toBeNull();
+    });
+
+    test('updateTrackQuota clamps a quota below the purchased floor up to the floor', () => {
+        authService.addPurchasedTracks(userId, 10, 0); // floor becomes 10
+        authService.updateTrackQuota(userId, 5); // attempt to lower below floor
+        expect(authService.getTrackQuotaInfo(userId)).toEqual({ track_quota: 10, track_quota_floor: 10 });
+    });
+
+    test('addPurchasedTracks raises both track_quota and track_quota_floor', () => {
+        authService.addPurchasedTracks(userId, 10, 5);
+        expect(authService.getTrackQuotaInfo(userId)).toEqual({ track_quota: 15, track_quota_floor: 15 });
+    });
+
+    test('addPurchasedTracks accumulates across multiple purchases', () => {
+        authService.addPurchasedTracks(userId, 10, 0);
+        const afterFirst = authService.getTrackQuotaInfo(userId);
+        authService.addPurchasedTracks(userId, 5, afterFirst.track_quota);
+        expect(authService.getTrackQuotaInfo(userId)).toEqual({ track_quota: 15, track_quota_floor: 15 });
     });
 });
