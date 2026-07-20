@@ -5,26 +5,26 @@ Il **Lab** è l'area sperimentale di TuneCamp — uno spazio in cui gli sviluppa
 Ogni applicazione Lab:
 - Viene eseguita all'interno di un **iFrame** isolato in sandbox (nessun rischio di sicurezza per l'applicazione principale)
 - Può richiedere permessi al browser (microfono, ecc.) limitati al proprio contesto
-- È definita da un singolo oggetto all'interno del registro delle app
+- È definita da una riga nella tabella DB `lab_apps`
 - Può opzionalmente comunicare con TuneCamp tramite il **Lab SDK** (bridge basato su PostMessage)
 
 ---
 
 ## Guida Rapida: Aggiungere un'app Lab
 
-Tutte le app sono elencate in un unico file:
+Le app sono salvate nella tabella SQLite `lab_apps` (`src/server/core/database.ts`), gestite tramite l'API admin (`src/server/routes/admin/lab-apps.ts`) e il pannello **Admin → Lab Apps** (`AdminLabAppsPanel.tsx`) — nessuna modifica al codice necessaria per aggiungerne o modificarne una.
 
-```
-webapp/src/data/labApps.ts
-```
+- **Via UI:** Pannello Admin → Lab Apps → *Add App*, compila i campi qui sotto.
+- **Via API:** `POST /api/admin/lab-apps` (solo root-admin) con gli stessi campi come corpo JSON.
+- **Default integrati:** seminati al primo avvio in `database.ts` (attualmente 4-Track Recorder, id 1, e Audiofabric, id 2) — modifica quei blocchi `INSERT OR IGNORE` per cambiare i default distribuiti.
 
-Aggiungi un elemento all'array `LAB_APPS`. Questo è tutto — la pagina Lab e il runner caricheranno l'app automaticamente.
+La pagina pubblica `/lab` e il runner `/lab/<id>` leggono da `GET /api/lab-apps` (solo app abilitate) e caricano automaticamente le nuove righe, senza bisogno di rebuild.
 
 ### Campi del Manifest
 
 ```typescript
 interface LabApp {
-  id: string;           // URL slug  →  /lab/<id>
+  id: number;            // id riga DB, assegnato automaticamente  →  /lab/<id>
   name: string;
   description: string;
   src: string;          // URL dell'app (ospitata esternamente o percorso relativo)
@@ -34,22 +34,22 @@ interface LabApp {
   permissions: string[]; // Mostrati come badge sulla scheda dell'app (informativi)
   sandbox: string[];    // Token dell'attributo sandbox dell'iFrame
   allow: string[];      // Attributo allow dell'iFrame (feature policy)
+  enabled: boolean;     // nascosta da /lab e GET /api/lab-apps se false
 }
 ```
 
 ### Esempio — Registratore a 4 tracce (4-Track Recorder)
 
 ```typescript
-// webapp/src/data/labApps.ts
+// Corpo POST /api/admin/lab-apps (l'id è assegnato automaticamente)
 
 {
-  id: '4track',
   name: '4-Track Recorder',
   description:
     'Registratore audio a 4 tracce basato su browser con supporto overdub, ' +
     'compensazione della latenza e riproduzione multi-traccia accurata al campione. ' +
     'Funziona interamente nel browser — nessun server richiesto.',
-  src: 'https://www.4track.cc',
+  src: 'https://tunecamp-4-track-recorder.vercel.app',
   category: 'recording',
   author: 'andreboekhorst',
   sourceUrl: 'https://github.com/andreboekhorst/4-track-recorder',
@@ -316,9 +316,9 @@ La voce descritta nel manifest sopra è tutto ciò che serve per l'integrazione 
 - L'URL `/lab/4track` apre l'app a schermo intero all'interno di TuneCamp con un pulsante per tornare indietro e un collegamento al repository dei sorgenti
 - L'attributo `allow="microphone"` inoltra la richiesta di autorizzazione del microfono dal browser all'iFrame
 
-### Opzionale: integrazione profonda tramite Lab SDK (sviluppi futuri)
+### Opzionale: integrazione profonda tramite Lab SDK
 
-Una volta implementato il PostMessage bridge, una versione derivata di 4-Track Recorder potrebbe eseguire:
+Una versione derivata di 4-Track Recorder potrebbe usare il PostMessage bridge già implementato per:
 
 ```javascript
 // Al termine di una registrazione, propone il salvataggio nella libreria di TuneCamp
@@ -340,9 +340,9 @@ Ciò salverebbe la traccia direttamente nella libreria TuneCamp dell'utente senz
 
 ## Invio di un'app Lab
 
-1. Esegui il fork di `tunecamp/tunecamp`
-2. Aggiungi la tua voce al file `webapp/src/data/labApps.ts`
-3. Apri una Pull Request con il titolo `feat(lab): add <Nome Tua App>`
+1. Deploya o forka la tua app in modo che abbia un URL `src` stabile (oppure includila sotto `webapp/public/lab/<id>/` per l'auto-hosting)
+2. Chiedi a un root-admin di aggiungerla tramite il pannello **Admin → Lab Apps**, oppure apri una PR aggiungendo un blocco seed `INSERT OR IGNORE` a `src/server/core/database.ts` (vedi i blocchi esistenti di 4-Track Recorder / Audiofabric) se deve essere un default integrato
+3. Se apri una PR, intitolala `feat(lab): add <Nome Tua App>`
 4. Nella descrizione della PR includi:
    - Cosa fa l'app
    - Il link al repository o alla demo attiva
@@ -357,7 +357,7 @@ Ciò salverebbe la traccia direttamente nella libreria TuneCamp dell'utente senz
 |---|---|---|
 | **Cosa estendono** | L'interfaccia utente frontend (strumenti audio, sintetizzatori) | I provider backend (metadati, streaming, archiviazione…) |
 | **Stack tecnologico** | Qualsiasi (basate su iFrame) | Node.js / ESM |
-| **Dove sono collocate** | `webapp/src/data/labApps.ts` | `plugins/<nome>.js` |
-| **Come vengono caricate** | Dal frontend React a runtime | Dal caricatore dei plugin del server all'avvio |
+| **Dove sono collocate** | Tabella DB `lab_apps` (via pannello Admin / API) | `plugins/<nome>.js` |
+| **Come vengono caricate** | Dal frontend React a runtime, da `GET /api/lab-apps` | Dal caricatore dei plugin del server all'avvio |
 | **Esempi** | 4-Track Recorder, Patchcab, ComposeYogi | Provider di metadati personalizzato, Soulseek, storage S3 |
 

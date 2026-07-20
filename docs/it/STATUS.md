@@ -17,7 +17,7 @@ Un quadro sincero di quanto ciascuna parte di TuneCamp sia pronta per la produzi
 | Live streaming (HLS) | **Nuovo** | Migrato di recente da mesh WebRTC a HLS lato server; testato in contesti reali limitati. |
 | Radio (stazione HLS) | **Nuovo** | Stazione sempre attiva da playlist + mix dinamici per genere; loop di concatenazione FFmpeg. Vedi [radio.md](./radio.md). |
 | Server MCP | **Nuovo / opzionale** | Espone il catalogo ai client IA (ricerca, statistiche, scansione) tramite SSE, protetto da token. Vedi [mcp-setup-guide.md](./mcp-setup-guide.md). |
-| App Lab | **Sperimentale** | Strumenti audio per browser protetti da iFrame sandbox; il bridge PostMessage non è ancora implementato. Vedi [LAB.md](./LAB.md). |
+| App Lab | **Sperimentale** | Strumenti audio per browser protetti da iFrame sandbox; bridge PostMessage implementato (getUser/getLibrary/getNowPlaying/exportAudio). Vedi [LAB.md](./LAB.md). |
 | Pannello di sistema amministratore | **Nuovo** | Metriche in tempo reale di CPU/RAM/archiviazione/attività per il rilevamento di leak. Vedi [monitoring.md](./monitoring.md). |
 | Bot Telegram, archiviazione Google Drive | **Beta** | Funzionali, copertura dei test più limitata. |
 | Streaming SoundCloud e Bandcamp | **Opzionale** | Integrazione streaming tramite provider SoundCloud / Bandcamp; abilita in Amministrazione → Integrazioni. |

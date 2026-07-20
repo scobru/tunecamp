@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.1] - 2026-07-20
+
+### Fixed
+- **Built-in Lab apps now point to their deployed URLs.** The `lab_apps` seed/migration rows for 4-Track Recorder and Audiofabric now target `tunecamp-4-track-recorder.vercel.app` and `tunecamp-audiofabric.vercel.app` instead of the old `4track.cc` / locally-bundled path, with a runtime `UPDATE` so existing installs migrate too.
+- **`LAB.md` (and its Italian mirror) rewritten to match the real Lab apps architecture.** The docs still described a static `webapp/src/data/labApps.ts` registry array; Lab apps have actually been DB-backed (`lab_apps` table, admin API, Admin panel) for a while. Also corrected `id` from a string slug to the numeric DB row id, and dropped stale "PostMessage bridge not yet implemented" language in `STATUS.md` — it's implemented. `source-tree-analysis.md` and `audiofabric.md` (plus Italian mirrors) updated to match.
+
 ## [3.0.0] - 2026-07-17
 
 ### Removed

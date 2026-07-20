@@ -595,7 +595,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             1,
             '4-Track Recorder',
             'Browser-based 4-track audio recorder with overdub support, latency compensation, and sample-accurate multi-track playback. Runs entirely in your browser — no server needed.',
-            'https://www.4track.cc',
+            'https://tunecamp-4-track-recorder.vercel.app',
             'recording',
             'andreboekhorst',
             'https://github.com/andreboekhorst/4-track-recorder',
@@ -611,7 +611,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             2,
             'Audiofabric',
             'Real-time 3D WebGL music visualiser powered by the Web Audio API. Renders a spring-physics frequency fabric that pulses with the music. Plays built-in demo tracks or streams directly from your TuneCamp library via the Subsonic API.',
-            '/lab/audiofabric/index.html',
+            'https://tunecamp-audiofabric.vercel.app',
             'effects',
             'scobru',
             'https://github.com/scobru/tunecamp-audiofabric',
@@ -620,8 +620,9 @@ export function createDatabase(dbPath: string): DatabaseService {
             '["autoplay"]',
             1
         );
-        -- Migrate any existing row that still points to the old Vercel deployment
-        UPDATE lab_apps SET src = '/lab/audiofabric/index.html' WHERE id = 2 AND src != '/lab/audiofabric/index.html';
+        -- Migrate existing rows to the deployed Vercel URLs
+        UPDATE lab_apps SET src = 'https://tunecamp-4-track-recorder.vercel.app' WHERE id = 1 AND src != 'https://tunecamp-4-track-recorder.vercel.app';
+        UPDATE lab_apps SET src = 'https://tunecamp-audiofabric.vercel.app' WHERE id = 2 AND src != 'https://tunecamp-audiofabric.vercel.app';
     `);
 
     // Runtime Migrations (robust column checks)
