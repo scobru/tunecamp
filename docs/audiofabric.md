@@ -2,7 +2,7 @@
 
 A real-time 3D WebGL music visualizer powered by the Web Audio API and Three.js. Renders a spring-physics frequency fabric that pulses and flows with the music.
 
-Audiofabric is integrated into TuneCamp as a built-in Lab app, served locally under `/lab/audiofabric/index.html`.
+Audiofabric is integrated into TuneCamp as a built-in Lab app, seeded in the `lab_apps` table pointing to the deployed instance at `https://tunecamp-audiofabric.vercel.app`.
 
 ## Features
 
@@ -16,7 +16,7 @@ Audiofabric is integrated into TuneCamp as a built-in Lab app, served locally un
 - **Source Code Repository:** [github.com/scobru/tunecamp-audiofabric](https://github.com/scobru/tunecamp-audiofabric) (Forked from [github.com/rolyatmax/audiofabric](https://github.com/rolyatmax/audiofabric))
 - **Category:** Visualisation / Effects
 - **Permissions Required:** `autoplay` (configured in the iFrame allow list to play audio automatically on load).
-- **Hosting Method:** Option C (bundled inside the TuneCamp static assets directory under `webapp/public/lab/audiofabric/`).
+- **Hosting Method:** Option A (external URL — deployed to Vercel at `tunecamp-audiofabric.vercel.app`, seeded via `lab_apps` DB row id 2).
 
 ## How to Stream from TuneCamp Library
 

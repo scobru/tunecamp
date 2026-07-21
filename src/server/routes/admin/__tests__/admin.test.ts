@@ -43,8 +43,10 @@ const mockAuthService = {
     getAdminById: jest.fn(),
     changePassword: jest.fn(),
     createAdmin: jest.fn(),
+    createUser: jest.fn(),
     updateAdmin: jest.fn(),
     deleteAdmin: jest.fn(),
+    updateTrackQuota: jest.fn(),
 } as unknown as AuthService;
 
 const mockPublishingService = {
@@ -547,6 +549,108 @@ describe('Admin Routes Vulnerability Check', () => {
 
             expect(response.status).toBe(403);
             expect(mockMaintenanceService.syncAllTagsFromDb).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('Track quota', () => {
+        beforeEach(() => {
+            (mockAuthService.isRootAdmin as jest.Mock).mockImplementation((username) => username === 'root');
+        });
+
+        test('POST /system/users applies trackQuota override for a listener', async () => {
+            (mockAuthService.createUser as jest.Mock).mockResolvedValue({ id: 42 });
+
+            const response = await request(app)
+                .post('/admin/system/users')
+                .set('x-username', 'root')
+                .send({ username: 'listener1', password: 'password123', trackQuota: 25 });
+
+            expect(response.status).toBe(200);
+            expect(mockAuthService.updateTrackQuota).toHaveBeenCalledWith(42, 25);
+        });
+
+        test('POST /system/users does not touch track quota when omitted', async () => {
+            (mockAuthService.createUser as jest.Mock).mockResolvedValue({ id: 43 });
+
+            const response = await request(app)
+                .post('/admin/system/users')
+                .set('x-username', 'root')
+                .send({ username: 'listener2', password: 'password123' });
+
+            expect(response.status).toBe(200);
+            expect(mockAuthService.updateTrackQuota).not.toHaveBeenCalled();
+        });
+
+        test('PUT /system/users/:id applies trackQuota override', async () => {
+            const response = await request(app)
+                .put('/admin/system/users/2')
+                .set('x-username', 'root')
+                .send({ trackQuota: 50 });
+
+            expect(response.status).toBe(200);
+            expect(mockAuthService.updateTrackQuota).toHaveBeenCalledWith(2, 50);
+        });
+
+        test('PUT /system/users/:id passes 0 through as unlimited', async () => {
+            const response = await request(app)
+                .put('/admin/system/users/2')
+                .set('x-username', 'root')
+                .send({ trackQuota: 0 });
+
+            expect(response.status).toBe(200);
+            expect(mockAuthService.updateTrackQuota).toHaveBeenCalledWith(2, 0);
+        });
+
+        test('Non-root admin cannot set trackQuota via PUT /system/users/:id', async () => {
+            const response = await request(app)
+                .put('/admin/system/users/2')
+                .set('x-username', 'other')
+                .send({ trackQuota: 50 });
+
+            expect(response.status).toBe(403);
+            expect(mockAuthService.updateTrackQuota).not.toHaveBeenCalled();
+        });
+
+        test('Root admin CAN update listenerTrackCap and trackcap topup settings', async () => {
+            (mockDatabase.setSetting as jest.Mock).mockImplementation(() => {});
+
+            const response = await request(app)
+                .put('/admin/settings')
+                .set('x-username', 'root')
+                .send({ listenerTrackCap: 30, trackcapTopupPriceUsd: 4.99, trackcapTopupTracksGranted: 10 });
+
+            expect(response.status).toBe(200);
+            expect(mockDatabase.setSetting).toHaveBeenCalledWith('listenerTrackCap', '30');
+            expect(mockDatabase.setSetting).toHaveBeenCalledWith('trackcapTopupPriceUsd', '4.99');
+            expect(mockDatabase.setSetting).toHaveBeenCalledWith('trackcapTopupTracksGranted', '10');
+        });
+
+        test('rejects a negative listenerTrackCap', async () => {
+            const response = await request(app)
+                .put('/admin/settings')
+                .set('x-username', 'root')
+                .send({ listenerTrackCap: -1 });
+
+            expect(response.status).toBe(400);
+            expect(mockDatabase.setSetting).not.toHaveBeenCalledWith('listenerTrackCap', expect.anything());
+        });
+
+        test('rejects a non-positive trackcapTopupTracksGranted', async () => {
+            const response = await request(app)
+                .put('/admin/settings')
+                .set('x-username', 'root')
+                .send({ trackcapTopupTracksGranted: 0 });
+
+            expect(response.status).toBe(400);
+        });
+
+        test('rejects a negative trackcapTopupPriceUsd', async () => {
+            const response = await request(app)
+                .put('/admin/settings')
+                .set('x-username', 'root')
+                .send({ trackcapTopupPriceUsd: -5 });
+
+            expect(response.status).toBe(400);
         });
     });
 });

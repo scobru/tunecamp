@@ -533,6 +533,7 @@ export interface LibraryManager {
     getTracksByArtist(artistId: number, profile?: VisibilityProfile | ViewerContext, artistName?: string): Track[];
     repairArtistLinks(artistId: number, artistName: string): { tracks: number, albums: number };
     getTracksByOwner(ownerId: number, profile?: VisibilityProfile | ViewerContext): Track[];
+    getTrackCountByOwner(ownerId: number): number;
     getTrack(id: number): Track | undefined;
     getTracksByIds(ids: number[]): Track[];
     getTrackByPath(path: string): Track | undefined;

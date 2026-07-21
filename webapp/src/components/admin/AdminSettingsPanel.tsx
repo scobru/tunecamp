@@ -405,6 +405,23 @@ export const AdminSettingsPanel = () => {
 
               <div className="form-control pt-4 border-t border-base-content/5 mt-4">
                 <label className="label">
+                  <span className="label-text font-medium">Listener Track Cap</span>
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  className="input input-bordered input-sm w-40"
+                  value={settings.listenerTrackCap ?? 0}
+                  onChange={(e) =>
+                    setSettings({ ...settings, listenerTrackCap: e.target.value })
+                  }
+                />
+                <p className="text-[11px] opacity-40 px-1 mt-1">Max tracks a listener can upload before hitting their quota (0 = unlimited). Per-user overrides live in the Users panel; listeners can buy more slots below via Track-Slot Topup.</p>
+              </div>
+
+              <div className="form-control pt-4 border-t border-base-content/5 mt-4">
+                <label className="label">
                   <span className="label-text font-medium">Scheduled Library Scan</span>
                 </label>
                 <select
@@ -1080,7 +1097,48 @@ export const AdminSettingsPanel = () => {
                     </label>
                   </div>
                 </div>
-                
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-base-content/5">
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text font-medium text-sm">Track-Slot Topup Price (USD)</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base-content/50 font-bold">$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="input input-bordered bg-base-300/50 w-40"
+                        value={settings.trackcapTopupPriceUsd ?? 0}
+                        onChange={(e) => setSettings({ ...settings, trackcapTopupPriceUsd: e.target.value })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <label className="label">
+                      <span className="label-text-alt opacity-40 text-[11px]">Price of one Track-Slot Topup purchase via Stripe Checkout.</span>
+                    </label>
+                  </div>
+
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text font-medium text-sm">Track-Slot Topup Tracks Granted</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      className="input input-bordered bg-base-300/50 w-full"
+                      value={settings.trackcapTopupTracksGranted ?? 0}
+                      onChange={(e) => setSettings({ ...settings, trackcapTopupTracksGranted: e.target.value })}
+                      placeholder="0"
+                    />
+                    <label className="label">
+                      <span className="label-text-alt opacity-40 text-[11px]">Number of extra track slots added to the listener's cap per topup purchase.</span>
+                    </label>
+                  </div>
+                </div>
+
                 {web3Enabled && (
                   <div className="pt-4 border-t border-base-content/5 flex flex-col md:flex-row items-center gap-4">
                     <div className="flex-1 opacity-60 text-xs">

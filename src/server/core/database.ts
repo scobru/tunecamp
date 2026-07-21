@@ -107,6 +107,8 @@ export function createDatabase(dbPath: string): DatabaseService {
             role TEXT NOT NULL DEFAULT 'admin',
             storage_quota INTEGER NOT NULL DEFAULT 0,
             storage_used INTEGER NOT NULL DEFAULT 0,
+            track_quota INTEGER DEFAULT NULL,
+            track_quota_floor INTEGER NOT NULL DEFAULT 0,
             subsonic_token TEXT,
             subsonic_password TEXT,
             gun_pub TEXT,
@@ -595,7 +597,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             1,
             '4-Track Recorder',
             'Browser-based 4-track audio recorder with overdub support, latency compensation, and sample-accurate multi-track playback. Runs entirely in your browser — no server needed.',
-            'https://www.4track.cc',
+            'https://tunecamp-4-track-recorder.vercel.app',
             'recording',
             'andreboekhorst',
             'https://github.com/andreboekhorst/4-track-recorder',
@@ -611,7 +613,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             2,
             'Audiofabric',
             'Real-time 3D WebGL music visualiser powered by the Web Audio API. Renders a spring-physics frequency fabric that pulses with the music. Plays built-in demo tracks or streams directly from your TuneCamp library via the Subsonic API.',
-            '/lab/audiofabric/index.html',
+            'https://tunecamp-audiofabric.vercel.app',
             'effects',
             'scobru',
             'https://github.com/scobru/tunecamp-audiofabric',
@@ -620,8 +622,9 @@ export function createDatabase(dbPath: string): DatabaseService {
             '["autoplay"]',
             1
         );
-        -- Migrate any existing row that still points to the old Vercel deployment
-        UPDATE lab_apps SET src = '/lab/audiofabric/index.html' WHERE id = 2 AND src != '/lab/audiofabric/index.html';
+        -- Migrate existing rows to the deployed Vercel URLs
+        UPDATE lab_apps SET src = 'https://tunecamp-4-track-recorder.vercel.app' WHERE id = 1 AND src != 'https://tunecamp-4-track-recorder.vercel.app';
+        UPDATE lab_apps SET src = 'https://tunecamp-audiofabric.vercel.app' WHERE id = 2 AND src != 'https://tunecamp-audiofabric.vercel.app';
     `);
 
     // Runtime Migrations (robust column checks)
@@ -944,6 +947,14 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating admin table: adding email column...");
                 db.exec("ALTER TABLE admin ADD COLUMN email TEXT");
                 db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_email ON admin(email COLLATE NOCASE) WHERE email IS NOT NULL");
+            }
+            if (!cols.some(col => col.name === 'track_quota')) {
+                console.log("📦 [Database] Migrating admin table: adding track_quota column...");
+                db.exec("ALTER TABLE admin ADD COLUMN track_quota INTEGER DEFAULT NULL");
+            }
+            if (!cols.some(col => col.name === 'track_quota_floor')) {
+                console.log("📦 [Database] Migrating admin table: adding track_quota_floor column...");
+                db.exec("ALTER TABLE admin ADD COLUMN track_quota_floor INTEGER NOT NULL DEFAULT 0");
             }
             // Repair stale artist links: artist_id pointing to a deleted artist.
             const artistsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='artists'").get();

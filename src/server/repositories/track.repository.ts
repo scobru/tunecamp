@@ -149,6 +149,17 @@ export class TrackRepository {
         return rows.map(row => this.mapTrack(row));
     }
 
+    countByOwner(ownerId: number): number {
+        const sql = `
+            SELECT COUNT(*) as count FROM v_tracks
+            WHERE owner_id = ?
+               OR (owner_id IS NULL AND effective_owner_id = ?)
+               OR EXISTS (SELECT 1 FROM track_ownership to_ WHERE to_.track_id = v_tracks.id AND to_.owner_id = ?)
+        `;
+        const row = this.db.prepare(sql).get(ownerId, ownerId, ownerId) as { count: number };
+        return row.count;
+    }
+
     getByOwner(ownerId: number, profile?: VisibilityProfile | ViewerContext): Track[] {
         const context = getContextFromProfile(profile);
         const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');

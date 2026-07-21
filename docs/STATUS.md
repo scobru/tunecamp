@@ -17,7 +17,7 @@ An honest snapshot of how production-ready each part of TuneCamp is. Updated 202
 | Live streaming (HLS) | **New** | Recently migrated from WebRTC mesh to server-side HLS; lightly battle-tested. |
 | Radio (HLS station) | **New** | Always-on station from playlists + dynamic genre mixes; FFmpeg concat loop. See [radio.md](radio.md). |
 | MCP server | **New / opt-in** | Exposes the catalog to AI clients (search, stats, scan) over SSE, token-gated. See [mcp-setup-guide.md](mcp-setup-guide.md). |
-| Lab apps | **Experimental** | Sandboxed-iFrame browser audio tools; PostMessage bridge not yet implemented. See [LAB.md](LAB.md). |
+| Lab apps | **Experimental** | Sandboxed-iFrame browser audio tools; PostMessage bridge implemented (getUser/getLibrary/getNowPlaying/exportAudio). See [LAB.md](LAB.md). |
 | Admin System panel | **New** | Live CPU/RAM/storage/task metrics for leak hunting. See [monitoring.md](monitoring.md). |
 | Telegram bot, Google Drive storage | **Beta** | Functional, less test coverage. |
 | SoundCloud & Bandcamp streaming | **Opt-in** | Streaming integration via SoundCloud / Bandcamp providers; enable under Admin → Integrations. |

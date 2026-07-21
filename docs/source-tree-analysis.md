@@ -29,7 +29,7 @@ tunecamp/
 │   ├── public/         # Static assets and WASM files
 │   └── src/            # React sources
 │       ├── components/ # UI Components organized by domain
-│       ├── data/       # Static client config (e.g. labApps.ts — Lab app registry)
+│       ├── data/       # Static client config (labApps.ts holds only category labels/colors — apps are DB-backed, see LAB.md)
 │       ├── hooks/      # Custom React Hooks
 │       ├── pages/      # Page Components (Route entry points, incl. Radio, Lab)
 │       ├── services/   # Client API and webapp services

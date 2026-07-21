@@ -45,6 +45,15 @@ Every album/release picks **one** distribution mode in the editor (**Studio → 
 - Selecting this mode forces `use_nft = false` and clears the price — TuneCamp never takes a cut of an off-platform sale.
 - Streaming on TuneCamp still works for any audio that was uploaded to the release; only the *sale* happens off-platform. Uploading audio is optional and only needed if you also want in-app playback (publishing/streaming model is unchanged — TuneCamp does not stream from Bandcamp).
 
+### Track-Slot Topup (Stripe)
+- **Purpose**: Lets a listener buy extra track-upload slots when they hit their `listenerTrackCap` (or per-user `track_quota` override).
+- **Route**: `POST /api/payments/stripe/create-trackcap-session`
+- **Mechanism**:
+  1. Requires an authenticated user; the return URL must point back at this instance.
+  2. Price and slot count come from the admin settings `trackcapTopupPriceUsd` and `trackcapTopupTracksGranted`.
+  3. Always charged to the instance's own Stripe account (never Connect-routed — this is a platform quota, not an artist sale).
+  4. On `checkout.session.completed`, the webhook calls `AuthService.addPurchasedTracks`, which raises both `track_quota` and its floor `track_quota_floor` so a later admin override can never undercut a paid purchase.
+
 ## 2. Unlock Codes
 
 When a payment is verified (either via Stripe Webhook or On-chain Verify), the system generates a unique 10-character alphanumeric code.

@@ -122,6 +122,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
     const library = container.library;
     const integration = container.integration;
     const database = container.database;
+    const authService = container.authService;
     const router = Router();
 
     /** Sales gate: the item's artist must have can_sell enabled. Items without
@@ -249,6 +250,13 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                     identity.updateSubscription(userId, 'active', expiresAt);
                     integration.createUnlockCode('stripe:' + session.id, undefined, undefined, evtKey);
                     console.log(`✅ Stripe Subscription Success: User ${userId} is now active until ${expiresAt}`);
+                } else if (metadata.type === 'trackcap_topup' && metadata.userId && metadata.tracksGranted) {
+                    const userId = parseInt(metadata.userId, 10);
+                    const tracksGranted = parseInt(metadata.tracksGranted, 10);
+                    const currentEffectiveQuota = parseInt(metadata.effectiveQuotaAtPurchase, 10) || 0;
+                    authService.addPurchasedTracks(userId, tracksGranted, currentEffectiveQuota);
+                    integration.createUnlockCode('stripe:' + session.id, undefined, undefined, evtKey);
+                    console.log(`✅ Stripe Track-Cap Topup Success: User ${userId} granted +${tracksGranted} tracks`);
                 } else if (metadata.itemId && metadata.type) {
                     const itemId = parseInt(metadata.itemId, 10);
                     const itemType = metadata.type; // 'track', 'album', or 'asset'
@@ -557,6 +565,71 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             res.json({ id: session.id, url: session.url });
         } catch (error: any) {
             console.error("Stripe subscription session error:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/payments/stripe/create-trackcap-session
+     * Purchases additional track slots (raises the user's track cap). Paid to
+     * this instance's own Stripe account, never routed via Connect.
+     */
+    router.post("/stripe/create-trackcap-session", async (req, res) => {
+        try {
+            const { successUrl, cancelUrl, email } = req.body;
+            const userId = getUserIdFromRequest(req, config.jwtSecret);
+            if (!userId) {
+                return res.status(401).json({ error: "Authentication required to purchase track slots" });
+            }
+
+            const sitePublicUrl = identity.getSetting("publicUrl") || config.publicUrl;
+            if (!successUrl || !cancelUrl || !isAllowedReturnUrl(successUrl, req, sitePublicUrl) || !isAllowedReturnUrl(cancelUrl, req, sitePublicUrl)) {
+                return res.status(400).json({ error: "successUrl and cancelUrl must point to this instance." });
+            }
+
+            const sKey = identity.getSetting("stripe_secret_key") || config.stripeSecretKey;
+            if (!sKey) {
+                return res.status(501).json({ error: "Stripe not configured on this server." });
+            }
+
+            const stripe = stripeClient(sKey);
+            const rawPrice = identity.getSetting("trackcapTopupPriceUsd");
+            const unitAmount = rawPrice ? Math.round(parseFloat(rawPrice) * 100) : 500;
+            const tracksGranted = parseInt(identity.getSetting("trackcapTopupTracksGranted") || "10", 10);
+            const siteName = identity.getSetting("siteName") || "TuneCamp";
+
+            const trackQuotaInfo = authService.getTrackQuotaInfo(userId);
+            const effectiveQuotaAtPurchase = (trackQuotaInfo && trackQuotaInfo.track_quota !== null)
+                ? trackQuotaInfo.track_quota
+                : Number(identity.getSetting("listenerTrackCap") || 0);
+
+            const session = await stripe.checkout.sessions.create({
+                line_items: [{
+                    price_data: {
+                        currency: 'usd',
+                        product_data: {
+                            name: `${siteName} +${tracksGranted} Track Slots`,
+                            description: 'Permanently increases your track upload limit on this instance.'
+                        },
+                        unit_amount: unitAmount,
+                    },
+                    quantity: 1,
+                }],
+                mode: 'payment',
+                success_url: successUrl,
+                cancel_url: cancelUrl,
+                customer_email: email,
+                metadata: {
+                    type: 'trackcap_topup',
+                    userId: userId.toString(),
+                    tracksGranted: tracksGranted.toString(),
+                    effectiveQuotaAtPurchase: effectiveQuotaAtPurchase.toString()
+                }
+            });
+
+            res.json({ id: session.id, url: session.url });
+        } catch (error: any) {
+            console.error("Stripe trackcap session error:", error);
             res.status(500).json({ error: error.message });
         }
     });

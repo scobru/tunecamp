@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.1] - 2026-07-21
+
+### Fixed
+- **CI: pinned exact React versions in `webapp/package.json` and added root-level `overrides` to collapse the dependency tree to a single React copy.** `npm ci` was failing non-deterministically because unpinned `^19.2.0` caret ranges for `react`/`react-dom`/`@types/react`/`@types/react-dom` let different install passes resolve different patch versions, which `npm ci`'s lockfile validation flagged as stale. Beyond that, npm workspaces hoisting split `react` into two live copies — root `node_modules/react@18.3.1` (needed by `vitepress`'s `@docsearch/react`, plus hoisted there for webapp's own `@testing-library/react`, `@tanstack/react-query`, `react-router-dom`, `react-hot-toast`, `react-i18next`, `zustand`, `lucide-react`) vs `webapp/node_modules/react@19.2.5` (used by webapp's own source) — causing `Objects are not valid as a React child` failures in `Search.test.tsx` and `ThemeSwitcher.test.tsx`. Added `overrides` forcing `react`/`react-dom` to the pinned `19.2.5` tree-wide, with an explicit exemption keeping `color-thief-react`'s isolated legacy React 16 copy untouched.
+
+## [3.1.0] - 2026-07-20
+
+### Added
+- **Per-listener track-count cap, with a Stripe track-slot topup to raise it.** Listeners are now limited to `listenerTrackCap` tracks (a new global admin setting, 0 = unlimited) unless a per-user `track_quota` override is set on their admin row. `POST /tracks` upload now enforces the effective cap independently from the existing storage-quota check, returning 413 with the current usage when exceeded. Root admins can set `trackQuota` per user via `POST/PUT /admin/system/users`; a value below the user's purchased floor (`track_quota_floor`) is clamped up rather than rejected. `POST /api/payments/stripe/create-trackcap-session` lets an authenticated listener buy `trackcapTopupTracksGranted` extra slots for `trackcapTopupPriceUsd` (both new admin settings); the Stripe webhook's `trackcap_topup` branch calls `AuthService.addPurchasedTracks` on completion, which raises both the quota and its floor so a later admin override can't undercut a paid purchase.
+
+## [3.0.1] - 2026-07-20
+
+### Fixed
+- **Built-in Lab apps now point to their deployed URLs.** The `lab_apps` seed/migration rows for 4-Track Recorder and Audiofabric now target `tunecamp-4-track-recorder.vercel.app` and `tunecamp-audiofabric.vercel.app` instead of the old `4track.cc` / locally-bundled path, with a runtime `UPDATE` so existing installs migrate too.
+- **`LAB.md` (and its Italian mirror) rewritten to match the real Lab apps architecture.** The docs still described a static `webapp/src/data/labApps.ts` registry array; Lab apps have actually been DB-backed (`lab_apps` table, admin API, Admin panel) for a while. Also corrected `id` from a string slug to the numeric DB row id, and dropped stale "PostMessage bridge not yet implemented" language in `STATUS.md` — it's implemented. `source-tree-analysis.md` and `audiofabric.md` (plus Italian mirrors) updated to match.
+
 ## [3.0.0] - 2026-07-17
 
 ### Removed

@@ -2,7 +2,7 @@
 
 Un visualizzatore musicale 3D WebGL in tempo reale alimentato dalle API Web Audio e Three.js. Genera un tessuto di frequenze basato su fisica a molle che pulsa e si muove a ritmo di musica.
 
-Audiofabric è integrato in TuneCamp come app Lab integrata, servita localmente all'indirizzo `/lab/audiofabric/index.html`.
+Audiofabric è integrato in TuneCamp come app Lab integrata, seminata nella tabella `lab_apps` puntando all'istanza deployata su `https://tunecamp-audiofabric.vercel.app`.
 
 ## Caratteristiche
 
@@ -16,7 +16,7 @@ Audiofabric è integrato in TuneCamp come app Lab integrata, servita localmente 
 - **Repository del Codice Sorgente**: [github.com/scobru/tunecamp-audiofabric](https://github.com/scobru/tunecamp-audiofabric) (derivato da [github.com/rolyatmax/audiofabric](https://github.com/rolyatmax/audiofabric))
 - **Categoria**: Visualizzazione / Effetti
 - **Permessi Richiesti**: `autoplay` (configurato nell'elenco allow dell'iFrame per avviare automaticamente la riproduzione audio al caricamento).
-- **Metodo di Hosting**: Opzione C (incluso all'interno della cartella degli asset statici di TuneCamp sotto `webapp/public/lab/audiofabric/`).
+- **Metodo di Hosting**: Opzione A (URL esterno — deployato su Vercel a `tunecamp-audiofabric.vercel.app`, seminato tramite la riga id 2 della tabella `lab_apps`).
 
 ## Come riprodurre in Streaming dalla Libreria TuneCamp
 
