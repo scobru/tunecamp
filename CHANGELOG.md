@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.3] - 2026-07-21
+
+### Fixed
+- **README ecosystem list still cited `tunecamp-peer` as a standalone project.** Its reverse-WebSocket-tunnel peer file-sharing was absorbed into Sidecamp; the README's own `sidecamp` bullet already describes it. Removed the stale duplicate `tunecamp-peer` entry.
+
 ## [3.1.2] - 2026-07-21
 
 ### Fixed
