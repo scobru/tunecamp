@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.4] - 2026-07-21
+
+### Fixed
+- **Production Docker build failed with `Cannot find module 'tunecamp-design-system'`.** `webapp/package.json` depends on it via `file:../../tunecamp-design-system`, a sibling repo checked out next to `tunecamp` only on developer machines — the Docker build context is just the `tunecamp` repo, so that path never existed in the image and `tsc -b`/`vite build` failed resolving the module and its types. The builder stage now `git clone`s `scobru/tunecamp-design-system` to `/tunecamp-design-system` (the same relative location `file:../../tunecamp-design-system` resolves to from `/app/webapp`) and runs `npm ci` there — which triggers its `prepare` → `npm run build` script — before installing `tunecamp`'s own dependencies, so the package's `dist` exists by the time `npm ci` resolves the `file:` dependency.
+
 ## [3.1.3] - 2026-07-21
 
 ### Fixed
