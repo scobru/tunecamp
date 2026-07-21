@@ -59,7 +59,7 @@ jobs:
       # a sibling repo checked out next to this one. Clone and build it (its `prepare`
       # script runs `npm run build`) so it's present at that path before npm ci resolves
       # webapp's dependencies. Mirrors the same fetch in the Dockerfile builder stage.
-      - name: Fetch and build tunecamp-design-system (file: dependency)
+      - name: Fetch and build tunecamp-design-system (file dependency)
         run: |
           git clone --depth 1 https://github.com/scobru/tunecamp-design-system.git ../tunecamp-design-system
           cd ../tunecamp-design-system && npm ci
