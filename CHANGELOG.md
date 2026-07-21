@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.1] - 2026-07-21
+
+### Fixed
+- **CI: pinned exact React versions in `webapp/package.json` and added root-level `overrides` to collapse the dependency tree to a single React copy.** `npm ci` was failing non-deterministically because unpinned `^19.2.0` caret ranges for `react`/`react-dom`/`@types/react`/`@types/react-dom` let different install passes resolve different patch versions, which `npm ci`'s lockfile validation flagged as stale. Beyond that, npm workspaces hoisting split `react` into two live copies — root `node_modules/react@18.3.1` (needed by `vitepress`'s `@docsearch/react`, plus hoisted there for webapp's own `@testing-library/react`, `@tanstack/react-query`, `react-router-dom`, `react-hot-toast`, `react-i18next`, `zustand`, `lucide-react`) vs `webapp/node_modules/react@19.2.5` (used by webapp's own source) — causing `Objects are not valid as a React child` failures in `Search.test.tsx` and `ThemeSwitcher.test.tsx`. Added `overrides` forcing `react`/`react-dom` to the pinned `19.2.5` tree-wide, with an explicit exemption keeping `color-thief-react`'s isolated legacy React 16 copy untouched.
+
 ## [3.1.0] - 2026-07-20
 
 ### Added
