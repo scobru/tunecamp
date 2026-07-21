@@ -97,7 +97,6 @@ In addition to the core server, the TuneCamp ecosystem includes several companio
 
 - [**sidecamp**](https://github.com/scobru/sidecamp): A standalone Electron desktop app that handles all P2P content acquisition — Soulseek search & download, BitTorrent, and yt-dlp audio ripping — plus peer file-sharing with any TuneCamp instance via a reverse WebSocket tunnel. Keeps the core server clean and compliant.
 - [**tunecamp-website**](https://github.com/scobru/tunecamp-website): The landing page, global community directory, and web-based community audio player.
-- [**tunecamp-peer**](https://github.com/scobru/tunecamp-peer): A lightweight CLI daemon that shares your local music folders with any TuneCamp instance over a secure, reverse WebSocket tunnel.
 - [**tunecamp-4-track-recorder**](https://github.com/scobru/tunecamp-4-track-recorder): A browser-based 4-track cassette recorder built with the Web Audio API and Svelte 5, featuring low-latency overdubbing and mixer capabilities.
 - [**tunecamp-audiofabric**](https://github.com/scobru/tunecamp-audiofabric): An interactive, real-time 3D WebGL music visualizer built with `regl` and the Web Audio API.
 
