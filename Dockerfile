@@ -43,6 +43,15 @@ RUN echo "CapRover commit: ${CAPROVER_GIT_COMMIT_SHA:-none}"
 # Install build dependencies for native modules (better-sqlite3)
 RUN apk add --no-cache python3 make g++ curl git libc6-compat gcompat unzip
 
+# webapp depends on tunecamp-design-system via "file:../../tunecamp-design-system",
+# a sibling repo that only exists on developer machines. Fetch and build it here so
+# it's present at that same relative path (/tunecamp-design-system) before npm ci
+# resolves webapp's dependencies.
+ARG TUNECAMP_DESIGN_SYSTEM_REF=master
+RUN git clone --depth 1 --branch ${TUNECAMP_DESIGN_SYSTEM_REF} \
+      https://github.com/scobru/tunecamp-design-system.git /tunecamp-design-system && \
+    cd /tunecamp-design-system && npm ci && npm cache clean --force
+
 # Copy package files and local dependencies
 COPY package*.json ./
 COPY scripts ./scripts
