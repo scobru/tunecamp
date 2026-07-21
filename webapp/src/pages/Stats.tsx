@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { BarChart2, User, Music } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
+import { Panel } from 'tunecamp-design-system';
 
 const Stats = () => {
     const [topTracks, setTopTracks] = useState<any[]>([]);
@@ -49,49 +50,45 @@ const Stats = () => {
             ) : (
                 <div className="grid md:grid-cols-2 gap-8">
                     {/* Top Tracks */}
-                    <div className="card bg-base-200 border border-base-content/5">
-                        <div className="card-body">
-                            <h2 className="card-title flex items-center gap-2 mb-4">
-                                <Music className="text-secondary"/> Top Tracks
-                            </h2>
-                            <div className="space-y-2">
-                                {topTracks.map((item, i) => (
-                                    <div key={i} className="flex items-center justify-between p-2 hover:bg-base-content/5 rounded-lg">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <span className="font-mono text-xl opacity-30 w-6">{i + 1}</span>
-                                            <div className="min-w-0">
-                                                <div className="font-bold truncate">{item.title}</div>
-                                                <div className="text-xs opacity-50 truncate">{item.artistName}</div>
-                                            </div>
+                    <Panel variant="solid" padding="lg">
+                        <h2 className="card-title flex items-center gap-2 mb-4">
+                            <Music className="text-secondary"/> Top Tracks
+                        </h2>
+                        <div className="space-y-2">
+                            {topTracks.map((item, i) => (
+                                <div key={i} className="flex items-center justify-between p-2 hover:bg-base-content/5 rounded-lg">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <span className="font-mono text-xl opacity-30 w-6">{i + 1}</span>
+                                        <div className="min-w-0">
+                                            <div className="font-bold truncate">{item.title}</div>
+                                            <div className="text-xs opacity-50 truncate">{item.artistName}</div>
                                         </div>
-                                        <div className="font-mono font-bold opacity-70">{item.playCount} plays</div>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="font-mono font-bold opacity-70">{item.playCount} plays</div>
+                                </div>
+                            ))}
                         </div>
-                    </div>
+                    </Panel>
 
                     {/* Top Artists */}
-                    <div className="card bg-base-200 border border-base-content/5">
-                        <div className="card-body">
-                            <h2 className="card-title flex items-center gap-2 mb-4">
-                                <User className="text-accent"/> Top Artists
-                            </h2>
-                            <div className="space-y-2">
-                                {topArtists.map((item, i) => (
-                                    <div key={i} className="flex items-center justify-between p-2 hover:bg-base-content/5 rounded-lg">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <span className="font-mono text-xl opacity-30 w-6">{i + 1}</span>
-                                            <div className="min-w-0">
-                                                <div className="font-bold truncate">{item.name}</div>
-                                            </div>
+                    <Panel variant="solid" padding="lg">
+                        <h2 className="card-title flex items-center gap-2 mb-4">
+                            <User className="text-accent"/> Top Artists
+                        </h2>
+                        <div className="space-y-2">
+                            {topArtists.map((item, i) => (
+                                <div key={i} className="flex items-center justify-between p-2 hover:bg-base-content/5 rounded-lg">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <span className="font-mono text-xl opacity-30 w-6">{i + 1}</span>
+                                        <div className="min-w-0">
+                                            <div className="font-bold truncate">{item.name}</div>
                                         </div>
-                                        <div className="font-mono font-bold opacity-70">{item.playCount} plays</div>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="font-mono font-bold opacity-70">{item.playCount} plays</div>
+                                </div>
+                            ))}
                         </div>
-                    </div>
+                    </Panel>
                 </div>
             )}
         </div>
