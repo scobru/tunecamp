@@ -254,6 +254,12 @@ export interface SiteSettings {
     listenerSelfPublish?: boolean | string;
     /** Default storage quota (in MB) granted to listeners auto-approved via self-publish. Default 1024 (1GB). */
     listenerSelfPublishQuota?: number | string;
+    /** Max tracks a listener can upload before hitting their quota (0 = unlimited). */
+    listenerTrackCap?: number | string;
+    /** Price (USD) of one Track-Slot Topup purchase via Stripe Checkout. */
+    trackcapTopupPriceUsd?: number | string;
+    /** Number of extra track slots granted per Track-Slot Topup purchase. */
+    trackcapTopupTracksGranted?: number | string;
     /** 'label' (curated storefront, default) or 'community' (registrations get an artist profile, selling opt-in per artist) */
     mode?: string;
     backgroundImage?: string;
