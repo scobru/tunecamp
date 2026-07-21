@@ -25,6 +25,7 @@ export default defineConfig({
     }),
   ],
   resolve: {
+    dedupe: ['react', 'react-dom'],
     alias: {
       "zen": path.resolve(__dirname, "./src/zen.js"),
       "@": path.resolve(__dirname, "./src"),
