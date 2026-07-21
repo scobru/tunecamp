@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.2] - 2026-07-21
+
+### Fixed
+- **Server crash-loop on startup when a library artist already owns the site actor's reserved slug.** The site actor (`id = -1`) bootstrap in `database.ts` and the two self-healing paths in `artist.repository.ts` (`getById`/`getByIdSimple`) inserted/updated the reserved slug unconditionally, so if a scanned music-library artist had already claimed that slug (e.g. `sudo-records`), the insert hit `SQLITE_CONSTRAINT_UNIQUE` and the process died before the HTTP server could bind — restarting endlessly. All three sites now free the colliding artist's slug (renaming it with a `-artist`/`-artist-N` suffix) before claiming it for the site actor. Deduped the two repository copies into `ArtistRepository.ensureSiteActor()`.
+
 ## [3.1.1] - 2026-07-21
 
 ### Fixed

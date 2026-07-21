@@ -63,36 +63,37 @@ export class ArtistRepository {
         } as Artist;
     }
 
-    getById(id: number): Artist | undefined {
-        if (id === -1) {
-            const hasSiteActor = this.db.prepare("SELECT 1 FROM artists WHERE id = -1").get();
-            if (!hasSiteActor) {
-                console.log("📡 [Database] Self-healing: Re-creating virtual artist record for Site Actor...");
-                const pubKey = this.db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
-                const privKey = this.db.prepare("SELECT value FROM settings WHERE key = 'site_private_key'").get() as { value: string } | undefined;
-                const siteSlug = (this.db.prepare("SELECT value FROM settings WHERE key = 'siteHandle'").get() as { value: string } | undefined)?.value || 'site';
-                const siteActorName = (this.db.prepare("SELECT value FROM settings WHERE key = 'siteName'").get() as { value: string } | undefined)?.value || 'Site';
-                this.db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, ?, ?, 'public', ?, ?)")
-                  .run(siteActorName, siteSlug, pubKey ? pubKey.value : null, privKey ? privKey.value : null);
+    private ensureSiteActor(): void {
+        const hasSiteActor = this.db.prepare("SELECT 1 FROM artists WHERE id = -1").get();
+        if (hasSiteActor) return;
+        console.log("📡 [Database] Self-healing: Re-creating virtual artist record for Site Actor...");
+        const pubKey = this.db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
+        const privKey = this.db.prepare("SELECT value FROM settings WHERE key = 'site_private_key'").get() as { value: string } | undefined;
+        const siteSlug = (this.db.prepare("SELECT value FROM settings WHERE key = 'siteHandle'").get() as { value: string } | undefined)?.value || 'site';
+        const siteActorName = (this.db.prepare("SELECT value FROM settings WHERE key = 'siteName'").get() as { value: string } | undefined)?.value || 'Site';
+        // The site actor's slug is reserved; free it from any library artist that
+        // already holds it so this insert doesn't crash with SQLITE_CONSTRAINT_UNIQUE.
+        const collidingArtist = this.db.prepare("SELECT id FROM artists WHERE slug = ? AND id != -1").get(siteSlug) as { id: number } | undefined;
+        if (collidingArtist) {
+            let fallbackSlug = `${siteSlug}-artist`;
+            let n = 2;
+            while (this.db.prepare("SELECT 1 FROM artists WHERE slug = ?").get(fallbackSlug)) {
+                fallbackSlug = `${siteSlug}-artist-${n++}`;
             }
+            this.db.prepare("UPDATE artists SET slug = ? WHERE id = ?").run(fallbackSlug, collidingArtist.id);
         }
+        this.db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, ?, ?, 'public', ?, ?)")
+          .run(siteActorName, siteSlug, pubKey ? pubKey.value : null, privKey ? privKey.value : null);
+    }
+
+    getById(id: number): Artist | undefined {
+        if (id === -1) this.ensureSiteActor();
         const row = this.getArtistStmt.get(id);
         return this.mapArtist(row);
     }
 
     getByIdSimple(id: number): Artist | undefined {
-        if (id === -1) {
-            const hasSiteActor = this.db.prepare("SELECT 1 FROM artists WHERE id = -1").get();
-            if (!hasSiteActor) {
-                console.log("📡 [Database] Self-healing: Re-creating virtual artist record for Site Actor...");
-                const pubKey = this.db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
-                const privKey = this.db.prepare("SELECT value FROM settings WHERE key = 'site_private_key'").get() as { value: string } | undefined;
-                const siteSlug = (this.db.prepare("SELECT value FROM settings WHERE key = 'siteHandle'").get() as { value: string } | undefined)?.value || 'site';
-                const siteActorName = (this.db.prepare("SELECT value FROM settings WHERE key = 'siteName'").get() as { value: string } | undefined)?.value || 'Site';
-                this.db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, ?, ?, 'public', ?, ?)")
-                  .run(siteActorName, siteSlug, pubKey ? pubKey.value : null, privKey ? privKey.value : null);
-            }
-        }
+        if (id === -1) this.ensureSiteActor();
         const row = this.getArtistSimpleStmt.get(id);
         return this.mapArtist(row);
     }

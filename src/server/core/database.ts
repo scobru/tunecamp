@@ -753,6 +753,18 @@ export function createDatabase(dbPath: string): DatabaseService {
             const siteNameRow = db.prepare("SELECT value FROM settings WHERE key = 'siteName'").get() as { value: string } | undefined;
             const siteSlug = siteHandleRow?.value || 'site';
             const siteActorName = siteNameRow?.value || 'Site';
+            // The site actor's slug (id -1) is reserved. If a library artist already
+            // holds it, free it up so the reserved-slug insert/update doesn't crash
+            // with SQLITE_CONSTRAINT_UNIQUE on every restart.
+            const collidingArtist = db.prepare("SELECT id FROM artists WHERE slug = ? AND id != -1").get(siteSlug) as { id: number } | undefined;
+            if (collidingArtist) {
+                let fallbackSlug = `${siteSlug}-artist`;
+                let n = 2;
+                while (db.prepare("SELECT 1 FROM artists WHERE slug = ?").get(fallbackSlug)) {
+                    fallbackSlug = `${siteSlug}-artist-${n++}`;
+                }
+                db.prepare("UPDATE artists SET slug = ? WHERE id = ?").run(fallbackSlug, collidingArtist.id);
+            }
             if (!hasSiteActor) {
                 console.log(`📡 [Database] Creating virtual artist record for Site Actor (@${siteSlug})...`);
                 const pubKey = db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
