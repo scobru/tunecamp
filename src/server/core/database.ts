@@ -753,6 +753,27 @@ export function createDatabase(dbPath: string): DatabaseService {
             const siteNameRow = db.prepare("SELECT value FROM settings WHERE key = 'siteName'").get() as { value: string } | undefined;
             const siteSlug = siteHandleRow?.value || 'site';
             const siteActorName = siteNameRow?.value || 'Site';
+            // The site actor's slug and name (id -1) are reserved (both columns are
+            // UNIQUE). If a library artist already holds either, free it up so the
+            // reserved insert/update doesn't crash with SQLITE_CONSTRAINT_UNIQUE.
+            const collidingSlugArtist = db.prepare("SELECT id FROM artists WHERE slug = ? AND id != -1").get(siteSlug) as { id: number } | undefined;
+            if (collidingSlugArtist) {
+                let fallbackSlug = `${siteSlug}-artist`;
+                let n = 2;
+                while (db.prepare("SELECT 1 FROM artists WHERE slug = ?").get(fallbackSlug)) {
+                    fallbackSlug = `${siteSlug}-artist-${n++}`;
+                }
+                db.prepare("UPDATE artists SET slug = ? WHERE id = ?").run(fallbackSlug, collidingSlugArtist.id);
+            }
+            const collidingNameArtist = db.prepare("SELECT id FROM artists WHERE name = ? AND id != -1").get(siteActorName) as { id: number } | undefined;
+            if (collidingNameArtist) {
+                let fallbackName = `${siteActorName} (Artist)`;
+                let n = 2;
+                while (db.prepare("SELECT 1 FROM artists WHERE name = ?").get(fallbackName)) {
+                    fallbackName = `${siteActorName} (Artist ${n++})`;
+                }
+                db.prepare("UPDATE artists SET name = ? WHERE id = ?").run(fallbackName, collidingNameArtist.id);
+            }
             if (!hasSiteActor) {
                 console.log(`📡 [Database] Creating virtual artist record for Site Actor (@${siteSlug})...`);
                 const pubKey = db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
