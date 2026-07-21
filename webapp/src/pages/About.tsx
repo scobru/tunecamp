@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Music, Shield, Users, Zap, Globe, Cpu, Brain, CreditCard, Cloud, Layout } from "lucide-react";
+import { Panel } from "tunecamp-design-system";
 
 const About = () => {
   return (
@@ -15,135 +16,115 @@ const About = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
-          <div className="card-body">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
-              <Cpu size={28} />
-            </div>
-            <h2 className="card-title text-xl">Core Architecture</h2>
-            <p className="opacity-70">
-              A full-featured Node.js/Express server for self-hosted music
-              streaming and library management with a robust CLI.
-            </p>
+        <Panel variant="solid" padding="lg" isInteractive>
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
+            <Cpu size={28} />
           </div>
-        </div>
+          <h2 className="card-title text-xl">Core Architecture</h2>
+          <p className="opacity-70">
+            A full-featured Node.js/Express server for self-hosted music
+            streaming and library management with a robust CLI.
+          </p>
+        </Panel>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
-          <div className="card-body">
-            <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-4 text-secondary">
-              <Music size={28} />
-            </div>
-            <h2 className="card-title text-xl">Music Management</h2>
-            <p className="opacity-70">
-              Automated metadata parsing, recursive library scanning, and
-              high-quality streaming with visual waveform generation.
-            </p>
+        <Panel variant="solid" padding="lg" isInteractive>
+          <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-4 text-secondary">
+            <Music size={28} />
           </div>
-        </div>
+          <h2 className="card-title text-xl">Music Management</h2>
+          <p className="opacity-70">
+            Automated metadata parsing, recursive library scanning, and
+            high-quality streaming with visual waveform generation.
+          </p>
+        </Panel>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
-          <div className="card-body">
-            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">
-              <Globe size={28} />
-            </div>
-            <h2 className="card-title text-xl">Connectivity</h2>
-            <p className="opacity-70">
-              Federated social features powered by ActivityPub and Subsonic API
-              support for third-party mobile clients.
-            </p>
+        <Panel variant="solid" padding="lg" isInteractive>
+          <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">
+            <Globe size={28} />
           </div>
-        </div>
+          <h2 className="card-title text-xl">Connectivity</h2>
+          <p className="opacity-70">
+            Federated social features powered by ActivityPub and Subsonic API
+            support for third-party mobile clients.
+          </p>
+        </Panel>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
-          <div className="card-body">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
-              <Shield size={28} />
-            </div>
-            <h2 className="card-title text-xl">Security & Privacy</h2>
-            <p className="opacity-70">
-              Federated over ActivityPub, secure JWT-based authentication,
-              and "pay-what-you-want" unlock codes.
-            </p>
+        <Panel variant="solid" padding="lg" isInteractive>
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
+            <Shield size={28} />
           </div>
-        </div>
+          <h2 className="card-title text-xl">Security & Privacy</h2>
+          <p className="opacity-70">
+            Federated over ActivityPub, secure JWT-based authentication,
+            and "pay-what-you-want" unlock codes.
+          </p>
+        </Panel>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
-          <div className="card-body">
-            <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-4 text-secondary">
-              <Users size={28} />
-            </div>
-            <h2 className="card-title text-xl">Empowering Artists</h2>
-            <p className="opacity-70">
-              Direct connection between artists and listeners without
-              intermediaries. Own your data, your platform, and your audience.
-            </p>
+        <Panel variant="solid" padding="lg" isInteractive>
+          <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-4 text-secondary">
+            <Users size={28} />
           </div>
-        </div>
+          <h2 className="card-title text-xl">Empowering Artists</h2>
+          <p className="opacity-70">
+            Direct connection between artists and listeners without
+            intermediaries. Own your data, your platform, and your audience.
+          </p>
+        </Panel>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
-          <div className="card-body">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
-              <Brain size={28} />
-            </div>
-            <h2 className="card-title text-xl">AI Intelligence</h2>
-            <p className="opacity-70">
-              Automated album identification and metadata enrichment powered by AI.
-              Keep your library perfectly organized with smart tools.
-            </p>
+        <Panel variant="solid" padding="lg" isInteractive>
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
+            <Brain size={28} />
           </div>
-        </div>
+          <h2 className="card-title text-xl">AI Intelligence</h2>
+          <p className="opacity-70">
+            Automated album identification and metadata enrichment powered by AI.
+            Keep your library perfectly organized with smart tools.
+          </p>
+        </Panel>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
-          <div className="card-body">
-            <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-4 text-secondary">
-              <CreditCard size={28} />
-            </div>
-            <h2 className="card-title text-xl">Monetization</h2>
-            <p className="opacity-70">
-              Direct artist-to-fan sales with integrated Stripe support.
-              Receive payments without middleman platform fees.
-            </p>
+        <Panel variant="solid" padding="lg" isInteractive>
+          <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-4 text-secondary">
+            <CreditCard size={28} />
           </div>
-        </div>
+          <h2 className="card-title text-xl">Monetization</h2>
+          <p className="opacity-70">
+            Direct artist-to-fan sales with integrated Stripe support.
+            Receive payments without middleman platform fees.
+          </p>
+        </Panel>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
-          <div className="card-body">
-            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">
-              <Cloud size={28} />
-            </div>
-            <h2 className="card-title text-xl">Cloud Connectivity</h2>
-            <p className="opacity-70">
-              Seamlessly integrate with Google Drive. Stream from the cloud or
-              localize tracks to your private server with a single click.
-            </p>
+        <Panel variant="solid" padding="lg" isInteractive>
+          <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">
+            <Cloud size={28} />
           </div>
-        </div>
+          <h2 className="card-title text-xl">Cloud Connectivity</h2>
+          <p className="opacity-70">
+            Seamlessly integrate with Google Drive. Stream from the cloud or
+            localize tracks to your private server with a single click.
+          </p>
+        </Panel>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
-          <div className="card-body">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
-              <Layout size={28} />
-            </div>
-            <h2 className="card-title text-xl">Immersive Playback</h2>
-            <p className="opacity-70">
-              Experience your music through a cinematic "Canvas" view with
-              large-scale waveforms and high-quality artwork displays.
-            </p>
+        <Panel variant="solid" padding="lg" isInteractive>
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
+            <Layout size={28} />
           </div>
-        </div>
+          <h2 className="card-title text-xl">Immersive Playback</h2>
+          <p className="opacity-70">
+            Experience your music through a cinematic "Canvas" view with
+            large-scale waveforms and high-quality artwork displays.
+          </p>
+        </Panel>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
-          <div className="card-body">
-            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">
-              <Zap size={28} />
-            </div>
-            <h2 className="card-title text-xl">Modern Design</h2>
-            <p className="opacity-70">
-              A premium React-based frontend using Tailwind CSS and DaisyUI,
-              optimized for both desktop and mobile devices.
-            </p>
+        <Panel variant="solid" padding="lg" isInteractive>
+          <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">
+            <Zap size={28} />
           </div>
-        </div>
+          <h2 className="card-title text-xl">Modern Design</h2>
+          <p className="opacity-70">
+            A premium React-based frontend using Tailwind CSS and DaisyUI,
+            optimized for both desktop and mobile devices.
+          </p>
+        </Panel>
       </div>
 
       <div className="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-3xl p-8 border border-base-content/5 text-center space-y-6">
