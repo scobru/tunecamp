@@ -1,7 +1,15 @@
 import { jest, describe, test, expect, beforeEach } from "@jest/globals";
 import express from "express";
 import request from "supertest";
-import { createPeersRoutes } from "../peers.js";
+
+const mockFetchJsonSafe = jest.fn();
+jest.unstable_mockModule("../../../common/network.js", () => ({
+    fetchSafe: jest.fn(),
+    drainResponse: jest.fn(),
+    fetchJsonSafe: mockFetchJsonSafe
+}));
+
+const { createPeersRoutes } = await import("../peers.js");
 
 const mockAuthMiddleware = {
     requireUser: (req: any, res: any, next: any) => {
@@ -49,7 +57,7 @@ describe("Peers API Routes Tests", () => {
         jest.clearAllMocks();
         app = express();
         app.use(express.json());
-        
+
         app.use("/api/peers", createPeersRoutes({
             authService: mockAuthService,
             peerService: mockPeerService,
@@ -59,6 +67,143 @@ describe("Peers API Routes Tests", () => {
             musicDir: "/music",
             authMiddleware: mockAuthMiddleware
         } as any));
+    });
+
+    test("GET federated-sessions returns scrubbed sessions when federation is enabled", async () => {
+        mockIdentity.getSetting.mockImplementation((k: string) => {
+            if (k === "peerEnabled") return "true";
+            if (k === "peerFederation") return "true";
+            return null;
+        });
+        mockPeerService.getSessions.mockReturnValue([
+            { id: "sess-1", username: "peer1", trackCount: 3, ip_address: "10.0.0.1" }
+        ]);
+
+        const response = await request(app).get("/api/peers/federated-sessions");
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual([{ id: "sess-1", username: "peer1", trackCount: 3 }]);
+    });
+
+    test("GET federated-sessions is blocked when peer federation is disabled", async () => {
+        mockIdentity.getSetting.mockImplementation((k: string) => {
+            if (k === "peerEnabled") return "true";
+            if (k === "peerFederation") return "false";
+            return null;
+        });
+
+        const response = await request(app).get("/api/peers/federated-sessions");
+
+        expect(response.status).toBe(403);
+        expect(mockPeerService.getSessions).not.toHaveBeenCalled();
+    });
+
+    test("GET /:sessionId/tracks/federated-list returns tracks when federation is enabled", async () => {
+        mockIdentity.getSetting.mockImplementation((k: string) => {
+            if (k === "peerEnabled") return "true";
+            if (k === "peerFederation") return "true";
+            return null;
+        });
+        mockPeerService.getTracksBySession.mockReturnValue([{ id: "track-1", title: "Song" }]);
+
+        const response = await request(app).get("/api/peers/sess-1/tracks/federated-list");
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual([{ id: "track-1", title: "Song" }]);
+    });
+
+    test("GET /:sessionId/tracks/federated-list is blocked when peer federation is disabled", async () => {
+        mockIdentity.getSetting.mockImplementation((k: string) => {
+            if (k === "peerEnabled") return "true";
+            if (k === "peerFederation") return "false";
+            return null;
+        });
+
+        const response = await request(app).get("/api/peers/sess-1/tracks/federated-list");
+
+        expect(response.status).toBe(403);
+        expect(mockPeerService.getTracksBySession).not.toHaveBeenCalled();
+    });
+
+    test("GET /api/peers fans out to federated instances when peerFederation is enabled", async () => {
+        mockIdentity.getSetting.mockImplementation((k: string) => {
+            if (k === "peerFederation") return "true";
+            return null;
+        });
+        mockPeerService.getSessions.mockReturnValue([{ id: "local-1", username: "local", trackCount: 1 }]);
+        const mockGetCommunitySites = jest.fn().mockReturnValue([{ url: "https://b.example.com" }]);
+        mockFetchJsonSafe.mockResolvedValue([{ id: "remote-1", username: "peerB1", trackCount: 2 }]);
+
+        app = express();
+        app.use(express.json());
+        app.use("/api/peers", createPeersRoutes({
+            authService: mockAuthService,
+            peerService: mockPeerService,
+            database: mockDatabase,
+            identity: mockIdentity,
+            scannerService: mockScannerService,
+            musicDir: "/music",
+            authMiddleware: mockAuthMiddleware,
+            federatedDiscoveryService: { getCommunitySites: mockGetCommunitySites }
+        } as any));
+
+        const response = await request(app).get("/api/peers");
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual([
+            { id: "local-1", username: "local", trackCount: 1 },
+            { id: "remote-1", username: "peerB1", trackCount: 2, origin: "https://b.example.com" }
+        ]);
+    });
+
+    test("GET /:sessionId/tracks proxies to a known federated origin", async () => {
+        const mockGetCommunitySites = jest.fn().mockReturnValue([{ url: "https://b.example.com" }]);
+        mockFetchJsonSafe.mockResolvedValue([{ id: "remote-track-1", title: "Remote Song" }]);
+
+        app = express();
+        app.use(express.json());
+        app.use("/api/peers", createPeersRoutes({
+            authService: mockAuthService,
+            peerService: mockPeerService,
+            database: mockDatabase,
+            identity: mockIdentity,
+            scannerService: mockScannerService,
+            musicDir: "/music",
+            authMiddleware: mockAuthMiddleware,
+            federatedDiscoveryService: { getCommunitySites: mockGetCommunitySites }
+        } as any));
+
+        const response = await request(app)
+            .get("/api/peers/sess-remote/tracks")
+            .query({ origin: "https://b.example.com" });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual([{ id: "remote-track-1", title: "Remote Song" }]);
+        expect(mockPeerService.getTracksBySession).not.toHaveBeenCalled();
+    });
+
+    test("GET /:sessionId/tracks rejects an unknown federated origin", async () => {
+        const mockGetCommunitySites = jest.fn().mockReturnValue([{ url: "https://b.example.com" }]);
+
+        app = express();
+        app.use(express.json());
+        app.use("/api/peers", createPeersRoutes({
+            authService: mockAuthService,
+            peerService: mockPeerService,
+            database: mockDatabase,
+            identity: mockIdentity,
+            scannerService: mockScannerService,
+            musicDir: "/music",
+            authMiddleware: mockAuthMiddleware,
+            federatedDiscoveryService: { getCommunitySites: mockGetCommunitySites }
+        } as any));
+
+        const response = await request(app)
+            .get("/api/peers/sess-remote/tracks")
+            .query({ origin: "https://evil.example.com" });
+
+        expect(response.status).toBe(400);
+        expect(mockFetchJsonSafe).not.toHaveBeenCalled();
     });
 
     test("GET /api/peers/status should return status when enabled", async () => {

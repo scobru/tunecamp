@@ -6,7 +6,7 @@ import { Readable } from "stream";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../../middleware/auth.js";
 import type { ServiceContainer } from "../../core/container.js";
 import { UserRole, VisibilityGuardian } from "../../common/visibility.js";
-import { fetchSafe, drainResponse } from "../../common/network.js";
+import { fetchSafe, fetchJsonSafe, drainResponse } from "../../common/network.js";
 
 const MAX_FEDERATED_IMPORT_BYTES = 200 * 1024 * 1024; // 200MB safety cap
 
@@ -100,6 +100,43 @@ export function createPeersRoutes(container: ServiceContainer): Router {
         }
     });
 
+    // Public, cross-instance session listing. Lets a remote federated instance
+    // enumerate THIS instance's connected peer daemons so its users can browse
+    // into them. Scrubbed to {id, username, trackCount} only — never leak
+    // ip_address or other session internals to remote/anonymous callers.
+    router.get("/federated-sessions", (req, res) => {
+        const peerEnabled = identity.getSetting("peerEnabled") === "true";
+        const peerFederation = identity.getSetting("peerFederation") === "true";
+        if (!peerEnabled || !peerFederation) {
+            return res.status(403).json({ error: "Peer federation is disabled on this instance" });
+        }
+        try {
+            const sessions = peerService.getSessions().map((s: any) => ({
+                id: s.id, username: s.username, trackCount: s.trackCount
+            }));
+            res.json(sessions);
+        } catch (error) {
+            console.error("[PeersRoute] Failed federated session listing:", error);
+            res.status(500).json({ error: "Failed to list peer sessions" });
+        }
+    });
+
+    // Public, cross-instance track listing for a single session. Same gate as
+    // the other federated-* routes.
+    router.get("/:sessionId/tracks/federated-list", (req, res) => {
+        const peerEnabled = identity.getSetting("peerEnabled") === "true";
+        const peerFederation = identity.getSetting("peerFederation") === "true";
+        if (!peerEnabled || !peerFederation) {
+            return res.status(403).json({ error: "Peer federation is disabled on this instance" });
+        }
+        try {
+            res.json(peerService.getTracksBySession(req.params.sessionId));
+        } catch (error) {
+            console.error(`[PeersRoute] Failed federated track listing for session ${req.params.sessionId}:`, error);
+            res.status(500).json({ error: "Failed to list session tracks" });
+        }
+    });
+
     // All other routes require user authentication
     router.use(authMiddleware.requireUser);
 
@@ -156,10 +193,25 @@ export function createPeersRoutes(container: ServiceContainer): Router {
         }
     });
 
-    // List active sessions
-    router.get("/", (req: AuthenticatedRequest, res) => {
+    // List active sessions, fanned out to federated instances when opted in.
+    router.get("/", async (req: AuthenticatedRequest, res) => {
         try {
-            const sessions = peerService.getSessions();
+            const sessions: any[] = peerService.getSessions();
+            const peerFederation = identity.getSetting("peerFederation") === "true";
+            if (peerFederation && container.federatedDiscoveryService) {
+                const origins = container.federatedDiscoveryService.getCommunitySites()
+                    .map(s => s.url).filter(Boolean).slice(0, 10);
+                const remote = await Promise.allSettled(origins.map(async (origin) => {
+                    const list = await fetchJsonSafe<any[]>(`${origin.replace(/\/$/, "")}/api/peers/federated-sessions`, {
+                        signal: AbortSignal.timeout(3000),
+                        headers: { "User-Agent": "TuneCamp-Federation/2.0" },
+                    });
+                    return Array.isArray(list) ? list.map(s => ({ ...s, origin })) : [];
+                }));
+                for (const r of remote) {
+                    if (r.status === "fulfilled") sessions.push(...r.value);
+                }
+            }
             res.json(sessions);
         } catch (error) {
             console.error("[PeersRoute] Failed to get active peer sessions:", error);
@@ -182,10 +234,24 @@ export function createPeersRoutes(container: ServiceContainer): Router {
         }
     });
 
-    // List tracks of a session
-    router.get("/:sessionId/tracks", (req: AuthenticatedRequest, res) => {
+    // List tracks of a session. Pass ?origin=<federated instance URL> to proxy
+    // into a remote federated instance's session instead of a local one.
+    // Origin is validated against known federated sites (never an open proxy).
+    router.get("/:sessionId/tracks", async (req: AuthenticatedRequest, res) => {
         const { sessionId } = req.params;
+        const origin = typeof req.query.origin === "string" ? req.query.origin : null;
         try {
+            if (origin) {
+                const known = container.federatedDiscoveryService?.getCommunitySites().some(s => s.url === origin);
+                if (!known) {
+                    return res.status(400).json({ error: "Unknown federated origin" });
+                }
+                const tracks = await fetchJsonSafe<any[]>(`${origin.replace(/\/$/, "")}/api/peers/${sessionId}/tracks/federated-list`, {
+                    signal: AbortSignal.timeout(5000),
+                    headers: { "User-Agent": "TuneCamp-Federation/2.0" },
+                });
+                return res.json(tracks || []);
+            }
             const tracks = peerService.getTracksBySession(sessionId);
             res.json(tracks);
         } catch (error) {
