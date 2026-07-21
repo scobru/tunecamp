@@ -59,6 +59,27 @@ function isPrivateIP(ip: string): boolean {
 }
 
 /**
+ * dns.lookup() has no built-in retry; a single transient resolver hiccup
+ * makes isSafeUrl() fail closed, which surfaces as an intermittent 403 on
+ * the stream proxy (playback fails for one instance's tracks but not
+ * others, seemingly at random). One quick retry absorbs that without
+ * weakening the check itself — this is not caching, every call still
+ * resolves fresh.
+ */
+function dnsLookupAll(hostname: string): Promise<dns.LookupAddress[]> {
+    const attempt = () => new Promise<dns.LookupAddress[]>((resolve, reject) => {
+        dns.lookup(hostname, { all: true }, (err, addrs) => {
+            if (err) reject(err);
+            else resolve(addrs);
+        });
+    });
+
+    return attempt().catch(() => new Promise((resolve, reject) => {
+        setTimeout(() => attempt().then(resolve, reject), 250);
+    }));
+}
+
+/**
  * Validates if a URL is safe to request (no private IPs).
  * Resolves DNS to check against private IP ranges.
  */
@@ -91,22 +112,10 @@ export function isSafeUrl(urlStr: string): Promise<boolean> {
             return Promise.resolve(!isPrivateIP(hostname));
         }
 
-        // Resolve DNS
-        return new Promise((resolve) => {
-            dns.lookup(hostname, { all: true }, (err, addrs) => {
-                if (err) {
-                    // DNS lookup failed -> consider unsafe or unreachable
-                    resolve(false);
-                    return;
-                }
-
-                const isSafe = addrs.every((addr: dns.LookupAddress) => {
-                    return !isPrivateIP(addr.address);
-                });
-
-                resolve(isSafe);
-            });
-        });
+        // Resolve DNS (with one retry on transient failure — see dnsLookupAll)
+        return dnsLookupAll(hostname)
+            .then((addrs) => addrs.every((addr) => !isPrivateIP(addr.address)))
+            .catch(() => false);
     } catch (e) {
         return Promise.resolve(false);
     }
