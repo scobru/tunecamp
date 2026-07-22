@@ -110,7 +110,7 @@ describe('Albums Routes - Cache Optimization', () => {
         }
     });
 
-    test('GET /albums/:id/cover returns correct cache headers (max-age=0)', async () => {
+    test('GET /albums/:id/cover returns correct cache headers (max-age=86400)', async () => {
         // Setup
         (mockDatabase.getAlbum as jest.Mock).mockReturnValue({
             id: 1,
@@ -125,7 +125,7 @@ describe('Albums Routes - Cache Optimization', () => {
 
         // Assert
         expect(response.status).toBe(200);
-        expect(response.headers['cache-control']).toContain('max-age=0');
+        expect(response.headers['cache-control']).toContain('max-age=86400');
         expect(response.headers['content-type']).toContain('image/jpeg');
     });
 
