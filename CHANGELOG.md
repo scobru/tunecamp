@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.5] - 2026-07-22
+
+### Fixed
+- **Subsonic `formatAlbum`/`formatArtist` N+1 queries.** Both ran a per-row `isStarred()`/`getItemRating()` lookup for every album/artist in a list response, with no bulk prefetch (tracks already avoided this via `formatTracksBulk`). Added `formatAlbumsBulk`/`formatArtistsBulk`, prefetching starred status as a `Set` and ratings as a `Map`; `getIndexes`/`search`/`getStarred` now call the bulk variant instead of looping the per-row formatter.
+- **Album covers served with caching disabled (`maxAge: 0`)** while track/artist images used `maxAge: 86400000`. Aligned album covers to the same 24h cache.
+
+See `docs/PERFORMANCE-AUDIT.md` for the full cross-repo (tunecamp/sidecamp/graphofone) performance audit this was drawn from.
+
 ## [3.1.4] - 2026-07-21
 
 ### Fixed

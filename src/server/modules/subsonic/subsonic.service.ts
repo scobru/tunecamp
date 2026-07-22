@@ -53,10 +53,12 @@ export class SubsonicService {
   formatAlbumsBulk(albums: any[], username: string) {
     if (albums.length === 0) return [];
     const ratingsMap = this.db.getItemRatings(username, 'album');
-    return albums.map((a: any) => this.formatAlbum(a, username, ratingsMap));
+    const starredItems = this.db.getStarredItems(username, 'album');
+    const starredSet = new Set<string>(starredItems.map((s: any) => s.item_id));
+    return albums.map((a: any) => this.formatAlbum(a, username, ratingsMap, starredSet));
   }
 
-  formatAlbum(album: any, username: string, ratingsMap?: Map<string, number>) {
+  formatAlbum(album: any, username: string, ratingsMap?: Map<string, number>, starredSet?: Set<string>) {
     const id = `al_${album.id}`;
     const artistId = album.artist_id ? `ar_${album.artist_id}` : undefined;
     return {
@@ -72,12 +74,12 @@ export class SubsonicService {
       '@created': album.created_at,
       '@year': album.year || (album.date ? new Date(album.date).getFullYear() : undefined),
       '@genre': album.genre,
-      '@starred': this.db.isStarred(username, 'album', id) ? album.created_at || new Date().toISOString() : undefined,
+      '@starred': (starredSet ? starredSet.has(id) : this.db.isStarred(username, 'album', id)) ? album.created_at || new Date().toISOString() : undefined,
       '@userRating': (ratingsMap ? ratingsMap.get(id) : this.db.getItemRating(username, 'album', id)) || undefined
     };
   }
 
-  formatArtist(artist: any, username: string) {
+  formatArtist(artist: any, username: string, ratingsMap?: Map<string, number>, starredSet?: Set<string>) {
     const id = `ar_${artist.id}`;
     return {
       '@id': id,
@@ -85,9 +87,17 @@ export class SubsonicService {
       '@coverArt': id,
       '@artistImageUrl': `getCoverArt.view?id=${id}`,
       '@albumCount': artist.albumCount || 0,
-      '@starred': this.db.isStarred(username, 'artist', id) ? artist.created_at || new Date().toISOString() : undefined,
-      '@userRating': this.db.getItemRating(username, 'artist', id) || undefined
+      '@starred': (starredSet ? starredSet.has(id) : this.db.isStarred(username, 'artist', id)) ? artist.created_at || new Date().toISOString() : undefined,
+      '@userRating': (ratingsMap ? ratingsMap.get(id) : this.db.getItemRating(username, 'artist', id)) || undefined
     };
+  }
+
+  formatArtistsBulk(artists: any[], username: string) {
+    if (artists.length === 0) return [];
+    const ratingsMap = this.db.getItemRatings(username, 'artist');
+    const starredItems = this.db.getStarredItems(username, 'artist');
+    const starredSet = new Set<string>(starredItems.map((s: any) => s.item_id));
+    return artists.map((a: any) => this.formatArtist(a, username, ratingsMap, starredSet));
   }
 
   getContentType(format?: string | null): string {
@@ -111,16 +121,13 @@ export class SubsonicService {
       countMap.set(row.artist_id, row.count);
     }
 
-    artists.forEach((artist: any) => {
+    const enrichedArtists = artists.map((artist: any) => ({ ...artist, albumCount: countMap.get(artist.id) || 0 }));
+    const formattedArtists = this.formatArtistsBulk(enrichedArtists, username);
+    artists.forEach((artist: any, i: number) => {
       let char = artist.name.charAt(0).toUpperCase();
       if (!/[A-Z]/.test(char)) char = '#';
       if (!indexes[char]) indexes[char] = [];
-      
-      const artistData = this.formatArtist({
-        ...artist,
-        albumCount: (countMap.get(artist.id) || 0)
-      }, username);
-      indexes[char].push(artistData);
+      indexes[char].push(formattedArtists[i]);
     });
 
     const sortedKeys = Object.keys(indexes).sort();
@@ -204,7 +211,7 @@ export class SubsonicService {
     });
 
     return {
-      artist: results.artists.map((a: any) => this.formatArtist(a, username)),
+      artist: this.formatArtistsBulk(results.artists, username),
       album: this.formatAlbumsBulk(mappedAlbums, username),
       song: this.formatTracksBulk(results.tracks, username)
     };
@@ -227,12 +234,13 @@ export class SubsonicService {
     const trackMap = new Map<number, Track>(tracks.map((t: Track) => [t.id, t]));
 
     const albumsToFormat: any[] = [];
+    const artistsToFormat: any[] = [];
     starred.forEach((item: any) => {
       const idParts = item.item_id.split('_');
       const id = parseInt(idParts[1] || idParts[0]);
       if (item.item_type === 'artist') {
         const a = this.db.getArtist(id);
-        if (a) response.artist.push(this.formatArtist(a, username));
+        if (a) artistsToFormat.push(a);
       } else if (item.item_type === 'album') {
         const a = this.db.getAlbum(id);
         if (a) albumsToFormat.push(a);
@@ -242,6 +250,7 @@ export class SubsonicService {
       }
     });
 
+    response.artist = this.formatArtistsBulk(artistsToFormat, username);
     response.album = this.formatAlbumsBulk(albumsToFormat, username);
     response.song = this.formatTracksBulk(tracksToFormat, username);
     return response;
