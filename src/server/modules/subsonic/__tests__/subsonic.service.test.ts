@@ -204,7 +204,7 @@ describe('SubsonicService', () => {
           ];
 
           mockDb.getItemRatings.mockReturnValue(new Map([['al_11', 4]]));
-          mockDb.isStarred.mockImplementation((user, type, id) => id === 'al_10');
+          mockDb.getStarredItems.mockReturnValue([{ item_id: 'al_10' }]);
 
           const result = service.formatAlbumsBulk(mockAlbums, 'testuser');
 
