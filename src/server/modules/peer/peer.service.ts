@@ -16,6 +16,7 @@ export interface ActivePeerSession {
     lastPongAt: number;
     allowDownloads: boolean;
     pendingRequests: Map<string, Response>;
+    pubkey?: string;
 }
 
 interface PendingImport {
@@ -489,6 +490,25 @@ export class PeerService {
             }
         }
         return delivered;
+    }
+
+    // Store a session's E2E public key (opaque to the server — just relayed for
+    // client-side encryption), broadcast it to already-connected peers, and
+    // return the keys already known for those peers so the caller can send
+    // them back to the newly-announcing session.
+    setPubkey(sessionId: string, pubkey: string): { username: string; pubkey: string }[] {
+        const session = this.activeSessions.get(sessionId);
+        if (!session) return [];
+        session.pubkey = pubkey;
+        const roster: { username: string; pubkey: string }[] = [];
+        for (const other of this.activeSessions.values()) {
+            if (other.id === sessionId) continue;
+            if (other.ws.readyState === 1) {
+                other.ws.send(JSON.stringify({ type: "pubkey", from: session.username, pubkey }));
+            }
+            if (other.pubkey) roster.push({ username: other.username, pubkey: other.pubkey });
+        }
+        return roster;
     }
 }
 export function createPeerService(database: DatabaseService, apService?: ActivityPubService): PeerService {

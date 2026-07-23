@@ -89,6 +89,13 @@ export function createPeerWsHandler(server: http.Server, container: ServiceConta
                                 case "chat":
                                     container.peerService.relayChat(sessionId, message.to, message.text);
                                     break;
+                                case "pubkey": {
+                                    const roster = container.peerService.setPubkey(sessionId, message.pubkey);
+                                    for (const r of roster) {
+                                        ws.send(JSON.stringify({ type: "pubkey", from: r.username, pubkey: r.pubkey }));
+                                    }
+                                    break;
+                                }
                                 default:
                                     console.warn(`[PeerWS] Unknown message type: ${message.type}`);
                             }
