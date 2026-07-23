@@ -18,35 +18,48 @@ export function createPeerWsHandler(server: http.Server, container: ServiceConta
         try {
             const url = new URL(request.url || "", `http://${request.headers.host || "localhost"}`);
             if (url.pathname === "/ws/peer") {
-                const token = url.searchParams.get("token");
-                if (!token) {
-                    socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-                    socket.destroy();
-                    return;
-                }
-
-                // Verify token using authService
-                const payload = await container.authService.verifyToken(token);
-                if (!payload) {
-                    socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-                    socket.destroy();
-                    return;
-                }
-
-                // Check peer permission (admins implicitly allowed)
-                const user = container.authService.getUserByUsername(payload.username);
-                if (!canUsePeer(user)) {
-                    socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
-                    socket.destroy();
-                    return;
-                }
-
-                // Check if peer sharing is enabled globally
                 const peerEnabled = container.identity.getSetting("peerEnabled") === "true";
                 if (!peerEnabled) {
                     socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
                     socket.destroy();
                     return;
+                }
+
+                const token = url.searchParams.get("token");
+                const guestNameParam = url.searchParams.get("guestName");
+                let userId: number;
+                let username: string;
+
+                if (!token) {
+                    const peerGuestEnabled = container.identity.getSetting("peerGuestEnabled") === "true";
+                    if (!peerGuestEnabled) {
+                        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+                        socket.destroy();
+                        return;
+                    }
+                    const rawGuest = guestNameParam ? guestNameParam.trim().substring(0, 20) : "";
+                    const safeGuest = rawGuest.replace(/[^a-zA-Z0-9_-]/g, '') || require('crypto').randomBytes(3).toString('hex');
+                    username = `(Guest) ${safeGuest}`;
+                    // Virtual guest userId. Use negative numbers or a large offset.
+                    userId = -Math.floor(Math.random() * 1000000);
+                } else {
+                    // Verify token using authService
+                    const payload = await container.authService.verifyToken(token);
+                    if (!payload) {
+                        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+                        socket.destroy();
+                        return;
+                    }
+
+                    // Check peer permission (admins implicitly allowed)
+                    const user = container.authService.getUserByUsername(payload.username);
+                    if (!canUsePeer(user)) {
+                        socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+                        socket.destroy();
+                        return;
+                    }
+                    userId = payload.userId;
+                    username = payload.username;
                 }
 
                 // Upgrade the connection to WebSocket
@@ -58,7 +71,7 @@ export function createPeerWsHandler(server: http.Server, container: ServiceConta
                     const ipAddress = rawIp ? rawIp.split(",")[0].trim() : null;
                     
                     // Register session
-                    const sessionId = container.peerService.registerSession(ws, payload.userId, payload.username, ipAddress, allowDownloads);
+                    const sessionId = container.peerService.registerSession(ws, userId, username, ipAddress, allowDownloads);
 
                     // Send auth_ok
                     ws.send(JSON.stringify({ type: "auth_ok", sessionId }));
@@ -89,6 +102,13 @@ export function createPeerWsHandler(server: http.Server, container: ServiceConta
                                 case "chat":
                                     container.peerService.relayChat(sessionId, message.to, message.text);
                                     break;
+                                case "pubkey": {
+                                    const roster = container.peerService.setPubkey(sessionId, message.pubkey);
+                                    for (const r of roster) {
+                                        ws.send(JSON.stringify({ type: "pubkey", from: r.username, pubkey: r.pubkey }));
+                                    }
+                                    break;
+                                }
                                 default:
                                     console.warn(`[PeerWS] Unknown message type: ${message.type}`);
                             }
