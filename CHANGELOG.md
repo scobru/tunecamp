@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2.1] - 2026-07-24
+
+### Fixed
+- **Duplicate instances in the federated community/peers list.** `buildCommunitySites()` merged NodeInfo-crawled sites (`federated_instances` table) and followed ActivityPub site actors without deduping — an instance discovered both ways (gossip crawl + AP follow) showed up twice, once tagged `federated` and once `activitypub`. Now dedupes AP actors against already-known crawled origins before merging.
+
 ## [3.2.0] - 2026-07-23
 
 ### Added
