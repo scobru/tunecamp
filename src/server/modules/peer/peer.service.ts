@@ -471,17 +471,20 @@ export class PeerService {
         return this.database.peer.getActivePeerSessions(SESSION_STALE_MS);
     }
 
-    // Relay a chat message from one peer session to every live session of the
-    // target username. Returns true if delivered to at least one socket.
+    // Relay a chat message. An empty toUsername broadcasts to every other live
+    // session (lobby); otherwise it's delivered only to sessions of that username.
+    // Returns true if delivered to at least one socket.
     relayChat(fromSessionId: string, toUsername: string, text: string): boolean {
         const from = this.activeSessions.get(fromSessionId);
         if (!from) return false;
         const clean = String(text ?? "").slice(0, 2000);
-        if (!clean.trim() || !toUsername) return false;
+        if (!clean.trim()) return false;
+        const isLobby = !toUsername;
         let delivered = false;
         for (const session of this.activeSessions.values()) {
-            if (session.username === toUsername && session.ws.readyState === 1) {
-                session.ws.send(JSON.stringify({ type: "chat", from: from.username, text: clean, ts: Date.now() }));
+            if (session.id === fromSessionId || session.ws.readyState !== 1) continue;
+            if (isLobby || session.username === toUsername) {
+                session.ws.send(JSON.stringify({ type: "chat", from: from.username, text: clean, ts: Date.now(), lobby: isLobby }));
                 delivered = true;
             }
         }
