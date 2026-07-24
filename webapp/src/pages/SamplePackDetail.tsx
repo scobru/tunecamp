@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Music2, Download, Play, Pause, Package, ArrowLeft } from 'lucide-react';
+import { Music2, Download, Play, Pause, ArrowLeft } from 'lucide-react';
 import API from '../services/api';
 import type { Sample, SamplePack } from '../types';
 import { Waveform } from '../components/player/Waveform';
@@ -89,8 +89,8 @@ const SamplePackDetail = () => {
             <Link to="/samples" className="btn btn-ghost btn-sm gap-2"><ArrowLeft size={14} /> Back to Samples</Link>
 
             <div className="flex items-start gap-4">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-secondary/20 via-base-300 to-base-200 flex items-center justify-center flex-shrink-0">
-                    <Package size={32} className="opacity-40" />
+                <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0">
+                    <img src={API.getSamplePackCoverUrl(pack.id)} alt={pack.title} className="w-full h-full object-cover" />
                 </div>
                 <div>
                     <h1 className="text-3xl font-bold">{pack.title}</h1>

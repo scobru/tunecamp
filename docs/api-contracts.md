@@ -57,6 +57,23 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 
 Free samples are not store assets: no price, no purchase flow, no credits. License is one of `cc0`, `cc-by`, `cc-by-sa`, `royalty-free`. Upload is reachable from `/publish`; managing your own uploads is under the "Samples" tab on `/my-music`; moderation is under "Sample Curation" on `/admin`.
 
+### Sample Packs (`/api/sample-packs`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/sample-packs` | List approved packs. `mine=true` scopes to the caller's own packs (any status); `q` filters by search term |
+| `GET` | `/api/sample-packs/moderation/pending` | Root-admin/admin/super-user: list packs awaiting curation |
+| `GET` | `/api/sample-packs/:id` | Pack metadata plus its member samples |
+| `GET` | `/api/sample-packs/:id/cover` | Pack cover image; falls back to a generated placeholder SVG if none is set |
+| `POST` | `/api/sample-packs` | Upload multiple files at once as a pack (`multipart/form-data`: files[], title, description, license, attributionName). Same publish gate and auto-approve rules as `/api/samples`; starts in `pending` unless auto-approved |
+| `POST` | `/api/sample-packs/:id/cover` | Set/replace the pack cover image (`multipart/form-data`: cover). Owner/moderator only |
+| `PUT` | `/api/sample-packs/:id` | Update pack metadata (owner or moderator) |
+| `DELETE` | `/api/sample-packs/:id` | Delete a pack and all its member samples (owner or moderator) |
+| `POST` | `/api/sample-packs/:id/approve` | Root-admin/admin/super-user: approve a pending pack (cascades to its samples) |
+| `POST` | `/api/sample-packs/:id/reject` | Root-admin/admin/super-user: reject a pending pack with optional notes |
+
+A packed sample (`samples.pack_id` set) is excluded from the public `/api/samples` listing — it only surfaces through its pack.
+
 ### Payments & Monetisation (`/api/payments`)
 
 | Method | Path | Description |

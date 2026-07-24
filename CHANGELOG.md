@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.9.0] - 2026-07-24
+
+### Added
+- **Sample pack cover images.** `POST /api/sample-packs/:id/cover` uploads a cover image for a pack (owner/manager only); `GET /api/sample-packs/:id/cover` serves it, falling back to a generated placeholder. Pack cards, the pack detail page, and "My Samples" now show the real cover instead of a static icon.
+- **Pack-aware "My Samples" management.** The admin/self-service samples list now groups a user's sample packs into their own section (cover editable in place, pack-level delete) and excludes their member files from the loose-samples table, instead of listing packed files as indistinguishable standalone samples.
+
 ## [3.8.0] - 2026-07-24
 
 ### Added

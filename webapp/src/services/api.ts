@@ -325,6 +325,12 @@ const API = {
     updateSamplePack: (id: number, fields: Partial<{ title: string, description: string, license: string }>) =>
         handleResponse(api.put<SamplePack>(`sample-packs/${id}`, fields)),
     deleteSamplePack: (id: number) => handleResponse(api.delete(`sample-packs/${id}`)),
+    getSamplePackCoverUrl: (id: number) => `${API_URL}/sample-packs/${id}/cover`,
+    uploadSamplePackCover: (id: number, file: File) => {
+        const formData = new FormData();
+        formData.append('cover', file);
+        return handleResponse(api.post<SamplePack>(`sample-packs/${id}/cover`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }));
+    },
     approveSamplePack: (id: number, notes?: string) => handleResponse(api.post<SamplePack>(`sample-packs/${id}/approve`, { notes })),
     rejectSamplePack: (id: number, notes?: string) => handleResponse(api.post<SamplePack>(`sample-packs/${id}/reject`, { notes })),
 

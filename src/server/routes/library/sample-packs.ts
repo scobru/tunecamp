@@ -5,6 +5,7 @@ import path from "path";
 import os from "os";
 import fs from "fs-extra";
 import { resolveSafePath } from "../../../utils/fileUtils.js";
+import { getPlaceholderSVG } from "../../../utils/audioUtils.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { wrapAsync } from "../../middleware/error-handling.js";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../common/errors.js";
@@ -12,6 +13,7 @@ import { VisibilityGuardian, Capability } from "../../common/visibility.js";
 import { resolveService, type ServiceContainer } from "../../core/container.js";
 
 const AUDIO_EXTENSIONS = new Set([".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"]);
+const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
 function createTempStorage() {
     return multer.diskStorage({
@@ -40,6 +42,16 @@ export function createSamplePacksRoutes(container: ServiceContainer): Router {
             else cb(new Error(`Unsupported file type: ${ext}`));
         },
         limits: { fileSize: 100 * 1024 * 1024, files: 50 },
+    });
+
+    const coverUpload = multer({
+        storage: createTempStorage(),
+        fileFilter: (_req, file, cb) => {
+            const ext = path.extname(file.originalname).toLowerCase();
+            if (IMAGE_EXTENSIONS.has(ext)) cb(null, true);
+            else cb(new Error(`Unsupported image type: ${ext}`));
+        },
+        limits: { fileSize: 5 * 1024 * 1024 },
     });
 
     const rejectAs400 = (mw: any) => (req: any, res: any, next: any) =>
@@ -175,6 +187,46 @@ export function createSamplePacksRoutes(container: ServiceContainer): Router {
             ...(description !== undefined && { description }),
             ...(license !== undefined && { license }),
         });
+        res.json(updated);
+    }));
+
+    /**
+     * GET /api/sample-packs/:id/cover
+     */
+    router.get("/:id(\\d+)/cover", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        const pack = samplePacksRepository.getById(parseInt(req.params.id, 10));
+        if (!pack) throw new NotFoundError("Sample pack not found");
+        if (pack.coverPath) {
+            const coverFilePath = resolveSafePath(musicDir, pack.coverPath);
+            if (coverFilePath && (await fs.pathExists(coverFilePath))) {
+                return res.sendFile(path.resolve(coverFilePath), { maxAge: 86400000 });
+            }
+        }
+        const svg = getPlaceholderSVG(pack.title);
+        res.setHeader("Content-Type", "image/svg+xml");
+        res.setHeader("Cache-Control", "public, max-age=3600");
+        res.send(svg);
+    }));
+
+    /**
+     * POST /api/sample-packs/:id/cover
+     */
+    router.post("/:id(\\d+)/cover", authMiddleware.requireUser, rejectAs400(coverUpload.single("cover")), wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        const pack = samplePacksRepository.getById(parseInt(req.params.id, 10));
+        if (!pack) throw new NotFoundError("Sample pack not found");
+        if (!canManage(req, pack)) throw new ForbiddenError("Access denied");
+        const file = req.file as Express.Multer.File | undefined;
+        if (!file) throw new BadRequestError("No cover image uploaded");
+
+        const dir = path.join(musicDir, "samples", "covers");
+        await storage.ensureDir(dir);
+        const ext = path.extname(file.originalname).toLowerCase();
+        const targetFilename = `pack-${pack.id}-${Date.now()}${ext}`;
+        const targetPath = path.join(dir, targetFilename);
+        await storage.move(file.path, targetPath, { overwrite: true });
+        const dbPath = path.relative(musicDir, targetPath).replace(/\\/g, "/");
+
+        const updated = samplePacksRepository.update(pack.id, { coverPath: dbPath });
         res.json(updated);
     }));
 
