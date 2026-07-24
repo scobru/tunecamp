@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.1] - 2026-07-24
+
+### Fixed
+- **Samples not visible on `tunecamp-website`'s community showcase.** `/api/samples` was missing the `publicFederationCors` wildcard CORS policy already applied to `/api/community` and `/api/catalog`, so cross-origin `fetch()` calls from the website were silently blocked by the browser.
+
 ## [3.5.0] - 2026-07-24
 
 ### Added
