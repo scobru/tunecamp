@@ -34,6 +34,7 @@ import {
   Scale,
   MoreHorizontal,
   Sparkles,
+  Music2,
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
@@ -54,6 +55,7 @@ export const Sidebar = () => {
   const hideStore = isModuleHidden("hideStore");
   const hideSocial = isModuleHidden("hideSocial");
   const hideNetwork = isModuleHidden("hideNetwork");
+  const hideSamples = isModuleHidden("hideSamples");
 
   const isRoot = user?.isRootAdmin || role === 'root_admin';
   const isAdmin = role === 'admin' || isRoot || role === 'super_user';
@@ -175,6 +177,7 @@ export const Sidebar = () => {
             <NavItem to="/radio" icon={Rss} label="Radio" />
             {!hideLive && <NavItem to="/live" icon={Radio} label="Live" />}
             {!hideStore && <NavItem to="/store" icon={ShoppingBag} label="Store" />}
+            {!hideSamples && <NavItem to="/samples" icon={Music2} label="Samples" />}
             <li>
               <details>
                 <summary className={clsx(

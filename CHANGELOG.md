@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.1] - 2026-07-24
+
+### Fixed
+- **Samples not visible on `tunecamp-website`'s community showcase.** `/api/samples` was missing the `publicFederationCors` wildcard CORS policy already applied to `/api/community` and `/api/catalog`, so cross-origin `fetch()` calls from the website were silently blocked by the browser.
+
+## [3.5.0] - 2026-07-24
+
+### Added
+- **Public Samples showcase (`/samples`) + `hideSamples` module toggle.** New public browse page mirroring `/store` (search, download, license/BPM/key display), listed in the sidebar and gated by `ModuleGuard`. Added `hideSamples` as a full `ModuleFlag`: threaded through `useSiteSettingsStore`, `AdminSettingsPanel`'s "Customize Modules" tab, and server-side via `requireModuleEnabled` on `/api/samples` (mirroring `/api/dig`'s gate — previously ungated server-side).
+- **"Sound Designer" setup-wizard preset.** New `SetupWizard` preset (community mode, samples-focused: store/network/live/dig/dj hidden, social + samples + self-publish enabled) alongside Solo Artist/Record Label/Curator/Streamer.
+
+## [3.4.0] - 2026-07-24
+
+### Added
+- **Samples frontend.** Free-sample upload/browse/moderation now reachable from the webapp: a "Free Sample" card on `/publish` (`UploadSampleModal`), a "Samples" tab on `/my-music` (`AdminSamplesList`, list/download/delete own uploads), and a "Sample Curation" tab on `/admin` (`SamplesCurationQueue`, approve/reject pending) for root-admin/admin/super-user. Reuses the existing `/api/samples*` endpoints and `VisibilityGuardian` gates — no new backend surface.
+
+### Documentation
+- `docs/api-contracts.md`: documented `/api/samples*` endpoints.
+- `tunecamp-website/usecases.html`: added "Beatmaker & Producer" use case for free samples.
+
 ## [3.3.0] - 2026-07-24
 
 ### Added

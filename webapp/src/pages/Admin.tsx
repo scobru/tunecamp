@@ -14,6 +14,7 @@ import { AdminUsersList } from "../components/admin/AdminUsersList";
 import { AdminReleasesList } from "../components/admin/AdminReleasesList";
 import { AdminMaintenancePanel } from "../components/admin/AdminMaintenancePanel";
 import { CurationQueue } from "../components/admin/CurationQueue";
+import { SamplesCurationQueue } from "../components/admin/SamplesCurationQueue";
 import { IntegrationsPanel } from "../components/admin/IntegrationsPanel";
 import { AdminFederationPanel } from "../components/admin/AdminFederationPanel";
 import { BackupPanel } from "../components/admin/BackupPanel";
@@ -36,6 +37,7 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState<
     | "releases"
     | "curation"
+    | "samples"
     | "users"
     | "settings"
     | "backup"
@@ -148,6 +150,15 @@ const Admin = () => {
             onClick={() => setActiveTab("curation")}
           >
             Curation Queue
+          </a>
+        )}
+        {(isRootAdmin || isManager || isSuperUser) && (
+          <a
+            role="tab"
+            className={`tab ${activeTab === "samples" ? "tab-active" : ""}`}
+            onClick={() => setActiveTab("samples")}
+          >
+            Sample Curation
           </a>
         )}
         {(isRootAdmin || isManager || isSuperUser) && (
@@ -299,6 +310,7 @@ const Admin = () => {
         )}
 
         {activeTab === "curation" && (isRootAdmin || isManager || isSuperUser) && <CurationQueue />}
+        {activeTab === "samples" && (isRootAdmin || isManager || isSuperUser) && <SamplesCurationQueue />}
         {activeTab === "reports" && (isRootAdmin || isManager || isSuperUser) && <AdminReportsPanel />}
 
 

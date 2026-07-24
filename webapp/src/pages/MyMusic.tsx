@@ -13,6 +13,7 @@ import {
   Layout,
   Upload,
   ShoppingBag,
+  Music2,
 } from "lucide-react";
 import { AdminReleaseModal } from "../components/modals/AdminReleaseModal";
 import { UploadTracksModal } from "../components/modals/UploadTracksModal";
@@ -23,13 +24,14 @@ import { AdminTracksList } from "../components/admin/AdminTracksList";
 import { AdminArtistsList } from "../components/admin/AdminArtistsList";
 import { AdminAlbumsList } from "../components/admin/AdminAlbumsList";
 import { AdminAssetsList } from "../components/admin/AdminAssetsList";
+import { AdminSamplesList } from "../components/admin/AdminSamplesList";
 
 const MyMusic = () => {
   const { user, isAuthenticated, isLoading, role } = useAuthStore();
   const { bumpCacheBuster } = useConfigStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<
-    "overview" | "releases" | "albums" | "artists" | "tracks" | "store"
+    "overview" | "releases" | "albums" | "artists" | "tracks" | "samples" | "store"
   >("overview");
   const [stats, setStats] = useState<any>(null);
 
@@ -158,6 +160,13 @@ const MyMusic = () => {
         </a>
         <a
           role="tab"
+          className={`tab gap-2 ${activeTab === "samples" ? "tab-active font-bold" : ""}`}
+          onClick={() => setActiveTab("samples")}
+        >
+          <Music2 size={16}/> Samples
+        </a>
+        <a
+          role="tab"
           className={`tab gap-2 ${activeTab === "store" ? "tab-active font-bold" : ""}`}
           onClick={() => setActiveTab("store")}
         >
@@ -259,6 +268,7 @@ const MyMusic = () => {
         )}
 
         {activeTab === "tracks" && <AdminTracksList mine={true} />}
+        {activeTab === "samples" && <AdminSamplesList mine={true} />}
         {activeTab === "store" && <AdminAssetsList />}
       </div>
 

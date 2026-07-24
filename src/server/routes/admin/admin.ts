@@ -460,6 +460,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 hideNetwork,
                 hideDig,
                 hideDj,
+                hideSamples,
                 membershipMonthlyPrice,
                 trackcapTopupPriceUsd,
                 trackcapTopupTracksGranted,
@@ -507,6 +508,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
             if (hideDj !== undefined) {
                 identity.setSetting("hideDj", isTrue(hideDj) ? "true" : "false");
+            }
+
+            if (hideSamples !== undefined) {
+                identity.setSetting("hideSamples", isTrue(hideSamples) ? "true" : "false");
             }
 
             if (web3Enabled !== undefined) {

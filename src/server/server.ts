@@ -167,6 +167,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     app.use('/api/community', publicFederationCors);
     app.use('/api/catalog', publicFederationCors);
+    app.use('/api/samples', publicFederationCors);
 
     app.use((req, res, next) => {
         if (res.locals.skipStrictCors) {
@@ -487,7 +488,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(container));
     app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(container));
     app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(container));
-    app.use("/api/samples", authMiddleware.optionalAuth, createSamplesRoutes(container));
+    app.use("/api/samples", authMiddleware.optionalAuth, requireModuleEnabled(container, "hideSamples", { allowAdmin: true }), createSamplesRoutes(container));
     app.use("/api/dig", authMiddleware.requireUser, requireModuleEnabled(container, "hideDig"), createDigRoutes(container));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(container));
 

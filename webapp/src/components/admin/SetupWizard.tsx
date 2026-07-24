@@ -13,7 +13,8 @@ import {
   Sparkles,
   CheckCircle2,
   AlertTriangle,
-  Cog
+  Cog,
+  Music2
 } from "lucide-react";
 
 interface ProfilePreset {
@@ -29,6 +30,7 @@ interface ProfilePreset {
     hideDig: boolean;
     hideLive: boolean;
     hideDj: boolean;
+    hideSamples: boolean;
     allowPublicRegistration: boolean;
     listenerSelfPublish: boolean;
     mode: 'label' | 'community';
@@ -52,6 +54,7 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideDig: true,
       hideLive: true,
       hideDj: true,
+      hideSamples: true,
       allowPublicRegistration: false,
       listenerSelfPublish: false,
       mode: "label"
@@ -77,6 +80,7 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideDig: true,
       hideLive: true,
       hideDj: true,
+      hideSamples: true,
       allowPublicRegistration: true,
       listenerSelfPublish: false,
       mode: "label"
@@ -102,6 +106,7 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideDig: false,
       hideLive: true,
       hideDj: false,
+      hideSamples: true,
       allowPublicRegistration: true,
       listenerSelfPublish: true,
       mode: "community"
@@ -127,6 +132,7 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideDig: false,
       hideLive: false,
       hideDj: false,
+      hideSamples: true,
       allowPublicRegistration: true,
       listenerSelfPublish: false,
       mode: "community"
@@ -137,6 +143,32 @@ const PRESETS: Record<string, ProfilePreset> = {
       "Set up your Icecast or RTMP credentials to start the audio stream",
       "Start your first DJ Set broadcast from the Radio panel",
       "Share your radio link to invite listeners"
+    ]
+  },
+  soundDesigner: {
+    id: "soundDesigner",
+    name: "Sound Designer",
+    description: "Built around free samples, loops and one-shots — share sample packs, let others download and credit you.",
+    gradient: "from-fuchsia-500/20 to-violet-500/20 border-fuchsia-500/30 hover:border-fuchsia-500/60",
+    icon: Music2,
+    flags: {
+      hideStore: true,
+      hideSocial: false,
+      hideNetwork: true,
+      hideDig: true,
+      hideLive: true,
+      hideDj: true,
+      hideSamples: false,
+      allowPublicRegistration: true,
+      listenerSelfPublish: true,
+      mode: "community"
+    },
+    taglineTemplate: "[Studio Name] — Free Samples & Sound Design",
+    descTemplate: "Free samples, loops and one-shots from [Studio Name]. Download, credit and make something new.",
+    nextSteps: [
+      "Upload your first sample pack from the Publish page",
+      "Pick a license (CC0, CC BY, CC BY-SA, or Royalty-Free) for your uploads",
+      "Invite other sound designers to self-publish their own samples"
     ]
   }
 };
@@ -180,7 +212,7 @@ export const SetupWizard = () => {
     const nameToUse = isDefaultName ? (id === "artist" ? "My Artist Name" : id === "label" ? "My Record Label" : "My Community") : currentName;
     setSiteName(nameToUse);
 
-    const descToUse = currentDesc || preset.descTemplate.replace("[Artist Name]", nameToUse).replace("[Label Name]", nameToUse).replace("[Curator Name]", nameToUse).replace("[Station Name]", nameToUse);
+    const descToUse = currentDesc || preset.descTemplate.replace("[Artist Name]", nameToUse).replace("[Label Name]", nameToUse).replace("[Curator Name]", nameToUse).replace("[Station Name]", nameToUse).replace("[Studio Name]", nameToUse);
     setSiteDescription(descToUse);
   };
 
@@ -222,6 +254,9 @@ export const SetupWizard = () => {
     if (flagsConfig.hideDj && !isTrue(currentSettings.hideDj)) {
       warnings.push("The DJ / Web Radio feature will be disabled.");
     }
+    if (flagsConfig.hideSamples && !isTrue(currentSettings.hideSamples)) {
+      warnings.push("The Free Samples showcase will be disabled.");
+    }
     if (!flagsConfig.allowPublicRegistration && isTrue(currentSettings.allowPublicRegistration)) {
       warnings.push("Public registrations will be disabled (only administrators can add users).");
     }
@@ -251,6 +286,7 @@ export const SetupWizard = () => {
         hideDig: flagsConfig.hideDig,
         hideLive: flagsConfig.hideLive,
         hideDj: flagsConfig.hideDj,
+        hideSamples: flagsConfig.hideSamples,
         allowPublicRegistration: flagsConfig.allowPublicRegistration,
         listenerSelfPublish: flagsConfig.listenerSelfPublish,
         mode: flagsConfig.mode
@@ -437,6 +473,21 @@ export const SetupWizard = () => {
                     className="toggle toggle-primary toggle-sm"
                     checked={!flagsConfig.hideDj}
                     onChange={(e) => setFlagsConfig({ ...flagsConfig, hideDj: !e.target.checked })}
+                  />
+                </label>
+              </div>
+
+              <div className="form-control">
+                <label className="label cursor-pointer justify-between py-1.5">
+                  <div>
+                    <span className="label-text font-semibold text-sm">Free Samples</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Public samples showcase and sample uploads</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary toggle-sm"
+                    checked={!flagsConfig.hideSamples}
+                    onChange={(e) => setFlagsConfig({ ...flagsConfig, hideSamples: !e.target.checked })}
                   />
                 </label>
               </div>
