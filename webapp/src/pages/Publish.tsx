@@ -2,10 +2,11 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/useAuthStore";
 import { canPublish } from "../utils/permissions";
-import { UploadCloud, Disc, PackagePlus, ArrowUpCircle } from "lucide-react";
+import { UploadCloud, Disc, PackagePlus, ArrowUpCircle, Music2 } from "lucide-react";
 import { PageHeader } from "../components/ui/PageHeader";
 import { UploadTracksModal } from "../components/modals/UploadTracksModal";
 import { AdminAssetModal } from "../components/modals/AdminAssetModal";
+import { UploadSampleModal } from "../components/modals/UploadSampleModal";
 
 const Publish = () => {
   const { isAuthenticated, isLoading, role, user } = useAuthStore();
@@ -31,6 +32,10 @@ const Publish = () => {
 
   const handleOpenAssetModal = () => {
     document.dispatchEvent(new CustomEvent("open-admin-asset-modal", { detail: null }));
+  };
+
+  const handleOpenSampleModal = () => {
+    document.dispatchEvent(new CustomEvent("open-upload-sample-modal"));
   };
 
   return (
@@ -89,6 +94,29 @@ const Publish = () => {
           </div>
         </div>
 
+        {/* Sample Upload Card */}
+        <div className="card bg-base-200/50 border border-base-content/5 shadow-m3-1 hover:shadow-m3-2 transition-all duration-medium-1 hover:-translate-y-0.5 flex flex-col justify-between p-6">
+          <div className="space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 text-primary">
+              <Music2 size={24} />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg text-prominent">Free Sample</h3>
+              <p className="text-sm opacity-60 mt-1">
+                Share a free sample or loop with the community — BPM, key, license, tags. No sale, no price.
+              </p>
+            </div>
+          </div>
+          <div className="mt-6">
+            <button
+              onClick={handleOpenSampleModal}
+              className="btn btn-primary btn-block rounded-full shadow-md"
+            >
+              Upload Sample
+            </button>
+          </div>
+        </div>
+
         {/* Store Asset Card */}
         <div className="card bg-base-200/50 border border-base-content/5 shadow-m3-1 hover:shadow-m3-2 transition-all duration-medium-1 hover:-translate-y-0.5 flex flex-col justify-between p-6">
           <div className="space-y-4">
@@ -116,6 +144,7 @@ const Publish = () => {
       {/* Global Modals for Upload and Store Asset Creation */}
       <UploadTracksModal />
       <AdminAssetModal />
+      <UploadSampleModal />
     </div>
   );
 };
