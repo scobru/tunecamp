@@ -42,6 +42,7 @@ const Files = lazy(() => import("./pages/Files"));
 const Tools = lazy(() => import("./pages/Tools"));
 const Store = lazy(() => import("./pages/Store"));
 const Samples = lazy(() => import("./pages/Samples"));
+const SamplePackDetail = lazy(() => import("./pages/SamplePackDetail"));
 const Dig = lazy(() => import("./pages/Dig"));
 const Lab = lazy(() => import("./pages/Lab"));
 const LabApp = lazy(() => import("./pages/LabApp"));
@@ -263,6 +264,7 @@ function App() {
             {/* Store */}
             <Route path="/store" element={<ModuleGuard flag="hideStore"><Store /></ModuleGuard>} />
             <Route path="/samples" element={<ModuleGuard flag="hideSamples"><Samples /></ModuleGuard>} />
+            <Route path="/samples/pack/:id" element={<ModuleGuard flag="hideSamples"><SamplePackDetail /></ModuleGuard>} />
             <Route path="/dig" element={<ModuleGuard flag="hideDig"><Dig /></ModuleGuard>} />
 
 

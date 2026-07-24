@@ -28,6 +28,7 @@ export function createSamplesRoutes(container: ServiceContainer): Router {
     const musicDir = resolveService(container, "musicDir");
     const storage = resolveService(container, "storage");
     const identity = resolveService(container, "identity");
+    const waveformService = container.waveformService;
     const authMiddleware = container.authMiddleware;
 
     const router = Router();
@@ -69,7 +70,7 @@ export function createSamplesRoutes(container: ServiceContainer): Router {
             const samples = samplesRepository.list({ ownerId: req.userId, search: req.query.q as string });
             return res.json(samples);
         }
-        const samples = samplesRepository.list({ status: "approved", search: req.query.q as string, limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined, offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined });
+        const samples = samplesRepository.list({ status: "approved", excludePacked: true, search: req.query.q as string, limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined, offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined });
         res.json(samples);
     }));
 
@@ -110,6 +111,23 @@ export function createSamplesRoutes(container: ServiceContainer): Router {
     }));
 
     /**
+     * GET /api/samples/:id/waveform
+     */
+    router.get("/:id(\\d+)/waveform", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        const sample = samplesRepository.getById(parseInt(req.params.id, 10));
+        if (!sample) throw new NotFoundError("Sample not found");
+        if (sample.status !== "approved" && !canManage(req, sample) && !canModerate(req)) {
+            throw new ForbiddenError("Access denied");
+        }
+        const filePath = resolveSafePath(musicDir, sample.filePath);
+        if (!filePath || !(await fs.pathExists(filePath))) throw new NotFoundError("Sample file not found");
+        const svg = await waveformService.getWaveformSVG(`sample-${sample.id}`, filePath);
+        res.setHeader("Content-Type", "image/svg+xml");
+        res.setHeader("Cache-Control", "public, max-age=31536000");
+        res.send(svg);
+    }));
+
+    /**
      * POST /api/samples
      */
     router.post("/", authMiddleware.requireUser, rejectAs400(upload.single("file")), wrapAsync(async (req: AuthenticatedRequest, res: any) => {
@@ -139,6 +157,7 @@ export function createSamplesRoutes(container: ServiceContainer): Router {
                 title,
                 artistId: req.artistId ?? null,
                 ownerId: req.userId ?? null,
+                packId: null,
                 description: description ?? null,
                 filePath: dbPath,
                 format: ext.replace(".", ""),

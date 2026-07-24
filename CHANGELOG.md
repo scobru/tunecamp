@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.8.0] - 2026-07-24
+
+### Added
+- **Sample packs.** New `sample_packs` table (`samples.pack_id` FK). `POST /api/sample-packs` uploads multiple files at once under one pack (same publish/auto-approve gate as single samples); `GET /api/sample-packs`, `GET /api/sample-packs/:id` (pack + its samples), `PUT`/`DELETE`, moderation `approve`/`reject` (cascades to child samples). Public `/api/samples` listing excludes packed samples so they only surface via their pack. Webapp: pack cards on `/samples`, new `/samples/pack/:id` detail page, and the upload modal now accepts multiple files to create a pack.
+
+## [3.7.0] - 2026-07-24
+
+### Added
+- **Sample waveform preview.** New `GET /api/samples/:id/waveform` (SVG, reuses `WaveformService`). `/samples` cards now show a real waveform as the cover art, with hover-to-preview playback (mouse enter plays, mouse leave stops) instead of a plain gradient placeholder.
+
+### Fixed
+- **`artistName` was never populated on samples.** `SampleRepository` never joined `artists`/`admin`, so uploads without a linked artist profile (e.g. root-admin uploads) always showed as "undefined"/missing artist. Now resolves `artists.name` → `attribution_name` → uploader's username → `null`.
+
+## [3.6.0] - 2026-07-24
+
+### Added
+- **Inline sample preview.** `/samples` cards now play/pause in place (single shared `<audio>`, progress bar over the cover art) instead of requiring a full download to hear a sample.
+
 ## [3.5.1] - 2026-07-24
 
 ### Fixed

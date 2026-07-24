@@ -393,6 +393,7 @@ export interface Sample {
     artistId: number | null;
     artistName: string | null;
     ownerId: number | null;
+    packId: number | null;
     description: string | null;
     filePath: string;
     format: string | null;
@@ -408,6 +409,23 @@ export interface Sample {
     curationNotes: string | null;
     downloadCount: number;
     createdAt: string;
+}
+
+export interface SamplePack {
+    id: number;
+    title: string;
+    slug: string;
+    artistId: number | null;
+    artistName: string | null;
+    ownerId: number | null;
+    description: string | null;
+    coverPath: string | null;
+    license: string;
+    status: 'pending' | 'approved' | 'rejected';
+    curationNotes: string | null;
+    createdAt: string;
+    sampleCount: number;
+    samples?: Sample[];
 }
 
 export interface NetworkSite {

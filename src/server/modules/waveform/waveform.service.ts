@@ -12,8 +12,8 @@ export class WaveformService {
         fs.ensureDirSync(this.cacheDir);
     }
 
-    async getWaveformSVG(trackId: number, filePath: string): Promise<string> {
-        const cacheFile = join(this.cacheDir, `${trackId}.svg`);
+    async getWaveformSVG(id: number | string, filePath: string): Promise<string> {
+        const cacheFile = join(this.cacheDir, `${id}.svg`);
 
         // Check cache first
         if (await fs.pathExists(cacheFile)) {
@@ -30,7 +30,7 @@ export class WaveformService {
             await fs.writeFile(cacheFile, svg);
             return svg;
         } catch (error) {
-            console.error(`Failed to generate waveform for ${trackId}:`, error);
+            console.error(`Failed to generate waveform for ${id}:`, error);
             throw error;
         }
     }

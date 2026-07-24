@@ -236,6 +236,24 @@ export function createDatabase(dbPath: string): DatabaseService {
         CREATE INDEX IF NOT EXISTS idx_samples_artist ON samples(artist_id);
         CREATE INDEX IF NOT EXISTS idx_samples_owner ON samples(owner_id);
 
+        CREATE TABLE IF NOT EXISTS sample_packs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            slug TEXT NOT NULL UNIQUE,
+            artist_id INTEGER REFERENCES artists(id),
+            owner_id INTEGER REFERENCES admin(id),
+            description TEXT,
+            cover_path TEXT,
+            license TEXT NOT NULL DEFAULT 'cc0',
+            status TEXT NOT NULL DEFAULT 'pending',
+            curation_notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_sample_packs_status ON sample_packs(status);
+        CREATE INDEX IF NOT EXISTS idx_sample_packs_artist ON sample_packs(artist_id);
+        CREATE INDEX IF NOT EXISTS idx_sample_packs_owner ON sample_packs(owner_id);
+
         CREATE TABLE IF NOT EXISTS album_ownership (
             album_id INTEGER REFERENCES albums(id) ON DELETE CASCADE,
             owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
@@ -712,6 +730,16 @@ export function createDatabase(dbPath: string): DatabaseService {
             
             db.exec("DROP TABLE releases");
             console.log("📦 [Database Consolidation] Physical tables dropped. Ready to create views.");
+        }
+
+        const samplesExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='samples'").get();
+        if (samplesExists) {
+            const cols = db.prepare("PRAGMA table_info(samples)").all() as any[];
+            if (!cols.some(col => col.name === 'pack_id')) {
+                console.log("📦 [Database] Migrating samples table: adding pack_id column...");
+                db.exec("ALTER TABLE samples ADD COLUMN pack_id INTEGER REFERENCES sample_packs(id)");
+                db.exec("CREATE INDEX IF NOT EXISTS idx_samples_pack ON samples(pack_id)");
+            }
         }
 
         const artistsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='artists'").get();

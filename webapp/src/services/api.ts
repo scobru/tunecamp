@@ -4,7 +4,7 @@ import type {
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
     StorageAccount, GoogleDriveFile, InstanceStorage, RecomputeStorageResult, SystemResources, UpdateCheck,
     DigStrategy, DigSearchResult, DigResult, DigSession, DigCrateItem, DigCrateInput, DigHistoryItem,
-    LiveSession, ArtistEvent, ArtistEventInput, LabAppRecord, Report, LegalPages, Sample
+    LiveSession, ArtistEvent, ArtistEventInput, LabAppRecord, Report, LegalPages, Sample, SamplePack
 } from '../types';
 
 const API_URL = '/api';
@@ -304,6 +304,29 @@ const API = {
         const token = API.getToken();
         return token ? `${url}?token=${token}` : url;
     },
+    getSampleWaveformUrl: (id: number) => `${API_URL}/samples/${id}/waveform`,
+
+    // --- Sample Packs ---
+    getSamplePacks: (options: { mine?: boolean, q?: string } = {}) => {
+        const params = new URLSearchParams();
+        if (options.mine) params.set('mine', 'true');
+        if (options.q) params.set('q', options.q);
+        const qs = params.toString();
+        return handleResponse(api.get<SamplePack[]>(`sample-packs${qs ? `?${qs}` : ''}`));
+    },
+    getSamplePack: (id: number) => handleResponse(api.get<SamplePack>(`sample-packs/${id}`)),
+    getPendingSamplePacks: () => handleResponse(api.get<SamplePack[]>('sample-packs/moderation/pending')),
+    uploadSamplePack: (files: File[], fields: { title: string, description?: string, license?: string, attributionName?: string }) => {
+        const formData = new FormData();
+        files.forEach(f => formData.append('files', f));
+        Object.entries(fields).forEach(([k, v]) => { if (v) formData.append(k, v); });
+        return handleResponse(api.post<SamplePack>('sample-packs', formData, { headers: { 'Content-Type': 'multipart/form-data' } }));
+    },
+    updateSamplePack: (id: number, fields: Partial<{ title: string, description: string, license: string }>) =>
+        handleResponse(api.put<SamplePack>(`sample-packs/${id}`, fields)),
+    deleteSamplePack: (id: number) => handleResponse(api.delete(`sample-packs/${id}`)),
+    approveSamplePack: (id: number, notes?: string) => handleResponse(api.post<SamplePack>(`sample-packs/${id}/approve`, { notes })),
+    rejectSamplePack: (id: number, notes?: string) => handleResponse(api.post<SamplePack>(`sample-packs/${id}/reject`, { notes })),
 
     // --- Subscription ---
     createSubscriptionSession: (successUrl: string, cancelUrl: string, email?: string) => handleResponse(api.post('payments/stripe/create-subscription-session', { successUrl, cancelUrl, email })),

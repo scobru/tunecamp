@@ -5,7 +5,9 @@ export interface Sample {
     title: string;
     slug: string;
     artistId: number | null;
+    artistName: string | null;
     ownerId: number | null;
+    packId: number | null;
     description: string | null;
     filePath: string;
     format: string | null;
@@ -27,6 +29,8 @@ export interface SampleListOptions {
     status?: string;
     artistId?: number;
     ownerId?: number;
+    packId?: number;
+    excludePacked?: boolean;
     search?: string;
     limit?: number;
     offset?: number;
@@ -35,6 +39,7 @@ export interface SampleListOptions {
 const KEY_MAP: Record<string, string> = {
     artistId: "artist_id",
     ownerId: "owner_id",
+    packId: "pack_id",
     filePath: "file_path",
     fileSize: "file_size",
     musicalKey: "musical_key",
@@ -54,7 +59,9 @@ export class SampleRepository {
             title: row.title,
             slug: row.slug,
             artistId: row.artist_id,
+            artistName: row.artist_name || row.attribution_name || row.owner_username || null,
             ownerId: row.owner_id,
+            packId: row.pack_id,
             description: row.description,
             filePath: row.file_path,
             format: row.format,
@@ -73,13 +80,20 @@ export class SampleRepository {
         };
     }
 
+    private static readonly SELECT_WITH_JOINS = `
+        SELECT samples.*, artists.name as artist_name, admin.username as owner_username
+        FROM samples
+        LEFT JOIN artists ON artists.id = samples.artist_id
+        LEFT JOIN admin ON admin.id = samples.owner_id
+    `;
+
     getById(id: number): Sample | null {
-        const row = this.db.prepare("SELECT * FROM samples WHERE id = ?").get(id);
+        const row = this.db.prepare(`${SampleRepository.SELECT_WITH_JOINS} WHERE samples.id = ?`).get(id);
         return row ? this.mapSample(row) : null;
     }
 
     getBySlug(slug: string): Sample | null {
-        const row = this.db.prepare("SELECT * FROM samples WHERE slug = ?").get(slug);
+        const row = this.db.prepare(`${SampleRepository.SELECT_WITH_JOINS} WHERE samples.slug = ?`).get(slug);
         return row ? this.mapSample(row) : null;
     }
 
@@ -87,19 +101,25 @@ export class SampleRepository {
         const conditions: string[] = [];
         const params: any[] = [];
         if (opts.status) {
-            conditions.push("status = ?");
+            conditions.push("samples.status = ?");
             params.push(opts.status);
         }
         if (opts.artistId) {
-            conditions.push("artist_id = ?");
+            conditions.push("samples.artist_id = ?");
             params.push(opts.artistId);
         }
         if (opts.ownerId) {
-            conditions.push("owner_id = ?");
+            conditions.push("samples.owner_id = ?");
             params.push(opts.ownerId);
         }
+        if (opts.packId) {
+            conditions.push("samples.pack_id = ?");
+            params.push(opts.packId);
+        } else if (opts.excludePacked) {
+            conditions.push("samples.pack_id IS NULL");
+        }
         if (opts.search) {
-            conditions.push("(title LIKE ? OR description LIKE ? OR tags LIKE ?)");
+            conditions.push("(samples.title LIKE ? OR samples.description LIKE ? OR samples.tags LIKE ?)");
             const term = `%${opts.search}%`;
             params.push(term, term, term);
         }
@@ -111,7 +131,7 @@ export class SampleRepository {
         const limit = opts.limit ?? 50;
         const offset = opts.offset ?? 0;
         const rows = this.db
-            .prepare(`SELECT * FROM samples ${clause} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+            .prepare(`${SampleRepository.SELECT_WITH_JOINS} ${clause} ORDER BY samples.created_at DESC LIMIT ? OFFSET ?`)
             .all(...params, limit, offset);
         return rows.map((r) => this.mapSample(r));
     }
@@ -131,7 +151,7 @@ export class SampleRepository {
         );
     }
 
-    create(sample: Omit<Sample, "id" | "slug" | "status" | "downloadCount" | "createdAt" | "curationNotes"> & {
+    create(sample: Omit<Sample, "id" | "slug" | "status" | "downloadCount" | "createdAt" | "curationNotes" | "artistName"> & {
         status?: Sample["status"];
     }): Sample {
         const baseSlug = this.makeSlug(sample.title);
@@ -139,9 +159,9 @@ export class SampleRepository {
         let attempt = 0;
         const insert = this.db.prepare(`
             INSERT INTO samples (
-                title, slug, artist_id, owner_id, description, file_path, format, duration,
+                title, slug, artist_id, owner_id, pack_id, description, file_path, format, duration,
                 file_size, bpm, musical_key, tags, license, attribution_name, cover_path, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         while (true) {
             try {
@@ -150,6 +170,7 @@ export class SampleRepository {
                     slug,
                     sample.artistId,
                     sample.ownerId,
+                    sample.packId,
                     sample.description,
                     sample.filePath,
                     sample.format,
