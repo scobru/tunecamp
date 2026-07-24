@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.0] - 2026-07-24
+
+### Added
+- **Free samples/sample-pack content type.** New `samples` table + `SampleRepository`, mounted at `/api/samples`: list (approved-only public, `?mine=true` for own uploads), detail, download (with download-count tracking), upload, edit, delete, and moderation (`/moderation/pending`, `/:id/approve`, `/:id/reject`). Publishing gated by the existing `VisibilityGuardian.canPublishContent()` — no new capability or role added; ownership/moderation gated by `canManageItem`/`MANAGE_PRIVATE_LIBRARY`, matching tracks/releases. Auto-approves for admins/root-admins/super-users or when `listenerSelfPublish` is on, otherwise pending moderation.
+
 ## [3.2.1] - 2026-07-24
 
 ### Fixed
