@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Music2, Download, Search as SearchIcon, Play, Pause, Package } from 'lucide-react';
+import { Music2, Download, Search as SearchIcon, Play, Pause } from 'lucide-react';
 import API from '../services/api';
 import type { Sample, SamplePack } from '../types';
 import { Waveform } from '../components/player/Waveform';
@@ -77,8 +77,8 @@ const PackCard = ({ pack }: { pack: SamplePack }) => (
         to={`/samples/pack/${pack.id}`}
         className="card bg-base-100 border border-base-content/5 shadow-sm hover:shadow-lg hover:border-primary/30 transition-all hover:-translate-y-0.5 overflow-hidden"
     >
-        <div className="h-28 w-full bg-gradient-to-br from-secondary/20 via-base-300 to-base-200 relative flex items-center justify-center">
-            <Package size={32} className="opacity-40" />
+        <div className="h-28 w-full relative overflow-hidden">
+            <img src={API.getSamplePackCoverUrl(pack.id)} alt={pack.title} className="w-full h-full object-cover" />
         </div>
         <div className="p-4 space-y-1">
             <div className="flex items-start justify-between gap-2">
