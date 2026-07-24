@@ -28,6 +28,7 @@ export function createSamplesRoutes(container: ServiceContainer): Router {
     const musicDir = resolveService(container, "musicDir");
     const storage = resolveService(container, "storage");
     const identity = resolveService(container, "identity");
+    const waveformService = container.waveformService;
     const authMiddleware = container.authMiddleware;
 
     const router = Router();
@@ -107,6 +108,23 @@ export function createSamplesRoutes(container: ServiceContainer): Router {
         samplesRepository.incrementDownloadCount(sample.id);
         const filename = `${sample.title}${path.extname(filePath)}`;
         res.download(filePath, filename);
+    }));
+
+    /**
+     * GET /api/samples/:id/waveform
+     */
+    router.get("/:id(\\d+)/waveform", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        const sample = samplesRepository.getById(parseInt(req.params.id, 10));
+        if (!sample) throw new NotFoundError("Sample not found");
+        if (sample.status !== "approved" && !canManage(req, sample) && !canModerate(req)) {
+            throw new ForbiddenError("Access denied");
+        }
+        const filePath = resolveSafePath(musicDir, sample.filePath);
+        if (!filePath || !(await fs.pathExists(filePath))) throw new NotFoundError("Sample file not found");
+        const svg = await waveformService.getWaveformSVG(`sample-${sample.id}`, filePath);
+        res.setHeader("Content-Type", "image/svg+xml");
+        res.setHeader("Cache-Control", "public, max-age=31536000");
+        res.send(svg);
     }));
 
     /**

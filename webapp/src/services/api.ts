@@ -304,6 +304,7 @@ const API = {
         const token = API.getToken();
         return token ? `${url}?token=${token}` : url;
     },
+    getSampleWaveformUrl: (id: number) => `${API_URL}/samples/${id}/waveform`,
 
     // --- Subscription ---
     createSubscriptionSession: (successUrl: string, cancelUrl: string, email?: string) => handleResponse(api.post('payments/stripe/create-subscription-session', { successUrl, cancelUrl, email })),

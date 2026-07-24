@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.0] - 2026-07-24
+
+### Added
+- **Sample waveform preview.** New `GET /api/samples/:id/waveform` (SVG, reuses `WaveformService`). `/samples` cards now show a real waveform as the cover art, with hover-to-preview playback (mouse enter plays, mouse leave stops) instead of a plain gradient placeholder.
+
+### Fixed
+- **`artistName` was never populated on samples.** `SampleRepository` never joined `artists`/`admin`, so uploads without a linked artist profile (e.g. root-admin uploads) always showed as "undefined"/missing artist. Now resolves `artists.name` → `attribution_name` → uploader's username → `null`.
+
 ## [3.6.0] - 2026-07-24
 
 ### Added
