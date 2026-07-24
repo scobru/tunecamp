@@ -37,6 +37,7 @@ import type { LiveService } from "../modules/live/live.service.js";
 import type { RadioService } from "../modules/radio/radio.service.js";
 import type { PeerService } from "../modules/peer/peer.service.js";
 import type { SampleRepository } from "../repositories/sample.repository.js";
+import type { SamplePackRepository } from "../repositories/sample-pack.repository.js";
 
 export interface ServiceContainer {
     // Core
@@ -87,6 +88,7 @@ export interface ServiceContainer {
     radioService: RadioService;
     peerService: PeerService;
     samplesRepository: SampleRepository;
+    samplePacksRepository: SamplePackRepository;
 
     // AI
     openRouterService: OpenRouterService;

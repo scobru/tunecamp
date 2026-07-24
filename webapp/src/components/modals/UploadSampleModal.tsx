@@ -10,7 +10,7 @@ export const UploadSampleModal = ({
   onUploadComplete?: () => void;
 }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [bpm, setBpm] = useState("");
@@ -23,7 +23,7 @@ export const UploadSampleModal = ({
 
   useEffect(() => {
     const handleOpen = () => {
-      setFile(null);
+      setFiles([]);
       setTitle("");
       setDescription("");
       setBpm("");
@@ -39,22 +39,26 @@ export const UploadSampleModal = ({
     return () => document.removeEventListener("open-upload-sample-modal", handleOpen);
   }, []);
 
+  const isPack = files.length > 1;
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (f) {
-      setFile(f);
-      if (!title) setTitle(f.name.replace(/\.[^/.]+$/, ""));
-    }
+    const selected = Array.from(e.target.files ?? []);
+    setFiles(selected);
+    if (selected.length === 1 && !title) setTitle(selected[0].name.replace(/\.[^/.]+$/, ""));
   };
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !title) return;
+    if (files.length === 0 || !title) return;
 
     setUploading(true);
     setError("");
     try {
-      await API.uploadSample(file, { title, description, bpm, musicalKey, license, attributionName, tags });
+      if (isPack) {
+        await API.uploadSamplePack(files, { title, description, license, attributionName });
+      } else {
+        await API.uploadSample(files[0], { title, description, bpm, musicalKey, license, attributionName, tags });
+      }
       onUploadComplete?.();
       dialogRef.current?.close();
     } catch (err: unknown) {
@@ -72,25 +76,28 @@ export const UploadSampleModal = ({
         </form>
 
         <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-          <UploadCloud size={20} className="text-secondary" /> Upload Sample
+          <UploadCloud size={20} className="text-secondary" /> Upload Sample{isPack ? " Pack" : ""}
         </h3>
 
         <form onSubmit={handleUpload} className="space-y-4">
           <div className="form-control">
-            <label className="label"><span className="label-text">Audio File</span></label>
+            <label className="label"><span className="label-text">Audio File(s)</span></label>
             <input
               type="file"
+              multiple
               className="file-input file-input-bordered w-full"
               accept="audio/*"
               onChange={handleFileChange}
             />
-            {file && (
-              <span className="text-xs opacity-60 mt-1 flex items-center gap-1"><Music2 size={12} /> {file.name}</span>
+            {files.length > 0 && (
+              <span className="text-xs opacity-60 mt-1 flex items-center gap-1">
+                <Music2 size={12} /> {files.length === 1 ? files[0].name : `${files.length} files selected`}
+              </span>
             )}
           </div>
 
           <div className="form-control">
-            <label className="label"><span className="label-text">Title</span></label>
+            <label className="label"><span className="label-text">{isPack ? "Pack Title" : "Title"}</span></label>
             <input
               type="text"
               className="input input-bordered w-full"
@@ -100,16 +107,18 @@ export const UploadSampleModal = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="form-control">
-              <label className="label"><span className="label-text-alt font-bold opacity-50">BPM</span></label>
-              <input type="number" className="input input-bordered input-sm w-full" value={bpm} onChange={(e) => setBpm(e.target.value)} />
+          {!isPack && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="form-control">
+                <label className="label"><span className="label-text-alt font-bold opacity-50">BPM</span></label>
+                <input type="number" className="input input-bordered input-sm w-full" value={bpm} onChange={(e) => setBpm(e.target.value)} />
+              </div>
+              <div className="form-control">
+                <label className="label"><span className="label-text-alt font-bold opacity-50">Key</span></label>
+                <input type="text" placeholder="e.g. Am" className="input input-bordered input-sm w-full" value={musicalKey} onChange={(e) => setMusicalKey(e.target.value)} />
+              </div>
             </div>
-            <div className="form-control">
-              <label className="label"><span className="label-text-alt font-bold opacity-50">Key</span></label>
-              <input type="text" placeholder="e.g. Am" className="input input-bordered input-sm w-full" value={musicalKey} onChange={(e) => setMusicalKey(e.target.value)} />
-            </div>
-          </div>
+          )}
 
           <div className="form-control">
             <label className="label"><span className="label-text-alt font-bold opacity-50">License</span></label>
@@ -123,10 +132,12 @@ export const UploadSampleModal = ({
             <input type="text" className="input input-bordered input-sm w-full" value={attributionName} onChange={(e) => setAttributionName(e.target.value)} />
           </div>
 
-          <div className="form-control">
-            <label className="label"><span className="label-text-alt font-bold opacity-50">Tags (comma-separated)</span></label>
-            <input type="text" className="input input-bordered input-sm w-full" value={tags} onChange={(e) => setTags(e.target.value)} />
-          </div>
+          {!isPack && (
+            <div className="form-control">
+              <label className="label"><span className="label-text-alt font-bold opacity-50">Tags (comma-separated)</span></label>
+              <input type="text" className="input input-bordered input-sm w-full" value={tags} onChange={(e) => setTags(e.target.value)} />
+            </div>
+          )}
 
           <div className="form-control">
             <label className="label"><span className="label-text-alt font-bold opacity-50">Description</span></label>
@@ -137,8 +148,8 @@ export const UploadSampleModal = ({
 
           <div className="modal-action">
             <button type="button" className="btn btn-ghost" onClick={() => dialogRef.current?.close()}>Close</button>
-            <button type="submit" className="btn btn-secondary" disabled={uploading || !file || !title}>
-              {uploading ? (<><span className="loading loading-spinner loading-xs"></span> Uploading...</>) : "Upload Sample"}
+            <button type="submit" className="btn btn-secondary" disabled={uploading || files.length === 0 || !title}>
+              {uploading ? (<><span className="loading loading-spinner loading-xs"></span> Uploading...</>) : isPack ? "Upload Pack" : "Upload Sample"}
             </button>
           </div>
         </form>

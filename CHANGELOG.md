@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.8.0] - 2026-07-24
+
+### Added
+- **Sample packs.** New `sample_packs` table (`samples.pack_id` FK). `POST /api/sample-packs` uploads multiple files at once under one pack (same publish/auto-approve gate as single samples); `GET /api/sample-packs`, `GET /api/sample-packs/:id` (pack + its samples), `PUT`/`DELETE`, moderation `approve`/`reject` (cascades to child samples). Public `/api/samples` listing excludes packed samples so they only surface via their pack. Webapp: pack cards on `/samples`, new `/samples/pack/:id` detail page, and the upload modal now accepts multiple files to create a pack.
+
 ## [3.7.0] - 2026-07-24
 
 ### Added

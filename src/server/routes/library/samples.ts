@@ -70,7 +70,7 @@ export function createSamplesRoutes(container: ServiceContainer): Router {
             const samples = samplesRepository.list({ ownerId: req.userId, search: req.query.q as string });
             return res.json(samples);
         }
-        const samples = samplesRepository.list({ status: "approved", search: req.query.q as string, limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined, offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined });
+        const samples = samplesRepository.list({ status: "approved", excludePacked: true, search: req.query.q as string, limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined, offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined });
         res.json(samples);
     }));
 
@@ -157,6 +157,7 @@ export function createSamplesRoutes(container: ServiceContainer): Router {
                 title,
                 artistId: req.artistId ?? null,
                 ownerId: req.userId ?? null,
+                packId: null,
                 description: description ?? null,
                 filePath: dbPath,
                 format: ext.replace(".", ""),
