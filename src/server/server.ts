@@ -167,6 +167,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     app.use('/api/community', publicFederationCors);
     app.use('/api/catalog', publicFederationCors);
+    app.use('/api/samples', publicFederationCors);
 
     app.use((req, res, next) => {
         if (res.locals.skipStrictCors) {
