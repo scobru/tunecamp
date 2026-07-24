@@ -5,6 +5,7 @@ export interface Sample {
     title: string;
     slug: string;
     artistId: number | null;
+    artistName: string | null;
     ownerId: number | null;
     description: string | null;
     filePath: string;
@@ -54,6 +55,7 @@ export class SampleRepository {
             title: row.title,
             slug: row.slug,
             artistId: row.artist_id,
+            artistName: row.artist_name || row.attribution_name || row.owner_username || null,
             ownerId: row.owner_id,
             description: row.description,
             filePath: row.file_path,
@@ -73,13 +75,20 @@ export class SampleRepository {
         };
     }
 
+    private static readonly SELECT_WITH_JOINS = `
+        SELECT samples.*, artists.name as artist_name, admin.username as owner_username
+        FROM samples
+        LEFT JOIN artists ON artists.id = samples.artist_id
+        LEFT JOIN admin ON admin.id = samples.owner_id
+    `;
+
     getById(id: number): Sample | null {
-        const row = this.db.prepare("SELECT * FROM samples WHERE id = ?").get(id);
+        const row = this.db.prepare(`${SampleRepository.SELECT_WITH_JOINS} WHERE samples.id = ?`).get(id);
         return row ? this.mapSample(row) : null;
     }
 
     getBySlug(slug: string): Sample | null {
-        const row = this.db.prepare("SELECT * FROM samples WHERE slug = ?").get(slug);
+        const row = this.db.prepare(`${SampleRepository.SELECT_WITH_JOINS} WHERE samples.slug = ?`).get(slug);
         return row ? this.mapSample(row) : null;
     }
 
@@ -87,19 +96,19 @@ export class SampleRepository {
         const conditions: string[] = [];
         const params: any[] = [];
         if (opts.status) {
-            conditions.push("status = ?");
+            conditions.push("samples.status = ?");
             params.push(opts.status);
         }
         if (opts.artistId) {
-            conditions.push("artist_id = ?");
+            conditions.push("samples.artist_id = ?");
             params.push(opts.artistId);
         }
         if (opts.ownerId) {
-            conditions.push("owner_id = ?");
+            conditions.push("samples.owner_id = ?");
             params.push(opts.ownerId);
         }
         if (opts.search) {
-            conditions.push("(title LIKE ? OR description LIKE ? OR tags LIKE ?)");
+            conditions.push("(samples.title LIKE ? OR samples.description LIKE ? OR samples.tags LIKE ?)");
             const term = `%${opts.search}%`;
             params.push(term, term, term);
         }
@@ -111,7 +120,7 @@ export class SampleRepository {
         const limit = opts.limit ?? 50;
         const offset = opts.offset ?? 0;
         const rows = this.db
-            .prepare(`SELECT * FROM samples ${clause} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+            .prepare(`${SampleRepository.SELECT_WITH_JOINS} ${clause} ORDER BY samples.created_at DESC LIMIT ? OFFSET ?`)
             .all(...params, limit, offset);
         return rows.map((r) => this.mapSample(r));
     }
@@ -131,7 +140,7 @@ export class SampleRepository {
         );
     }
 
-    create(sample: Omit<Sample, "id" | "slug" | "status" | "downloadCount" | "createdAt" | "curationNotes"> & {
+    create(sample: Omit<Sample, "id" | "slug" | "status" | "downloadCount" | "createdAt" | "curationNotes" | "artistName"> & {
         status?: Sample["status"];
     }): Sample {
         const baseSlug = this.makeSlug(sample.title);

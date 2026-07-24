@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Music2, Download, Search as SearchIcon, Play, Pause } from 'lucide-react';
 import API from '../services/api';
 import type { Sample } from '../types';
+import { Waveform } from '../components/player/Waveform';
 
 const LICENSE_LABEL: Record<string, string> = {
     cc0: 'CC0',
@@ -10,28 +11,38 @@ const LICENSE_LABEL: Record<string, string> = {
     'royalty-free': 'Royalty-Free',
 };
 
-const SampleCard = ({ sample, isPlaying, progress, onToggle }: {
+const SampleCard = ({ sample, isPlaying, progress, onHoverStart, onHoverEnd, onToggle }: {
     sample: Sample;
     isPlaying: boolean;
     progress: number;
+    onHoverStart: () => void;
+    onHoverEnd: () => void;
     onToggle: () => void;
 }) => {
     return (
-        <div className="card bg-base-100 border border-base-content/5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden">
-            <button
+        <div className="card bg-base-100 border border-base-content/5 shadow-sm hover:shadow-lg hover:border-primary/30 transition-all hover:-translate-y-0.5 overflow-hidden">
+            <div
+                onMouseEnter={onHoverStart}
+                onMouseLeave={onHoverEnd}
                 onClick={onToggle}
-                className="aspect-video w-full bg-gradient-to-br from-primary/10 to-base-200 relative overflow-hidden flex items-center justify-center group"
+                className="h-28 w-full bg-gradient-to-br from-primary/15 via-base-300 to-base-200 relative overflow-hidden flex items-center justify-center group cursor-pointer"
             >
-                <Music2 size={36} className="opacity-20 group-hover:opacity-10 transition-opacity" />
-                <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
-                    <span className="btn btn-circle btn-primary btn-sm shadow-lg opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100 transition-all" style={isPlaying ? { opacity: 1 } : undefined}>
+                <div className="absolute inset-4">
+                    <Waveform
+                        data={API.getSampleWaveformUrl(sample.id)}
+                        progress={progress}
+                        colorPlayed="#22c55e"
+                        colorRemaining="rgba(255,255,255,0.22)"
+                    />
+                </div>
+                <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors pointer-events-none">
+                    <span
+                        className={`btn btn-circle btn-primary btn-sm shadow-lg scale-90 group-hover:scale-100 transition-all ${isPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                    >
                         {isPlaying ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
                     </span>
                 </span>
-                {isPlaying && (
-                    <span className="absolute bottom-0 left-0 h-0.5 bg-primary transition-[width]" style={{ width: `${progress * 100}%` }} />
-                )}
-            </button>
+            </div>
 
             <div className="p-4 space-y-3">
                 <div>
@@ -39,7 +50,7 @@ const SampleCard = ({ sample, isPlaying, progress, onToggle }: {
                         <h3 className="font-bold text-sm leading-tight">{sample.title}</h3>
                         <span className="badge badge-xs badge-ghost flex-shrink-0">{LICENSE_LABEL[sample.license] || sample.license}</span>
                     </div>
-                    {sample.artistName && <p className="text-xs opacity-50 mt-0.5">{sample.artistName}</p>}
+                    <p className="text-xs opacity-50 mt-0.5">{sample.artistName || 'Unknown Artist'}</p>
                     <p className="text-xs opacity-60 mt-1">
                         {[sample.bpm ? `${sample.bpm} BPM` : null, sample.musicalKey].filter(Boolean).join(' · ')}
                     </p>
@@ -49,6 +60,7 @@ const SampleCard = ({ sample, isPlaying, progress, onToggle }: {
                     <span className="text-xs opacity-40">{sample.downloadCount} downloads</span>
                     <a
                         href={API.getSampleDownloadUrl(sample.id)}
+                        onClick={e => e.stopPropagation()}
                         className="btn btn-xs btn-success rounded-full gap-1"
                     >
                         <Download size={11} /> Download
@@ -85,19 +97,22 @@ const Samples = () => {
         };
     }, []);
 
-    const togglePlay = (sample: Sample) => {
+    const play = (sample: Sample) => {
         const audio = audioRef.current!;
-        if (playingId === sample.id) {
-            audio.pause();
-            setPlayingId(null);
-            return;
-        }
         audio.src = API.getSampleDownloadUrl(sample.id);
         audio.currentTime = 0;
         audio.play();
         setPlayingId(sample.id);
         setProgress(0);
     };
+
+    const stop = () => {
+        audioRef.current?.pause();
+        setPlayingId(null);
+        setProgress(0);
+    };
+
+    const togglePlay = (sample: Sample) => (playingId === sample.id ? stop() : play(sample));
 
     const filtered = samples.filter(s => {
         if (!search) return true;
@@ -141,6 +156,8 @@ const Samples = () => {
                             sample={sample}
                             isPlaying={playingId === sample.id}
                             progress={playingId === sample.id ? progress : 0}
+                            onHoverStart={() => play(sample)}
+                            onHoverEnd={stop}
                             onToggle={() => togglePlay(sample)}
                         />
                     ))}
