@@ -333,6 +333,422 @@ paths:
         '200':
           description: Tracks deleted.
 
+  # ── Samples ─────────────────────────────────────────────────────────────────
+  /samples:
+    get:
+      summary: List Samples
+      tags: [Samples]
+      description: |
+        Lists approved free samples. Packed samples (belonging to a sample pack) are excluded —
+        they only surface through their pack. `mine=true` scopes to the caller's own uploads
+        (any status) and is not filtered by pack membership.
+      operationId: listSamples
+      parameters:
+        - name: mine
+          in: query
+          schema:
+            type: boolean
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of samples.
+    post:
+      summary: Upload Sample
+      tags: [Samples]
+      description: Uploads a single free sample. Starts `pending` unless auto-approved.
+      operationId: uploadSample
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, title]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                title:
+                  type: string
+                description:
+                  type: string
+                bpm:
+                  type: integer
+                musicalKey:
+                  type: string
+                license:
+                  type: string
+                  enum: [cc0, cc-by, cc-by-sa, royalty-free]
+                attributionName:
+                  type: string
+                tags:
+                  type: string
+                  description: Comma-separated tags.
+      responses:
+        '201':
+          description: Sample created.
+
+  /samples/{id}:
+    get:
+      summary: Get Sample
+      tags: [Samples]
+      operationId: getSample
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sample metadata.
+    put:
+      summary: Update Sample
+      tags: [Samples]
+      description: Owner or moderator only.
+      operationId: updateSample
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sample updated.
+    delete:
+      summary: Delete Sample
+      tags: [Samples]
+      description: Owner or moderator only.
+      operationId: deleteSample
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Sample deleted.
+
+  /samples/{id}/download:
+    get:
+      summary: Download Sample
+      tags: [Samples]
+      description: Approved samples are public; pending samples require the owner or a moderator. Supports `?token=` query auth.
+      operationId: downloadSample
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sample audio file.
+
+  /samples/{id}/waveform:
+    get:
+      summary: Get Sample Waveform
+      tags: [Samples]
+      description: Returns an SVG waveform visualization for a sample.
+      operationId: getSampleWaveform
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: SVG waveform image.
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+
+  /samples/{id}/approve:
+    post:
+      summary: Approve Sample
+      tags: [Samples]
+      description: Root-admin/admin/super-user only.
+      operationId: approveSample
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sample approved.
+
+  /samples/{id}/reject:
+    post:
+      summary: Reject Sample
+      tags: [Samples]
+      description: Root-admin/admin/super-user only.
+      operationId: rejectSample
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Sample rejected.
+
+  /samples/moderation/pending:
+    get:
+      summary: List Pending Samples
+      tags: [Samples]
+      description: Root-admin/admin/super-user only.
+      operationId: listPendingSamples
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Samples awaiting curation.
+
+  # ── Sample Packs ────────────────────────────────────────────────────────────
+  /sample-packs:
+    get:
+      summary: List Sample Packs
+      tags: [Sample Packs]
+      description: Lists approved sample packs. `mine=true` scopes to the caller's own packs (any status).
+      operationId: listSamplePacks
+      parameters:
+        - name: mine
+          in: query
+          schema:
+            type: boolean
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of sample packs.
+    post:
+      summary: Upload Sample Pack
+      tags: [Sample Packs]
+      description: |
+        Uploads multiple files at once as a pack. Same publish gate and auto-approve rules as
+        `POST /samples`; starts `pending` unless auto-approved.
+      operationId: uploadSamplePack
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files, title]
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                title:
+                  type: string
+                description:
+                  type: string
+                license:
+                  type: string
+                  enum: [cc0, cc-by, cc-by-sa, royalty-free]
+                attributionName:
+                  type: string
+      responses:
+        '201':
+          description: Sample pack created.
+
+  /sample-packs/{id}:
+    get:
+      summary: Get Sample Pack
+      tags: [Sample Packs]
+      description: Returns pack metadata plus its member samples.
+      operationId: getSamplePack
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sample pack with samples.
+    put:
+      summary: Update Sample Pack
+      tags: [Sample Packs]
+      description: Owner or moderator only.
+      operationId: updateSamplePack
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sample pack updated.
+    delete:
+      summary: Delete Sample Pack
+      tags: [Sample Packs]
+      description: Deletes the pack and all its member samples. Owner or moderator only.
+      operationId: deleteSamplePack
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Sample pack deleted.
+
+  /sample-packs/{id}/cover:
+    get:
+      summary: Get Sample Pack Cover
+      tags: [Sample Packs]
+      description: Serves the pack's cover image, falling back to a generated placeholder SVG if none is set.
+      operationId: getSamplePackCover
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cover image or placeholder SVG.
+    post:
+      summary: Set Sample Pack Cover
+      tags: [Sample Packs]
+      description: Sets or replaces the pack cover image. Owner or moderator only.
+      operationId: uploadSamplePackCover
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [cover]
+              properties:
+                cover:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Sample pack updated with new cover.
+
+  /sample-packs/{id}/approve:
+    post:
+      summary: Approve Sample Pack
+      tags: [Sample Packs]
+      description: Root-admin/admin/super-user only. Cascades to the pack's samples.
+      operationId: approveSamplePack
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sample pack approved.
+
+  /sample-packs/{id}/reject:
+    post:
+      summary: Reject Sample Pack
+      tags: [Sample Packs]
+      description: Root-admin/admin/super-user only.
+      operationId: rejectSamplePack
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Sample pack rejected.
+
+  /sample-packs/moderation/pending:
+    get:
+      summary: List Pending Sample Packs
+      tags: [Sample Packs]
+      description: Root-admin/admin/super-user only.
+      operationId: listPendingSamplePacks
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sample packs awaiting curation.
+
   # ── Releases ────────────────────────────────────────────────────────────────
   /releases:
     get:

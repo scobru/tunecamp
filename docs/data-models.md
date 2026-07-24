@@ -40,6 +40,7 @@ TuneCamp uses **SQLite** as its relational database engine for managing music me
 - **`api_tokens`** / **`oauth_clients`** / **`oauth_links`**: API tokens and OAuth clients (e.g., Fediverse login).
 - **`ap_interactions`** / **`ap_replies`** / **`ap_following`** / **`ap_delivery_queue`** / **`fedify_kv`**: ActivityPub state and delivery queue.
 - **`system_plugins`**: State (enabled/disabled) of plugin providers.
+- **`samples`** / **`sample_packs`**: Free (non-store) sample uploads — BPM, key, license, moderation status. A sample optionally belongs to a pack via `samples.pack_id`; packed samples are excluded from the public `/api/samples` listing and only surface through their pack. `sample_packs.cover_path` holds an optional cover image, served via `/api/sample-packs/:id/cover`.
 
 ## Key Relationships
 
