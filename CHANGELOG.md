@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.1] - 2026-07-24
+
+### Fixed
+- `GET /api/samples` responses now include `artistName` (LEFT JOIN on `artists`), needed by the community aggregator sites to display sample authorship without a second round-trip per artist.
+
 ## [3.3.0] - 2026-07-24
 
 ### Added

@@ -21,6 +21,7 @@ export interface Sample {
     curationNotes: string | null;
     downloadCount: number;
     createdAt: string;
+    artistName: string | null;
 }
 
 export interface SampleListOptions {
@@ -70,16 +71,17 @@ export class SampleRepository {
             curationNotes: row.curation_notes,
             downloadCount: row.download_count,
             createdAt: row.created_at,
+            artistName: row.artist_name ?? null,
         };
     }
 
     getById(id: number): Sample | null {
-        const row = this.db.prepare("SELECT * FROM samples WHERE id = ?").get(id);
+        const row = this.db.prepare("SELECT s.*, a.name as artist_name FROM samples s LEFT JOIN artists a ON a.id = s.artist_id WHERE s.id = ?").get(id);
         return row ? this.mapSample(row) : null;
     }
 
     getBySlug(slug: string): Sample | null {
-        const row = this.db.prepare("SELECT * FROM samples WHERE slug = ?").get(slug);
+        const row = this.db.prepare("SELECT s.*, a.name as artist_name FROM samples s LEFT JOIN artists a ON a.id = s.artist_id WHERE s.slug = ?").get(slug);
         return row ? this.mapSample(row) : null;
     }
 
@@ -111,7 +113,7 @@ export class SampleRepository {
         const limit = opts.limit ?? 50;
         const offset = opts.offset ?? 0;
         const rows = this.db
-            .prepare(`SELECT * FROM samples ${clause} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+            .prepare(`SELECT s.*, a.name as artist_name FROM samples s LEFT JOIN artists a ON a.id = s.artist_id ${clause} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
             .all(...params, limit, offset);
         return rows.map((r) => this.mapSample(r));
     }
@@ -131,7 +133,7 @@ export class SampleRepository {
         );
     }
 
-    create(sample: Omit<Sample, "id" | "slug" | "status" | "downloadCount" | "createdAt" | "curationNotes"> & {
+    create(sample: Omit<Sample, "id" | "slug" | "status" | "downloadCount" | "createdAt" | "curationNotes" | "artistName"> & {
         status?: Sample["status"];
     }): Sample {
         const baseSlug = this.makeSlug(sample.title);
