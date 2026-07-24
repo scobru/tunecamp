@@ -41,6 +41,22 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 | `GET` | `/api/waveform/:id` | Waveform data for visualisation |
 | `GET` | `/api/releases/:id/artwork/:filename` | Serve additional release artwork securely |
 
+### Free Samples (`/api/samples`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/samples` | List approved samples. `mine=true` scopes to the caller's own uploads (any status); `q` filters by search term |
+| `GET` | `/api/samples/moderation/pending` | Root-admin/admin/super-user: list samples awaiting curation |
+| `GET` | `/api/samples/:id` | Sample metadata |
+| `GET` | `/api/samples/:id/download` | Download the sample audio file. Supports `?token=` query auth (approved samples are public; pending samples require the owner or a moderator) |
+| `POST` | `/api/samples` | Upload a sample (`multipart/form-data`: file, title, description, bpm, musicalKey, license, attributionName, tags). Starts in `pending` status |
+| `PUT` | `/api/samples/:id` | Update sample metadata (owner or moderator) |
+| `DELETE` | `/api/samples/:id` | Delete a sample (owner or moderator) |
+| `POST` | `/api/samples/:id/approve` | Root-admin/admin/super-user: approve a pending sample |
+| `POST` | `/api/samples/:id/reject` | Root-admin/admin/super-user: reject a pending sample with optional notes |
+
+Free samples are not store assets: no price, no purchase flow, no credits. License is one of `cc0`, `cc-by`, `cc-by-sa`, `royalty-free`. Upload is reachable from `/publish`; managing your own uploads is under the "Samples" tab on `/my-music`; moderation is under "Sample Curation" on `/admin`.
+
 ### Payments & Monetisation (`/api/payments`)
 
 | Method | Path | Description |

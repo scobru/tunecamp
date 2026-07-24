@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file.
 ### Added
 - **Samples frontend.** Free-sample upload/browse/moderation now reachable from the webapp: a "Free Sample" card on `/publish` (`UploadSampleModal`), a "Samples" tab on `/my-music` (`AdminSamplesList`, list/download/delete own uploads), and a "Sample Curation" tab on `/admin` (`SamplesCurationQueue`, approve/reject pending) for root-admin/admin/super-user. Reuses the existing `/api/samples*` endpoints and `VisibilityGuardian` gates — no new backend surface.
 
+### Documentation
+- `docs/api-contracts.md`: documented `/api/samples*` endpoints.
+- `tunecamp-website/usecases.html`: added "Beatmaker & Producer" use case for free samples.
+
 ## [3.3.0] - 2026-07-24
 
 ### Added
