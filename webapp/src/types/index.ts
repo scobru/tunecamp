@@ -296,6 +296,7 @@ export interface SiteSettings {
     hideNetwork?: boolean | string;
     hideDig?: boolean | string;
     hideDj?: boolean | string;
+    hideSamples?: boolean | string;
     membershipMonthlyPrice?: number | string;
     peerEnabled?: boolean | string;
     peerAllowDownloads?: boolean | string;

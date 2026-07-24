@@ -103,8 +103,8 @@ browser), `Archive` (manager/root-only), `Publish`, `Admin`,
 Several routes are gated by wrapper components rather than logic inside the
 page itself: `AdminGuard`, `EditorGuard`, `RootAdminGuard`,
 `ManagerOrRootGuard` (role-based), and `ModuleGuard` (instance feature flags
-`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideDj`
-from `useSiteSettingsStore`).
+`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideDj`,
+`hideSamples` from `useSiteSettingsStore`).
 
 ## Development Notes
 
