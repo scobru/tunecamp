@@ -385,6 +385,30 @@ export interface Asset {
     created_at?: string;
 }
 
+export interface Sample {
+    id: number;
+    title: string;
+    slug: string;
+    artistId: number | null;
+    artistName: string | null;
+    ownerId: number | null;
+    description: string | null;
+    filePath: string;
+    format: string | null;
+    duration: number | null;
+    fileSize: number;
+    bpm: number | null;
+    musicalKey: string | null;
+    tags: string[];
+    license: string;
+    attributionName: string | null;
+    coverPath: string | null;
+    status: 'pending' | 'approved' | 'rejected';
+    curationNotes: string | null;
+    downloadCount: number;
+    createdAt: string;
+}
+
 export interface NetworkSite {
     url: string;
     name: string;

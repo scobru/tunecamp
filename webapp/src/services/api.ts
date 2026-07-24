@@ -4,7 +4,7 @@ import type {
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
     StorageAccount, GoogleDriveFile, InstanceStorage, RecomputeStorageResult, SystemResources, UpdateCheck,
     DigStrategy, DigSearchResult, DigResult, DigSession, DigCrateItem, DigCrateInput, DigHistoryItem,
-    LiveSession, ArtistEvent, ArtistEventInput, LabAppRecord, Report, LegalPages
+    LiveSession, ArtistEvent, ArtistEventInput, LabAppRecord, Report, LegalPages, Sample
 } from '../types';
 
 const API_URL = '/api';
@@ -276,6 +276,33 @@ const API = {
         } catch {
             return null;
         }
+    },
+
+    // --- Samples ---
+    getSamples: (options: { mine?: boolean, q?: string } = {}) => {
+        const params = new URLSearchParams();
+        if (options.mine) params.set('mine', 'true');
+        if (options.q) params.set('q', options.q);
+        const qs = params.toString();
+        return handleResponse(api.get<Sample[]>(`samples${qs ? `?${qs}` : ''}`));
+    },
+    getSample: (id: number) => handleResponse(api.get<Sample>(`samples/${id}`)),
+    getPendingSamples: () => handleResponse(api.get<Sample[]>('samples/moderation/pending')),
+    uploadSample: (file: File, fields: { title: string, description?: string, bpm?: string, musicalKey?: string, license?: string, attributionName?: string, tags?: string }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        Object.entries(fields).forEach(([k, v]) => { if (v) formData.append(k, v); });
+        return handleResponse(api.post<Sample>('samples', formData, { headers: { 'Content-Type': 'multipart/form-data' } }));
+    },
+    updateSample: (id: number, fields: Partial<{ title: string, description: string, bpm: string, musicalKey: string, license: string, attributionName: string, tags: string }>) =>
+        handleResponse(api.put<Sample>(`samples/${id}`, fields)),
+    deleteSample: (id: number) => handleResponse(api.delete(`samples/${id}`)),
+    approveSample: (id: number, notes?: string) => handleResponse(api.post<Sample>(`samples/${id}/approve`, { notes })),
+    rejectSample: (id: number, notes?: string) => handleResponse(api.post<Sample>(`samples/${id}/reject`, { notes })),
+    getSampleDownloadUrl: (id: number) => {
+        const url = `${API_URL}/samples/${id}/download`;
+        const token = API.getToken();
+        return token ? `${url}?token=${token}` : url;
     },
 
     // --- Subscription ---
