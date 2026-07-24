@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.6.0] - 2026-07-24
+
+### Added
+- **Inline sample preview.** `/samples` cards now play/pause in place (single shared `<audio>`, progress bar over the cover art) instead of requiring a full download to hear a sample.
+
 ## [3.5.1] - 2026-07-24
 
 ### Fixed
