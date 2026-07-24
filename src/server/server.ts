@@ -42,6 +42,8 @@ import { DigService } from "./modules/catalog/dig.service.js";
 import { LocalDiskStorage } from "./modules/storage/storage.engine.js";
 import { createAlbumsRoutes } from "./routes/library/albums.js";
 import { createTracksRoutes } from "./routes/library/tracks.js";
+import { createSamplesRoutes } from "./routes/library/samples.js";
+import { SampleRepository } from "./repositories/sample.repository.js";
 import { createDigRoutes } from "./routes/library/dig.js";
 import { createArtistsRoutes } from "./routes/library/artists.js";
 import { createPlaylistsRoutes } from "./routes/library/playlists.js";
@@ -368,6 +370,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const radioService = new RadioService(database, config.musicDir);
     const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
     const peerService = createPeerService(database, apService);
+    const samplesRepository = new SampleRepository(database.db);
 
     const container: ServiceContainer = {
         database,
@@ -403,6 +406,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         liveService,
         radioService,
         peerService,
+        samplesRepository,
         soulseekService,
         torrentService,
         gdriveService,
@@ -483,6 +487,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(container));
     app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(container));
     app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(container));
+    app.use("/api/samples", authMiddleware.optionalAuth, createSamplesRoutes(container));
     app.use("/api/dig", authMiddleware.requireUser, requireModuleEnabled(container, "hideDig"), createDigRoutes(container));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(container));
 

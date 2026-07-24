@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.0] - 2026-07-24
+
+### Added
+- **Free samples/sample-pack content type.** New `samples` table + `SampleRepository`, mounted at `/api/samples`: list (approved-only public, `?mine=true` for own uploads), detail, download (with download-count tracking), upload, edit, delete, and moderation (`/moderation/pending`, `/:id/approve`, `/:id/reject`). Publishing gated by the existing `VisibilityGuardian.canPublishContent()` — no new capability or role added; ownership/moderation gated by `canManageItem`/`MANAGE_PRIVATE_LIBRARY`, matching tracks/releases. Auto-approves for admins/root-admins/super-users or when `listenerSelfPublish` is on, otherwise pending moderation.
+
+## [3.2.1] - 2026-07-24
+
+### Fixed
+- **Duplicate instances in the federated community/peers list.** `buildCommunitySites()` merged NodeInfo-crawled sites (`federated_instances` table) and followed ActivityPub site actors without deduping — an instance discovered both ways (gossip crawl + AP follow) showed up twice, once tagged `federated` and once `activitypub`. Now dedupes AP actors against already-known crawled origins before merging.
+
+## [3.2.0] - 2026-07-23
+
+### Added
+- **Peer guest mode.** `/ws/peer` now accepts connections without a JWT `token` when the `peerGuestEnabled` setting is on: connects as `(Guest) <name>` (sanitized `guestName` param or a random hex suffix) with a virtual negative `userId`. Requires `peerEnabled` regardless of guest/authenticated path.
+- **E2E public key relay for peer chat.** New `pubkey` message type: server stores each session's Curve25519 public key and broadcasts it to connected peers on exchange. Server remains an opaque relay — it never sees plaintext, only forwards keys for client-side encryption (see `tunecamp-sidecamp` `e2eCrypto.ts`).
+- **Lobby broadcast in peer chat.** `relayChat` with an empty `toUsername` now broadcasts to every other connected peer session instead of being silently dropped.
+
 ## [3.1.5] - 2026-07-22
 
 ### Fixed

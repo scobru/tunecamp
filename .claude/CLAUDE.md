@@ -1,5 +1,10 @@
 # TuneCamp — AI Session Rules
 
+## DOX - IMPORTANT
+
+- Always run the  "/caveman ultra" "/ponytail ultra" "/honey ultra" plugin/skills at the start of each session.
+- If available read the AGENTS.md file in the root directory and list the available agents.
+
 ## Git Workflow
 
 - **`dev` is the integration branch — never commit to `main` directly, and never branch off `main` for changes.** All work branches off `dev`: `git checkout dev && git pull` first, then `git checkout -b feat/<name>` or `fix/<name>`.

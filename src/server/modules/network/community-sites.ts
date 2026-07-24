@@ -45,15 +45,20 @@ export async function buildCommunitySites(deps: CommunitySitesDeps): Promise<any
         try { return await isLiveTuneCamp(new URL(a.uri).origin, 3000); } catch { return false; }
     }));
     const apActors = apActorsAll.filter((_: any, i: number) => apLiveness[i]);
-    const formattedApSites = apActors.map((a: any) => ({
-        url: a.uri,
-        name: a.name || a.username || "AP Actor",
-        description: a.summary || "",
-        version: "ActivityPub",
-        lastSeen: a.last_seen || new Date().toISOString(),
-        coverImage: a.icon_url || null,
-        federation: "activitypub",
-    }));
+    const knownOrigins = new Set(formattedFedSites.map((s) => new URL(s.url).origin));
+    const formattedApSites = apActors
+        .filter((a: any) => {
+            try { return !knownOrigins.has(new URL(a.uri).origin); } catch { return true; }
+        })
+        .map((a: any) => ({
+            url: a.uri,
+            name: a.name || a.username || "AP Actor",
+            description: a.summary || "",
+            version: "ActivityPub",
+            lastSeen: a.last_seen || new Date().toISOString(),
+            coverImage: a.icon_url || null,
+            federation: "activitypub",
+        }));
 
     // 3. Local site
     const localSite = {
