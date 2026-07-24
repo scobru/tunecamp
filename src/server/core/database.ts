@@ -209,6 +209,33 @@ export function createDatabase(dbPath: string): DatabaseService {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS samples (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            slug TEXT NOT NULL UNIQUE,
+            artist_id INTEGER REFERENCES artists(id),
+            owner_id INTEGER REFERENCES admin(id),
+            description TEXT,
+            file_path TEXT NOT NULL,
+            format TEXT,
+            duration REAL,
+            file_size INTEGER DEFAULT 0,
+            bpm INTEGER,
+            musical_key TEXT,
+            tags TEXT,
+            license TEXT NOT NULL DEFAULT 'cc0',
+            attribution_name TEXT,
+            cover_path TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            curation_notes TEXT,
+            download_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_samples_status ON samples(status);
+        CREATE INDEX IF NOT EXISTS idx_samples_artist ON samples(artist_id);
+        CREATE INDEX IF NOT EXISTS idx_samples_owner ON samples(owner_id);
+
         CREATE TABLE IF NOT EXISTS album_ownership (
             album_id INTEGER REFERENCES albums(id) ON DELETE CASCADE,
             owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
