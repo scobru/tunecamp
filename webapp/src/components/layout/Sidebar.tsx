@@ -35,6 +35,7 @@ import {
   MoreHorizontal,
   Sparkles,
   Music2,
+  Users,
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
@@ -193,6 +194,7 @@ export const Sidebar = () => {
                 <ul className={clsx(sidebarCollapsed ? "hidden" : "")}>
                   <NavItem to="/dig" icon={Shovel} label="Dig" />
                   <NavItem to="/lab" icon={FlaskConical} label="Lab" />
+                  <NavItem to="/collab" icon={Users} label="Collab" />
                 </ul>
               </details>
             </li>

@@ -670,6 +670,44 @@ export function createDatabase(dbPath: string): DatabaseService {
         -- Migrate existing rows to the deployed Vercel URLs
         UPDATE lab_apps SET src = 'https://tunecamp-4-track-recorder.vercel.app' WHERE id = 1 AND src != 'https://tunecamp-4-track-recorder.vercel.app';
         UPDATE lab_apps SET src = 'https://tunecamp-audiofabric.vercel.app' WHERE id = 2 AND src != 'https://tunecamp-audiofabric.vercel.app';
+
+        -- Collab: multi-artist collaborative track projects (native feature, no ZEN/realtime)
+        CREATE TABLE IF NOT EXISTS collab_projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT,
+            owner_id INTEGER NOT NULL REFERENCES admin(id) ON DELETE CASCADE,
+            visibility TEXT NOT NULL DEFAULT 'shared' CHECK (visibility IN ('shared', 'private')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Append-only version history of a project's mix state (never overwritten)
+        CREATE TABLE IF NOT EXISTS collab_versions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL REFERENCES collab_projects(id) ON DELETE CASCADE,
+            version INTEGER NOT NULL,
+            author_id INTEGER NOT NULL REFERENCES admin(id) ON DELETE CASCADE,
+            state TEXT NOT NULL,
+            note TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(project_id, version)
+        );
+
+        -- Raw in-progress audio layers (stems), separate from tracks/samples which carry publish/curation semantics
+        CREATE TABLE IF NOT EXISTS collab_stems (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL REFERENCES collab_projects(id) ON DELETE CASCADE,
+            author_id INTEGER NOT NULL REFERENCES admin(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            mime_type TEXT,
+            duration REAL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_collab_versions_project ON collab_versions(project_id);
+        CREATE INDEX IF NOT EXISTS idx_collab_stems_project ON collab_stems(project_id);
     `);
 
     // Runtime Migrations (robust column checks)

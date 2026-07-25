@@ -41,6 +41,7 @@ TuneCamp uses **SQLite** as its relational database engine for managing music me
 - **`ap_interactions`** / **`ap_replies`** / **`ap_following`** / **`ap_delivery_queue`** / **`fedify_kv`**: ActivityPub state and delivery queue.
 - **`system_plugins`**: State (enabled/disabled) of plugin providers.
 - **`samples`** / **`sample_packs`**: Free (non-store) sample uploads — BPM, key, license, moderation status. A sample optionally belongs to a pack via `samples.pack_id`; packed samples are excluded from the public `/api/samples` listing and only surface through their pack. `sample_packs.cover_path` holds an optional cover image, served via `/api/sample-packs/:id/cover`.
+- **`collab_projects`** / **`collab_versions`** / **`collab_stems`**: Multi-artist collaborative track building. A project has many append-only `collab_versions` (never overwritten, `UNIQUE(project_id, version)`) and many `collab_stems` (raw in-progress audio layers, kept separate from `tracks`/`samples`). Writes gated by `VisibilityGuardian.canPublishContent()`; delete restricted to the project's `owner_id`. No realtime — versioning only.
 
 ## Key Relationships
 
