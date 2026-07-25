@@ -723,3 +723,27 @@ export interface Report {
     release_slug?: string;
     artist_name?: string;
 }
+
+
+export interface PublicProfile {
+    username: string;
+    alias: string | null;
+    avatar: string | null;
+    role: string;
+    createdAt: string;
+    artist: { slug: string; name: string; url: string | null } | null;
+    stats: { likes: number; playlists: number };
+    likes: { title: string; artist: string | null; url: string | null; cover: string | null }[];
+    playlists: { id: number; name: string; description: string | null; trackCount: number }[];
+    instance: { name: string; url: string | null };
+}
+
+export interface NowListeningEntry {
+    username: string;
+    alias: string | null;
+    avatar: string | null;
+    trackId: number | string | null;
+    title: string;
+    artist: string;
+    updatedAt: number;
+}
