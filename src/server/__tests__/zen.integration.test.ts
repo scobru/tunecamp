@@ -9,6 +9,8 @@ describe("Zen SEA Integration Routes", () => {
     const mockAuthMiddleware = {
         requireUser: (req: any, res: any, next: any) => {
             if (req.headers.authorization === "Bearer test-token") {
+                req.username = mockUser.username;
+                req.userId = mockUser.id;
                 req.user = mockUser;
                 return next();
             }

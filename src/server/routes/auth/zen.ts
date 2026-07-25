@@ -31,7 +31,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
      * Generates a cryptographic challenge for the logged-in user to sign with their Zen SEA key.
      */
     router.get("/challenge", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
-        const username = req.user?.username;
+        const username = req.username;
         if (!username) {
             return res.status(401).json({ error: "Authentication required" });
         }
@@ -61,7 +61,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
      * Verifies the SEA signed challenge and returns an Instance Passport Badge.
      */
     router.post("/link", authMiddleware.requireUser, rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req: AuthenticatedRequest, res) => {
-        const username = req.user?.username;
+        const username = req.username;
         if (!username) {
             return res.status(401).json({ error: "Authentication required" });
         }
