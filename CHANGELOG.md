@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.10.1] - 2026-07-26
+
+### Changed
+- **Scheduled jobs extracted from `server.ts`.** New `src/server/core/scheduler.ts` (`scheduleRecurring`, `scheduleOnce`) replaces 4 inline `setTimeout`/`setInterval` blocks (federated discovery crawl, off-peak library scan, RSS refresh, community follow sync). Jobs are now cancelled on graceful shutdown, closing a timer leak.
+
 ## [3.10.0] - 2026-07-25
 
 ### Added
