@@ -146,9 +146,27 @@ export function createZenRoutes(container: ServiceContainer): Router {
             }
 
             // Get public playlists created by user
-            const playlists = (database as any).prepare?.(
-                `SELECT id, name, cover_url, created_at FROM playlists WHERE user_id = ? AND is_public = 1`
-            ).all(user.id) || [];
+            let playlists: any[] = [];
+            try {
+                playlists = (database as any).prepare?.(
+                    `SELECT id, name, cover_url, created_at FROM playlists WHERE (username = ? OR user_id = ?) AND is_public = 1`
+                ).all(user.username, user.id) || [];
+            } catch(e) {}
+
+            // Get public likes / starred items created by user
+            let likes: any[] = [];
+            try {
+                likes = (database as any).prepare?.(`
+                    SELECT s.item_type as type, s.item_id as id, s.created_at,
+                           a.title as album_title, COALESCE(a.cover_path, a.external_artwork) as album_cover,
+                           t.title as track_title, t.artist_name as track_artist
+                    FROM starred_items s
+                    LEFT JOIN albums a ON (s.item_type = 'album' OR s.item_type = 'release') AND CAST(a.id AS TEXT) = s.item_id
+                    LEFT JOIN tracks t ON s.item_type = 'track' AND CAST(t.id AS TEXT) = s.item_id
+                    WHERE s.username = ?
+                    ORDER BY s.id DESC LIMIT 20
+                `).all(user.username) || [];
+            } catch(e) {}
 
             return res.json({
                 success: true,
@@ -160,7 +178,8 @@ export function createZenRoutes(container: ServiceContainer): Router {
                     joinedAt: user.created_at
                 },
                 publicReleases: releases,
-                publicPlaylists: playlists
+                publicPlaylists: playlists,
+                publicLikes: likes
             });
         } catch (err: any) {
             console.error("[ZEN-PUBLIC] Error fetching public profile:", err);
