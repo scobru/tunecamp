@@ -120,6 +120,7 @@ import { createPeerService } from "./modules/peer/peer.service.js";
 import { createPeerWsHandler } from "./modules/peer/peer.ws.js";
 import { createPeersRoutes } from "./routes/api/peers.js";
 import { createLabAppsRoutes } from "./routes/admin/lab-apps.js";
+import { scheduleRecurring, scheduleOnce, type JobHandle } from "./core/scheduler.js";
 
 
 const _serverFilename = fileURLToPath(import.meta.url);
@@ -267,21 +268,20 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     let gdriveService: GoogleDriveService | undefined;
 
-    // Federated discovery crawl: shortly after boot, then periodically.
-    setTimeout(() => {
-        taskManager.run('federated-discovery', () => federatedDiscoveryService.crawl());
-    }, 45000);
+    const jobHandles: JobHandle[] = [];
 
-    setInterval(() => {
-        taskManager.run('federated-discovery', () => federatedDiscoveryService.crawl());
-    }, 6 * 60 * 60 * 1000);
+    // Federated discovery crawl: shortly after boot, then periodically.
+    jobHandles.push(scheduleRecurring(
+        () => taskManager.run('federated-discovery', () => federatedDiscoveryService.crawl()),
+        { initialDelayMs: 45000, intervalMs: 6 * 60 * 60 * 1000 },
+    ));
 
     // Scheduled off-peak library scan: when the admin sets `scheduledScanHour`
     // (0-23, server local time), a full scan runs once a day in that hour.
     // Shares the 'library-rescan' task id with the manual scan, so the two
     // can never run concurrently. The setting is read each tick: changes from
     // the admin panel apply without a restart.
-    setInterval(() => {
+    jobHandles.push(scheduleRecurring(() => {
         try {
             const hourSetting = (database.getSetting("scheduledScanHour") || "").trim();
             if (hourSetting === "") return;
@@ -302,17 +302,15 @@ export async function startServer(config: ServerConfig): Promise<void> {
         } catch (e) {
             console.error("❌ [Scheduler] Scheduled scan check failed:", e);
         }
-    }, 15 * 60 * 1000);
+    }, { intervalMs: 15 * 60 * 1000 }));
 
     // Periodically refresh followed RSS/Atom sources (podcasts, Owncast, blogs)
     // so new items show up in the Network feed without manual sync.
     const rssService = createRssService(database);
-    setTimeout(() => {
-        taskManager.run('rss-refresh', () => rssService.refreshAll());
-    }, 90 * 1000);
-    setInterval(() => {
-        taskManager.run('rss-refresh', () => rssService.refreshAll());
-    }, 30 * 60 * 1000);
+    jobHandles.push(scheduleRecurring(
+        () => taskManager.run('rss-refresh', () => rssService.refreshAll()),
+        { initialDelayMs: 90 * 1000, intervalMs: 30 * 60 * 1000 },
+    ));
 
     const federation = createFedify(database, config);
 
@@ -626,7 +624,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         if (publicUrl) {
             // Auto-follow discovered community instances over ActivityPub. Runs
             // after the first federated crawl (~45s) so the directory is populated.
-            setTimeout(async () => { await publishingService.syncCommunityFollows().catch(() => {}); }, 90000);
+            jobHandles.push(scheduleOnce(async () => { await publishingService.syncCommunityFollows().catch(() => {}); }, 90000));
         }
     });
 
@@ -651,6 +649,9 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
         try { peerService.stopHeartbeat(); console.log('  ✓ PeerService heartbeat stopped'); }
         catch (e) { console.warn('  ⚠ PeerService stop error:', e); }
+
+        try { jobHandles.forEach(h => h.cancel()); console.log('  ✓ Scheduled jobs stopped'); }
+        catch (e) { console.warn('  ⚠ Job cleanup error:', e); }
 
         try { database.db.close(); console.log('  ✓ Database closed'); }
         catch (e) { console.warn('  ⚠ Database close error:', e); }
