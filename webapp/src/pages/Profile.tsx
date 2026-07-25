@@ -30,6 +30,7 @@ import API from "../services/api";
 import { formatDuration } from "../utils/format";
 import { notify } from "../utils/notify";
 import AccountMigrationCard from "../components/AccountMigrationCard";
+import { ZenIdentityCard } from "../components/ui/ZenIdentityCard";
 import type { Track } from "../types";
 import clsx from "clsx";
 import { ChangePasswordCard } from "../components/ui/ChangePasswordCard";
@@ -1262,6 +1263,8 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
             </button>
           </div>
         </div>
+
+        <ZenIdentityCard />
       </div>
 
       {/* Right Column: Monetization & Federation */}

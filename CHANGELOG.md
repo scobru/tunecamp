@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.11.0] - 2026-07-26
+
+### Added
+- **Zen SEA Unified Identity & Instance Passports.** Implemented decentralized identity linking across independent TuneCamp instances using `@akaoio/zen` Security, Encryption, Authentication (SEA) and the `delay.scobrudot.dev` WebSocket relay. Added server routes `GET /api/auth/zen/challenge` (one-time nonce generation), `POST /api/auth/zen/link` (Instance Passport Badge issuance), and `GET /api/auth/zen/user/:username/public` (public data export only). Integrated `ZenIdentityCard` UI in the webapp user profile settings and created `profile.html` on `tunecamp-website` for cross-instance identity aggregation. Added integration tests and documentation in `docs/ZEN-IDENTITY.md`.
+
 ## [3.10.2] - 2026-07-26
 
 ### Refactored

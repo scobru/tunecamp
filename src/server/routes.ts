@@ -18,6 +18,7 @@ import { createReleaseRouter } from "./routes/library/releases.js";
 import { createImportRoutes } from "./routes/library/import.js";
 import { createStatsRoutes } from "./routes/admin/stats.js";
 import { createUsersRoutes } from "./routes/auth/users.js";
+import { createZenRoutes } from "./routes/auth/zen.js";
 import { createMcpRoutes } from "./routes/api/mcp.js";
 import { createCommentsRoutes } from "./routes/network/comments.js";
 import { createCommunityRoutes } from "./routes/network/community.js";
@@ -82,6 +83,7 @@ export function registerRoutes(app: express.Express, server: http.Server, contai
     app.use("/rest", createSubsonicRouter(container));
 
     app.use("/api/auth", authMiddleware.optionalAuth, createAuthRoutes(container));
+    app.use("/api/auth/zen", createZenRoutes(container));
     app.use("/api/admin", authMiddleware.requireUser, createAdminRoutes(container));
     app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(container));
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(container));

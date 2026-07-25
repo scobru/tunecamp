@@ -36,6 +36,11 @@ export const authApi = {
         API.setToken(null);
     },
 
+    // --- Zen Identity Linking ---
+    getZenChallenge: () => handleResponse(api.get<{ success: boolean; challenge: any }>('auth/zen/challenge')),
+    linkZenAccount: (zenPubKey: string, challenge: any, seaSignature: string) =>
+        handleResponse(api.post<{ success: boolean; passport: any }>('auth/zen/link', { zenPubKey, challenge, seaSignature })),
+
     // --- API Tokens ---
     getApiTokens: () => handleResponse(api.get<any[]>('users/me/api-tokens')),
     createApiToken: (name: string) => handleResponse(api.post<{ token: string }>('users/me/api-tokens', { name })),

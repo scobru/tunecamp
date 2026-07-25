@@ -51,7 +51,6 @@ export const CanvasVisualizer: React.FC<CanvasVisualizerProps> = ({ audioEngine,
       if (imgRef.current) {
         // Calculate cover sizing
         const imgRatio = imgRef.current.width / imgRef.current.height;
-        const canvasRatio = w / h;
         let drawW = w;
         let drawH = w / imgRatio;
         if (drawH < h) {
