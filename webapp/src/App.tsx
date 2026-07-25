@@ -92,20 +92,7 @@ function RootAdminGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function ManagerOrRootGuard({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, isLoading, role } = useAuthStore();
-  
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
 
-  const isRoot = user?.isRootAdmin || role === 'root_admin';
-  const isManager = role === 'admin';
-  if (!isAuthenticated || (!isRoot && !isManager)) {
-    return <Navigate to="/" replace />;
-  }
-  return <>{children}</>;
-}
 
 function EditorGuard({ children }: { children: React.ReactNode }) {
   const { role, isAuthenticated, isLoading, user } = useAuthStore();
@@ -216,7 +203,7 @@ function App() {
             {/* Catalog & Library */}
             <Route path="/albums" element={<Releases />} />
             <Route path="/releases" element={<Releases />} />
-            <Route path="/archive" element={<ManagerOrRootGuard><Archive /></ManagerOrRootGuard>} />
+            <Route path="/archive" element={<AdminGuard><Archive /></AdminGuard>} />
             <Route path="/library" element={<Library />} />
             <Route path="/albums/:idOrSlug" element={<AlbumDetails />} />
             <Route path="/releases/:idOrSlug" element={<AlbumDetails />} />
