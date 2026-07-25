@@ -115,6 +115,10 @@ export function createZenRoutes(container: ServiceContainer): Router {
      * GET /api/auth/zen/user/:username/public
      * Returns ONLY public profile data and public releases/tracks for Zen identity aggregation.
      */
+    /**
+     * GET /api/auth/zen/user/:username/public
+     * Returns ONLY public profile data and public releases/tracks for Zen identity aggregation.
+     */
     router.get("/user/:username/public", async (req, res) => {
         const { username } = req.params;
 
@@ -124,30 +128,53 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 return res.status(404).json({ error: "User not found or inactive" });
             }
 
+            const profile = authService.getUserProfile?.(user.username);
+            const userAlias = profile?.alias || user.username;
+
             // Get public artist profile if linked
             let artist = null;
             if (user.artist_id) {
                 artist = (database as any).prepare?.(`SELECT id, name, bio, image_url FROM artists WHERE id = ?`).get(user.artist_id);
             }
-            if (!artist && user.username) {
-                artist = (database as any).prepare?.(`SELECT id, name, bio, image_url FROM artists WHERE LOWER(name) = LOWER(?)`).get(user.username);
+            if (!artist) {
+                artist = (database as any).prepare?.(`SELECT id, name, bio, image_url FROM artists WHERE LOWER(name) = LOWER(?) OR LOWER(name) = LOWER(?)`).get(user.username, userAlias);
             }
 
-            // Get public releases/albums for this artist or owner
+            // Collect all artist IDs linked to user or artist name/alias
+            const artistIds: number[] = [];
+            if (user.artist_id) artistIds.push(user.artist_id);
+            if (artist?.id && !artistIds.includes(artist.id)) artistIds.push(artist.id);
+
+            const placeholders = artistIds.length > 0 ? artistIds.map(() => '?').join(',') : '0';
+
+            // Get public releases/albums for this user or their artists
             let releases: any[] = [];
             try {
-                releases = (database as any).prepare?.(`
-                    SELECT id, title, COALESCE(cover_path, external_artwork) as cover_url, date as release_date, type 
+                const albumQuery = `
+                    SELECT DISTINCT id, title, COALESCE(cover_path, external_artwork) as cover_url, date as release_date, type, status, visibility
                     FROM albums 
-                    WHERE (owner_id = ? OR (artist_id IS NOT NULL AND artist_id = ?))
-                    AND (visibility != 'private' OR is_public = 1 OR is_release = 1 OR status = 'published')
-                `).all(user.id, user.artist_id || 0) || [];
+                    WHERE (
+                        owner_id = ? 
+                        OR (artist_id IS NOT NULL AND artist_id IN (${placeholders}))
+                        OR LOWER(album_artist) = LOWER(?)
+                        OR LOWER(album_artist) = LOWER(?)
+                    )
+                    AND (
+                        visibility = 'public' 
+                        OR visibility != 'private'
+                        OR is_public = 1 
+                        OR is_release = 1 
+                        OR status = 'published'
+                        OR status = 'released'
+                    )
+                `;
+                const queryParams = [user.id, ...artistIds, user.username, userAlias];
+                releases = (database as any).prepare?.(albumQuery).all(...queryParams) || [];
             } catch (queryErr) {
-                // Fallback to releases table if albums table isn't present
                 try {
                     releases = (database as any).prepare?.(
-                        `SELECT id, title, cover_url, release_date, type FROM releases WHERE artist_id = ?`
-                    ).all(user.artist_id || 0) || [];
+                        `SELECT id, title, cover_url, release_date, type FROM releases WHERE artist_id IN (${placeholders})`
+                    ).all(...artistIds) || [];
                 } catch(e) {}
             }
 
@@ -155,8 +182,8 @@ export function createZenRoutes(container: ServiceContainer): Router {
             let playlists: any[] = [];
             try {
                 playlists = (database as any).prepare?.(
-                    `SELECT id, name, cover_url, created_at FROM playlists WHERE (username = ? OR user_id = ?) AND is_public = 1`
-                ).all(user.username, user.id) || [];
+                    `SELECT id, name, cover_url, created_at FROM playlists WHERE (username = ? OR username = ? OR user_id = ?) AND (is_public = 1 OR visibility = 'public')`
+                ).all(user.username, userAlias, user.id) || [];
             } catch(e) {}
 
             // Get public likes / starred items created by user
@@ -169,16 +196,16 @@ export function createZenRoutes(container: ServiceContainer): Router {
                     FROM starred_items s
                     LEFT JOIN albums a ON (s.item_type = 'album' OR s.item_type = 'release') AND CAST(a.id AS TEXT) = s.item_id
                     LEFT JOIN tracks t ON s.item_type = 'track' AND CAST(t.id AS TEXT) = s.item_id
-                    WHERE s.username = ?
+                    WHERE (s.username = ? OR s.username = ? OR s.user_id = ?)
                     ORDER BY s.id DESC LIMIT 20
-                `).all(user.username) || [];
+                `).all(user.username, userAlias, user.id) || [];
             } catch(e) {}
 
             return res.json({
                 success: true,
                 publicProfile: {
-                    username: user.username,
-                    artistName: artist?.name || user.artist_name || user.username,
+                    username: userAlias || user.username,
+                    artistName: artist?.name || user.artist_name || userAlias || user.username,
                     bio: artist?.bio || null,
                     imageUrl: artist?.image_url || null,
                     joinedAt: user.created_at
