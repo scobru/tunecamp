@@ -68,6 +68,7 @@ export function createApp(config: ServerConfig): AppSetupResult {
     app.use('/api/catalog', publicFederationCors);
     app.use('/api/samples', publicFederationCors);
     app.use('/api/sample-packs', publicFederationCors);
+    app.use('/api/auth/zen/user', publicFederationCors);
 
     app.use((req, res, next) => {
         if (res.locals.skipStrictCors) {
