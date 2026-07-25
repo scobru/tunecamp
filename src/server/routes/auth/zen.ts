@@ -123,13 +123,26 @@ export function createZenRoutes(container: ServiceContainer): Router {
             if (user.artist_id) {
                 artist = (database as any).prepare?.(`SELECT id, name, bio, image_url FROM artists WHERE id = ?`).get(user.artist_id);
             }
+            if (!artist && user.username) {
+                artist = (database as any).prepare?.(`SELECT id, name, bio, image_url FROM artists WHERE LOWER(name) = LOWER(?)`).get(user.username);
+            }
 
-            // Get public releases for this artist
+            // Get public releases/albums for this artist or owner
             let releases: any[] = [];
-            if (user.artist_id) {
-                releases = (database as any).prepare?.(
-                    `SELECT id, title, cover_url, release_date, type FROM releases WHERE artist_id = ? AND status = 'published'`
-                ).all(user.artist_id) || [];
+            try {
+                releases = (database as any).prepare?.(`
+                    SELECT id, title, COALESCE(cover_path, external_artwork) as cover_url, date as release_date, type 
+                    FROM albums 
+                    WHERE (owner_id = ? OR (artist_id IS NOT NULL AND artist_id = ?))
+                    AND (visibility != 'private' OR is_public = 1 OR is_release = 1 OR status = 'published')
+                `).all(user.id, user.artist_id || 0) || [];
+            } catch (queryErr) {
+                // Fallback to releases table if albums table isn't present
+                try {
+                    releases = (database as any).prepare?.(
+                        `SELECT id, title, cover_url, release_date, type FROM releases WHERE artist_id = ?`
+                    ).all(user.artist_id || 0) || [];
+                } catch(e) {}
             }
 
             // Get public playlists created by user
