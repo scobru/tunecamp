@@ -36,6 +36,8 @@ import {
   Sparkles,
   Music2,
   Users,
+  Heart,
+  ListMusic,
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
@@ -211,7 +213,7 @@ export const Sidebar = () => {
           </ul>
         </div>
 
-        {isAuthenticated && canPub && (
+        {isAuthenticated && (canPub || isAdmin) && (
           <div>
             <SectionHeader label="Studio" />
             <ul className="menu menu-sm p-0 gap-1">
@@ -241,9 +243,9 @@ export const Sidebar = () => {
 
         {isAuthenticated ? (
           <div className="dropdown dropdown-top w-full">
-            <div 
-              role="button" 
-              tabIndex={0} 
+            <div
+              role="button"
+              tabIndex={0}
               className={clsx(
                 "flex items-center gap-3 hover:bg-base-300/50 transition-colors cursor-pointer rounded-2xl",
                 sidebarCollapsed ? "flex-col p-1 justify-center" : "p-2"
@@ -280,39 +282,39 @@ export const Sidebar = () => {
                 <LanguageSwitcher />
               </div>
               <div className="divider my-0 opacity-10"></div>
-              
+
               {(isRoot || isAdmin || isSuperUser) && (
                 <li>
                   <details>
-                    <summary className="font-bold"><Settings size={16}/> Admin</summary>
+                    <summary className="font-bold"><Settings size={16} /> Admin</summary>
                     <ul>
-                      <li><Link to="/admin"><Settings size={16}/> Settings</Link></li>
-                      {isRoot && <li><Link to="/browser"><Folder size={16}/> Files</Link></li>}
+                      <li><Link to="/admin"><Settings size={16} /> Settings</Link></li>
+                      {isRoot && <li><Link to="/browser"><Folder size={16} /> Files</Link></li>}
                     </ul>
                   </details>
                 </li>
               )}
-              
+
               <li className="menu-title mt-2 text-[11px]">Settings</li>
-              <li><Link to="/profile"><User size={16}/> Profile</Link></li>
-              <li><Link to="/tools"><Wrench size={16}/> Tools</Link></li>
-              
+              <li><Link to="/profile"><User size={16} /> Profile</Link></li>
+              <li><Link to="/tools"><Wrench size={16} /> Tools</Link></li>
+
               <div className="divider my-1 opacity-10"></div>
               <li className="menu-title mt-2 text-[11px]">Resources</li>
-              <li><Link to="/guide"><BookOpen size={16}/> Guide</Link></li>
-              <li><Link to="/support"><LifeBuoy size={16}/> Support</Link></li>
-              <li><Link to="/terms"><Scale size={16}/> Legal</Link></li>
-              <li><Link to="/about"><Info size={16}/> About</Link></li>
-              <li><Link to="/changelog"><Sparkles size={16}/> Changelog</Link></li>
-              <li><a href="/feed.xml" target="_blank" rel="noopener noreferrer"><Rss size={16}/> RSS Feed</a></li>
+              <li><Link to="/guide"><BookOpen size={16} /> Guide</Link></li>
+              <li><Link to="/support"><LifeBuoy size={16} /> Support</Link></li>
+              <li><Link to="/terms"><Scale size={16} /> Legal</Link></li>
+              <li><Link to="/about"><Info size={16} /> About</Link></li>
+              <li><Link to="/changelog"><Sparkles size={16} /> Changelog</Link></li>
+              <li><a href="/feed.xml" target="_blank" rel="noopener noreferrer"><Rss size={16} /> RSS Feed</a></li>
               {communityLink && (
-                <li><a href={communityLink} target="_blank" rel="noopener noreferrer"><MessageSquare size={16}/> Community</a></li>
+                <li><a href={communityLink} target="_blank" rel="noopener noreferrer"><MessageSquare size={16} /> Community</a></li>
               )}
 
               <div className="divider my-1 opacity-10"></div>
               <li>
                 <a onClick={handleLogout} className="text-error">
-                  <LogOut size={16}/> Logout
+                  <LogOut size={16} /> Logout
                 </a>
               </li>
             </ul>
