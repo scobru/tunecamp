@@ -1,4 +1,4 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import multer from "multer";
 import crypto from "crypto";
 import path from "path";
@@ -29,6 +29,7 @@ export function createCollabRoutes(container: ServiceContainer): Router {
     const storage = resolveService(container, "storage");
 
     const router = Router();
+    router.use(express.json());
 
     const upload = multer({
         storage: createTempStorage(),
