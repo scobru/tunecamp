@@ -542,8 +542,8 @@ export function createAuthService(
                 SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, a.can_peer, ar.name as artist_name
                 FROM admin a
                 LEFT JOIN artists ar ON a.artist_id = ar.id
-                WHERE a.username = ? COLLATE NOCASE
-            `).get(username) as any;
+                WHERE a.username = ? COLLATE NOCASE OR a.alias = ? COLLATE NOCASE
+            `).get(username, username) as any;
 
             if (!row) {
                 return undefined;
@@ -560,13 +560,13 @@ export function createAuthService(
             const row = db.prepare(`
                 SELECT gu.avatar FROM admin a
                 JOIN gun_users gu ON a.gun_pub = gu.pub
-                WHERE a.username = ? COLLATE NOCASE
-            `).get(username) as { avatar: string | null } | undefined;
+                WHERE a.username = ? COLLATE NOCASE OR a.alias = ? COLLATE NOCASE
+            `).get(username, username) as { avatar: string | null } | undefined;
             return row?.avatar ?? null;
         },
 
         getUserProfile(username: string): { alias: string | null; avatar: string | null; email: string | null } | null {
-            const row = db.prepare("SELECT alias, avatar, email FROM admin WHERE username = ? COLLATE NOCASE").get(username) as { alias: string | null; avatar: string | null; email: string | null } | undefined;
+            const row = db.prepare("SELECT alias, avatar, email FROM admin WHERE username = ? COLLATE NOCASE OR alias = ? COLLATE NOCASE").get(username, username) as { alias: string | null; avatar: string | null; email: string | null } | undefined;
             return row ?? null;
         },
 

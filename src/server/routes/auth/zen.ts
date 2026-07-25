@@ -36,13 +36,16 @@ export function createZenRoutes(container: ServiceContainer): Router {
             return res.status(401).json({ error: "Authentication required" });
         }
 
+        const profile = authService.getUserProfile?.(username);
+        const displayUsername = profile?.alias || username;
+
         const nonce = crypto.randomBytes(16).toString("hex");
         const timestamp = Date.now();
         const instanceDomain = req.hostname || (config as any).host || "localhost";
 
         const challenge = {
             instanceDomain,
-            username,
+            username: displayUsername,
             nonce,
             timestamp
         };
@@ -82,21 +85,24 @@ export function createZenRoutes(container: ServiceContainer): Router {
         // Consume the challenge nonce (one-time use)
         activeChallenges.delete(challengeKey);
 
+        const profile = authService.getUserProfile?.(username);
+        const displayUsername = profile?.alias || username;
+
         const instanceDomain = req.hostname || (config as any).host || "localhost";
         const issuedAt = Date.now();
         const secret = (config as any).jwtSecret || "tunecamp-zen-passport-secret";
 
         // Generate HMAC Instance Passport Signature
-        const passportPayload = `${instanceDomain}:${username}:${zenPubKey}:${issuedAt}`;
+        const passportPayload = `${instanceDomain}:${displayUsername}:${zenPubKey}:${issuedAt}`;
         const passportSignature = crypto.createHmac("sha256", secret).update(passportPayload).digest("hex");
 
         const passport = {
             instanceDomain,
-            localUsername: username,
+            localUsername: displayUsername,
             zenPubKey,
             issuedAt,
             passportSignature,
-            publicDataEndpoint: `https://${instanceDomain}/api/auth/zen/user/${username}/public`
+            publicDataEndpoint: `https://${instanceDomain}/api/auth/zen/user/${displayUsername}/public`
         };
 
         return res.json({
