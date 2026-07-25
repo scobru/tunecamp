@@ -39,10 +39,10 @@ export const ZenIdentityCard: React.FC = () => {
                 setChallenge(res.challenge);
                 notify.success("Challenge Zen generato con successo!");
             } else {
-                throw new Error(res.error || "Risposta challenge invalida");
+                throw new Error("Risposta challenge invalida");
             }
         } catch (err: any) {
-            const msg = err?.response?.data?.error || err?.message || "Impossibile generare il challenge Zen";
+            const msg = err?.message || "Impossibile generare il challenge Zen";
             console.error("[ZenIdentityCard] Errore generazione challenge:", err);
             setError(msg);
             notify.error(msg, "Errore challenge");
@@ -88,10 +88,10 @@ export const ZenIdentityCard: React.FC = () => {
                 setZenPubKeyInput("");
                 notify.success("Identità Zen SEA collegata con successo!");
             } else {
-                throw new Error(res.error || "Risposta passport invalida");
+                throw new Error("Risposta passport invalida");
             }
         } catch (err: any) {
-            const msg = err?.response?.data?.error || err?.message || "Errore collegamento identità Zen";
+            const msg = err?.message || "Errore collegamento identità Zen";
             console.error("[ZenIdentityCard] Errore linking:", err);
             setError(msg);
             notify.error(msg, "Errore linking");
