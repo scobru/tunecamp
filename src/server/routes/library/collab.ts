@@ -11,7 +11,7 @@ import { BadRequestError, ForbiddenError, NotFoundError } from "../../common/err
 import { VisibilityGuardian } from "../../common/visibility.js";
 import { resolveService, type ServiceContainer } from "../../core/container.js";
 
-const AUDIO_EXTENSIONS = new Set([".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"]);
+const AUDIO_EXTENSIONS = new Set([".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus", ".webm"]);
 
 function createTempStorage() {
     return multer.diskStorage({

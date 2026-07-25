@@ -36,6 +36,7 @@ const CollabDetail: React.FC = () => {
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
 
   // Modals & Overlays
   const [sampleModalOpen, setSampleModalOpen] = useState(false);
@@ -44,6 +45,7 @@ const CollabDetail: React.FC = () => {
   const [recordingStartTime, setRecordingStartTime] = useState<number>(0);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const bgInputRef = useRef<HTMLInputElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
@@ -107,6 +109,9 @@ const CollabDetail: React.FC = () => {
       if (parsed.tracks && Array.isArray(parsed.tracks) && parsed.tracks.length > 0) {
         setTracks(parsed.tracks);
         if (parsed.tracks[0]?.id) setSelectedTrackId(parsed.tracks[0].id);
+      }
+      if (parsed.backgroundImage !== undefined) {
+        setBackgroundImage(parsed.backgroundImage);
       }
     } catch {
       // Ignore unparseable state
@@ -300,11 +305,29 @@ const CollabDetail: React.FC = () => {
     }
   };
 
+  const handleUploadBg = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = () => {
+      setBackgroundImage(reader.result as string);
+      notify.success("Background image updated (remember to save a snapshot!)");
+    };
+    reader.readAsDataURL(file);
+    
+    if (bgInputRef.current) bgInputRef.current.value = "";
+  };
+
   const handleSaveVersion = async () => {
     if (!project) return;
     setSavingVersion(true);
     try {
-      const state = JSON.stringify({ tracks, stems: (project.stems ?? []).map((s) => ({ id: s.id, name: s.name })) });
+      const state = JSON.stringify({ 
+        tracks, 
+        stems: (project.stems ?? []).map((s) => ({ id: s.id, name: s.name })),
+        backgroundImage 
+      });
       await API.saveCollabVersion(project.id, state, versionNote.trim() || undefined);
       notify.success("Snapshot version saved!");
       setVersionNote("");
@@ -513,6 +536,23 @@ const CollabDetail: React.FC = () => {
             <h3 className="font-black text-sm flex items-center gap-2">
               <GitBranch size={14} /> Version History
             </h3>
+            {canContribute && (
+              <>
+                <input
+                  ref={bgInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleUploadBg}
+                />
+                <button
+                  className="btn btn-outline btn-xs rounded-xl w-full opacity-60 hover:opacity-100"
+                  onClick={() => bgInputRef.current?.click()}
+                >
+                  Change Canvas Background
+                </button>
+              </>
+            )}
             {(project.versions ?? []).length === 0 ? (
               <p className="text-xs opacity-40">No versions saved yet.</p>
             ) : (
@@ -548,6 +588,7 @@ const CollabDetail: React.FC = () => {
       <CanvasVisualizer
         audioEngine={audioEngine}
         active={canvasActive}
+        backgroundImage={backgroundImage}
         onClose={() => setCanvasActive(false)}
       />
     </div>

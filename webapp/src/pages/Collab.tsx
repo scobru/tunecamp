@@ -16,6 +16,7 @@ const Collab = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [initialStem, setInitialStem] = useState<File | null>(null);
+  const [bgImage, setBgImage] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
 
   const canCreate = isAuthenticated && canPublish(user, role);
@@ -44,6 +45,16 @@ const Collab = () => {
       // Upload initial stem
       const stem = await API.uploadCollabStem(project.id, initialStem);
       
+      // Read background image as base64 if present
+      let backgroundImageBase64 = null;
+      if (bgImage) {
+        backgroundImageBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(bgImage);
+        });
+      }
+      
       // Create initial version with a locked track
       const state = {
         tracks: [
@@ -66,7 +77,8 @@ const Collab = () => {
             ]
           }
         ],
-        stems: [{ id: stem.id, name: stem.name }]
+        stems: [{ id: stem.id, name: stem.name }],
+        backgroundImage: backgroundImageBase64
       };
       
       await API.saveCollabVersion(project.id, JSON.stringify(state), "Initial base track");
@@ -74,6 +86,7 @@ const Collab = () => {
       setTitle("");
       setDescription("");
       setInitialStem(null);
+      setBgImage(null);
       load();
     } catch (err) {
       notify.error(err, "Failed to create project");
@@ -128,6 +141,16 @@ const Collab = () => {
                   onChange={(e) => setInitialStem(e.target.files?.[0] || null)}
                   disabled={creating}
                   required
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold opacity-70 ml-1">Canvas Background Image (Optional)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="file-input file-input-bordered w-full rounded-xl"
+                  onChange={(e) => setBgImage(e.target.files?.[0] || null)}
+                  disabled={creating}
                 />
               </div>
               <button type="submit" className="btn btn-primary rounded-xl gap-2 mt-2" disabled={creating || !title.trim() || !initialStem}>

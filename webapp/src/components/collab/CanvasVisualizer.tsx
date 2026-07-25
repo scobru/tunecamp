@@ -4,12 +4,24 @@ import { AudioEngine } from "../../core/collab/AudioEngine";
 interface CanvasVisualizerProps {
   audioEngine: AudioEngine;
   active: boolean;
+  backgroundImage?: string | null;
   onClose: () => void;
 }
 
-export const CanvasVisualizer: React.FC<CanvasVisualizerProps> = ({ audioEngine, active, onClose }) => {
+export const CanvasVisualizer: React.FC<CanvasVisualizerProps> = ({ audioEngine, active, backgroundImage, onClose }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    if (backgroundImage) {
+      const img = new Image();
+      img.src = backgroundImage;
+      img.onload = () => { imgRef.current = img; };
+    } else {
+      imgRef.current = null;
+    }
+  }, [backgroundImage]);
 
   useEffect(() => {
     if (!active) {
@@ -35,9 +47,37 @@ export const CanvasVisualizer: React.FC<CanvasVisualizerProps> = ({ audioEngine,
       const w = canvas.width;
       const h = canvas.height;
 
-      // Dark background with dynamic opacity
-      ctx.fillStyle = `rgba(10, 10, 20, 0.25)`;
-      ctx.fillRect(0, 0, w, h);
+      // Draw background image if available, else solid dark color
+      if (imgRef.current) {
+        // Calculate cover sizing
+        const imgRatio = imgRef.current.width / imgRef.current.height;
+        const canvasRatio = w / h;
+        let drawW = w;
+        let drawH = w / imgRatio;
+        if (drawH < h) {
+          drawH = h;
+          drawW = h * imgRatio;
+        }
+        
+        // Add subtle zoom/pulse effect based on bass
+        const scale = 1 + data.bass * 0.05;
+        const scaledW = drawW * scale;
+        const scaledH = drawH * scale;
+        
+        ctx.save();
+        // Center the image
+        ctx.translate(w / 2, h / 2);
+        ctx.drawImage(imgRef.current, -scaledW / 2, -scaledH / 2, scaledW, scaledH);
+        ctx.restore();
+
+        // Darken it slightly to make effects visible
+        ctx.fillStyle = `rgba(10, 10, 20, 0.4)`;
+        ctx.fillRect(0, 0, w, h);
+      } else {
+        // Dark background with dynamic opacity
+        ctx.fillStyle = `rgba(10, 10, 20, 0.25)`;
+        ctx.fillRect(0, 0, w, h);
+      }
 
       // Radial bass pulse
       const radius = Math.min(w, h) * (0.2 + data.bass * 0.35);
@@ -50,6 +90,8 @@ export const CanvasVisualizer: React.FC<CanvasVisualizerProps> = ({ audioEngine,
 
       ctx.save();
       ctx.fillStyle = gradient;
+      // If we have an image, we can use blending for cooler effects
+      if (imgRef.current) ctx.globalCompositeOperation = "color-dodge";
       ctx.beginPath();
       ctx.arc(w / 2, h / 2, radius, 0, Math.PI * 2);
       ctx.fill();
