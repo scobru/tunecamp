@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.10.2] - 2026-07-26
+
+### Refactored
+- **Modularized `api.ts` frontend API client.** Split the 869-line monolithic `api.ts` service object into 7 domain-specific modules under `webapp/src/services/api/` (`auth.ts`, `catalog.ts`, `social.ts`, `admin.ts`, `network.ts`, `media.ts`, `commerce.ts`) with `client.ts` handling shared Axios/error instance and `index.ts` providing a backward-compatible barrel re-export. Moved `PublicProfile` and `NowListeningEntry` types into `webapp/src/types/index.ts`.
+
 ## [3.10.1] - 2026-07-26
 
 ### Changed
