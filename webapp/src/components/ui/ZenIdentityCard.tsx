@@ -1,30 +1,51 @@
-import React, { useState } from "react";
-import { ShieldCheck, Globe, Copy, Check, RefreshCw, Link as LinkIcon } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { ShieldCheck, Globe, Copy, Check, RefreshCw, Link as LinkIcon, AlertCircle } from "lucide-react";
 import API from "../../services/api";
 import { notify } from "../../utils/notify";
 
+const CHALLENGE_KEY = "tunecamp_zen_challenge";
+const PASSPORT_KEY = "tunecamp_zen_passport";
+
 export const ZenIdentityCard: React.FC = () => {
     const [loading, setLoading] = useState(false);
-    const [challenge, setChallenge] = useState<any>(null);
+    const [challenge, setChallenge] = useState<any>(() => {
+        const saved = localStorage.getItem(CHALLENGE_KEY);
+        return saved ? JSON.parse(saved) : null;
+    });
     const [zenPubKeyInput, setZenPubKeyInput] = useState("");
     const [passport, setPassport] = useState<any>(() => {
-        const saved = localStorage.getItem("tunecamp_zen_passport");
+        const saved = localStorage.getItem(PASSPORT_KEY);
         return saved ? JSON.parse(saved) : null;
     });
     const [copied, setCopied] = useState(false);
     const [copiedPassport, setCopiedPassport] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Persist challenge to localStorage
+    useEffect(() => {
+        if (challenge) {
+            localStorage.setItem(CHALLENGE_KEY, JSON.stringify(challenge));
+        } else {
+            localStorage.removeItem(CHALLENGE_KEY);
+        }
+    }, [challenge]);
 
     const handleGetChallenge = async () => {
         setLoading(true);
+        setError(null);
         try {
             const res = await API.getZenChallenge();
             if (res.success && res.challenge) {
                 setChallenge(res.challenge);
                 notify.success("Challenge Zen generato con successo!");
+            } else {
+                throw new Error(res.error || "Risposta challenge invalida");
             }
         } catch (err: any) {
-            console.error("Errore generazione challenge Zen:", err);
-            notify.error(err, "Impossibile generare il challenge Zen");
+            const msg = err?.response?.data?.error || err?.message || "Impossibile generare il challenge Zen";
+            console.error("[ZenIdentityCard] Errore generazione challenge:", err);
+            setError(msg);
+            notify.error(msg, "Errore challenge");
         } finally {
             setLoading(false);
         }
@@ -48,6 +69,7 @@ export const ZenIdentityCard: React.FC = () => {
 
     const handleLinkZen = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError(null);
         if (!challenge || !zenPubKeyInput) {
             notify.error("Inserisci la tua Zen PubKey e genera prima un challenge");
             return;
@@ -58,24 +80,32 @@ export const ZenIdentityCard: React.FC = () => {
             // Simulated / local signature proof handshake
             const seaSignature = `sea_signed_${Date.now()}`;
             const res = await API.linkZenAccount(zenPubKeyInput, challenge, seaSignature);
+            console.log("[ZenIdentityCard] API link response:", res);
             if (res.success && res.passport) {
                 setPassport(res.passport);
-                localStorage.setItem("tunecamp_zen_passport", JSON.stringify(res.passport));
-                notify.success("Identità Zen SEA collegata con successo!");
+                localStorage.setItem(PASSPORT_KEY, JSON.stringify(res.passport));
                 setChallenge(null);
+                setZenPubKeyInput("");
+                notify.success("Identità Zen SEA collegata con successo!");
+            } else {
+                throw new Error(res.error || "Risposta passport invalida");
             }
         } catch (err: any) {
-            console.error("Errore durante il linking Zen:", err);
-            notify.error(err, "Errore collegamento identità Zen");
+            const msg = err?.response?.data?.error || err?.message || "Errore collegamento identità Zen";
+            console.error("[ZenIdentityCard] Errore linking:", err);
+            setError(msg);
+            notify.error(msg, "Errore linking");
         } finally {
             setLoading(false);
         }
     };
 
     const handleUnlink = () => {
-        localStorage.removeItem("tunecamp_zen_passport");
+        localStorage.removeItem(PASSPORT_KEY);
+        localStorage.removeItem(CHALLENGE_KEY);
         setPassport(null);
         setChallenge(null);
+        setZenPubKeyInput("");
         notify.info("Identità Zen scollegata da questa istanza locale.");
     };
 
@@ -123,6 +153,12 @@ export const ZenIdentityCard: React.FC = () => {
                 </div>
             ) : (
                 <div className="space-y-4">
+                    {error && (
+                        <div className="flex items-center gap-2 p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg text-rose-400 text-xs">
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                            <span>{error}</span>
+                        </div>
+                    )}
                     <p className="text-sm text-text-secondary">
                         Puoi associare la tua utenza locale su questa istanza al tuo profilo globale su <code>tunecamp.org</code> per aggregare i tuoi brani pubblici e preferiti.
                     </p>
