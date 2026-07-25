@@ -40,6 +40,8 @@ const CollabDetail: React.FC = () => {
   // Modals & Overlays
   const [sampleModalOpen, setSampleModalOpen] = useState(false);
   const [canvasActive, setCanvasActive] = useState(false);
+  
+  const [recordingStartTime, setRecordingStartTime] = useState<number>(0);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -175,12 +177,45 @@ const CollabDetail: React.FC = () => {
     if (isRecording) {
       const blob = await audioEngine.stopRecording();
       setIsRecording(false);
+      
+      // Stop playback if we were playing while recording
+      if (isPlaying) {
+        handlePause();
+      }
+
       if (blob && project) {
         setUploading(true);
         try {
           const file = new File([blob], `Mic Recording ${new Date().toLocaleTimeString()}.webm`, { type: blob.type });
-          await API.uploadCollabStem(project.id, file);
+          const stem = await API.uploadCollabStem(project.id, file);
+          
           notify.success("Recording uploaded as stem!");
+          
+          // Add as new track automatically
+          const newTrackId = `track-${Date.now()}`;
+          const newClip: TrackClip = {
+            id: `clip-${Date.now()}`,
+            sampleId: stem.id.toString(),
+            name: stem.name,
+            startTime: recordingStartTime,
+            duration: 10, // Default estimate, gets clamped by buffer anyway
+            url: API.getCollabStemUrl(project.id, stem.id),
+          };
+          
+          setTracks(prev => [
+            ...prev,
+            {
+              id: newTrackId,
+              name: stem.name,
+              volume: 1.0,
+              muted: false,
+              solo: false,
+              samples: [newClip]
+            }
+          ]);
+          setSelectedTrackId(newTrackId);
+          
+          // Trigger a load to fetch the stem in the library list too
           load();
         } catch (err) {
           notify.error(err, "Failed to upload mic recording");
@@ -192,6 +227,13 @@ const CollabDetail: React.FC = () => {
       try {
         await audioEngine.startRecording();
         setIsRecording(true);
+        setRecordingStartTime(currentTime);
+        
+        // Auto-play the timeline so they can sing along
+        if (!isPlaying) {
+          handlePlay();
+        }
+        
         notify.info("Recording microphone...");
       } catch (err) {
         notify.error(err, "Could not access microphone");

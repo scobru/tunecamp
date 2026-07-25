@@ -15,6 +15,7 @@ const Collab = () => {
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [initialStem, setInitialStem] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
 
   const canCreate = isAuthenticated && canPublish(user, role);
@@ -35,12 +36,44 @@ const Collab = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || !initialStem) return;
     setCreating(true);
     try {
-      await API.createCollabProject({ title: title.trim(), description: description.trim() || undefined });
+      const project = await API.createCollabProject({ title: title.trim(), description: description.trim() || undefined });
+      
+      // Upload initial stem
+      const stem = await API.uploadCollabStem(project.id, initialStem);
+      
+      // Create initial version with a locked track
+      const state = {
+        tracks: [
+          {
+            id: `track-${Date.now()}`,
+            name: stem.name,
+            volume: 1.0,
+            muted: false,
+            solo: false,
+            locked: true,
+            samples: [
+              {
+                id: `clip-${Date.now()}`,
+                sampleId: stem.id.toString(),
+                name: stem.name,
+                startTime: 0,
+                duration: 10,
+                url: API.getCollabStemUrl(project.id, stem.id),
+              }
+            ]
+          }
+        ],
+        stems: [{ id: stem.id, name: stem.name }]
+      };
+      
+      await API.saveCollabVersion(project.id, JSON.stringify(state), "Initial base track");
+      
       setTitle("");
       setDescription("");
+      setInitialStem(null);
       load();
     } catch (err) {
       notify.error(err, "Failed to create project");
@@ -86,7 +119,18 @@ const Collab = () => {
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={creating}
               />
-              <button type="submit" className="btn btn-primary rounded-xl gap-2" disabled={creating || !title.trim()}>
+              <div className="space-y-1">
+                <label className="text-xs font-bold opacity-70 ml-1">Initial Base Track (Required)</label>
+                <input
+                  type="file"
+                  accept="audio/*"
+                  className="file-input file-input-bordered w-full rounded-xl"
+                  onChange={(e) => setInitialStem(e.target.files?.[0] || null)}
+                  disabled={creating}
+                  required
+                />
+              </div>
+              <button type="submit" className="btn btn-primary rounded-xl gap-2 mt-2" disabled={creating || !title.trim() || !initialStem}>
                 {creating ? <span className="loading loading-spinner loading-xs" /> : <Plus size={16} />}
                 Create Project
               </button>
