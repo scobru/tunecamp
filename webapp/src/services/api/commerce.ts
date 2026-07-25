@@ -1,13 +1,10 @@
-import { api, handleResponse, API_URL, downloadTokenCache, setDownloadTokenCache } from './client';
+import { api, handleResponse } from './client';
 import type {
-    AuthStatus, Track, Album, Artist, Playlist, SiteSettings, User,
-    Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
-    StorageAccount, GoogleDriveFile, InstanceStorage, RecomputeStorageResult, SystemResources, UpdateCheck,
-    DigStrategy, DigSearchResult, DigResult, DigSession, DigCrateItem, DigCrateInput, DigHistoryItem,
-    LiveSession, ArtistEvent, ArtistEventInput, LabAppRecord, Report, LegalPages, Sample, SamplePack,
-    CollabProject, CollabVersion, CollabStem, PublicProfile, NowListeningEntry
+    UnlockCode, DigStrategy, DigSearchResult, DigResult,
+    DigSession, DigCrateItem, DigCrateInput, DigHistoryItem,
+    LabAppRecord, Report
 } from '../../types';
-import API from './index';
+
 
 
 export const commerceApi = {
@@ -45,6 +42,7 @@ export const commerceApi = {
     getAdminLabApps: () => handleResponse(api.get<LabAppRecord[]>('admin/lab-apps/all')),
     createLabApp: (data: Partial<LabAppRecord>) => handleResponse(api.post<LabAppRecord>('admin/lab-apps', data)),
     updateLabApp: (id: number, data: Partial<LabAppRecord>) => handleResponse(api.put<LabAppRecord>(`admin/lab-apps/${id}`, data)),
+    deleteLabApp: (id: number) => handleResponse(api.delete<{ success: boolean }>(`admin/lab-apps/${id}`)),
     // --- Release Reporting ---
     reportRelease: (releaseId: number | string, reason: string, details: string | null, name?: string | null, email?: string | null) =>
         handleResponse(api.post<{ success: boolean, reportId: number }>(`releases/${releaseId}/report`, { reason, details, name, email })),
