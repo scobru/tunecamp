@@ -90,6 +90,7 @@ export default defineConfig({
               { text: 'Lab Apps', link: '/LAB' },
               { text: 'Lab App: Audiofabric', link: '/audiofabric' },
               { text: 'Lab App: 4-Track Recorder', link: '/4-track-recorder' },
+              { text: 'Collab', link: '/COLLAB' },
             ],
           },
           {

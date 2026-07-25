@@ -1,17 +1,10 @@
-import * as Sentry from "@sentry/node";
-import express from "express";
-import cors from "cors";
-import compression from "compression";
-import path from "path";
 import http from "http";
-import fs from "fs-extra";
-import { fileURLToPath } from "url";
-import { createRequire } from "module";
 import { isNonFatalError } from "./common/errors.js";
-import type { ServiceContainer } from "./core/container.js";
-
-const _require = createRequire(import.meta.url);
-const pkg = _require("../../package.json");
+import type { ServerConfig } from "./core/config.js";
+import { createApp, setupStaticAndFallbackRoutes } from "./app.js";
+import { bootstrapServices } from "./services.js";
+import { registerRoutes } from "./routes.js";
+import { scheduleOnce } from "./core/scheduler.js";
 
 // Global crash protection for async modules
 process.on('uncaughtException', (err: any) => {
@@ -28,582 +21,29 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('🌊 SEVERE: Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-import type { ServerConfig } from "./core/config.js";
-import { registerBuiltInDownloadProviders } from "./plugins/index.js";
-import { createDatabase } from "./core/database.js";
-import { createAuthService } from "./modules/auth/auth.service.js";
-import { createAuthMiddleware } from "./middleware/auth.js";
-import { createAuthRoutes } from "./routes/auth/auth.js";
-import { createAdminRoutes } from "./routes/admin/admin.js";
-import { createCatalogRoutes } from "./routes/library/catalog.js";
-import { CatalogService } from "./modules/catalog/catalog.service.js";
-import { DiscoveryService } from "./modules/catalog/discovery.service.js";
-import { DigService } from "./modules/catalog/dig.service.js";
-import { LocalDiskStorage } from "./modules/storage/storage.engine.js";
-import { createAlbumsRoutes } from "./routes/library/albums.js";
-import { createTracksRoutes } from "./routes/library/tracks.js";
-import { createSamplesRoutes } from "./routes/library/samples.js";
-import { createSamplePacksRoutes } from "./routes/library/sample-packs.js";
-import { SampleRepository } from "./repositories/sample.repository.js";
-import { SamplePackRepository } from "./repositories/sample-pack.repository.js";
-import { createDigRoutes } from "./routes/library/dig.js";
-import { createArtistsRoutes } from "./routes/library/artists.js";
-import { createPlaylistsRoutes } from "./routes/library/playlists.js";
-import { createUploadRoutes } from "./routes/library/upload.js";
-import { createReleaseRouter } from "./routes/library/releases.js";
-import { createImportRoutes } from "./routes/library/import.js";
-import { createStatsRoutes } from "./routes/admin/stats.js";
-import { createUsersRoutes } from "./routes/auth/users.js";
-import { createMcpRoutes } from "./routes/api/mcp.js";
-import { createCommentsRoutes } from "./routes/network/comments.js";
-import { Scanner } from "./modules/catalog/scanner.js";
-import { initScannerService } from "./modules/catalog/scanner.service.js";
-import { initStreamingService } from "./modules/streaming/streaming.service.js";
-import { getScrobbleService } from "./modules/scrobble/scrobble.service.js";
-import { LastFmProvider } from "./providers/scrobble/lastfm.provider.js";
-import { ListenBrainzProvider } from "./providers/scrobble/listenbrainz.provider.js";
-import { metadataService } from "./modules/catalog/metadata.service.js";
-import { initDownloadService } from "./modules/catalog/download.service.js";
-import { storageService, initStorageService } from "./modules/storage/storage.service.js";
-import { aiService, initAIService } from "./modules/ai/ai.service.js";
-import { createFederatedDiscoveryService } from "./modules/network/federated-discovery.service.js";
-import { createCatalogCacheService } from "./modules/network/catalog-cache.service.js";
-import { createCommunityRoutes } from "./routes/network/community.js";
-import { getSiteHandle } from "./core/site-actor.js";
-import { createLibraryStatsRoutes } from "./routes/admin/library-stats.js";
-import { createBrowserRoutes } from "./routes/admin/browser.js";
-import { createMetadataRoutes } from "./routes/admin/metadata.js";
-import { createUnlockRoutes } from "./routes/api/unlock.js";
-import { createPaymentsRoutes } from "./routes/api/payments.js";
-import { ActivityPubService, createActivityPubService } from "./modules/activitypub/activitypub.service.js";
-import { createActivityPubRoutes } from "./routes/network/activitypub.js";
-import { createAccountMigrationRoutes } from "./routes/network/account-migration.js";
-import { createPublishingService } from "./modules/publishing/publishing.service.js";
-import { LifecycleService } from "./modules/catalog/lifecycle.service.js";
-import { createLifecycleRoutes } from "./routes/api/lifecycle.js";
-import { integrateFederation } from "@fedify/express";
-import { createFedify } from "./modules/fedify/fedify.js";
-import { createBackupRoutes } from "./routes/admin/backup.js";
-import { createSubsonicRouter } from "./routes/api/subsonic.js";
-import { createProxyRoutes } from "./routes/network/proxy.js";
-import { createMiscRoutes } from "./routes/api/misc.js";
-import { WaveformService } from "./modules/waveform/waveform.service.js";
-import { securityHeaders } from "./middleware/security.js";
-import { requireModuleEnabled } from "./middleware/moduleGuard.js";
-import { rateLimit } from "./middleware/rateLimit.js";
-import { TelegramBotService } from "./modules/integrations/telegram-bot.js";
-import { BoardService } from "./modules/board/board.service.js";
-import { createBoardRoutes } from "./routes/api/board.js";
-import { createLiveRoutes } from "./routes/api/live.js";
-import { createNowPlayingRoutes } from "./routes/api/now-playing.js";
-import { LiveService } from "./modules/live/live.service.js";
-import { MaintenanceService } from "./modules/catalog/maintenance.service.js";
-import { MaintenanceRepository } from "./repositories/maintenance.repository.js";
-import { OpenRouterService } from "./modules/ai/openrouter.service.js";
-import { AutoTaggerService } from "./modules/catalog/autotagger.service.js";
-import { createSearchRoutes } from "./routes/network/search.js";
-import { GoogleDriveService } from "./modules/storage/google-drive.service.js";
-import { createStorageRouter } from "./routes/library/storage.js";
-// removed torrent
-import { errorHandler } from "./middleware/error-handling.js";
-
-import { MediaEngine } from "./modules/media/media-engine.js";
-import { SubsonicService } from "./modules/subsonic/subsonic.service.js";
-import { taskManager } from "./modules/workers/task-manager.js";
-import { createRssService } from "./modules/network/rss.service.js";
-import { createTaskRoutes } from "./routes/admin/tasks.js";
-import { RadioService } from "./modules/radio/radio.service.js";
-import { createRadioRoutes } from "./routes/api/radio.js";
-import { createPeerService } from "./modules/peer/peer.service.js";
-import { createPeerWsHandler } from "./modules/peer/peer.ws.js";
-import { createPeersRoutes } from "./routes/api/peers.js";
-import { createLabAppsRoutes } from "./routes/admin/lab-apps.js";
-
-
-const _serverFilename = fileURLToPath(import.meta.url);
-const _serverDirname = path.dirname(_serverFilename);
-
 export async function startServer(config: ServerConfig): Promise<void> {
-    const app = express();
-    app.set('trust proxy', true); // Required for CapRover/Nginx
+    const { app } = createApp(config);
     const server = http.createServer(app);
 
-    // Middleware
-    app.use(compression());
-    app.use(securityHeaders);
-    
-    // API Rate limit
-    app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 })); 
-    app.use('/rest', rateLimit({ windowMs: 15 * 60 * 1000, max: 5000 }));
-
-    const corsOrigin = config.corsOrigins && config.corsOrigins.length > 0 ? config.corsOrigins : false;
-    const strictCors = cors({ origin: corsOrigin, credentials: true });
-
-    // Public federation endpoints must be cross-origin accessible regardless of
-    // TUNECAMP_CORS_ORIGINS — they are the federation surface the website and
-    // peer crawlers fetch from arbitrary origins. However, wildcard CORS should
-    // only apply to safe read operations. Mutations (like POST /register) must
-    // use strict CORS to prevent CSRF.
-    const publicCors = cors({ origin: '*', credentials: false, methods: ['GET', 'HEAD', 'OPTIONS'] });
-    const publicFederationCors = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-        const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
-        const reqMethod = req.headers['access-control-request-method'];
-        const isMutationPreflight = req.method === 'OPTIONS' && reqMethod &&
-            typeof reqMethod === 'string' && !['GET', 'HEAD', 'OPTIONS'].includes(reqMethod.toUpperCase());
-
-        const hasCredentials = !!req.headers.cookie || !!req.headers.authorization;
-        const isCredentialsPreflight = req.method === 'OPTIONS' &&
-            typeof req.headers['access-control-request-headers'] === 'string' &&
-            req.headers['access-control-request-headers'].split(',').map(h => h.trim().toLowerCase()).includes('authorization');
-
-        if (isMutation || isMutationPreflight || hasCredentials || isCredentialsPreflight) {
-            strictCors(req, res, next);
-        } else {
-            publicCors(req, res, (err?: any) => {
-                if (err) return next(err);
-                res.locals.skipStrictCors = true;
-                next();
-            });
-        }
-    };
-
-    app.use('/api/community', publicFederationCors);
-    app.use('/api/catalog', publicFederationCors);
-    app.use('/api/samples', publicFederationCors);
-    app.use('/api/sample-packs', publicFederationCors);
-
-    app.use((req, res, next) => {
-        if (res.locals.skipStrictCors) {
-            return next();
-        }
-        strictCors(req, res, next);
-    });
-
-    console.log(`📦 Initializing database: ${config.dbPath}`);
-    const database = createDatabase(config.dbPath);
-
-    const storage = new LocalDiskStorage();
-
-    const openRouterService = new OpenRouterService(database, config);
-    initAIService(openRouterService, database);
-    console.log(`🔌 [Plugins] AIService initialized with OpenRouter provider`);
-
-    // Startup maintenance and scanner are now triggered manually via frontend
-    console.log(`📦 [Maintenance] Automatic startup maintenance disabled (trigger via UI)`);
-
-    const authService = createAuthService(database.db, config.jwtSecret, config.adminUser, config.adminPass);
-    await authService.init();
-    const authMiddleware = createAuthMiddleware(authService);
-
-    // Production safety: surface insecure defaults loudly at startup so they
-    // aren't silently shipped when the instance is exposed publicly.
-    try {
-        const warnings: string[] = [];
-        const adminUser = config.adminUser || "admin";
-        if (await authService.isDefaultPassword(adminUser)) {
-            warnings.push(`Admin account '${adminUser}' is still using a default/weak password. Change it now (or set TUNECAMP_ADMIN_PASS).`);
-        }
-        if (!config.corsOrigins || config.corsOrigins.length === 0) {
-            warnings.push(`CORS is open to all origins. Set TUNECAMP_CORS_ORIGINS to your domain(s) before exposing this instance publicly.`);
-        }
-        if (!process.env.TUNECAMP_JWT_SECRET) {
-            warnings.push(`No TUNECAMP_JWT_SECRET set — using an auto-generated secret file. Set an explicit secret for stable sessions across deployments.`);
-        }
-        if (warnings.length > 0) {
-            console.warn("\n⚠️  SECURITY: insecure configuration detected — review before going public:");
-            for (const w of warnings) console.warn(`   • ${w}`);
-            console.warn("");
-        }
-    } catch (e) {
-        console.warn("⚠️  Could not run startup security checks:", e);
-    }
-    
-    const { initMetadataService } = await import("./modules/catalog/metadata.service.js");
-    const metadataService = await initMetadataService(database);
-
-    const streamingService = await initStreamingService(database);
-
-    const { initPlaylistService } = await import("./modules/catalog/playlist.service.js");
-    const playlistService = await initPlaylistService(database);
-
-    const scrobbleService = getScrobbleService();
-    scrobbleService.register(new LastFmProvider(database));
-    scrobbleService.register(new ListenBrainzProvider(database));
-    const { syncRegistryWithDatabase } = await import("./core/provider.js");
-    await syncRegistryWithDatabase(scrobbleService.getRegistry(), database);
-
-    const waveformService = new WaveformService(path.dirname(config.dbPath));
-
-    // Federated (HTTP/NodeInfo gossip) instance discovery. Bootstraps from
-    // ActivityPub-followed TuneCamp site actors plus TUNECAMP_FEDERATION_SEEDS —
-    // no central relay.
-    const federatedDiscoveryService = createFederatedDiscoveryService(database.db, {
-        seeds: config.federationSeeds,
-        getOwnOrigin: () => {
-            const u = database.getSetting("publicUrl") || config.publicUrl;
-            try { return u ? new URL(u).origin : undefined; } catch { return undefined; }
-        },
-        getApSeedOrigins: () =>
-            database.getFollowedActors()
-                // Seed the crawl from followed instance actors. TuneCamp's site actor is a
-                // 'Service' (see fedify actor dispatcher); we also keep the legacy handle
-                // checks for instances followed before the handle became name-derived.
-                // probe() re-validates each origin via NodeInfo, so non-TuneCamp Services
-                // (e.g. relays) are dropped harmlessly rather than excluded up front.
-                .filter((a: any) =>
-                    a.type === "Service" ||
-                    a.username === "site" ||
-                    a.username === getSiteHandle(database)
-                )
-                .map((a: any) => { try { return new URL(a.uri).origin; } catch { return null; } })
-                .filter((o: any): o is string => !!o),
-    });
-
-    // Shared stale-while-revalidate cache for remote peer catalogs (HTTP federation).
-    // Single instance so the Network page and admin invalidation operate on the same state.
-    const catalogCache = createCatalogCacheService(database.db);
-
-    let gdriveService: GoogleDriveService | undefined;
-
-    // Federated discovery crawl: shortly after boot, then periodically.
-    setTimeout(() => {
-        taskManager.run('federated-discovery', () => federatedDiscoveryService.crawl());
-    }, 45000);
-
-    setInterval(() => {
-        taskManager.run('federated-discovery', () => federatedDiscoveryService.crawl());
-    }, 6 * 60 * 60 * 1000);
-
-    // Scheduled off-peak library scan: when the admin sets `scheduledScanHour`
-    // (0-23, server local time), a full scan runs once a day in that hour.
-    // Shares the 'library-rescan' task id with the manual scan, so the two
-    // can never run concurrently. The setting is read each tick: changes from
-    // the admin panel apply without a restart.
-    setInterval(() => {
-        try {
-            const hourSetting = (database.getSetting("scheduledScanHour") || "").trim();
-            if (hourSetting === "") return;
-            if (new Date().getHours() !== Number(hourSetting)) return;
-
-            const lastRun = database.getSetting("scheduledScanLastRun");
-            if (lastRun && Date.now() - new Date(lastRun).getTime() < 20 * 60 * 60 * 1000) return;
-
-            const started = taskManager.run('library-rescan', async () => {
-                console.log(`🌙 [Scheduler] Starting scheduled library scan (hour ${hourSetting})`);
-                const result = await scanner.scanDirectory(config.musicDir, (processed, total) => {
-                    taskManager.updateProgress('library-rescan', processed, total, `Scheduled scan: ${processed}/${total} files`);
-                });
-                console.log(`🌙 [Scheduler] Scheduled scan complete. Processed ${result.successful.length} files.`);
-                return { processed: result.successful.length, failed: result.failed.length };
-            });
-            if (started) database.setSetting("scheduledScanLastRun", new Date().toISOString());
-        } catch (e) {
-            console.error("❌ [Scheduler] Scheduled scan check failed:", e);
-        }
-    }, 15 * 60 * 1000);
-
-    // Periodically refresh followed RSS/Atom sources (podcasts, Owncast, blogs)
-    // so new items show up in the Network feed without manual sync.
-    const rssService = createRssService(database);
-    setTimeout(() => {
-        taskManager.run('rss-refresh', () => rssService.refreshAll());
-    }, 90 * 1000);
-    setInterval(() => {
-        taskManager.run('rss-refresh', () => rssService.refreshAll());
-    }, 30 * 60 * 1000);
-
-    const federation = createFedify(database, config);
-
-    const apService = createActivityPubService(database as any, config, federation);
-    await apService.generateKeysForAllArtists();
-    apService.startDeliveryQueue();
-
-    const publishingService = createPublishingService(database, federatedDiscoveryService, apService, config, storage);
-
-    const lifecycleService = new LifecycleService(database, publishingService, apService);
-
-    const catalogService = new CatalogService(database, publishingService, storage, config.musicDir, openRouterService, metadataService, apService);
-    const discoveryService = new DiscoveryService(database, openRouterService, metadataService);
-    const digService = new DigService(database);
-
-
-    if (config.gdriveClientId && config.gdriveClientSecret) {
-        const dbPublicUrl = database.getSetting("publicUrl");
-        const publicUrl = (dbPublicUrl || config.publicUrl || `http://localhost:${config.port}`).trim().replace(/\/$/, "");
-        const redirectUri = `${publicUrl}/api/storage/gdrive/callback`;
-        gdriveService = new GoogleDriveService(database, {
-            clientId: config.gdriveClientId,
-            clientSecret: config.gdriveClientSecret,
-            redirectUri
-        });
-        const adminRow = database.db.prepare("SELECT id FROM admin ORDER BY id ASC LIMIT 1").get() as any;
-        initStorageService(gdriveService, adminRow?.id ?? 1);
-    }
-
-    const autotaggerService = new AutoTaggerService(database, catalogService, openRouterService);
-    const maintenanceRepo = new MaintenanceRepository(database.db);
-    const maintenanceService = new MaintenanceService(maintenanceRepo, database, catalogService, openRouterService, autotaggerService, config.musicDir);
-    
-    const mediaEngine = new MediaEngine(database, config.musicDir, gdriveService, streamingService, {
-        transcodeCacheDir: config.transcodeCacheDir,
-        transcodeCacheMaxBytes: config.transcodeCacheMaxBytes,
-        xaccelRedirect: config.xaccelRedirect,
-        xaccelMediaPrefix: config.xaccelMediaPrefix,
-        xaccelCachePrefix: config.xaccelCachePrefix,
-    });
-    const subsonicService = new SubsonicService(database);
-
-    const scanner = new Scanner(database, storage, autotaggerService, catalogService);
-    const scannerService = await initScannerService(database, scanner);
-
-    const downloadService = initDownloadService(database);
-    
-    // Dynamically register optional P2P providers
-    const { cleanups: pluginCleanups, soulseekService, torrentService, ytdlpService } = await registerBuiltInDownloadProviders(downloadService, {
+    // Bootstrap database, services, and containers
+    const {
+        container,
         database,
-        scanner,
-        config,
-        defaultOwnerId: 1,
+        federation,
         publishingService,
-        catalogService,
-        streamingService
-    });
-
-    const boardService = new BoardService(database);
-    const liveService = new LiveService();
-    const radioService = new RadioService(database, config.musicDir);
-    const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
-    const peerService = createPeerService(database, apService);
-    const samplesRepository = new SampleRepository(database.db);
-    const samplePacksRepository = new SamplePackRepository(database.db);
-
-    const container: ServiceContainer = {
-        database,
-        identity: database.identity,
-        library: database.library,
-        social: database.social,
-        integration: database.integration,
-        config,
-        musicDir: config.musicDir,
-        authService,
-        authMiddleware,
-        scanner,
-        scannerService,
-        catalogService,
-        discoveryService,
-        digService,
-        metadataService,
-        maintenanceService,
-        ytdlpService,
-        mediaEngine,
-        waveformService,
-        streamingService,
-        subsonicService,
-        scrobbleService,
-        playlistService,
-        publishingService,
-        apService,
-        federatedDiscoveryService,
-        catalogCache,
-        lifecycleService,
-        telegramBotService,
-        boardService,
-        liveService,
-        radioService,
         peerService,
-        samplesRepository,
-        samplePacksRepository,
-        soulseekService,
-        torrentService,
-        gdriveService,
-        openRouterService,
-        storage
-    };
+        telegramBotService,
+        radioService,
+        pluginCleanups,
+        jobHandles,
+        gdriveService
+    } = await bootstrapServices(config);
 
-    createPeerWsHandler(server, container);
+    // Register API & Subsonic & Fedify routes
+    registerRoutes(app, server, container, federation, !!gdriveService);
 
-    app.use("/api/admin/upload", authMiddleware.requireUser, createUploadRoutes(container));
-    app.use("/api/admin/backup", authMiddleware.requireAdmin, createBackupRoutes(container, () => {
-        process.exit(0);
-    }));
-    // removed torrent
-
-    // Health endpoint MUST be before fedify middleware to avoid blocking
-    app.get("/health", (req, res) => {
-        res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
-    });
-
-    // Scope fedify to federation paths only — global use() was blocking ALL requests
-    const fedifyMiddleware = integrateFederation(federation, () => undefined);
-    app.use((req, res, next) => {
-        const p = req.path;
-        if (
-            p === "/.well-known" || p.startsWith("/.well-known/") ||
-            p === "/users" || p.startsWith("/users/") ||
-            p === "/ap" || p.startsWith("/ap/") ||
-            p === "/audio" || p.startsWith("/audio/") ||
-            p === "/nodeinfo" || p.startsWith("/nodeinfo/") ||
-            p === "/inbox"
-        ) {
-            return fedifyMiddleware(req, res, next);
-        }
-        next();
-    });
-    app.use("/api/payments", authMiddleware.optionalAuth, createPaymentsRoutes(container));
-
-    const webappPath = path.join(_serverDirname, "..", "..", "webapp");
-    const webappDistPath = path.join(webappPath, "dist");
-    const webappPublicPath = path.join(webappPath, "public");
-
-    const findStaticFile = (filename: string) => {
-        const candidates = [
-            path.join(webappDistPath, filename),
-            path.join(webappPath, filename),
-            path.join(webappPublicPath, filename),
-            path.join(process.cwd(), "webapp", "dist", filename),
-            path.join(process.cwd(), "webapp", "public", filename),
-            path.join(process.cwd(), "webapp", filename),
-            "/app/webapp/dist/" + filename,
-            "/app/webapp/public/" + filename,
-        ];
-        return candidates.find(p => fs.existsSync(p));
-    };
-
-    app.get("/sw.js", (req, res) => {
-        const foundPath = findStaticFile("sw.js");
-        if (foundPath) return res.sendFile(path.resolve(foundPath));
-        res.status(404).send("sw.js not found");
-    });
-
-    app.get("/manifest.json", (req, res) => {
-        const foundPath = findStaticFile("manifest.json");
-        if (foundPath) return res.sendFile(path.resolve(foundPath));
-        res.status(404).json({ error: "manifest.json not found" });
-    });
-
-    app.use("/", createMiscRoutes(container));
-
-    app.use("/rest", createSubsonicRouter(container));
-
-    // Health endpoint moved before fedify middleware (see above)
-
-    app.use("/api/auth", authMiddleware.optionalAuth, createAuthRoutes(container));
-    app.use("/api/admin", authMiddleware.requireUser, createAdminRoutes(container));
-    app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(container));
-    app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(container));
-    app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(container));
-    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(container));
-    app.use("/api/samples", authMiddleware.optionalAuth, requireModuleEnabled(container, "hideSamples", { allowAdmin: true }), createSamplesRoutes(container));
-    app.use("/api/sample-packs", authMiddleware.optionalAuth, requireModuleEnabled(container, "hideSamples", { allowAdmin: true }), createSamplePacksRoutes(container));
-    app.use("/api/dig", authMiddleware.requireUser, requireModuleEnabled(container, "hideDig"), createDigRoutes(container));
-    app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(container));
-
-
-    if (gdriveService) {
-        app.use("/api/storage", createStorageRouter(container));
-    }
-
-    app.use("/api/import", authMiddleware.requireUser, createImportRoutes(container));
-
-    const releaseRouter = createReleaseRouter(container);
-    app.use("/api/releases", authMiddleware.optionalAuth, releaseRouter);
-    app.use("/api/admin/releases", authMiddleware.requireUser, releaseRouter);
-    app.use("/api/stats", createStatsRoutes(container));
-    app.use("/api/stats/library", createLibraryStatsRoutes(container));
-    app.use("/api/community", createCommunityRoutes(container));
-    app.use("/api/browser", authMiddleware.requireRootAdmin, createBrowserRoutes(container));
-    app.use("/api/metadata", authMiddleware.requireRootAdmin, createMetadataRoutes(container));
-    app.use("/api/users", createUsersRoutes(container));
-    app.use("/api/mcp", authMiddleware.requireUser, createMcpRoutes(container));
-    app.use("/api/comments", createCommentsRoutes(container));
-    app.use("/api/board", authMiddleware.optionalAuth, requireModuleEnabled(container, "boardEnabled", { invert: true, allowAdmin: true }), createBoardRoutes(container));
-    app.use("/api/live", createLiveRoutes(container));
-    app.use("/api/radio", createRadioRoutes(container));
-    app.use("/api/now-playing", createNowPlayingRoutes(container));
-    app.use("/api/unlock", createUnlockRoutes(container));
-
-    // Public assets store
-
-    app.use("/api/lifecycle", authMiddleware.requireUser, createLifecycleRoutes(container));
-    app.use("/api/ap", createActivityPubRoutes(container));
-    app.use("/api/account", authMiddleware.requireUser, createAccountMigrationRoutes(container));
-    app.use("/api/proxy", createProxyRoutes(container));
-    app.use("/api/admin/tasks", authMiddleware.requireAdmin, createTaskRoutes(container));
-    app.use("/api/search", authMiddleware.optionalAuth, createSearchRoutes(container));
-    app.use("/api/peers", createPeersRoutes(container));
-    app.use("/api/lab-apps", createLabAppsRoutes(container));
-    app.use("/api/admin/lab-apps", authMiddleware.requireUser, createLabAppsRoutes(container));
-
-
-
-
-
-    if (fs.existsSync(webappDistPath)) app.use(express.static(webappDistPath, { index: false }));
-    if (fs.existsSync(webappPublicPath)) app.use(express.static(webappPublicPath, { index: false }));
-    app.use(express.static(webappPath, { index: false }));
-
-    const indexHtmlPath = fs.existsSync(path.join(webappDistPath, "index.html")) 
-        ? path.join(webappDistPath, "index.html") 
-        : path.join(webappPath, "index.html");
-
-    let cachedIndexHtml: string | null = null;
-    const getCachedHtml = () => {
-        if (cachedIndexHtml && process.env.NODE_ENV === 'production') return cachedIndexHtml;
-        try {
-            const html = fs.readFileSync(indexHtmlPath, 'utf8');
-            if (process.env.NODE_ENV === 'production') cachedIndexHtml = html;
-            return html;
-        } catch (e) { return "Error loading app"; }
-    };
-
-    app.get("/share/:id", async (req, res) => {
-        const { id } = req.params;
-        let title = "Shared from TuneCamp", description = "Music shared via TuneCamp", image = "";
-        if (id.startsWith('tr_')) {
-            const track = database.getTrack(parseInt(id.substring(3)));
-            if (track) { title = track.title || "Track"; description = `Track by ${track.artist_name || 'Unknown Artist'}`; image = `/api/tracks/${track.id}/cover`; }
-        } else if (id.startsWith('al_')) {
-            const album = database.getAlbum(parseInt(id.substring(3)));
-            if (album) { title = album.title || "Album"; description = `Album by ${album.artist_name || 'Unknown Artist'}`; image = `/api/albums/${album.id}/cover`; }
-        }
-        try {
-            let html = getCachedHtml();
-            const publicUrl = (database.getSetting("publicUrl") || config.publicUrl || `${req.protocol}://${req.get('host')}`).trim().replace(/\/$/, "");
-            const ogTags = `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><meta property="og:image" content="${publicUrl}${image}" />`;
-            html = html.replace('<head>', '<head>' + ogTags);
-            res.send(html);
-        } catch (e) { res.redirect(`/#/share/${id}`); }
-    });
-
-    app.get("/@:slug", (req, res) => {
-        const { slug } = req.params;
-        try {
-            const artist = database.getArtistBySlug(slug);
-            if (artist) {
-                let html = getCachedHtml();
-                const publicUrl = (database.getSetting("publicUrl") || config.publicUrl || `${req.protocol}://${req.get('host')}`).trim().replace(/\/$/, "");
-                const title = artist.name || "Artist Profile";
-                const description = artist.bio || `Listen to ${artist.name} on TuneCamp`;
-                const image = `/api/artists/${artist.id}/cover`;
-                const ogTags = `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><meta property="og:image" content="${publicUrl}${image}" />`;
-                html = html.replace('<head>', '<head>' + ogTags);
-                return res.send(html);
-            }
-        } catch (e) {
-            // fall through to default
-        }
-        res.send(getCachedHtml());
-    });
-
-    app.get("*", (req, res) => {
-        if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found" });
-        res.send(getCachedHtml());
-    });
-
-    // Captures unhandled route errors to Sentry (no-op when SENTRY_DSN is unset),
-    // then falls through to our own errorHandler for the actual response.
-    Sentry.setupExpressErrorHandler(app);
-    app.use(errorHandler);
+    // Static assets, OpenGraph meta injection, SPA fallback & Error handlers
+    setupStaticAndFallbackRoutes(app, config, database);
 
     server.listen(config.port, async () => {
         console.log(`🎶 TuneCamp Server running at http://localhost:${config.port}`);
@@ -611,7 +51,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
         server.headersTimeout = 301000;
 
         // Async Background integrations start after the HTTP server is bound!
-
         telegramBotService.start().catch((err: any) => console.error("Telegram Bot failed to start:", err));
         radioService.resumeIfActive().catch((err: any) => console.error("Radio resume failed:", err));
 
@@ -621,7 +60,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         if (publicUrl) {
             // Auto-follow discovered community instances over ActivityPub. Runs
             // after the first federated crawl (~45s) so the directory is populated.
-            setTimeout(async () => { await publishingService.syncCommunityFollows().catch(() => {}); }, 90000);
+            jobHandles.push(scheduleOnce(async () => { await publishingService.syncCommunityFollows().catch(() => {}); }, 90000));
         }
     });
 
@@ -646,6 +85,9 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
         try { peerService.stopHeartbeat(); console.log('  ✓ PeerService heartbeat stopped'); }
         catch (e) { console.warn('  ⚠ PeerService stop error:', e); }
+
+        try { jobHandles.forEach(h => h.cancel()); console.log('  ✓ Scheduled jobs stopped'); }
+        catch (e) { console.warn('  ⚠ Job cleanup error:', e); }
 
         try { database.db.close(); console.log('  ✓ Database closed'); }
         catch (e) { console.warn('  ⚠ Database close error:', e); }

@@ -428,6 +428,43 @@ export interface SamplePack {
     samples?: Sample[];
 }
 
+export interface CollabProject {
+    id: number;
+    title: string;
+    description: string | null;
+    ownerId: number;
+    ownerUsername: string | null;
+    visibility: 'shared' | 'private';
+    createdAt: string;
+    updatedAt: string;
+    versionCount: number;
+    versions?: CollabVersion[];
+    stems?: CollabStem[];
+}
+
+export interface CollabVersion {
+    id: number;
+    projectId: number;
+    version: number;
+    authorId: number;
+    authorUsername: string | null;
+    state: string;
+    note: string | null;
+    createdAt: string;
+}
+
+export interface CollabStem {
+    id: number;
+    projectId: number;
+    authorId: number;
+    authorUsername: string | null;
+    name: string;
+    filePath: string;
+    mimeType: string | null;
+    duration: number | null;
+    createdAt: string;
+}
+
 export interface NetworkSite {
     url: string;
     name: string;
@@ -685,4 +722,28 @@ export interface Report {
     release_title?: string;
     release_slug?: string;
     artist_name?: string;
+}
+
+
+export interface PublicProfile {
+    username: string;
+    alias: string | null;
+    avatar: string | null;
+    role: string;
+    createdAt: string;
+    artist: { slug: string; name: string; url: string | null } | null;
+    stats: { likes: number; playlists: number };
+    likes: { title: string; artist: string | null; url: string | null; cover: string | null }[];
+    playlists: { id: number; name: string; description: string | null; trackCount: number }[];
+    instance: { name: string; url: string | null };
+}
+
+export interface NowListeningEntry {
+    username: string;
+    alias: string | null;
+    avatar: string | null;
+    trackId: number | string | null;
+    title: string;
+    artist: string;
+    updatedAt: number;
 }

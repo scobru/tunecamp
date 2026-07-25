@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.10.2] - 2026-07-26
+
+### Refactored
+- **Modularized `api.ts` frontend API client.** Split the 869-line monolithic `api.ts` service object into 7 domain-specific modules under `webapp/src/services/api/` (`auth.ts`, `catalog.ts`, `social.ts`, `admin.ts`, `network.ts`, `media.ts`, `commerce.ts`) with `client.ts` handling shared Axios/error instance and `index.ts` providing a backward-compatible barrel re-export. Moved `PublicProfile` and `NowListeningEntry` types into `webapp/src/types/index.ts`.
+
+## [3.10.1] - 2026-07-26
+
+### Changed
+- **Scheduled jobs extracted from `server.ts`.** New `src/server/core/scheduler.ts` (`scheduleRecurring`, `scheduleOnce`) replaces 4 inline `setTimeout`/`setInterval` blocks (federated discovery crawl, off-peak library scan, RSS refresh, community follow sync). Jobs are now cancelled on graceful shutdown, closing a timer leak.
+
+## [3.10.0] - 2026-07-25
+
+### Added
+- **Collab.** New native feature for multi-artist collaborative track building on a single instance: `collab_projects` (shared/private visibility), append-only `collab_versions` (`UNIQUE(project_id, version)`, never overwritten), and `collab_stems` (raw in-progress audio layers, separate from `tracks`/`samples`). Write access (create project, upload stem, save version) gated by `VisibilityGuardian.canPublishContent()`; open collaboration — any artist on the instance can contribute to a shared project; delete restricted to the project creator. `GET/POST /api/collab`, `GET /api/collab/:id`, `DELETE /api/collab/:id`, `POST /api/collab/:id/versions`, `POST/GET/DELETE /api/collab/:id/stems`. Webapp: new `/collab` (list + create) and `/collab/:id` (stems, version history, snapshot save) pages, linked from the sidebar. No ZEN/realtime — versioning-only, matching the ZEN-removal architecture decision; live presence/collaboration deferred to the already-planned Phase C ZEN-via-worker_thread work.
+
 ## [3.9.0] - 2026-07-24
 
 ### Added

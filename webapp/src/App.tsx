@@ -50,6 +50,8 @@ const Live = lazy(() => import("./pages/Live"));
 const RadioPage = lazy(() => import("./pages/Radio"));
 const NowListening = lazy(() => import("./pages/NowListening"));
 const Board = lazy(() => import("./pages/Board"));
+const Collab = lazy(() => import("./pages/Collab"));
+const CollabDetail = lazy(() => import("./pages/CollabDetail"));
 
 
 const LoadingSpinner = () => (
@@ -271,6 +273,10 @@ function App() {
             {/* Lab */}
             <Route path="/lab" element={<Lab />} />
             <Route path="/lab/:appId" element={<LabApp />} />
+
+            {/* Collab */}
+            <Route path="/collab" element={<Collab />} />
+            <Route path="/collab/:id" element={<CollabDetail />} />
 
             {/* Other */}
             <Route path="/support" element={<Support />} />

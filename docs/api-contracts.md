@@ -74,6 +74,21 @@ Free samples are not store assets: no price, no purchase flow, no credits. Licen
 
 A packed sample (`samples.pack_id` set) is excluded from the public `/api/samples` listing — it only surfaces through its pack.
 
+### Collab (`/api/collab`)
+
+All routes require login. See [COLLAB.md](COLLAB.md) for the full feature writeup.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/collab` | List shared projects. `mine=true` scopes to the caller's own |
+| `GET` | `/api/collab/:id` | Project metadata plus its versions and stems |
+| `POST` | `/api/collab` | Create a project (requires `canPublishContent`) |
+| `DELETE` | `/api/collab/:id` | Delete a project and its stems (owner only) |
+| `POST` | `/api/collab/:id/versions` | Save an append-only version snapshot (`state`, optional `note`) |
+| `POST` | `/api/collab/:id/stems` | Upload an audio stem (`multipart/form-data`: file, optional name) |
+| `GET` | `/api/collab/:id/stems/:stemId/download` | Stream a stem's audio |
+| `DELETE` | `/api/collab/:id/stems/:stemId` | Delete a stem (stem author or project owner) |
+
 ### Payments & Monetisation (`/api/payments`)
 
 | Method | Path | Description |
