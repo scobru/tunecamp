@@ -36,8 +36,6 @@ import {
   Sparkles,
   Music2,
   Users,
-  Heart,
-  ListMusic,
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
