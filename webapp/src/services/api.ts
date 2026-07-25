@@ -4,7 +4,8 @@ import type {
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
     StorageAccount, GoogleDriveFile, InstanceStorage, RecomputeStorageResult, SystemResources, UpdateCheck,
     DigStrategy, DigSearchResult, DigResult, DigSession, DigCrateItem, DigCrateInput, DigHistoryItem,
-    LiveSession, ArtistEvent, ArtistEventInput, LabAppRecord, Report, LegalPages, Sample, SamplePack
+    LiveSession, ArtistEvent, ArtistEventInput, LabAppRecord, Report, LegalPages, Sample, SamplePack,
+    CollabProject, CollabVersion, CollabStem
 } from '../types';
 
 const API_URL = '/api';
@@ -332,6 +333,32 @@ const API = {
         return handleResponse(api.post<SamplePack>(`sample-packs/${id}/cover`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }));
     },
     approveSamplePack: (id: number, notes?: string) => handleResponse(api.post<SamplePack>(`sample-packs/${id}/approve`, { notes })),
+
+    // --- Collab ---
+    getCollabProjects: (options: { mine?: boolean } = {}) => {
+        const params = new URLSearchParams();
+        if (options.mine) params.set('mine', 'true');
+        const qs = params.toString();
+        return handleResponse(api.get<CollabProject[]>(`collab${qs ? `?${qs}` : ''}`));
+    },
+    getCollabProject: (id: number) => handleResponse(api.get<CollabProject>(`collab/${id}`)),
+    createCollabProject: (fields: { title: string, description?: string }) =>
+        handleResponse(api.post<CollabProject>('collab', fields)),
+    deleteCollabProject: (id: number) => handleResponse(api.delete(`collab/${id}`)),
+    saveCollabVersion: (id: number, state: string, note?: string) =>
+        handleResponse(api.post<CollabVersion>(`collab/${id}/versions`, { state, note })),
+    uploadCollabStem: (id: number, file: File, name?: string) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (name) formData.append('name', name);
+        return handleResponse(api.post<CollabStem>(`collab/${id}/stems`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }));
+    },
+    deleteCollabStem: (projectId: number, stemId: number) => handleResponse(api.delete(`collab/${projectId}/stems/${stemId}`)),
+    getCollabStemUrl: (projectId: number, stemId: number) => {
+        const url = `${API_URL}/collab/${projectId}/stems/${stemId}/download`;
+        const token = API.getToken();
+        return token ? `${url}?token=${token}` : url;
+    },
     rejectSamplePack: (id: number, notes?: string) => handleResponse(api.post<SamplePack>(`sample-packs/${id}/reject`, { notes })),
 
     // --- Subscription ---

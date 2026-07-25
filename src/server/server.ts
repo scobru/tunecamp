@@ -46,6 +46,8 @@ import { createSamplesRoutes } from "./routes/library/samples.js";
 import { createSamplePacksRoutes } from "./routes/library/sample-packs.js";
 import { SampleRepository } from "./repositories/sample.repository.js";
 import { SamplePackRepository } from "./repositories/sample-pack.repository.js";
+import { CollabRepository } from "./repositories/collab.repository.js";
+import { createCollabRoutes } from "./routes/library/collab.js";
 import { createDigRoutes } from "./routes/library/dig.js";
 import { createArtistsRoutes } from "./routes/library/artists.js";
 import { createPlaylistsRoutes } from "./routes/library/playlists.js";
@@ -376,6 +378,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const peerService = createPeerService(database, apService);
     const samplesRepository = new SampleRepository(database.db);
     const samplePacksRepository = new SamplePackRepository(database.db);
+    const collabRepository = new CollabRepository(database.db);
 
     const container: ServiceContainer = {
         database,
@@ -413,6 +416,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         peerService,
         samplesRepository,
         samplePacksRepository,
+        collabRepository,
         soulseekService,
         torrentService,
         gdriveService,
@@ -497,6 +501,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/sample-packs", authMiddleware.optionalAuth, requireModuleEnabled(container, "hideSamples", { allowAdmin: true }), createSamplePacksRoutes(container));
     app.use("/api/dig", authMiddleware.requireUser, requireModuleEnabled(container, "hideDig"), createDigRoutes(container));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(container));
+    app.use("/api/collab", authMiddleware.requireUser, createCollabRoutes(container));
 
 
     if (gdriveService) {

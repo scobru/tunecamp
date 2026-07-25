@@ -25,6 +25,7 @@ Full session rules live in `.claude/CLAUDE.md` (git workflow, architecture decis
 - **Auth**: username + password + JWT, per-instance. No cross-instance SSO.
 - **Publishing gate**: use `VisibilityGuardian.canPublishContent()`, never a raw `artistId` check.
 - **Playlists**: members-only, not restricted above `user` role.
+- **End of every feature**: update `CHANGELOG.md`, update `tunecamp-website` (landing/docs pages if the feature is user-facing), update `docs/` (architecture/API/data-model docs this repo owns), update `tunecamp-ecosystem` (Components table / relevant vendored doc under `docs/tunecamp/`). Do this alongside the changelog+version bump above, not as a separate pass.
 
 ## Work Guidance
 

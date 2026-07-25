@@ -428,6 +428,43 @@ export interface SamplePack {
     samples?: Sample[];
 }
 
+export interface CollabProject {
+    id: number;
+    title: string;
+    description: string | null;
+    ownerId: number;
+    ownerUsername: string | null;
+    visibility: 'shared' | 'private';
+    createdAt: string;
+    updatedAt: string;
+    versionCount: number;
+    versions?: CollabVersion[];
+    stems?: CollabStem[];
+}
+
+export interface CollabVersion {
+    id: number;
+    projectId: number;
+    version: number;
+    authorId: number;
+    authorUsername: string | null;
+    state: string;
+    note: string | null;
+    createdAt: string;
+}
+
+export interface CollabStem {
+    id: number;
+    projectId: number;
+    authorId: number;
+    authorUsername: string | null;
+    name: string;
+    filePath: string;
+    mimeType: string | null;
+    duration: number | null;
+    createdAt: string;
+}
+
 export interface NetworkSite {
     url: string;
     name: string;
