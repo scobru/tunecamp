@@ -29,6 +29,21 @@ This architecture allows users to unify their profiles across independent TuneCa
 
 ---
 
+## 🔄 Two-Step Linking Handshake Workflow
+
+1. **Step 1 (Instance $\rightarrow$ tunecamp.org)**:
+   - On local TuneCamp settings, user clicks **"Genera Challenge di Vincolo"** (`GET /api/auth/zen/challenge`).
+   - Instance generates a one-time challenge nonce `{ instanceDomain, username, nonce, timestamp }`.
+   - User copies the **Challenge JSON**.
+
+2. **Step 2 (tunecamp.org $\rightarrow$ Instance)**:
+   - On `tunecamp.org/profile.html`, user opens **"Link Instance"** $\rightarrow$ **"Firma Challenge Istanza"**.
+   - User pastes the Challenge JSON.
+   - `tunecamp.org` signs the challenge with the user's private Zen SEA key and generates a **Passport JSON**.
+   - User copies the **Passport JSON** and pastes it back into the local TuneCamp instance to activate the verified link.
+
+---
+
 ## 🔑 Endpoints
 
 ### 1. Generate Zen Challenge
@@ -77,3 +92,4 @@ This architecture allows users to unify their profiles across independent TuneCa
 - **Endpoint**: `GET /api/auth/zen/user/:username/public`
 - **Auth Required**: No (Public)
 - **Response**: Returns **only** public profile info, public releases, and public playlists for cross-instance aggregation on `tunecamp.org`.
+
