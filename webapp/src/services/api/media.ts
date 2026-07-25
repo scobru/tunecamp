@@ -40,7 +40,7 @@ export const mediaApi = {
         if (cached && cached.expiresAt - Date.now() > 30_000) return cached.token;
         try {
             const data = await handleResponse(api.post<{ token: string, expiresIn: number }>('payments/download-token'));
-            downloadTokenCache = { token: data.token, expiresAt: Date.now() + data.expiresIn * 1000 };
+            setDownloadTokenCache({ token: data.token, expiresAt: Date.now() + data.expiresIn * 1000 });
             return data.token;
         } catch {
             return null;
