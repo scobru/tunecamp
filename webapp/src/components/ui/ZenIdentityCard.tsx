@@ -12,6 +12,7 @@ export const ZenIdentityCard: React.FC = () => {
         return saved ? JSON.parse(saved) : null;
     });
     const [copied, setCopied] = useState(false);
+    const [copiedPassport, setCopiedPassport] = useState(false);
 
     const handleGetChallenge = async () => {
         setLoading(true);
@@ -35,6 +36,14 @@ export const ZenIdentityCard: React.FC = () => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
         notify.success("Challenge copiato negli appunti! Incollalo su tunecamp.org per firmare.");
+    };
+
+    const handleCopyPassport = () => {
+        if (!passport) return;
+        navigator.clipboard.writeText(JSON.stringify(passport));
+        setCopiedPassport(true);
+        setTimeout(() => setCopiedPassport(false), 2000);
+        notify.success("JSON del Passaporto copiato! Incollalo su tunecamp.org per completare il collegamento.");
     };
 
     const handleLinkZen = async (e: React.FormEvent) => {
@@ -90,12 +99,21 @@ export const ZenIdentityCard: React.FC = () => {
                         <span className="flex items-center gap-2 text-emerald-400 font-medium text-sm">
                             <ShieldCheck className="w-4 h-4" /> Istanza collegata a Zen SEA
                         </span>
-                        <button
-                            onClick={handleUnlink}
-                            className="text-xs text-rose-400 hover:text-rose-300 underline"
-                        >
-                            Scollega
-                        </button>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={handleCopyPassport}
+                                className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+                            >
+                                {copiedPassport ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                {copiedPassport ? "Copiato!" : "Copia Passaporto JSON"}
+                            </button>
+                            <button
+                                onClick={handleUnlink}
+                                className="text-xs text-rose-400 hover:text-rose-300 underline"
+                            >
+                                Scollega
+                            </button>
+                        </div>
                     </div>
                     <div className="text-xs text-text-secondary space-y-1 font-mono">
                         <div><strong className="text-text-muted font-sans">Zen PubKey:</strong> {passport.zenPubKey.slice(0, 16)}...{passport.zenPubKey.slice(-8)}</div>

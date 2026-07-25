@@ -187,5 +187,30 @@ export function createZenRoutes(container: ServiceContainer): Router {
         }
     });
 
+    /**
+     * POST /api/auth/zen/verify
+     * Verifies an Instance Passport JSON to cryptographically prove it was issued by this instance.
+     * Accessible via public CORS so the global portal can call it.
+     */
+    router.post("/verify", (req, res) => {
+        const { instanceDomain, localUsername, zenPubKey, issuedAt, passportSignature } = req.body;
+
+        if (!instanceDomain || !localUsername || !zenPubKey || !issuedAt || !passportSignature) {
+            return res.status(400).json({ valid: false, error: "Malformed passport" });
+        }
+
+        const secret = (config as any).jwtSecret || "tunecamp-zen-passport-secret";
+        
+        // Re-generate HMAC Instance Passport Signature
+        const passportPayload = `${instanceDomain}:${localUsername}:${zenPubKey}:${issuedAt}`;
+        const expectedSignature = crypto.createHmac("sha256", secret).update(passportPayload).digest("hex");
+
+        if (passportSignature === expectedSignature) {
+            return res.json({ valid: true });
+        } else {
+            return res.status(400).json({ valid: false, error: "Invalid signature" });
+        }
+    });
+
     return router;
 }
