@@ -296,16 +296,35 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 userId = created.id;
                 user = authService.getUserByUsername(username);
             } else {
-                // Verify ZK Proof if user already exists
+                userId = user.id;
+                
+                // 1. Check if user is linked to a different Zen PubKey
+                const userGunPub = (user as any).gun_pub;
+                if (userGunPub && ssoToken.zenPubKey && userGunPub !== ssoToken.zenPubKey) {
+                    return res.status(401).json({ error: "This account is linked to a different Zen PubKey" });
+                }
+
+                // 2. Link Zen PubKey if not set yet
+                if (!userGunPub && ssoToken.zenPubKey) {
+                    db.prepare("UPDATE admin SET gun_pub = ? WHERE id = ?").run(ssoToken.zenPubKey, user.id);
+                }
+
+                // 3. Link or update ActivityPub keys on existing artist if present
                 if (user.artist_id) {
                     const artist = db.prepare("SELECT public_key FROM artists WHERE id = ?").get(user.artist_id);
-                    if (artist && artist.public_key && artist.public_key.trim() !== publicKeyPem.trim()) {
-                        return res.status(401).json({ error: "Invalid SSO proof: AP key mismatch" });
+                    if (!artist || !artist.public_key || userGunPub !== ssoToken.zenPubKey) {
+                        db.prepare("UPDATE artists SET public_key = ?, private_key = ? WHERE id = ?")
+                          .run(publicKeyPem, privateKeyPem, user.artist_id);
                     }
-                } else if ((user as any).gun_pub && ssoToken.zenPubKey && (user as any).gun_pub !== ssoToken.zenPubKey) {
-                    return res.status(401).json({ error: "Invalid SSO proof: Zen PubKey mismatch" });
+                } else if (publicKeyPem && privateKeyPem) {
+                    // Create artist for existing user if they don't have one yet
+                    const result = db.prepare(
+                        "INSERT INTO artists (name, slug, public_key, private_key) VALUES (?, ?, ?, ?)"
+                    ).run(username, username.toLowerCase().replace(/[^a-z0-9]/g, '-'), publicKeyPem, privateKeyPem);
+                    const newArtistId = Number(result.lastInsertRowid);
+                    db.prepare("UPDATE admin SET artist_id = ?, role = ? WHERE id = ?").run(newArtistId, UserRole.SUPER_USER, user.id);
+                    user.artist_id = newArtistId;
                 }
-                userId = user.id;
             }
 
             if (!user) {
