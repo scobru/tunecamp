@@ -2,7 +2,7 @@ import { Router, json } from "express";
 import type { ServiceContainer } from "../../core/container.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
-import { FidChallengeManager, FidPassportIssuer } from "@scobru/fid";
+import { FidChallengeManager, FidPassportIssuer } from "fid";
 
 // Global FID challenge manager and passport issuer instances
 const fidChallengeManager = new FidChallengeManager(10, 5);

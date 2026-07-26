@@ -45,7 +45,7 @@
     "@fedify/fedify": "^1.10.3",
     "@js-temporal/polyfill": "^0.5.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@scobru/fid": "git+https://github.com/scobru/fid.git",
+    "fid": "github:scobru/fid",
     "@sentry/node": "^10.57.0",
     "adm-zip": "^0.5.16",
     "archiver": "^7.0.1",
