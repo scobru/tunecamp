@@ -2,7 +2,7 @@ import { Router, json } from "express";
 import type { ServiceContainer } from "../../core/container.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
-import { FidChallengeManager, FidPassportIssuer } from "fid";
+import { FidChallengeManager, FidPassportIssuer, FidSsoHandler } from "fid";
 import { UserRole } from "../../common/visibility.js";
 import crypto from "node:crypto";
 
@@ -20,6 +20,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
 
     const passportSecret = (config as any).jwtSecret || "tunecamp-zen-passport-secret";
     const passportIssuer = new FidPassportIssuer(passportSecret);
+    const ssoHandler = new FidSsoHandler(passportSecret);
 
     /**
      * GET /api/auth/zen/challenge
@@ -247,14 +248,11 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 return res.status(400).json({ error: "Missing ssoToken or apSeed payload" });
             }
 
-            // Verify required SSO token fields
-            if (!ssoToken.username || !ssoToken.issuedAt || !ssoToken.zenPubKey) {
-                return res.status(400).json({ error: "Missing required ssoToken fields (username, issuedAt, zenPubKey)" });
-            }
-
-            // Verify token age (max 15 mins)
-            if (Date.now() - ssoToken.issuedAt > 15 * 60 * 1000) {
-                return res.status(401).json({ error: "SSO token expired" });
+            // Verify SSO token using FidSsoHandler from fid package
+            const validation = ssoHandler.validateSsoToken(ssoToken);
+            if (!validation.valid) {
+                const status = validation.error?.includes("expired") ? 401 : 400;
+                return res.status(status).json({ error: validation.error });
             }
 
             // Derive Ed25519 keypair from apSeed (Zero-Knowledge Proof of Master Key)
