@@ -13,6 +13,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
     const authMiddleware = container.authMiddleware;
     const authService = container.authService;
     const database = container.database;
+    const db = (database as any).db || database;
     const config = container.config;
     const router = Router();
     router.use(json());
@@ -80,10 +81,6 @@ export function createZenRoutes(container: ServiceContainer): Router {
      * GET /api/auth/zen/user/:username/public
      * Returns ONLY public profile data and public releases/tracks for Zen identity aggregation.
      */
-    /**
-     * GET /api/auth/zen/user/:username/public
-     * Returns ONLY public profile data and public releases/tracks for Zen identity aggregation.
-     */
     router.get("/user/:username/public", async (req, res) => {
         const { username } = req.params;
 
@@ -97,22 +94,22 @@ export function createZenRoutes(container: ServiceContainer): Router {
             const userAlias = profile?.alias || user.username;
 
             // Get public artist profile if linked
-            let artist = null;
+            let artist: any = null;
             if (user.artist_id) {
-                artist = (database as any).prepare?.(`SELECT id, name, bio, image_url FROM artists WHERE id = ?`).get(user.artist_id);
+                artist = db.prepare(`SELECT id, name, bio, photo_path as image_url FROM artists WHERE id = ?`).get(user.artist_id);
             }
-            if (!artist && user.artist_name) {
-                artist = (database as any).prepare?.(`SELECT id, name, bio, image_url FROM artists WHERE LOWER(name) = LOWER(?)`).get(user.artist_name);
+            if (!artist && (user as any).artist_name) {
+                artist = db.prepare(`SELECT id, name, bio, photo_path as image_url FROM artists WHERE LOWER(name) = LOWER(?)`).get((user as any).artist_name);
             }
             if (!artist) {
-                artist = (database as any).prepare?.(`SELECT id, name, bio, image_url FROM artists WHERE LOWER(name) = LOWER(?) OR LOWER(name) = LOWER(?)`).get(user.username, userAlias);
+                artist = db.prepare(`SELECT id, name, bio, photo_path as image_url FROM artists WHERE LOWER(name) = LOWER(?) OR LOWER(name) = LOWER(?)`).get(user.username, userAlias);
             }
 
             // Collect all unique artist names associated with this user account
             const artistNames = Array.from(new Set([
                 user.username,
                 userAlias,
-                user.artist_name,
+                (user as any).artist_name,
                 artist?.name
             ].filter(Boolean) as string[]));
 
@@ -124,7 +121,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
             if (artistNames.length > 0) {
                 try {
                     const nameConds = artistNames.map(() => 'LOWER(name) = LOWER(?)').join(' OR ');
-                    const matchedArtists = (database as any).prepare?.(`SELECT id FROM artists WHERE ${nameConds}`).all(...artistNames) || [];
+                    const matchedArtists = db.prepare(`SELECT id FROM artists WHERE ${nameConds}`).all(...artistNames) || [];
                     for (const a of matchedArtists) {
                         if (a.id && !artistIds.includes(a.id)) artistIds.push(a.id);
                     }
@@ -156,11 +153,11 @@ export function createZenRoutes(container: ServiceContainer): Router {
                     )
                 `;
                 const queryParams = [user.id, ...artistIds, ...artistNames];
-                releases = (database as any).prepare?.(albumQuery).all(...queryParams) || [];
+                releases = db.prepare(albumQuery).all(...queryParams) || [];
             } catch (queryErr) {
                 try {
-                    releases = (database as any).prepare?.(
-                        `SELECT id, title, cover_url, release_date, type FROM releases WHERE artist_id IN (${placeholders})`
+                    releases = db.prepare(
+                        `SELECT id, title, cover_path as cover_url, date as release_date, type FROM albums WHERE artist_id IN (${placeholders})`
                     ).all(...artistIds) || [];
                 } catch(e) {}
             }
@@ -168,7 +165,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
             // Get public playlists created by user
             let playlists: any[] = [];
             try {
-                playlists = (database as any).prepare?.(
+                playlists = db.prepare(
                     `SELECT id, name, cover_path as cover_url, created_at FROM playlists WHERE (LOWER(username) = LOWER(?) OR LOWER(username) = LOWER(?)) AND is_public = 1`
                 ).all(user.username, userAlias) || [];
             } catch(e) {
@@ -178,7 +175,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
             // Get public likes / starred items created by user
             let likes: any[] = [];
             try {
-                likes = (database as any).prepare?.(`
+                likes = db.prepare(`
                     SELECT s.item_type as type, s.item_id as id, s.created_at,
                            a.title as album_title, a.cover_path as album_cover,
                            t.title as track_title, t.artist_name as track_artist
@@ -196,7 +193,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 success: true,
                 publicProfile: {
                     username: userAlias || user.username,
-                    artistName: artist?.name || user.artist_name || userAlias || user.username,
+                    artistName: artist?.name || (user as any).artist_name || userAlias || user.username,
                     bio: artist?.bio || null,
                     imageUrl: artist?.image_url || null,
                     joinedAt: user.created_at
@@ -285,7 +282,6 @@ export function createZenRoutes(container: ServiceContainer): Router {
 
             let isNewUser = false;
             let userId: number;
-            const db = (database as any);
 
             // Register user if not exists
             if (!user) {
@@ -294,11 +290,19 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 const DEFAULT_QUOTA = 1024 * 1024 * 1024;
                 
                 // Create AP identity (Artist profile) deterministically from seed
-                let artistId = null;
-                const result = db.prepare(
-                    "INSERT INTO artists (name, slug, public_key, private_key) VALUES (?, ?, ?, ?)"
-                ).run(username, username.toLowerCase().replace(/[^a-z0-9]/g, '-'), publicKeyPem, privateKeyPem);
-                artistId = Number(result.lastInsertRowid);
+                let artistId: number | null = null;
+                const slug = username.toLowerCase().replace(/[^a-z0-9]/g, '-') || "artist";
+                const existingArtist = db.prepare("SELECT id FROM artists WHERE LOWER(name) = LOWER(?) OR LOWER(slug) = LOWER(?)").get(username, slug) as { id: number } | undefined;
+
+                if (existingArtist) {
+                    artistId = existingArtist.id;
+                    db.prepare("UPDATE artists SET public_key = ?, private_key = ? WHERE id = ?").run(publicKeyPem, privateKeyPem, artistId);
+                } else {
+                    const result = db.prepare(
+                        "INSERT INTO artists (name, slug, public_key, private_key) VALUES (?, ?, ?, ?)"
+                    ).run(username, slug, publicKeyPem, privateKeyPem);
+                    artistId = Number(result.lastInsertRowid);
+                }
 
                 // Create user and link artist, elevate to SUPER_USER role so they can publish
                 const role = UserRole.SUPER_USER;
@@ -321,17 +325,25 @@ export function createZenRoutes(container: ServiceContainer): Router {
 
                 // 3. Link or update ActivityPub keys on existing artist if present
                 if (user.artist_id) {
-                    const artist = db.prepare("SELECT public_key FROM artists WHERE id = ?").get(user.artist_id);
+                    const artist = db.prepare("SELECT public_key FROM artists WHERE id = ?").get(user.artist_id) as { public_key?: string } | undefined;
                     if (!artist || !artist.public_key || userGunPub !== ssoToken.zenPubKey) {
                         db.prepare("UPDATE artists SET public_key = ?, private_key = ? WHERE id = ?")
                           .run(publicKeyPem, privateKeyPem, user.artist_id);
                     }
                 } else if (publicKeyPem && privateKeyPem) {
                     // Create artist for existing user if they don't have one yet
-                    const result = db.prepare(
-                        "INSERT INTO artists (name, slug, public_key, private_key) VALUES (?, ?, ?, ?)"
-                    ).run(username, username.toLowerCase().replace(/[^a-z0-9]/g, '-'), publicKeyPem, privateKeyPem);
-                    const newArtistId = Number(result.lastInsertRowid);
+                    const slug = username.toLowerCase().replace(/[^a-z0-9]/g, '-') || "artist";
+                    const existingArtist = db.prepare("SELECT id FROM artists WHERE LOWER(name) = LOWER(?) OR LOWER(slug) = LOWER(?)").get(username, slug) as { id: number } | undefined;
+                    let newArtistId: number;
+                    if (existingArtist) {
+                        newArtistId = existingArtist.id;
+                        db.prepare("UPDATE artists SET public_key = ?, private_key = ? WHERE id = ?").run(publicKeyPem, privateKeyPem, newArtistId);
+                    } else {
+                        const result = db.prepare(
+                            "INSERT INTO artists (name, slug, public_key, private_key) VALUES (?, ?, ?, ?)"
+                        ).run(username, slug, publicKeyPem, privateKeyPem);
+                        newArtistId = Number(result.lastInsertRowid);
+                    }
                     db.prepare("UPDATE admin SET artist_id = ?, role = ? WHERE id = ?").run(newArtistId, UserRole.SUPER_USER, user.id);
                     user.artist_id = newArtistId;
                 }
