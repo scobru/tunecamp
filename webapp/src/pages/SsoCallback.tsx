@@ -15,12 +15,25 @@ export const SsoCallback = () => {
             try {
                 // The global portal sets the payload in the URL hash fragment to prevent leakage
                 const hash = window.location.hash;
-                if (!hash || !hash.startsWith('#payload=')) {
+                let ssoToken: any = null;
+                let apSeed: string = '';
+
+                if (hash && hash.startsWith('#payload=')) {
+                    const payloadRaw = decodeURIComponent(hash.replace('#payload=', ''));
+                    const parsed = JSON.parse(payloadRaw);
+                    ssoToken = parsed.ssoToken;
+                    apSeed = parsed.apSeed;
+                } else if (hash && hash.includes('ssoToken=')) {
+                    const hashClean = hash.startsWith('#') ? hash.substring(1) : hash;
+                    const params = new URLSearchParams(hashClean);
+                    const tokenRaw = params.get('ssoToken');
+                    if (tokenRaw) {
+                        ssoToken = JSON.parse(decodeURIComponent(tokenRaw));
+                    }
+                    apSeed = params.get('apSeed') || '';
+                } else {
                     throw new Error("Manca il payload SSO nella URL (hash fragment)");
                 }
-
-                const payloadRaw = decodeURIComponent(hash.replace('#payload=', ''));
-                const { ssoToken, apSeed } = JSON.parse(payloadRaw);
 
                 if (!ssoToken) {
                     throw new Error("Token SSO mancante nel payload");
