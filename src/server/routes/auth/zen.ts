@@ -289,24 +289,9 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 const randomPassword = crypto.randomBytes(16).toString("hex");
                 const DEFAULT_QUOTA = 1024 * 1024 * 1024;
                 
-                // Create AP identity (Artist profile) deterministically from seed
-                let artistId: number | null = null;
-                const slug = username.toLowerCase().replace(/[^a-z0-9]/g, '-') || "artist";
-                const existingArtist = db.prepare("SELECT id FROM artists WHERE LOWER(name) = LOWER(?) OR LOWER(slug) = LOWER(?)").get(username, slug) as { id: number } | undefined;
-
-                if (existingArtist) {
-                    artistId = existingArtist.id;
-                    db.prepare("UPDATE artists SET public_key = ?, private_key = ? WHERE id = ?").run(publicKeyPem, privateKeyPem, artistId);
-                } else {
-                    const result = db.prepare(
-                        "INSERT INTO artists (name, slug, public_key, private_key) VALUES (?, ?, ?, ?)"
-                    ).run(username, slug, publicKeyPem, privateKeyPem);
-                    artistId = Number(result.lastInsertRowid);
-                }
-
-                // Create user and link artist, elevate to SUPER_USER role so they can publish
-                const role = UserRole.SUPER_USER;
-                const created = await authService.createUser(username, randomPassword, artistId, DEFAULT_QUOTA, ssoToken.zenPubKey, role);
+                // Register as a standard listener (NORMAL_USER) without auto-creating an artist profile
+                const role = UserRole.NORMAL_USER;
+                const created = await authService.createUser(username, randomPassword, null, DEFAULT_QUOTA, ssoToken.zenPubKey, role);
                 userId = created.id;
                 user = authService.getUserByUsername(username);
             } else {
@@ -323,29 +308,13 @@ export function createZenRoutes(container: ServiceContainer): Router {
                     db.prepare("UPDATE admin SET gun_pub = ? WHERE id = ?").run(ssoToken.zenPubKey, user.id);
                 }
 
-                // 3. Link or update ActivityPub keys on existing artist if present
-                if (user.artist_id) {
+                // 3. Update ActivityPub keys on existing artist if present
+                if (user.artist_id && publicKeyPem && privateKeyPem) {
                     const artist = db.prepare("SELECT public_key FROM artists WHERE id = ?").get(user.artist_id) as { public_key?: string } | undefined;
                     if (!artist || !artist.public_key || userGunPub !== ssoToken.zenPubKey) {
                         db.prepare("UPDATE artists SET public_key = ?, private_key = ? WHERE id = ?")
                           .run(publicKeyPem, privateKeyPem, user.artist_id);
                     }
-                } else if (publicKeyPem && privateKeyPem) {
-                    // Create artist for existing user if they don't have one yet
-                    const slug = username.toLowerCase().replace(/[^a-z0-9]/g, '-') || "artist";
-                    const existingArtist = db.prepare("SELECT id FROM artists WHERE LOWER(name) = LOWER(?) OR LOWER(slug) = LOWER(?)").get(username, slug) as { id: number } | undefined;
-                    let newArtistId: number;
-                    if (existingArtist) {
-                        newArtistId = existingArtist.id;
-                        db.prepare("UPDATE artists SET public_key = ?, private_key = ? WHERE id = ?").run(publicKeyPem, privateKeyPem, newArtistId);
-                    } else {
-                        const result = db.prepare(
-                            "INSERT INTO artists (name, slug, public_key, private_key) VALUES (?, ?, ?, ?)"
-                        ).run(username, slug, publicKeyPem, privateKeyPem);
-                        newArtistId = Number(result.lastInsertRowid);
-                    }
-                    db.prepare("UPDATE admin SET artist_id = ?, role = ? WHERE id = ?").run(newArtistId, UserRole.SUPER_USER, user.id);
-                    user.artist_id = newArtistId;
                 }
             }
 
