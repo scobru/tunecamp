@@ -2,7 +2,7 @@ import { Router, json } from "express";
 import type { ServiceContainer } from "../../core/container.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
-import { FidChallengeManager, FidPassportIssuer } from "fid";
+import { FidChallengeManager, FidPassportIssuer, FidSsoHandler } from "fid";
 
 // Global FID challenge manager and passport issuer instances
 const fidChallengeManager = new FidChallengeManager(10, 5);
@@ -234,6 +234,97 @@ export function createZenRoutes(container: ServiceContainer): Router {
             return res.json({ valid: true });
         } else {
             return res.status(400).json({ valid: false, error: "Invalid signature" });
+        }
+    });
+
+    /**
+     * POST /api/auth/zen/sso
+     * Verifies the SSO Token from the Global Portal and registers/logs in the user.
+     */
+    router.post("/sso", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req, res) => {
+        try {
+            const { ssoToken, apSeed } = req.body;
+            if (!ssoToken || !apSeed) {
+                return res.status(400).json({ error: "Missing ssoToken or apSeed payload" });
+            }
+
+            const ssoHandler = new FidSsoHandler(passportSecret);
+            const isValid = ssoHandler.verifySsoToken(ssoToken);
+
+            if (!isValid) {
+                return res.status(401).json({ error: "Invalid or expired SSO token" });
+            }
+
+            const username = ssoToken.username;
+            let user = authService.getUserByUsername(username);
+
+            let isNewUser = false;
+            let userId: number;
+
+            // Register user if not exists
+            if (!user) {
+                isNewUser = true;
+                const randomPassword = require("crypto").randomBytes(16).toString("hex");
+                const DEFAULT_QUOTA = 1024 * 1024 * 1024;
+                
+                // Create AP identity (Artist profile) deterministically from seed
+                const db = (database as any);
+                let artistId = null;
+                
+                if (apSeed) {
+                    const crypto = require("node:crypto");
+                    const ED25519_PKCS8_HEADER = Buffer.from("302e020100300506032b657004220420", "hex");
+                    const seedBuffer = Buffer.from(apSeed, "hex");
+                    const derPrivateKey = Buffer.concat([ED25519_PKCS8_HEADER, seedBuffer]);
+                    
+                    const privateKeyObj = crypto.createPrivateKey({
+                        key: derPrivateKey,
+                        format: "der",
+                        type: "pkcs8"
+                    });
+                    const publicKeyObj = crypto.createPublicKey(privateKeyObj);
+                    
+                    const privateKeyPem = privateKeyObj.export({ type: "pkcs8", format: "pem" }).toString();
+                    const publicKeyPem = publicKeyObj.export({ type: "spki", format: "pem" }).toString();
+
+                    const result = db.prepare(
+                        "INSERT INTO artists (name, slug, public_key, private_key) VALUES (?, ?, ?, ?)"
+                    ).run(username, username.toLowerCase().replace(/[^a-z0-9]/g, '-'), publicKeyPem, privateKeyPem);
+                    artistId = Number(result.lastInsertRowid);
+                }
+
+                // Create user and link artist, elevate to curator role so they can publish
+                const role = artistId ? 'curator' : 'normal_user';
+                const created = await authService.createUser(username, randomPassword, artistId, DEFAULT_QUOTA, ssoToken.zenPubKey, role);
+                userId = created.id;
+                user = authService.getUserByUsername(username);
+            } else {
+                userId = user.id;
+            }
+
+            // Generate JWT Token
+            const token = authService.generateToken({
+                userId,
+                isAdmin: user.role === 'admin' || user.role === 'root_admin',
+                username,
+                artistId: user.artist_id,
+                role: user.role,
+                isActive: user.is_active === 1,
+                tokenVersion: 0
+            });
+
+            return res.json({
+                success: true,
+                token,
+                expiresIn: "7d",
+                username,
+                artistId: user.artist_id,
+                role: user.role,
+                isNewUser
+            });
+        } catch (error: any) {
+            console.error("SSO Login error:", error);
+            res.status(500).json({ error: "SSO Login failed" });
         }
     });
 

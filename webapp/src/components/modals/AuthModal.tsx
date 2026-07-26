@@ -25,20 +25,16 @@ export const AuthModal = () => {
         clearError();
         setIsFidLoading(true);
         try {
-            const fidUser = prompt("Enter your FID Username or Fediverse Handle (@user@instance):");
-            if (!fidUser) return;
+            const clientId = "tunecamp-instance";
+            const redirectUri = `${window.location.origin}/auth/sso/callback`;
+            const instanceDomain = window.location.hostname;
+            const portalUrl = import.meta.env.VITE_GLOBAL_PORTAL_URL || "https://www.tunecamp.org";
 
-            const res = await API.getZenChallenge();
-            if (res?.challenge) {
-                const challenge = res.challenge;
-                const linkRes = await API.linkZenAccount(`~${fidUser}`, challenge, "FID_LOGIN");
-                if (linkRes?.passport) {
-                    dialogRef.current?.close();
-                }
-            }
+            const ssoUrl = `${portalUrl}/sso.html?clientId=${encodeURIComponent(clientId)}&redirectUri=${encodeURIComponent(redirectUri)}&instanceDomain=${encodeURIComponent(instanceDomain)}`;
+            
+            window.location.href = ssoUrl;
         } catch (err: any) {
-            setLocalError(err?.response?.data?.error || err?.message || 'FID Login failed');
-        } finally {
+            setLocalError(err?.message || 'FID Login redirect failed');
             setIsFidLoading(false);
         }
     };
