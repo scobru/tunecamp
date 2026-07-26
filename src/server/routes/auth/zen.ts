@@ -1,22 +1,11 @@
 import { Router, json } from "express";
-import crypto from "crypto";
 import type { ServiceContainer } from "../../core/container.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
+import { FidChallengeManager, FidPassportIssuer } from "@scobru/fid";
 
-// In-memory challenge store with 10-minute TTL
-const activeChallenges = new Map<string, { username: string; nonce: string; timestamp: number }>();
-
-// Cleanup expired challenges every 5 minutes
-const cleanupTimer = setInterval(() => {
-    const now = Date.now();
-    for (const [key, item] of activeChallenges.entries()) {
-        if (now - item.timestamp > 10 * 60 * 1000) {
-            activeChallenges.delete(key);
-        }
-    }
-}, 5 * 60 * 1000);
-cleanupTimer.unref?.();
+// Global FID challenge manager and passport issuer instances
+const fidChallengeManager = new FidChallengeManager(10, 5);
 
 export function createZenRoutes(container: ServiceContainer): Router {
     const authMiddleware = container.authMiddleware;
@@ -26,9 +15,12 @@ export function createZenRoutes(container: ServiceContainer): Router {
     const router = Router();
     router.use(json());
 
+    const passportSecret = (config as any).jwtSecret || "tunecamp-zen-passport-secret";
+    const passportIssuer = new FidPassportIssuer(passportSecret);
+
     /**
      * GET /api/auth/zen/challenge
-     * Generates a cryptographic challenge for the logged-in user to sign with their Zen SEA key.
+     * Generates a cryptographic challenge for the logged-in user to sign with their Zen SEA key via FID.
      */
     router.get("/challenge", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
         const username = req.username;
@@ -38,20 +30,9 @@ export function createZenRoutes(container: ServiceContainer): Router {
 
         const profile = authService.getUserProfile?.(username);
         const displayUsername = profile?.alias || username;
-
-        const nonce = crypto.randomBytes(16).toString("hex");
-        const timestamp = Date.now();
         const instanceDomain = req.hostname || (config as any).host || "localhost";
 
-        const challenge = {
-            instanceDomain,
-            username: displayUsername,
-            nonce,
-            timestamp
-        };
-
-        const challengeKey = `${username}:${nonce}`;
-        activeChallenges.set(challengeKey, { username, nonce, timestamp });
+        const challenge = fidChallengeManager.createChallenge(displayUsername, instanceDomain);
 
         return res.json({
             success: true,
@@ -61,7 +42,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
 
     /**
      * POST /api/auth/zen/link
-     * Verifies the SEA signed challenge and returns an Instance Passport Badge.
+     * Verifies the SEA signed challenge and returns an Instance Passport Badge via FID.
      */
     router.post("/link", authMiddleware.requireUser, rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req: AuthenticatedRequest, res) => {
         const username = req.username;
@@ -69,41 +50,23 @@ export function createZenRoutes(container: ServiceContainer): Router {
             return res.status(401).json({ error: "Authentication required" });
         }
 
-        const { zenPubKey, challenge, seaSignature } = req.body;
+        const { zenPubKey, challenge } = req.body;
 
         if (!zenPubKey || !challenge || !challenge.nonce || !challenge.instanceDomain) {
             return res.status(400).json({ error: "Missing zenPubKey, challenge, or nonce" });
         }
 
-        const challengeKey = `${username}:${challenge.nonce}`;
-        const stored = activeChallenges.get(challengeKey);
-
-        if (!stored || stored.username !== username) {
-            return res.status(400).json({ error: "Invalid or expired challenge nonce" });
-        }
-
-        // Consume the challenge nonce (one-time use)
-        activeChallenges.delete(challengeKey);
-
         const profile = authService.getUserProfile?.(username);
         const displayUsername = profile?.alias || username;
 
+        // Consume one-time challenge nonce via FID Challenge Manager
+        const isValid = fidChallengeManager.consumeChallenge(displayUsername, challenge.nonce);
+        if (!isValid) {
+            return res.status(400).json({ error: "Invalid or expired challenge nonce" });
+        }
+
         const instanceDomain = req.hostname || (config as any).host || "localhost";
-        const issuedAt = Date.now();
-        const secret = (config as any).jwtSecret || "tunecamp-zen-passport-secret";
-
-        // Generate HMAC Instance Passport Signature
-        const passportPayload = `${instanceDomain}:${displayUsername}:${zenPubKey}:${issuedAt}`;
-        const passportSignature = crypto.createHmac("sha256", secret).update(passportPayload).digest("hex");
-
-        const passport = {
-            instanceDomain,
-            localUsername: displayUsername,
-            zenPubKey,
-            issuedAt,
-            passportSignature,
-            publicDataEndpoint: `https://${instanceDomain}/api/auth/zen/user/${displayUsername}/public`
-        };
+        const passport = passportIssuer.issuePassport(instanceDomain, displayUsername, zenPubKey);
 
         return res.json({
             success: true,
@@ -258,13 +221,16 @@ export function createZenRoutes(container: ServiceContainer): Router {
             return res.status(400).json({ valid: false, error: "Malformed passport" });
         }
 
-        const secret = (config as any).jwtSecret || "tunecamp-zen-passport-secret";
-        
-        // Re-generate HMAC Instance Passport Signature
-        const passportPayload = `${instanceDomain}:${localUsername}:${zenPubKey}:${issuedAt}`;
-        const expectedSignature = crypto.createHmac("sha256", secret).update(passportPayload).digest("hex");
+        const valid = passportIssuer.verifyPassport({
+            instanceDomain,
+            localUsername,
+            zenPubKey,
+            issuedAt,
+            passportSignature,
+            publicDataEndpoint: ""
+        });
 
-        if (passportSignature === expectedSignature) {
+        if (valid) {
             return res.json({ valid: true });
         } else {
             return res.status(400).json({ valid: false, error: "Invalid signature" });

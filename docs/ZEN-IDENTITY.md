@@ -1,6 +1,6 @@
 # Zen SEA Unified Identity & Instance Passports
 
-TuneCamp uses a **self-sovereign, decentralized identity model** powered by [Zen SEA](https://github.com/scobru/zen) (`@akaoio/zen`) and the P2P relay network (`wss://delay.scobrudot.dev/zen`).
+TuneCamp uses a **self-sovereign, decentralized identity model** powered by [Zen SEA](https://github.com/scobru/zen) (`scobru/zen`) and the P2P relay network (`wss://delay.scobrudot.dev/zen`).
 
 This architecture allows users to unify their profiles across independent TuneCamp instances without relying on a centralized Single Sign-On (SSO) or shared database.
 

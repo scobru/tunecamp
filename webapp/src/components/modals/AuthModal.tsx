@@ -16,8 +16,34 @@ export const AuthModal = () => {
     const [forgotLoading, setForgotLoading] = useState(false);
     const { login, register, checkAuth, error, clearError, isFirstRun } = useAuthStore();
     const [localError, setLocalError] = useState('');
-    const [showSetupOffer, setShowSetupOffer] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isFidLoading, setIsFidLoading] = useState(false);
+
+    const handleFidLogin = async () => {
+        setLocalError('');
+        clearError();
+        setIsFidLoading(true);
+        try {
+            const fidUser = prompt("Enter your FID Username or Fediverse Handle (@user@instance):");
+            if (!fidUser) return;
+
+            const res = await API.get('/api/auth/zen/challenge');
+            if (res.data?.challenge) {
+                const challenge = res.data.challenge;
+                const linkRes = await API.post('/api/auth/zen/link', {
+                    zenPubKey: `~${fidUser}`,
+                    challenge
+                });
+                if (linkRes.data?.passport) {
+                    dialogRef.current?.close();
+                }
+            }
+        } catch (err: any) {
+            setLocalError(err?.response?.data?.error || err?.message || 'FID Login failed');
+        } finally {
+            setIsFidLoading(false);
+        }
+    };
 
     useEffect(() => {
         const handleOpen = () => {
@@ -283,16 +309,38 @@ export const AuthModal = () => {
                     )}
                     
                     {!showSetupOffer && (
-                        <button type="submit" className="btn btn-primary w-full mt-2" disabled={isLoading}>
-                            {isLoading ? (
-                                <span className="loading loading-spinner loading-sm"></span>
-                            ) : (
-                                match(mode)
-                                    .with('register', () => 'Sign Up')
-                                    .with('setup', () => 'Create Admin')
-                                    .otherwise(() => 'Sign In')
+                        <>
+                            <button type="submit" className="btn btn-primary w-full mt-2" disabled={isLoading || isFidLoading}>
+                                {isLoading ? (
+                                    <span className="loading loading-spinner loading-sm"></span>
+                                ) : (
+                                    match(mode)
+                                        .with('register', () => 'Sign Up')
+                                        .with('setup', () => 'Create Admin')
+                                        .otherwise(() => 'Sign In')
+                                )}
+                            </button>
+
+                            {mode === 'login' && (
+                                <>
+                                    <div className="divider text-xs opacity-40 my-2">OR</div>
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline btn-secondary w-full gap-2 text-xs font-semibold"
+                                        disabled={isLoading || isFidLoading}
+                                        onClick={handleFidLogin}
+                                    >
+                                        {isFidLoading ? (
+                                            <span className="loading loading-spinner loading-xs"></span>
+                                        ) : (
+                                            <>
+                                                <Shield className="w-4 h-4 text-secondary" /> Sign in with FID
+                                            </>
+                                        )}
+                                    </button>
+                                </>
                             )}
-                        </button>
+                        </>
                     )}
                 </form>
                 )}

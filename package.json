@@ -41,6 +41,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@scobru/fid": "file:../fid",
     "@fedify/express": "^1.10.3",
     "@fedify/fedify": "^1.10.3",
     "@js-temporal/polyfill": "^0.5.1",
