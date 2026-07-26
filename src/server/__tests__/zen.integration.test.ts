@@ -1,6 +1,8 @@
 import express from "express";
 import request from "supertest";
 import { createZenRoutes } from "../routes/auth/zen.js";
+import { jest } from "@jest/globals";
+import crypto from "node:crypto";
 
 describe("Zen SEA Integration Routes", () => {
     let app: express.Express;
@@ -19,33 +21,16 @@ describe("Zen SEA Integration Routes", () => {
         optionalAuth: (req: any, res: any, next: any) => next()
     };
 
-    const mockAuthService = {
-        getUserByUsername: (username: string) => {
-            if (username === "scobru") {
-                return {
-                    id: 1,
-                    username: "scobru",
-                    artist_id: 10,
-                    artist_name: "Scobru Artist",
-                    is_active: 1,
-                    created_at: "2026-07-25T00:00:00Z"
-                };
-            }
-            return undefined;
-        }
-    };
-
-    const mockDatabase = {
-        prepare: (query: string) => ({
-            get: () => ({ id: 10, name: "Scobru Artist", bio: "Producer & DJ", image_url: "https://example.com/avatar.jpg" }),
-            all: () => []
-        })
-    };
-
     const mockContainer: any = {
         authMiddleware: mockAuthMiddleware,
-        authService: mockAuthService,
-        database: mockDatabase,
+        authService: {
+            getUserByUsername: jest.fn(),
+            createUser: jest.fn(),
+            generateToken: jest.fn()
+        },
+        database: {
+            prepare: jest.fn()
+        },
         config: { jwtSecret: "test-secret", host: "test.tunecamp.net" }
     };
 
@@ -53,6 +38,43 @@ describe("Zen SEA Integration Routes", () => {
         app = express();
         app.use(express.json());
         app.use("/api/auth/zen", createZenRoutes(mockContainer));
+
+        mockContainer.authService.getUserByUsername.mockImplementation((username: string) => {
+            if (username === "scobru") {
+                return {
+                    id: 1,
+                    username: "scobru",
+                    artist_id: 10,
+                    artist_name: "Scobru Artist",
+                    is_active: 1,
+                    created_at: "2026-07-25T00:00:00Z",
+                    gun_pub: null,
+                    role: "admin"
+                };
+            }
+            return undefined;
+        });
+        mockContainer.authService.createUser.mockResolvedValue({ id: 2 });
+        mockContainer.authService.generateToken.mockReturnValue("mock-jwt-token");
+        mockContainer.database.prepare.mockImplementation((query: string) => {
+            if (query.includes("SELECT public_key FROM artists")) {
+                return { get: () => null };
+            } else if (query.includes("UPDATE admin SET gun_pub")) {
+                return { run: () => ({}) };
+            } else if (query.includes("UPDATE artists SET")) {
+                return { run: () => ({}) };
+            } else if (query.includes("UPDATE admin SET artist_id")) {
+                return { run: () => ({}) };
+            } else if (query.includes("INSERT INTO artists")) {
+                return { run: () => ({ lastInsertRowid: 10 }) };
+            } else if (query.includes("SELECT id FROM artists")) {
+                return { all: () => [] };
+            } else if (query.includes("UPDATE admin SET")) {
+                return { run: () => ({}) };
+            } else {
+                return { get: () => null, all: () => [] };
+            }
+        });
     });
 
     test("GET /api/auth/zen/challenge requires authentication", async () => {
@@ -108,6 +130,77 @@ describe("Zen SEA Integration Routes", () => {
         expect(linkRes.body.passport.localUsername).toBe("scobru");
         expect(linkRes.body.passport.zenPubKey).toBe("QmZenTest123");
         expect(linkRes.body.passport.passportSignature).toBeDefined();
+    });
+
+    // Helper to generate a valid apSeed (32 bytes = 64 hex chars)
+    function validApSeed(): string {
+        return crypto.randomBytes(32).toString("hex");
+    }
+
+    // Helper to generate a valid SSO token
+    function validSsoToken(overrides: any = {}) {
+        return {
+            clientId: "tunecamp-instance",
+            instanceDomain: "sudorecords.scobrudot.dev",
+            username: "scobru",
+            zenPubKey: "0DGULtYbQYzYDlRUddrRNoS7NrEzGIZAsQrXSKQYThMX1",
+            issuedAt: Date.now(),
+            signature: "5db5d4a77267f7483e54f86b8ebf39918149f969d088d15c63b6c4e892b398a2",
+            nonce: "c905eda3fa4e2dee7e4f126ddd54cbbf",
+            ...overrides
+        };
+    }
+
+    test("POST /api/auth/zen/sso rejects missing ssoToken or apSeed", async () => {
+        const res = await request(app)
+            .post("/api/auth/zen/sso")
+            .send({});
+        expect(res.status).toBe(400);
+        expect(res.body.error).toContain("Missing ssoToken or apSeed");
+    });
+
+    test("POST /api/auth/zen/sso rejects missing ssoToken fields", async () => {
+        const res = await request(app)
+            .post("/api/auth/zen/sso")
+            .send({ ssoToken: { username: "scobru" }, apSeed: validApSeed() });
+        expect(res.status).toBe(400);
+        expect(res.body.error).toContain("Missing required ssoToken fields");
+    });
+
+    test("POST /api/auth/zen/sso rejects expired token", async () => {
+        const res = await request(app)
+            .post("/api/auth/zen/sso")
+            .send({ ssoToken: { ...validSsoToken(), issuedAt: Date.now() - 20 * 60 * 1000 }, apSeed: validApSeed() });
+        expect(res.status).toBe(401);
+        expect(res.body.error).toContain("expired");
+    });
+
+    test("POST /api/auth/zen/sso rejects invalid apSeed length", async () => {
+        const res = await request(app)
+            .post("/api/auth/zen/sso")
+            .send({ ssoToken: validSsoToken(), apSeed: "invalid" });
+        expect(res.status).toBe(400);
+        expect(res.body.error).toContain("apSeed");
+    });
+
+    test("POST /api/auth/zen/sso creates new user on valid request", async () => {
+        mockContainer.authService.getUserByUsername.mockReturnValueOnce(undefined);
+        const res = await request(app)
+            .post("/api/auth/zen/sso")
+            .send({ ssoToken: validSsoToken(), apSeed: validApSeed() });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.token).toBe("mock-jwt-token");
+        expect(res.body.isNewUser).toBe(true);
+    });
+
+    test("POST /api/auth/zen/sso logs in existing user on valid request", async () => {
+        const res = await request(app)
+            .post("/api/auth/zen/sso")
+            .send({ ssoToken: validSsoToken(), apSeed: validApSeed() });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.username).toBe("scobru");
     });
 
     test("GET /api/auth/zen/user/:username/public exports only public data", async () => {

@@ -2,8 +2,9 @@ import { Router, json } from "express";
 import type { ServiceContainer } from "../../core/container.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
-import { FidChallengeManager, FidPassportIssuer, FidSsoHandler } from "fid";
+import { FidChallengeManager, FidPassportIssuer } from "fid";
 import { UserRole } from "../../common/visibility.js";
+import crypto from "node:crypto";
 
 // Global FID challenge manager and passport issuer instances
 const fidChallengeManager = new FidChallengeManager(10, 5);
@@ -245,8 +246,13 @@ export function createZenRoutes(container: ServiceContainer): Router {
     router.post("/sso", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req, res) => {
         try {
             const { ssoToken, apSeed } = req.body;
-            if (!ssoToken || !apSeed || !ssoToken.username || !ssoToken.issuedAt) {
+            if (!ssoToken || !apSeed) {
                 return res.status(400).json({ error: "Missing ssoToken or apSeed payload" });
+            }
+
+            // Verify required SSO token fields
+            if (!ssoToken.username || !ssoToken.issuedAt || !ssoToken.zenPubKey) {
+                return res.status(400).json({ error: "Missing required ssoToken fields (username, issuedAt, zenPubKey)" });
             }
 
             // Verify token age (max 15 mins)
@@ -255,9 +261,13 @@ export function createZenRoutes(container: ServiceContainer): Router {
             }
 
             // Derive Ed25519 keypair from apSeed (Zero-Knowledge Proof of Master Key)
-            const crypto = require("node:crypto");
             const ED25519_PKCS8_HEADER = Buffer.from("302e020100300506032b657004220420", "hex");
             const seedBuffer = Buffer.from(apSeed, "hex");
+
+            if (seedBuffer.length !== 32) {
+                return res.status(400).json({ error: "Invalid apSeed length" });
+            }
+
             const derPrivateKey = Buffer.concat([ED25519_PKCS8_HEADER, seedBuffer]);
             
             const privateKeyObj = crypto.createPrivateKey({
@@ -352,7 +362,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 isNewUser
             });
         } catch (error: any) {
-            console.error("SSO Login error:", error);
+            console.error("SSO Login error:", error.message, error.stack);
             res.status(500).json({ error: "SSO Login failed" });
         }
     });
