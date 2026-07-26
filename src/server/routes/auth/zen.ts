@@ -136,16 +136,38 @@ export function createZenRoutes(container: ServiceContainer): Router {
             if (user.artist_id) {
                 artist = (database as any).prepare?.(`SELECT id, name, bio, image_url FROM artists WHERE id = ?`).get(user.artist_id);
             }
+            if (!artist && user.artist_name) {
+                artist = (database as any).prepare?.(`SELECT id, name, bio, image_url FROM artists WHERE LOWER(name) = LOWER(?)`).get(user.artist_name);
+            }
             if (!artist) {
                 artist = (database as any).prepare?.(`SELECT id, name, bio, image_url FROM artists WHERE LOWER(name) = LOWER(?) OR LOWER(name) = LOWER(?)`).get(user.username, userAlias);
             }
 
-            // Collect all artist IDs linked to user or artist name/alias
+            // Collect all unique artist names associated with this user account
+            const artistNames = Array.from(new Set([
+                user.username,
+                userAlias,
+                user.artist_name,
+                artist?.name
+            ].filter(Boolean) as string[]));
+
+            // Collect all artist IDs linked to user or matching any of their artist names
             const artistIds: number[] = [];
             if (user.artist_id) artistIds.push(user.artist_id);
             if (artist?.id && !artistIds.includes(artist.id)) artistIds.push(artist.id);
 
+            if (artistNames.length > 0) {
+                try {
+                    const nameConds = artistNames.map(() => 'LOWER(name) = LOWER(?)').join(' OR ');
+                    const matchedArtists = (database as any).prepare?.(`SELECT id FROM artists WHERE ${nameConds}`).all(...artistNames) || [];
+                    for (const a of matchedArtists) {
+                        if (a.id && !artistIds.includes(a.id)) artistIds.push(a.id);
+                    }
+                } catch(e) {}
+            }
+
             const placeholders = artistIds.length > 0 ? artistIds.map(() => '?').join(',') : '0';
+            const namePlaceholders = artistNames.length > 0 ? artistNames.map(() => 'LOWER(?)').join(',') : "''";
 
             // Get public releases/albums for this user or their artists
             let releases: any[] = [];
@@ -156,19 +178,19 @@ export function createZenRoutes(container: ServiceContainer): Router {
                     WHERE (
                         owner_id = ? 
                         OR (artist_id IS NOT NULL AND artist_id IN (${placeholders}))
-                        OR LOWER(album_artist) = LOWER(?)
-                        OR LOWER(album_artist) = LOWER(?)
+                        OR (album_artist IS NOT NULL AND LOWER(album_artist) IN (${namePlaceholders}))
+                        OR owner_id IS NULL
                     )
                     AND (
                         visibility = 'public' 
-                        OR visibility != 'private'
+                        OR (visibility IS NOT NULL AND visibility != 'private')
                         OR is_public = 1 
                         OR is_release = 1 
                         OR status = 'published'
                         OR status = 'released'
                     )
                 `;
-                const queryParams = [user.id, ...artistIds, user.username, userAlias];
+                const queryParams = [user.id, ...artistIds, ...artistNames];
                 releases = (database as any).prepare?.(albumQuery).all(...queryParams) || [];
             } catch (queryErr) {
                 try {
@@ -182,7 +204,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
             let playlists: any[] = [];
             try {
                 playlists = (database as any).prepare?.(
-                    `SELECT id, name, cover_url, created_at FROM playlists WHERE (username = ? OR username = ? OR user_id = ?) AND (is_public = 1 OR visibility = 'public')`
+                    `SELECT id, name, cover_url, created_at FROM playlists WHERE (LOWER(username) = LOWER(?) OR LOWER(username) = LOWER(?) OR user_id = ?) AND (is_public = 1 OR visibility = 'public')`
                 ).all(user.username, userAlias, user.id) || [];
             } catch(e) {}
 
@@ -196,7 +218,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
                     FROM starred_items s
                     LEFT JOIN albums a ON (s.item_type = 'album' OR s.item_type = 'release') AND CAST(a.id AS TEXT) = s.item_id
                     LEFT JOIN tracks t ON s.item_type = 'track' AND CAST(t.id AS TEXT) = s.item_id
-                    WHERE (s.username = ? OR s.username = ? OR s.user_id = ?)
+                    WHERE (LOWER(s.username) = LOWER(?) OR LOWER(s.username) = LOWER(?) OR s.user_id = ?)
                     ORDER BY s.id DESC LIMIT 20
                 `).all(user.username, userAlias, user.id) || [];
             } catch(e) {}
