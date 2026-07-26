@@ -136,7 +136,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
             let releases: any[] = [];
             try {
                 const albumQuery = `
-                    SELECT DISTINCT id, title, COALESCE(cover_path, external_artwork) as cover_url, date as release_date, type, status, visibility
+                    SELECT DISTINCT id, title, cover_path as cover_url, date as release_date, type, status, visibility
                     FROM albums 
                     WHERE (
                         owner_id = ? 
@@ -178,7 +178,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
             try {
                 likes = (database as any).prepare?.(`
                     SELECT s.item_type as type, s.item_id as id, s.created_at,
-                           a.title as album_title, COALESCE(a.cover_path, a.external_artwork) as album_cover,
+                           a.title as album_title, a.cover_path as album_cover,
                            t.title as track_title, t.artist_name as track_artist
                     FROM starred_items s
                     LEFT JOIN albums a ON (s.item_type = 'album' OR s.item_type = 'release') AND CAST(a.id AS TEXT) = s.item_id
