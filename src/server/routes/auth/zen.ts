@@ -204,9 +204,11 @@ export function createZenRoutes(container: ServiceContainer): Router {
             let playlists: any[] = [];
             try {
                 playlists = (database as any).prepare?.(
-                    `SELECT id, name, cover_url, created_at FROM playlists WHERE (LOWER(username) = LOWER(?) OR LOWER(username) = LOWER(?) OR user_id = ?) AND (is_public = 1 OR visibility = 'public')`
-                ).all(user.username, userAlias, user.id) || [];
-            } catch(e) {}
+                    `SELECT id, name, cover_path as cover_url, created_at FROM playlists WHERE (LOWER(username) = LOWER(?) OR LOWER(username) = LOWER(?)) AND is_public = 1`
+                ).all(user.username, userAlias) || [];
+            } catch(e) {
+                console.warn("[ZEN-PUBLIC] Error querying playlists:", e);
+            }
 
             // Get public likes / starred items created by user
             let likes: any[] = [];
@@ -218,10 +220,12 @@ export function createZenRoutes(container: ServiceContainer): Router {
                     FROM starred_items s
                     LEFT JOIN albums a ON (s.item_type = 'album' OR s.item_type = 'release') AND CAST(a.id AS TEXT) = s.item_id
                     LEFT JOIN tracks t ON s.item_type = 'track' AND CAST(t.id AS TEXT) = s.item_id
-                    WHERE (LOWER(s.username) = LOWER(?) OR LOWER(s.username) = LOWER(?) OR s.user_id = ?)
+                    WHERE LOWER(s.username) = LOWER(?) OR LOWER(s.username) = LOWER(?)
                     ORDER BY s.id DESC LIMIT 20
-                `).all(user.username, userAlias, user.id) || [];
-            } catch(e) {}
+                `).all(user.username, userAlias) || [];
+            } catch(e) {
+                console.warn("[ZEN-PUBLIC] Error querying starred_items:", e);
+            }
 
             return res.json({
                 success: true,
