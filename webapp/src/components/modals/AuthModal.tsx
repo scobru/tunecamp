@@ -14,6 +14,7 @@ export const AuthModal = () => {
     const [forgotEmail, setForgotEmail] = useState('');
     const [forgotMessage, setForgotMessage] = useState('');
     const [forgotLoading, setForgotLoading] = useState(false);
+    const [showSetupOffer, setShowSetupOffer] = useState(false);
     const { login, register, checkAuth, error, clearError, isFirstRun } = useAuthStore();
     const [localError, setLocalError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -27,14 +28,11 @@ export const AuthModal = () => {
             const fidUser = prompt("Enter your FID Username or Fediverse Handle (@user@instance):");
             if (!fidUser) return;
 
-            const res = await API.get('/api/auth/zen/challenge');
-            if (res.data?.challenge) {
-                const challenge = res.data.challenge;
-                const linkRes = await API.post('/api/auth/zen/link', {
-                    zenPubKey: `~${fidUser}`,
-                    challenge
-                });
-                if (linkRes.data?.passport) {
+            const res = await API.getZenChallenge();
+            if (res?.challenge) {
+                const challenge = res.challenge;
+                const linkRes = await API.linkZenAccount(`~${fidUser}`, challenge, "FID_LOGIN");
+                if (linkRes?.passport) {
                     dialogRef.current?.close();
                 }
             }
