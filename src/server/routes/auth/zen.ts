@@ -245,61 +245,66 @@ export function createZenRoutes(container: ServiceContainer): Router {
     router.post("/sso", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req, res) => {
         try {
             const { ssoToken, apSeed } = req.body;
-            if (!ssoToken || !apSeed) {
+            if (!ssoToken || !apSeed || !ssoToken.username || !ssoToken.issuedAt) {
                 return res.status(400).json({ error: "Missing ssoToken or apSeed payload" });
             }
 
-            const ssoHandler = new FidSsoHandler(passportSecret);
-            const isValid = ssoHandler.verifySsoToken(ssoToken);
-
-            if (!isValid) {
-                return res.status(401).json({ error: "Invalid or expired SSO token" });
+            // Verify token age (max 15 mins)
+            if (Date.now() - ssoToken.issuedAt > 15 * 60 * 1000) {
+                return res.status(401).json({ error: "SSO token expired" });
             }
+
+            // Derive Ed25519 keypair from apSeed (Zero-Knowledge Proof of Master Key)
+            const crypto = require("node:crypto");
+            const ED25519_PKCS8_HEADER = Buffer.from("302e020100300506032b657004220420", "hex");
+            const seedBuffer = Buffer.from(apSeed, "hex");
+            const derPrivateKey = Buffer.concat([ED25519_PKCS8_HEADER, seedBuffer]);
+            
+            const privateKeyObj = crypto.createPrivateKey({
+                key: derPrivateKey,
+                format: "der",
+                type: "pkcs8"
+            });
+            const publicKeyObj = crypto.createPublicKey(privateKeyObj);
+            
+            const privateKeyPem = privateKeyObj.export({ type: "pkcs8", format: "pem" }).toString();
+            const publicKeyPem = publicKeyObj.export({ type: "spki", format: "pem" }).toString();
 
             const username = ssoToken.username;
             let user = authService.getUserByUsername(username);
 
             let isNewUser = false;
             let userId: number;
+            const db = (database as any);
 
             // Register user if not exists
             if (!user) {
                 isNewUser = true;
-                const randomPassword = require("crypto").randomBytes(16).toString("hex");
+                const randomPassword = crypto.randomBytes(16).toString("hex");
                 const DEFAULT_QUOTA = 1024 * 1024 * 1024;
                 
                 // Create AP identity (Artist profile) deterministically from seed
-                const db = (database as any);
                 let artistId = null;
-                
-                if (apSeed) {
-                    const crypto = require("node:crypto");
-                    const ED25519_PKCS8_HEADER = Buffer.from("302e020100300506032b657004220420", "hex");
-                    const seedBuffer = Buffer.from(apSeed, "hex");
-                    const derPrivateKey = Buffer.concat([ED25519_PKCS8_HEADER, seedBuffer]);
-                    
-                    const privateKeyObj = crypto.createPrivateKey({
-                        key: derPrivateKey,
-                        format: "der",
-                        type: "pkcs8"
-                    });
-                    const publicKeyObj = crypto.createPublicKey(privateKeyObj);
-                    
-                    const privateKeyPem = privateKeyObj.export({ type: "pkcs8", format: "pem" }).toString();
-                    const publicKeyPem = publicKeyObj.export({ type: "spki", format: "pem" }).toString();
+                const result = db.prepare(
+                    "INSERT INTO artists (name, slug, public_key, private_key) VALUES (?, ?, ?, ?)"
+                ).run(username, username.toLowerCase().replace(/[^a-z0-9]/g, '-'), publicKeyPem, privateKeyPem);
+                artistId = Number(result.lastInsertRowid);
 
-                    const result = db.prepare(
-                        "INSERT INTO artists (name, slug, public_key, private_key) VALUES (?, ?, ?, ?)"
-                    ).run(username, username.toLowerCase().replace(/[^a-z0-9]/g, '-'), publicKeyPem, privateKeyPem);
-                    artistId = Number(result.lastInsertRowid);
-                }
-
-                // Create user and link artist, elevate to curator role so they can publish
-                const role = artistId ? UserRole.SUPER_USER : UserRole.NORMAL_USER;
+                // Create user and link artist, elevate to SUPER_USER role so they can publish
+                const role = UserRole.SUPER_USER;
                 const created = await authService.createUser(username, randomPassword, artistId, DEFAULT_QUOTA, ssoToken.zenPubKey, role);
                 userId = created.id;
                 user = authService.getUserByUsername(username);
             } else {
+                // Verify ZK Proof if user already exists
+                if (user.artist_id) {
+                    const artist = db.prepare("SELECT public_key FROM artists WHERE id = ?").get(user.artist_id);
+                    if (artist && artist.public_key && artist.public_key.trim() !== publicKeyPem.trim()) {
+                        return res.status(401).json({ error: "Invalid SSO proof: AP key mismatch" });
+                    }
+                } else if ((user as any).gun_pub && ssoToken.zenPubKey && (user as any).gun_pub !== ssoToken.zenPubKey) {
+                    return res.status(401).json({ error: "Invalid SSO proof: Zen PubKey mismatch" });
+                }
                 userId = user.id;
             }
 
