@@ -3,6 +3,7 @@ import type { ServiceContainer } from "../../core/container.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
 import { FidChallengeManager, FidPassportIssuer, FidSsoHandler } from "fid";
+import { UserRole } from "../../common/visibility.js";
 
 // Global FID challenge manager and passport issuer instances
 const fidChallengeManager = new FidChallengeManager(10, 5);
@@ -294,12 +295,16 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 }
 
                 // Create user and link artist, elevate to curator role so they can publish
-                const role = artistId ? 'curator' : 'normal_user';
+                const role = artistId ? UserRole.SUPER_USER : UserRole.NORMAL_USER;
                 const created = await authService.createUser(username, randomPassword, artistId, DEFAULT_QUOTA, ssoToken.zenPubKey, role);
                 userId = created.id;
                 user = authService.getUserByUsername(username);
             } else {
                 userId = user.id;
+            }
+
+            if (!user) {
+                return res.status(500).json({ error: "Failed to retrieve user after creation" });
             }
 
             // Generate JWT Token
