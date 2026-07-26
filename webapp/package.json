@@ -30,7 +30,7 @@
     "react-router-dom": "^7.13.0",
     "shogun-contracts-sdk": "^1.3.7",
     "ts-pattern": "^5.9.0",
-    "tunecamp-design-system": "file:../../tunecamp-design-system",
+    "tunecamp-design-system": "git+https://github.com/scobru/tunecamp-design-system.git",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
