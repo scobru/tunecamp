@@ -249,7 +249,18 @@ export function createZenRoutes(container: ServiceContainer): Router {
             }
 
             // Verify SSO token using FidSsoHandler from fid package
-            const validation = ssoHandler.validateSsoToken(ssoToken);
+            let validation;
+            try {
+                validation = ssoHandler.validateSsoToken(ssoToken);
+            } catch (e) {
+                // Handle buffer length mismatch in older fid package (fixed in f75135d)
+                if (e instanceof RangeError && e.message.includes("Input buffers must have the same byte length")) {
+                    return res.status(400).json({ error: "Invalid passport signature" });
+                }
+                // Re-throw other unexpected errors
+                throw e;
+            }
+
             if (!validation.valid) {
                 const status = validation.error?.includes("expired") ? 401 : 400;
                 return res.status(status).json({ error: validation.error });
