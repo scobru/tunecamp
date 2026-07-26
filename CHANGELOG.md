@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [3.11.0] - 2026-07-26
 
 ### Added
-- **FID (Fediverse-ID) Integration & Instance Passports.** Integrated [`@scobru/fid`](https://github.com/scobru/fid) for decentralized zero-knowledge authentication across independent TuneCamp instances. Refactored server routes `GET /api/auth/zen/challenge` and `POST /api/auth/zen/link` to use `FidChallengeManager` and `FidPassportIssuer`. Added "Sign in with FID" button to `AuthModal.tsx` and updated documentation in `docs/ZEN-IDENTITY.md`.
+- **FID (Fediverse-ID) Integration & Instance Passports.** Integrated [`@scobru/fid`](https://github.com/scobru/fid) for decentralized zero-knowledge authentication across independent TuneCamp instances. Refactored server routes `GET /api/auth/zen/challenge` and `POST /api/auth/zen/link` to use `FidChallengeManager` and `FidPassportIssuer`. Added "Sign in with FID" button to `AuthModal.tsx` and updated documentation in `docs/FID-IDENTITY.md`.
 
 ## [3.10.2] - 2026-07-26
 
