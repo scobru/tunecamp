@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../stores/useAuthStore';
-import API from '../../services/api';
+import { useAuthStore } from '../stores/useAuthStore';
+import API from '../services/api';
 import { ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
-import { notify } from '../../utils/notify';
+import { notify } from '../utils/notify';
 
 export const SsoCallback = () => {
     const navigate = useNavigate();
-    const { setToken, checkAuth } = useAuthStore();
+    const { checkAuth } = useAuthStore();
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -30,7 +30,7 @@ export const SsoCallback = () => {
                 const response = await (API as any).loginWithSso(ssoToken, apSeed);
                 
                 if (response.success && response.token) {
-                    setToken(response.token);
+                    API.setToken(response.token);
                     await checkAuth(); // refresh user data
                     notify.success(response.isNewUser ? "Benvenuto! Identità FID creata con successo." : "Accesso effettuato con FID!");
                     navigate('/', { replace: true });
@@ -44,7 +44,7 @@ export const SsoCallback = () => {
         };
 
         handleCallback();
-    }, [navigate, setToken, checkAuth]);
+    }, [navigate, checkAuth]);
 
     return (
         <div className="min-h-[50vh] flex flex-col items-center justify-center p-4">
@@ -88,3 +88,5 @@ export const SsoCallback = () => {
         </div>
     );
 };
+
+export default SsoCallback;
