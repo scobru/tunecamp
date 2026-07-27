@@ -432,6 +432,32 @@ export function createDatabase(dbPath: string): DatabaseService {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS fid_registry (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES admin(id) ON DELETE CASCADE,
+            instance_domain TEXT NOT NULL,
+            artist_id INTEGER REFERENCES artists(id),
+            artist_name TEXT,
+            artist_slug TEXT,
+            public_key TEXT,
+            passport_signature TEXT,
+            linked_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            verified INTEGER DEFAULT 0,
+            UNIQUE(user_id, instance_domain, artist_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_fid_registry_user ON fid_registry(user_id);
+        CREATE INDEX IF NOT EXISTS idx_fid_registry_instance ON fid_registry(instance_domain);
+
+        -- Trust-on-first-use store for FID WebAuthn SSO: binds a credentialId to the
+        -- public key seen at first login, so later /sso calls verify the token's
+        -- signature against the key we stored, not a self-declared key on the token.
+        CREATE TABLE IF NOT EXISTS fid_webauthn_credentials (
+            credential_id TEXT PRIMARY KEY,
+            public_key_pem TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS gun_cache (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL,

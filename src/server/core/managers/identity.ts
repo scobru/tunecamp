@@ -51,5 +51,62 @@ updateSubscription(userId: number, status: string, expiresAt: string): void {
             db.prepare("UPDATE admin SET ap_public_key = ?, ap_private_key = ? WHERE id = ?")
               .run(pubKey, privKey, userId);
         },
+
+        // FID Registry - Cross-instance artist linking
+        getFidRegistry(userId: number) {
+            return db.prepare("SELECT * FROM fid_registry WHERE user_id = ?").all(userId) as any[];
+        },
+        getFidRegistryByInstance(userId: number, instanceDomain: string) {
+            return db.prepare("SELECT * FROM fid_registry WHERE user_id = ? AND instance_domain = ?").get(userId, instanceDomain) as any | undefined;
+        },
+        addFidRegistryEntry(entry: {
+            userId: number;
+            instanceDomain: string;
+            artistId?: number | null;
+            artistName?: string | null;
+            artistSlug?: string | null;
+            publicKey?: string | null;
+            passportSignature?: string | null;
+        }): number {
+            return Number(db.prepare(`
+                INSERT INTO fid_registry (user_id, instance_domain, artist_id, artist_name, artist_slug, public_key, passport_signature)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `).run(
+                entry.userId,
+                entry.instanceDomain,
+                entry.artistId || null,
+                entry.artistName || null,
+                entry.artistSlug || null,
+                entry.publicKey || null,
+                entry.passportSignature || null
+            ).lastInsertRowid);
+        },
+        updateFidRegistryEntry(id: number, data: {
+            artistId?: number | null;
+            artistName?: string | null;
+            artistSlug?: string | null;
+            publicKey?: string | null;
+            passportSignature?: string | null;
+            verified?: number;
+        }): void {
+            const fields = Object.keys(data).map(k => `${k} = ?`).join(", ");
+            const values = Object.values(data);
+            if (fields.length === 0) return;
+            db.prepare(`UPDATE fid_registry SET ${fields} WHERE id = ?`).run(...values, id);
+        },
+        deleteFidRegistryEntry(id: number): void {
+            db.prepare("DELETE FROM fid_registry WHERE id = ?").run(id);
+        },
+        verifyFidRegistryEntry(id: number): void {
+            db.prepare("UPDATE fid_registry SET verified = 1 WHERE id = ?").run(id);
+        },
+
+        // FID WebAuthn SSO - trust-on-first-use credentialId -> public key binding
+        getFidWebauthnKey(credentialId: string): string | undefined {
+            return (db.prepare("SELECT public_key_pem FROM fid_webauthn_credentials WHERE credential_id = ?").get(credentialId) as any)?.public_key_pem;
+        },
+        registerFidWebauthnKey(credentialId: string, publicKeyPem: string): void {
+            db.prepare("INSERT OR IGNORE INTO fid_webauthn_credentials (credential_id, public_key_pem) VALUES (?, ?)").run(credentialId, publicKeyPem);
+        },
     };
 }

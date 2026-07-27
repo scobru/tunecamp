@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.11.10] - 2026-07-28
+
+### Added
+- **FID registry API** (`/api/fid-registry`, `authMiddleware.requireUser`) — CRUD for the logged-in user's cross-instance artist links (`GET /`, `GET /:instanceDomain`, `POST /`, `PATCH /:id`, `POST /:id/verify`, `DELETE /:id`), backed by the existing `fid_registry` table.
+- **FID/MCP auth middleware** (`authMiddleware.requireFidAuth`) — authenticates requests carrying an `Authorization: FID <zen_pub_key>` header (for the MCP server), via new `AuthService.getUserByZenPubKey` / `authenticateByFid`.
+
+### Security
+- **FID registry endpoints had no ownership check (IDOR).** `PATCH /api/fid-registry/:id`, `POST /api/fid-registry/:id/verify`, and `DELETE /api/fid-registry/:id` operated on any registry entry id without verifying it belonged to the requesting user, so any authenticated user could modify, verify, or delete another user's cross-instance artist link by guessing/enumerating ids. Fixed by requiring the entry to appear in `database.getFidRegistry(req.userId)` before acting on it.
+- **FID WebAuthn SSO trusted an attacker-controlled public key.** `POST /api/auth/zen/sso` verified the WebAuthn signature against `masterKeySource.publicKeyPem`, which is part of the client-supplied token payload. An attacker who knew (or guessed) a victim's `credentialId` — public by nature of WebAuthn — could self-sign a token with their own keypair and log in as the account bound to that `credentialId`, since accounts are looked up by `zen_pub = webauthn:<credentialId>` with no username check. Fixed with trust-on-first-use: the public key is now pinned to `credentialId` in a new `fid_webauthn_credentials` table on first login, and every subsequent `/sso` call verifies against the stored key via `fid`'s new `validateSsoToken(token, maxAgeMs, trustedWebauthnKey)` parameter, ignoring the token's self-declared key.
+
 ## [3.11.9] - 2026-07-27
 
 ### Fixed

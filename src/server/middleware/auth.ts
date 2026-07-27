@@ -12,6 +12,7 @@ export interface AuthenticatedRequest extends Request {
     isActive?: boolean;
     userId?: number;
     context?: ViewerContext;
+    zenPubKey?: string;
 }
 
 /**
@@ -263,6 +264,57 @@ export function createAuthMiddleware(authService: AuthService) {
             req.isActive = payload.isActive;
             req.userId = payload.userId;
             req.context = context;
+            next();
+        },
+
+        /**
+         * Middleware that requires valid FID authentication (zen_pub key)
+         * Used for MCP server to authenticate via FID identity
+         */
+        async requireFidAuth(
+            req: AuthenticatedRequest,
+            res: Response,
+            next: NextFunction
+        ) {
+            // Check for FID auth header: "FID <zen_pub_key>"
+            const fidHeader = req.headers.authorization;
+            if (!fidHeader || !fidHeader.startsWith("FID ")) {
+                return res.status(401).json({ error: "FID authentication required" });
+            }
+
+            const zenPubKey = fidHeader.substring(4).trim();
+            if (!zenPubKey) {
+                return res.status(401).json({ error: "Invalid FID header" });
+            }
+
+            // Look up user by zen_pub key
+            const user = authService.getUserByZenPubKey?.(zenPubKey);
+            if (!user) {
+                return res.status(401).json({ error: "FID identity not found" });
+            }
+
+            if (!user.is_active) {
+                return res.status(403).json({ error: "Account is inactive" });
+            }
+
+            const context = VisibilityGuardian.deriveContext({
+                userId: user.id,
+                username: user.username,
+                role: user.role,
+                artistId: user.artist_id,
+                isActive: user.is_active === 1
+            });
+
+            req.isAdmin = context.role === 'admin' || context.role === 'super_user' || context.role === 'root_admin';
+            req.isRootAdmin = context.role === 'root_admin';
+            req.username = user.username;
+            req.artistId = user.artist_id;
+            req.role = context.role;
+            req.isActive = user.is_active === 1;
+            req.userId = user.id;
+            req.context = context;
+            req.zenPubKey = zenPubKey;
+
             next();
         },
     };
