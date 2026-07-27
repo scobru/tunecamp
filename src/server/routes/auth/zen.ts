@@ -54,19 +54,19 @@ export function createZenRoutes(container: ServiceContainer): Router {
             return res.status(401).json({ error: "Authentication required" });
         }
 
-        const { zenPubKey, challenge } = req.body;
+        const { zenPubKey, challenge, seaSignature } = req.body;
 
-        if (!zenPubKey || !challenge || !challenge.nonce || !challenge.instanceDomain) {
-            return res.status(400).json({ error: "Missing zenPubKey, challenge, or nonce" });
+        if (!zenPubKey || !challenge || !challenge.nonce || !challenge.instanceDomain || !seaSignature) {
+            return res.status(400).json({ error: "Missing zenPubKey, challenge, nonce, or seaSignature" });
         }
 
         const profile = authService.getUserProfile?.(username);
         const displayUsername = profile?.alias || username;
 
-        // Consume one-time challenge nonce via FID Challenge Manager
-        const isValid = fidChallengeManager.consumeChallenge(displayUsername, challenge.nonce);
+        // Verify the Zen SEA signature over the challenge and consume the one-time nonce
+        const isValid = await fidChallengeManager.consumeChallenge(displayUsername, challenge.nonce, seaSignature, zenPubKey);
         if (!isValid) {
-            return res.status(400).json({ error: "Invalid or expired challenge nonce" });
+            return res.status(400).json({ error: "Invalid signature, or invalid/expired challenge nonce" });
         }
 
         const instanceDomain = req.hostname || (config as any).host || "localhost";
@@ -251,7 +251,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
             // Verify SSO token using FidSsoHandler from fid package
             let validation;
             try {
-                validation = ssoHandler.validateSsoToken(ssoToken);
+                validation = await ssoHandler.validateSsoToken(ssoToken);
             } catch (e) {
                 // Handle buffer length mismatch in older fid package (fixed in f75135d)
                 if (e instanceof RangeError && e.message.includes("Input buffers must have the same byte length")) {

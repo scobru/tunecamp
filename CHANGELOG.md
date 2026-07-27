@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.11.7] - 2026-07-27
+
+### Fixed
+- **FID/Zen SSO and Instance Linking never actually verified any cryptographic signature.** `fid` v1.x's `consumeChallenge`/`validateSsoToken` never checked a real Zen SEA signature at all (the "signature" was either absent or an unverifiable HMAC keyed by the signer's own private key), meaning anyone who knew a target's `zenPubKey` could impersonate them through `POST /api/auth/zen/link` or `POST /api/auth/zen/sso`. Upgraded to `fid` v2.0.1, which performs real secp256k1 signature verification (backed by `scobru/zen`). `zen.ts`'s `/link` route now requires and verifies `seaSignature` against the submitted `zenPubKey` before consuming the challenge nonce, and `/sso` awaits the now-async `validateSsoToken` (previously un-awaited, which would have made every SSO login fail outright against the new async API).
+
 ## [3.11.6] - 2026-07-27
 
 ### Fixed

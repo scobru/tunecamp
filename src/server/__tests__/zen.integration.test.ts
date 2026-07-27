@@ -3,6 +3,8 @@ import request from "supertest";
 import { createZenRoutes } from "../routes/auth/zen.js";
 import { jest } from "@jest/globals";
 import crypto from "node:crypto";
+import { generateKeyPair, signPayload } from "fid";
+import type { FidKeyPair } from "fid";
 
 describe("Zen SEA Integration Routes", () => {
     let app: express.Express;
@@ -39,6 +41,18 @@ describe("Zen SEA Integration Routes", () => {
     let usersByUsername: Record<string, any> = {};
     let nextUserId = 100;
 
+    // Real Zen SEA keypairs so signature verification in the routes under test
+    // succeeds against genuine crypto rather than fake/hardcoded strings.
+    let baseKeys: FidKeyPair;
+    let altKeys1: FidKeyPair;
+    let altKeys2: FidKeyPair;
+
+    beforeAll(async () => {
+        baseKeys = await generateKeyPair();
+        altKeys1 = await generateKeyPair();
+        altKeys2 = await generateKeyPair();
+    });
+
     beforeEach(() => {
         app = express();
         app.use(express.json());
@@ -52,7 +66,7 @@ describe("Zen SEA Integration Routes", () => {
                 artist_name: "Scobru Artist",
                 is_active: 1,
                 created_at: "2026-07-25T00:00:00Z",
-                zen_pub: "0DGULtYbQYzYDlRUddrRNoS7NrEzGIZAsQrXSKQYThMX1",
+                zen_pub: baseKeys.pub,
                 role: "admin",
                 token_version: 0
             }
@@ -110,7 +124,7 @@ describe("Zen SEA Integration Routes", () => {
             });
 
         expect(res.status).toBe(400);
-        expect(res.body.error).toContain("Invalid or expired challenge nonce");
+        expect(res.body.error).toContain("invalid/expired challenge nonce");
     });
 
     test("POST /api/auth/zen/link issues Instance Passport Badge on valid nonce", async () => {
@@ -119,21 +133,23 @@ describe("Zen SEA Integration Routes", () => {
             .set("Authorization", "Bearer test-token");
 
         const challenge = challengeRes.body.challenge;
+        const linkKeys = await generateKeyPair();
+        const seaSignature = await signPayload(`scobru:${challenge.nonce}`, linkKeys.priv);
 
         const linkRes = await request(app)
             .post("/api/auth/zen/link")
             .set("Authorization", "Bearer test-token")
             .send({
-                zenPubKey: "QmZenTest123",
+                zenPubKey: linkKeys.pub,
                 challenge,
-                seaSignature: "mock_sig"
+                seaSignature
             });
 
         expect(linkRes.status).toBe(200);
         expect(linkRes.body.success).toBe(true);
         expect(linkRes.body.passport).toBeDefined();
         expect(linkRes.body.passport.localUsername).toBe("scobru");
-        expect(linkRes.body.passport.zenPubKey).toBe("QmZenTest123");
+        expect(linkRes.body.passport.zenPubKey).toBe(linkKeys.pub);
         expect(linkRes.body.passport.passportSignature).toBeDefined();
     });
 
@@ -142,18 +158,21 @@ describe("Zen SEA Integration Routes", () => {
         return crypto.randomBytes(32).toString("hex");
     }
 
-    // Helper to generate a valid SSO token
-    function validSsoToken(overrides: any = {}) {
-        return {
+    // Builds a real, verifiably-signed SSO token. `keys` picks the signing identity
+    // (defaults to the seeded `scobru` user's keypair); `overrides` adjusts other fields.
+    async function buildSsoToken(overrides: Record<string, any> = {}, keys: FidKeyPair = baseKeys) {
+        const fields = {
             clientId: "tunecamp-instance",
             instanceDomain: "sudorecords.scobrudot.dev",
             username: "scobru",
-            zenPubKey: "0DGULtYbQYzYDlRUddrRNoS7NrEzGIZAsQrXSKQYThMX1",
+            zenPubKey: keys.pub,
             issuedAt: Date.now(),
-            signature: "5db5d4a77267f7483e54f86b8ebf39918149f969d088d15c63b6c4e892b398a2",
-            nonce: "c905eda3fa4e2dee7e4f126ddd54cbbf",
+            nonce: crypto.randomBytes(16).toString("hex"),
             ...overrides
         };
+        const tokenPayload = `${fields.clientId}:${fields.instanceDomain}:${fields.username}:${fields.zenPubKey}:${fields.issuedAt}:${fields.nonce}`;
+        const signature = await signPayload(tokenPayload, keys.priv);
+        return { ...fields, signature };
     }
 
     test("POST /api/auth/zen/sso rejects missing ssoToken or apSeed", async () => {
@@ -173,25 +192,28 @@ describe("Zen SEA Integration Routes", () => {
     });
 
     test("POST /api/auth/zen/sso rejects expired token", async () => {
+        const token = await buildSsoToken({ issuedAt: Date.now() - 20 * 60 * 1000 });
         const res = await request(app)
             .post("/api/auth/zen/sso")
-            .send({ ssoToken: { ...validSsoToken(), issuedAt: Date.now() - 20 * 60 * 1000 }, apSeed: validApSeed() });
+            .send({ ssoToken: token, apSeed: validApSeed() });
         expect(res.status).toBe(401);
         expect(res.body.error).toContain("expired");
     });
 
     test("POST /api/auth/zen/sso rejects invalid apSeed length", async () => {
+        const token = await buildSsoToken();
         const res = await request(app)
             .post("/api/auth/zen/sso")
-            .send({ ssoToken: validSsoToken(), apSeed: "invalid" });
+            .send({ ssoToken: token, apSeed: "invalid" });
         expect(res.status).toBe(400);
         expect(res.body.error).toContain("apSeed");
     });
 
     test("POST /api/auth/zen/sso creates new user on valid request", async () => {
+        const token = await buildSsoToken({ username: "newlistener" }, altKeys1);
         const res = await request(app)
             .post("/api/auth/zen/sso")
-            .send({ ssoToken: validSsoToken({ username: "newlistener", zenPubKey: "brandNewZenPubKey1234567890" }), apSeed: validApSeed() });
+            .send({ ssoToken: token, apSeed: validApSeed() });
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
         expect(res.body.token).toBe("mock-jwt-token");
@@ -200,19 +222,22 @@ describe("Zen SEA Integration Routes", () => {
     });
 
     test("POST /api/auth/zen/sso registers under a unique username when the desired handle is taken, keeping it as alias", async () => {
+        const token = await buildSsoToken({ username: "scobru" }, altKeys2);
         const res = await request(app)
             .post("/api/auth/zen/sso")
-            .send({ ssoToken: validSsoToken({ username: "scobru", zenPubKey: "collidingZenPubKey0987654" }), apSeed: validApSeed() });
+            .send({ ssoToken: token, apSeed: validApSeed() });
+        const expectedUsername = `scobru-${altKeys2.pub.slice(0, 6)}`;
         expect(res.status).toBe(200);
         expect(res.body.isNewUser).toBe(true);
-        expect(res.body.username).toBe("scobru-collid");
-        expect(mockContainer.authService.updateUserProfile).toHaveBeenCalledWith("scobru-collid", { alias: "scobru" });
+        expect(res.body.username).toBe(expectedUsername);
+        expect(mockContainer.authService.updateUserProfile).toHaveBeenCalledWith(expectedUsername, { alias: "scobru" });
     });
 
     test("POST /api/auth/zen/sso logs in existing user on valid request", async () => {
+        const token = await buildSsoToken();
         const res = await request(app)
             .post("/api/auth/zen/sso")
-            .send({ ssoToken: validSsoToken(), apSeed: validApSeed() });
+            .send({ ssoToken: token, apSeed: validApSeed() });
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
         expect(res.body.username).toBe("scobru");
