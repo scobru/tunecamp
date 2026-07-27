@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.11.9] - 2026-07-27
+
+### Fixed
+- **`npm ci` failing in CI (`Missing: @types/react@18.3.31`, `@types/prop-types@15.7.15`) after the 3.11.8 vite fix.** `@docsearch/react` (pulled in transitively by `vitepress`) declares `@types/react`/`react`/`react-dom` as *optional* peers, and npm's optional-peer resolution isn't deterministic across npm major versions — regenerating `package-lock.json` with local npm 11 silently dropped that nested `@types/react` copy, which `npm ci` (running npm ~10.9 in CI) then flagged as inconsistent. Pinned `"@docsearch/react": { "@types/react": "18.3.31" }` in `overrides` so the nested copy is always included, and regenerated `package-lock.json` with npm 10.9.2 (matching CI's Node 22) so the resolved tree matches what CI actually validates.
+
 ## [3.11.8] - 2026-07-27
 
 ### Fixed

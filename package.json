@@ -1,6 +1,6 @@
 {
   "name": "tunecamp",
-  "version": "3.11.8",
+  "version": "3.11.9",
   "description": "A decentralized music platform for artists and labels, with streaming, federation, and Subsonic API support",
   "main": "dist/server/server.js",
   "type": "module",
@@ -14,6 +14,9 @@
     "color-thief-react": {
       "react": "16.14.0",
       "react-dom": "16.14.0"
+    },
+    "@docsearch/react": {
+      "@types/react": "18.3.31"
     }
   },
   "scripts": {
