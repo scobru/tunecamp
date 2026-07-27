@@ -284,7 +284,6 @@ export interface SiteSettings {
     stripe_secret_key?: string;
     stripe_webhook_secret?: string;
     discogs_token?: string;
-    jwtSecret?: string;
     lastfm_api_key?: string;
     lastfm_session_key?: string;
     listenbrainz_token?: string;
