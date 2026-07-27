@@ -289,11 +289,11 @@ export function createZenRoutes(container: ServiceContainer): Router {
             const desiredUsername = ssoToken.username;
             const zenPubKey = ssoToken.zenPubKey;
 
-            // Look up by FID identity (gun_pub) first, never by username: matching on
+            // Look up by FID identity (zen_pub) first, never by username: matching on
             // username/alias alone would let anyone log in as an unrelated existing
             // account (possibly a curator/admin) just by picking a colliding handle.
             let user = db.prepare(
-                "SELECT id, username, artist_id, role, is_active, gun_pub, token_version FROM admin WHERE gun_pub = ?"
+                "SELECT id, username, artist_id, role, is_active, zen_pub, token_version FROM admin WHERE zen_pub = ?"
             ).get(zenPubKey) as any;
 
             let isNewUser = false;

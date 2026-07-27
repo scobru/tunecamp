@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.11.5] - 2026-07-27
+
+### Changed
+- **Renamed legacy `gun_*` DB columns/tables to `zen_*` for naming consistency.** `admin.gun_pub`/`gun_priv`/`gun_auth_mode` → `zen_pub`/`zen_priv`/`zen_auth_mode`, and the `gun_users` table → `zen_users`. This is the FID identity linkage introduced in 3.11.0-3.11.4; the `gun_*` naming was a leftover from the removed Gun.js layer and no longer reflected what the columns actually do. Existing databases are migrated in place (`ALTER TABLE ... RENAME COLUMN` / `RENAME TO`) so no data is lost. `gun_cache` (unrelated legacy Gun.js sync table) is untouched.
+
 ## [3.11.4] - 2026-07-27
 
 ### Fixed

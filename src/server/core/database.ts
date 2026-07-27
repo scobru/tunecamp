@@ -77,6 +77,18 @@ export function createDatabase(dbPath: string): DatabaseService {
         }
     })();
 
+    // Legacy Gun.js naming: rename in place so existing FID identity data survives
+    // (a plain CREATE TABLE IF NOT EXISTS zen_users below would leave it as an empty table).
+    {
+        const tableNames = new Set(
+            db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((row: any) => row.name)
+        );
+        if (tableNames.has('gun_users') && !tableNames.has('zen_users')) {
+            console.log("📦 [Database] Renaming gun_users table to zen_users...");
+            db.exec("ALTER TABLE gun_users RENAME TO zen_users");
+        }
+    }
+
     // Initial Schema (Base Tables)
     db.exec(`
         CREATE TABLE IF NOT EXISTS artists (
@@ -111,9 +123,9 @@ export function createDatabase(dbPath: string): DatabaseService {
             track_quota_floor INTEGER NOT NULL DEFAULT 0,
             subsonic_token TEXT,
             subsonic_password TEXT,
-            gun_pub TEXT,
-            gun_priv TEXT,
-            gun_auth_mode TEXT NOT NULL DEFAULT 'local',
+            zen_pub TEXT,
+            zen_priv TEXT,
+            zen_auth_mode TEXT NOT NULL DEFAULT 'local',
             is_active INTEGER DEFAULT 1,
             token_version INTEGER DEFAULT 0,
             subscription_status TEXT DEFAULT 'none',
@@ -412,7 +424,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             expires_at TEXT DEFAULT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS gun_users (
+        CREATE TABLE IF NOT EXISTS zen_users (
             pub TEXT PRIMARY KEY,
             epub TEXT,
             alias TEXT,

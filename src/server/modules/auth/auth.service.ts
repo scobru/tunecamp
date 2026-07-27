@@ -90,7 +90,7 @@ export interface AuthService {
     // Default password check
     isDefaultPassword(username: string): Promise<boolean>;
     init(): Promise<void>;
-    /** Returns the avatar stored in gun_users for this username, or null. */
+    /** Returns the avatar stored in zen_users for this username, or null. */
     getZenAvatar(username: string): string | null;
     /** Returns alias and avatar from the admin table. */
     getUserProfile(username: string): { alias: string | null; avatar: string | null; email: string | null } | null;
@@ -130,9 +130,9 @@ export function createAuthService(
                     storage_used INTEGER NOT NULL DEFAULT 0,
                     subsonic_token TEXT,
                     subsonic_password TEXT,
-                    gun_pub TEXT,
-                    gun_priv TEXT,
-                    gun_auth_mode TEXT NOT NULL DEFAULT 'local',
+                    zen_pub TEXT,
+                    zen_priv TEXT,
+                    zen_auth_mode TEXT NOT NULL DEFAULT 'local',
                     is_active INTEGER DEFAULT 1,
                     token_version INTEGER DEFAULT 0,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -140,12 +140,32 @@ export function createAuthService(
                 )
             `);
         } else {
+            // Legacy Gun.js naming: rename in place so existing FID identity links survive.
+            const legacyGunColumns: [string, string][] = [
+                ['gun_pub', 'zen_pub'],
+                ['gun_priv', 'zen_priv'],
+                ['gun_auth_mode', 'zen_auth_mode']
+            ];
+            const preRenameColumns = db.prepare("PRAGMA table_info(admin)").all() as any[];
+            for (const [oldName, newName] of legacyGunColumns) {
+                const hasOld = preRenameColumns.some(c => c.name === oldName);
+                const hasNew = preRenameColumns.some(c => c.name === newName);
+                if (hasOld && !hasNew) {
+                    console.log(`📦 Migrating admin table: renaming column ${oldName} -> ${newName}...`);
+                    try {
+                        db.exec(`ALTER TABLE admin RENAME COLUMN ${oldName} TO ${newName}`);
+                    } catch (e) {
+                        console.error(`Failed to rename column ${oldName} to ${newName}:`, e);
+                    }
+                }
+            }
+
             // Check if columns exist (migration)
             const columns = db.prepare("PRAGMA table_info(admin)").all() as any[];
             const hasUsername = columns.some(c => c.name === 'username');
             const hasArtistId = columns.some(c => c.name === 'artist_id');
             const hasRole = columns.some(c => c.name === 'role');
-            const hasGunPub = columns.some(c => c.name === 'gun_pub');
+            const hasZenPub = columns.some(c => c.name === 'zen_pub');
             const hasSubsonic = columns.some(c => c.name === 'subsonic_token');
             const hasIsActive = columns.some(c => c.name === 'is_active');
             const hasTokenVersion = columns.some(c => c.name === 'token_version');
@@ -169,7 +189,7 @@ export function createAuthService(
                 }
             }
 
-            if (!hasUsername || !hasArtistId || !hasRole || !hasGunPub || !hasSubsonic || !hasIsActive) {
+            if (!hasUsername || !hasArtistId || !hasRole || !hasZenPub || !hasSubsonic || !hasIsActive) {
                 console.log("📦 Migrating admin table to multi-user support (with roles, quotas, keys, and status)...");
                 // We need to recreate the table
                 // 1. Rename existing table
@@ -188,8 +208,8 @@ export function createAuthService(
                         storage_used INTEGER NOT NULL DEFAULT 0,
                         subsonic_token TEXT,
                         subsonic_password TEXT,
-                        gun_pub TEXT,
-                        gun_priv TEXT,
+                        zen_pub TEXT,
+                        zen_priv TEXT,
                         is_active INTEGER DEFAULT 1,
                         token_version INTEGER DEFAULT 0,
                         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -205,7 +225,7 @@ export function createAuthService(
                     INSERT INTO admin (
                         id, username, password_hash, created_at, updated_at,
                         artist_id, role, storage_quota, storage_used,
-                        gun_pub, gun_priv, subsonic_token, subsonic_password,
+                        zen_pub, zen_priv, subsonic_token, subsonic_password,
                         is_active, token_version
                     )
                     SELECT
@@ -218,8 +238,8 @@ export function createAuthService(
                         'admin',
                         0,
                         0,
-                        ${!hasGunPub ? 'NULL' : "NULLIF(gun_pub, '')"},
-                        ${!hasGunPub ? 'NULL' : "NULLIF(gun_priv, '')"},
+                        ${!hasZenPub ? 'NULL' : "NULLIF(zen_pub, '')"},
+                        ${!hasZenPub ? 'NULL' : "NULLIF(zen_priv, '')"},
                         ${!hasSubsonic ? 'NULL' : "NULLIF(subsonic_token, '')"},
                         ${!hasSubsonic ? 'NULL' : "NULLIF(subsonic_password, '')"},
                         ${!hasIsActive ? '1' : "IFNULL(is_active, 1)"},
@@ -467,7 +487,7 @@ export function createAuthService(
 
         async createUser(username: string, password: string, artistId: number | null, storageQuota: number = 1024 * 1024 * 1024, pubKey?: string, role: UserRole = UserRole.NORMAL_USER): Promise<{ id: number }> {
             const hash = await this.hashPassword(password);
-            const result = db.prepare("INSERT INTO admin (username, password_hash, artist_id, role, storage_quota, storage_used, gun_pub, is_active) VALUES (?, ?, ?, ?, ?, 0, ?, 1)").run(username, hash, artistId, role, storageQuota, pubKey || null);
+            const result = db.prepare("INSERT INTO admin (username, password_hash, artist_id, role, storage_quota, storage_used, zen_pub, is_active) VALUES (?, ?, ?, ?, ?, 0, ?, 1)").run(username, hash, artistId, role, storageQuota, pubKey || null);
             return { id: Number(result.lastInsertRowid) };
         },
 
@@ -559,7 +579,7 @@ export function createAuthService(
         getZenAvatar(username: string): string | null {
             const row = db.prepare(`
                 SELECT gu.avatar FROM admin a
-                JOIN gun_users gu ON a.gun_pub = gu.pub
+                JOIN zen_users gu ON a.zen_pub = gu.pub
                 WHERE a.username = ? COLLATE NOCASE OR a.alias = ? COLLATE NOCASE
             `).get(username, username) as { avatar: string | null } | undefined;
             return row?.avatar ?? null;
@@ -760,10 +780,10 @@ export function createAuthService(
         },
 
         getUserPair(username: string): any | null {
-            const user = db.prepare("SELECT gun_priv FROM admin WHERE username = ? COLLATE NOCASE").get(username) as { gun_priv: string | null } | undefined;
-            if (!user || !user.gun_priv) return null;
+            const user = db.prepare("SELECT zen_priv FROM admin WHERE username = ? COLLATE NOCASE").get(username) as { zen_priv: string | null } | undefined;
+            if (!user || !user.zen_priv) return null;
             try {
-                return this.decryptZenPriv(user.gun_priv);
+                return this.decryptZenPriv(user.zen_priv);
             } catch (e) {
                 console.error(`⚠️ Failed to decrypt ZEN keys for ${username}. (Secret mismatch?)`);
                 return null;
@@ -772,10 +792,10 @@ export function createAuthService(
 
         updateZenPair(username: string, pair: any): void {
             const encryptedPriv = this.encryptZenPriv(pair);
-            db.prepare("UPDATE admin SET gun_pub = ?, gun_priv = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ? COLLATE NOCASE").run(pair.pub, encryptedPriv, username);
-            
-            // Also ensure it's in gun_users for profile lookups
-            db.prepare(`INSERT OR IGNORE INTO gun_users (pub, epub, alias) VALUES (?, ?, ?)`).run(pair.pub, pair.epub, username);
+            db.prepare("UPDATE admin SET zen_pub = ?, zen_priv = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ? COLLATE NOCASE").run(pair.pub, encryptedPriv, username);
+
+            // Also ensure it's in zen_users for profile lookups
+            db.prepare(`INSERT OR IGNORE INTO zen_users (pub, epub, alias) VALUES (?, ?, ?)`).run(pair.pub, pair.epub, username);
         },
 
 

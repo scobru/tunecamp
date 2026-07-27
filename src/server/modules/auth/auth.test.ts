@@ -14,7 +14,7 @@ describe("AuthService", () => {
     beforeEach(async () => {
         db = new Database(":memory:");
         db.exec(`
-            CREATE TABLE IF NOT EXISTS gun_users (
+            CREATE TABLE IF NOT EXISTS zen_users (
                 pub TEXT PRIMARY KEY,
                 epub TEXT NOT NULL,
                 alias TEXT UNIQUE NOT NULL
@@ -54,7 +54,7 @@ describe("AuthService", () => {
     test("isDefaultPassword returns true for built-in default password 'admin'", async () => {
         const adminDb = new Database(":memory:");
         adminDb.exec(`
-            CREATE TABLE IF NOT EXISTS gun_users (
+            CREATE TABLE IF NOT EXISTS zen_users (
                 pub TEXT PRIMARY KEY,
                 epub TEXT NOT NULL,
                 alias TEXT UNIQUE NOT NULL

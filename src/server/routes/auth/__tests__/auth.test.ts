@@ -185,7 +185,7 @@ describe('Auth Routes', () => {
 
             const db = new sqlite3(':memory:');
             db.exec(`
-                CREATE TABLE IF NOT EXISTS gun_users (
+                CREATE TABLE IF NOT EXISTS zen_users (
                     pub TEXT PRIMARY KEY,
                     epub TEXT NOT NULL,
                     alias TEXT UNIQUE NOT NULL
@@ -295,7 +295,7 @@ describe('Auth Routes', () => {
 
             const db = new sqlite3(':memory:');
             db.exec(`
-                CREATE TABLE IF NOT EXISTS gun_users (
+                CREATE TABLE IF NOT EXISTS zen_users (
                     pub TEXT PRIMARY KEY,
                     epub TEXT NOT NULL,
                     alias TEXT UNIQUE NOT NULL

@@ -26,6 +26,7 @@ describe("Zen SEA Integration Routes", () => {
         authService: {
             getUserByUsername: jest.fn(),
             createUser: jest.fn(),
+            updateUserProfile: jest.fn(),
             generateToken: jest.fn()
         },
         database: {
@@ -34,42 +35,46 @@ describe("Zen SEA Integration Routes", () => {
         config: { jwtSecret: "test-secret", host: "test.tunecamp.net" }
     };
 
+    // Keyed by username, mirrors the `admin` table rows the real DB would hold.
+    let usersByUsername: Record<string, any> = {};
+    let nextUserId = 100;
+
     beforeEach(() => {
         app = express();
         app.use(express.json());
         app.use("/api/auth/zen", createZenRoutes(mockContainer));
 
-        mockContainer.authService.getUserByUsername.mockImplementation((username: string) => {
-            if (username === "scobru") {
-                return {
-                    id: 1,
-                    username: "scobru",
-                    artist_id: 10,
-                    artist_name: "Scobru Artist",
-                    is_active: 1,
-                    created_at: "2026-07-25T00:00:00Z",
-                    gun_pub: null,
-                    role: "admin"
-                };
+        usersByUsername = {
+            scobru: {
+                id: 1,
+                username: "scobru",
+                artist_id: 10,
+                artist_name: "Scobru Artist",
+                is_active: 1,
+                created_at: "2026-07-25T00:00:00Z",
+                zen_pub: "0DGULtYbQYzYDlRUddrRNoS7NrEzGIZAsQrXSKQYThMX1",
+                role: "admin",
+                token_version: 0
             }
-            return undefined;
+        };
+        nextUserId = 100;
+
+        mockContainer.authService.getUserByUsername.mockImplementation((username: string) => usersByUsername[username]);
+        mockContainer.authService.createUser.mockImplementation(async (username: string, _password: string, artistId: number | null, _quota: number, zenPub: string, role: string) => {
+            const id = nextUserId++;
+            usersByUsername[username] = { id, username, artist_id: artistId, is_active: 1, zen_pub: zenPub, role, token_version: 0 };
+            return { id };
         });
-        mockContainer.authService.createUser.mockResolvedValue({ id: 2 });
+        mockContainer.authService.updateUserProfile.mockImplementation((username: string, updates: Record<string, any>) => {
+            if (usersByUsername[username]) Object.assign(usersByUsername[username], updates);
+        });
         mockContainer.authService.generateToken.mockReturnValue("mock-jwt-token");
         mockContainer.database.prepare.mockImplementation((query: string) => {
             if (query.includes("SELECT public_key FROM artists")) {
                 return { get: () => null };
-            } else if (query.includes("UPDATE admin SET gun_pub")) {
-                return { run: () => ({}) };
+            } else if (query.includes("FROM admin WHERE zen_pub")) {
+                return { get: (pub: string) => Object.values(usersByUsername).find((u: any) => u.zen_pub === pub) ?? null };
             } else if (query.includes("UPDATE artists SET")) {
-                return { run: () => ({}) };
-            } else if (query.includes("UPDATE admin SET artist_id")) {
-                return { run: () => ({}) };
-            } else if (query.includes("INSERT INTO artists")) {
-                return { run: () => ({ lastInsertRowid: 10 }) };
-            } else if (query.includes("SELECT id FROM artists")) {
-                return { all: () => [] };
-            } else if (query.includes("UPDATE admin SET")) {
                 return { run: () => ({}) };
             } else {
                 return { get: () => null, all: () => [] };
@@ -184,14 +189,24 @@ describe("Zen SEA Integration Routes", () => {
     });
 
     test("POST /api/auth/zen/sso creates new user on valid request", async () => {
-        mockContainer.authService.getUserByUsername.mockReturnValueOnce(undefined);
         const res = await request(app)
             .post("/api/auth/zen/sso")
-            .send({ ssoToken: validSsoToken(), apSeed: validApSeed() });
+            .send({ ssoToken: validSsoToken({ username: "newlistener", zenPubKey: "brandNewZenPubKey1234567890" }), apSeed: validApSeed() });
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
         expect(res.body.token).toBe("mock-jwt-token");
         expect(res.body.isNewUser).toBe(true);
+        expect(res.body.username).toBe("newlistener");
+    });
+
+    test("POST /api/auth/zen/sso registers under a unique username when the desired handle is taken, keeping it as alias", async () => {
+        const res = await request(app)
+            .post("/api/auth/zen/sso")
+            .send({ ssoToken: validSsoToken({ username: "scobru", zenPubKey: "collidingZenPubKey0987654" }), apSeed: validApSeed() });
+        expect(res.status).toBe(200);
+        expect(res.body.isNewUser).toBe(true);
+        expect(res.body.username).toBe("scobru-collid");
+        expect(mockContainer.authService.updateUserProfile).toHaveBeenCalledWith("scobru-collid", { alias: "scobru" });
     });
 
     test("POST /api/auth/zen/sso logs in existing user on valid request", async () => {
