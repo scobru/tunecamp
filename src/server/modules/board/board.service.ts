@@ -24,7 +24,7 @@ export class BoardService {
                 SELECT bm.*, COALESCE(a.avatar, gu.avatar) AS avatar
                 FROM board_messages bm
                 LEFT JOIN admin a ON bm.username = a.username COLLATE NOCASE
-                LEFT JOIN gun_users gu ON a.gun_pub = gu.pub
+                LEFT JOIN zen_users gu ON a.zen_pub = gu.pub
                 ORDER BY bm.id DESC LIMIT ?
             `).all(limit) as BoardMessage[];
             return messages.reverse();
@@ -63,7 +63,7 @@ export class BoardService {
                 const row = this.database.db.prepare(`
                     SELECT COALESCE(a.avatar, gu.avatar) AS avatar
                     FROM admin a
-                    LEFT JOIN gun_users gu ON a.gun_pub = gu.pub
+                    LEFT JOIN zen_users gu ON a.zen_pub = gu.pub
                     WHERE a.username = ? COLLATE NOCASE
                 `).get(username) as { avatar: string | null } | undefined;
                 avatar = row?.avatar ?? null;

@@ -2,10 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.11.6] - 2026-07-27
+
+### Fixed
+- **FID/Zen identity linking unreachable for listeners without an artist profile.** `ZenIdentityCard` (the "link your global FID identity" panel) was rendered only inside `ArtistProfileEditor`, which itself only mounts when `activeTab === "artist" && hasArtistProfile` — so a listener with no linked artist profile had no way to reach it at all. Moved to the "Settings" tab of `Profile.tsx` (next to the existing Fediverse/ActivityPub identity panel), which is visible to every authenticated user regardless of artist status.
+
+## [3.11.5] - 2026-07-27
+
+### Changed
+- **Renamed legacy `gun_*` DB columns/tables to `zen_*` for naming consistency.** `admin.gun_pub`/`gun_priv`/`gun_auth_mode` → `zen_pub`/`zen_priv`/`zen_auth_mode`, and the `gun_users` table → `zen_users`. This is the FID identity linkage introduced in 3.11.0-3.11.4; the `gun_*` naming was a leftover from the removed Gun.js layer and no longer reflected what the columns actually do. Existing databases are migrated in place (`ALTER TABLE ... RENAME COLUMN` / `RENAME TO`) so no data is lost. `gun_cache` (unrelated legacy Gun.js sync table) is untouched.
+
+## [3.11.4] - 2026-07-27
+
+### Fixed
+- **FID SSO account hijack / everyone landing on the same curator account.** `POST /api/auth/zen/sso` looked up the local account by `username OR alias` and, if `gun_pub` was unset, silently linked that account to the incoming Zen pubkey — so a FID login whose derived username collided with an existing, unrelated local account (or its alias) took over that account's role, including curator/admin. New FID identities also failed outright if no local account already used that exact username. Now looks up strictly by `gun_pub` (the FID identity) first; a new identity always gets a fresh `NORMAL_USER` account, and if the desired handle is taken it's registered under a unique internal username with the requested handle kept as the public alias.
+
+## [3.11.3] - 2026-07-27
+
+### Fixed
+- **Private-library tracks leaking into "Jump back in" for unauthorized viewers.** `recentlyPlayed` is persisted to `localStorage` (`usePlayerStore`) and survives logout/account switches on the same browser, so a previous privileged session's private plays stayed visible to anyone using that browser afterward. `Home.tsx` now re-checks each item's `albumVisibility`/ownership against the current viewer (mirroring `VisibilityGuardian`) before rendering, and `logout()` clears `recentlyPlayed` outright.
+
+## [3.11.2] - 2026-07-27
+
+### Fixed
+- **Freshly established FID SSO session immediately wiped on login.** The global 401 handler in `services/api/client.ts` cleared `tunecamp_token` and dispatched `auth:unauthorized` on *any* 401 as long as a token existed in `localStorage`, without checking that the 401 belonged to a request that actually used that token. A stale, unauthenticated request fired at page load could resolve after the SSO callback stored a valid token, wiping the brand-new session and reverting the UI to logged-out. Now only invalidates the session when the failing request's `Authorization` header matches the current token.
+
+## [3.11.1] - 2026-07-27
+
+### Fixed
+- **FID SSO login silently failing to persist session.** `POST /api/auth/zen/sso` hardcoded `tokenVersion: 0` when issuing the JWT for returning users, instead of reading the account's actual `token_version`. Any user whose tokens had been revoked (logout, password change, admin action) got a JWT that always failed `verifyToken`'s version check — the SSO response reported success but the user was never actually authenticated on subsequent requests.
+
 ## [3.11.0] - 2026-07-26
 
 ### Added
-- **Zen SEA Unified Identity & Instance Passports.** Implemented decentralized identity linking across independent TuneCamp instances using `@akaoio/zen` Security, Encryption, Authentication (SEA) and the `delay.scobrudot.dev` WebSocket relay. Added server routes `GET /api/auth/zen/challenge` (one-time nonce generation), `POST /api/auth/zen/link` (Instance Passport Badge issuance), and `GET /api/auth/zen/user/:username/public` (public data export only). Integrated `ZenIdentityCard` UI in the webapp user profile settings and created `profile.html` on `tunecamp-website` for cross-instance identity aggregation. Added integration tests and documentation in `docs/ZEN-IDENTITY.md`.
+- **FID (Fediverse-ID) Integration & Instance Passports.** Integrated [`@scobru/fid`](https://github.com/scobru/fid) for decentralized zero-knowledge authentication across independent TuneCamp instances. Refactored server routes `GET /api/auth/zen/challenge`, `POST /api/auth/zen/link`, and `POST /api/auth/zen/sso` using `FidChallengeManager`, `FidPassportIssuer`, and `FidSsoHandler`. New SSO users register as standard Listeners (`NORMAL_USER`), and existing users retain their instance-assigned roles and artist profiles. Added "Sign in with FID" button to `AuthModal.tsx` and updated documentation in `docs/FID-IDENTITY.md` with demo portal `https://fid-portal.vercel.app/` and Zen P2P relay node setup.
 
 ## [3.10.2] - 2026-07-26
 

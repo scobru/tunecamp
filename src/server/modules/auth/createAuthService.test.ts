@@ -28,9 +28,9 @@ describe('createAuthService', () => {
         expect(columnNames).toContain('storage_used');
         expect(columnNames).toContain('subsonic_token');
         expect(columnNames).toContain('subsonic_password');
-        expect(columnNames).toContain('gun_pub');
-        expect(columnNames).toContain('gun_priv');
-        expect(columnNames).toContain('gun_auth_mode');
+        expect(columnNames).toContain('zen_pub');
+        expect(columnNames).toContain('zen_priv');
+        expect(columnNames).toContain('zen_auth_mode');
         expect(columnNames).toContain('is_active');
         expect(columnNames).toContain('token_version');
         expect(columnNames).toContain('created_at');
@@ -50,9 +50,9 @@ describe('createAuthService', () => {
                 storage_used INTEGER NOT NULL DEFAULT 0,
                 subsonic_token TEXT,
                 subsonic_password TEXT,
-                gun_pub TEXT,
-                gun_priv TEXT,
-                gun_auth_mode TEXT NOT NULL DEFAULT 'local',
+                zen_pub TEXT,
+                zen_priv TEXT,
+                zen_auth_mode TEXT NOT NULL DEFAULT 'local',
                 is_active INTEGER DEFAULT 1,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -76,9 +76,9 @@ describe('createAuthService', () => {
                 storage_used INTEGER NOT NULL DEFAULT 0,
                 subsonic_token TEXT,
                 subsonic_password TEXT,
-                gun_pub TEXT,
-                gun_priv TEXT,
-                gun_auth_mode TEXT NOT NULL DEFAULT 'local',
+                zen_pub TEXT,
+                zen_priv TEXT,
+                zen_auth_mode TEXT NOT NULL DEFAULT 'local',
                 is_active INTEGER DEFAULT 1,
                 token_version INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -89,6 +89,46 @@ describe('createAuthService', () => {
         const columns = db.prepare("PRAGMA table_info(admin)").all();
         const columnNames = columns.map((c: any) => c.name);
         expect(columnNames).toContain('artist_unlinked');
+    });
+
+    test('should rename legacy gun_pub/gun_priv/gun_auth_mode columns to zen_* and preserve data', () => {
+        db.exec(`
+            CREATE TABLE admin (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                artist_id INTEGER DEFAULT NULL,
+                artist_unlinked INTEGER DEFAULT 0,
+                role TEXT NOT NULL DEFAULT 'admin',
+                storage_quota INTEGER NOT NULL DEFAULT 0,
+                storage_used INTEGER NOT NULL DEFAULT 0,
+                subsonic_token TEXT,
+                subsonic_password TEXT,
+                gun_pub TEXT,
+                gun_priv TEXT,
+                gun_auth_mode TEXT NOT NULL DEFAULT 'local',
+                is_active INTEGER DEFAULT 1,
+                token_version INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        db.exec(`INSERT INTO admin (username, password_hash, gun_pub, gun_priv) VALUES ('zenuser', 'testhash', 'pubkey123', 'privkey456')`);
+
+        createAuthService(db, 'secret');
+
+        const columns = db.prepare("PRAGMA table_info(admin)").all();
+        const columnNames = columns.map((c: any) => c.name);
+        expect(columnNames).toContain('zen_pub');
+        expect(columnNames).toContain('zen_priv');
+        expect(columnNames).toContain('zen_auth_mode');
+        expect(columnNames).not.toContain('gun_pub');
+        expect(columnNames).not.toContain('gun_priv');
+        expect(columnNames).not.toContain('gun_auth_mode');
+
+        const row = db.prepare("SELECT zen_pub, zen_priv FROM admin WHERE username = 'zenuser'").get() as any;
+        expect(row.zen_pub).toBe('pubkey123');
+        expect(row.zen_priv).toBe('privkey456');
     });
 
     test('should recreate table and migrate data if critical columns are missing', () => {
@@ -136,9 +176,9 @@ describe('createAuthService', () => {
                 storage_used INTEGER NOT NULL DEFAULT 0,
                 subsonic_token TEXT,
                 subsonic_password TEXT,
-                gun_pub TEXT,
-                gun_priv TEXT,
-                gun_auth_mode TEXT NOT NULL DEFAULT 'local',
+                zen_pub TEXT,
+                zen_priv TEXT,
+                zen_auth_mode TEXT NOT NULL DEFAULT 'local',
                 is_active INTEGER DEFAULT 1,
                 token_version INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,

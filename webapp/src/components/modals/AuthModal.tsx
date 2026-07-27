@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
 import API from '../../services/api';
-import { LogIn, UserPlus, Shield, KeyRound } from 'lucide-react';
+import { LogIn, UserPlus, Shield, KeyRound, Settings, RotateCcw } from 'lucide-react';
 import { match } from 'ts-pattern';
 
 export const AuthModal = () => {
@@ -14,10 +14,53 @@ export const AuthModal = () => {
     const [forgotEmail, setForgotEmail] = useState('');
     const [forgotMessage, setForgotMessage] = useState('');
     const [forgotLoading, setForgotLoading] = useState(false);
+    const [showSetupOffer, setShowSetupOffer] = useState(false);
     const { login, register, checkAuth, error, clearError, isFirstRun } = useAuthStore();
     const [localError, setLocalError] = useState('');
-    const [showSetupOffer, setShowSetupOffer] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isFidLoading, setIsFidLoading] = useState(false);
+    
+    // Custom FID Portal URL selection
+    const DEFAULT_PORTAL = import.meta.env.VITE_GLOBAL_PORTAL_URL || "https://www.tunecamp.org";
+    const [customPortalUrl, setCustomPortalUrl] = useState(() => {
+        return localStorage.getItem('tunecamp_custom_fid_portal') || '';
+    });
+    const [showPortalConfig, setShowPortalConfig] = useState(false);
+
+    const getEffectivePortalUrl = () => {
+        const trimmed = customPortalUrl.trim();
+        if (!trimmed) return DEFAULT_PORTAL;
+        let url = trimmed;
+        if (!/^https?:\/\//i.test(url)) {
+            url = `https://${url}`;
+        }
+        return url.replace(/\/+$/, '');
+    };
+
+    const handleFidLogin = async () => {
+        setLocalError('');
+        clearError();
+        setIsFidLoading(true);
+        try {
+            const clientId = "tunecamp-instance";
+            const redirectUri = `${window.location.origin}/auth/sso/callback`;
+            const instanceDomain = window.location.hostname;
+            const portalUrl = getEffectivePortalUrl();
+
+            if (customPortalUrl.trim()) {
+                localStorage.setItem('tunecamp_custom_fid_portal', portalUrl);
+            } else {
+                localStorage.removeItem('tunecamp_custom_fid_portal');
+            }
+
+            const ssoUrl = `${portalUrl}/sso.html?clientId=${encodeURIComponent(clientId)}&redirectUri=${encodeURIComponent(redirectUri)}&instanceDomain=${encodeURIComponent(instanceDomain)}`;
+            
+            window.location.href = ssoUrl;
+        } catch (err: any) {
+            setLocalError(err?.message || 'FID Login redirect failed');
+            setIsFidLoading(false);
+        }
+    };
 
     useEffect(() => {
         const handleOpen = () => {
@@ -283,16 +326,115 @@ export const AuthModal = () => {
                     )}
                     
                     {!showSetupOffer && (
-                        <button type="submit" className="btn btn-primary w-full mt-2" disabled={isLoading}>
-                            {isLoading ? (
-                                <span className="loading loading-spinner loading-sm"></span>
-                            ) : (
-                                match(mode)
-                                    .with('register', () => 'Sign Up')
-                                    .with('setup', () => 'Create Admin')
-                                    .otherwise(() => 'Sign In')
+                        <>
+                            <button type="submit" className="btn btn-primary w-full mt-2" disabled={isLoading || isFidLoading}>
+                                {isLoading ? (
+                                    <span className="loading loading-spinner loading-sm"></span>
+                                ) : (
+                                    match(mode)
+                                        .with('register', () => 'Sign Up')
+                                        .with('setup', () => 'Create Admin')
+                                        .otherwise(() => 'Sign In')
+                                )}
+                            </button>
+
+                            {mode === 'login' && (
+                                <>
+                                    <div className="divider text-xs opacity-40 my-2">OR</div>
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline btn-secondary w-full gap-2 text-xs font-semibold"
+                                        disabled={isLoading || isFidLoading}
+                                        onClick={handleFidLogin}
+                                    >
+                                        {isFidLoading ? (
+                                            <span className="loading loading-spinner loading-xs"></span>
+                                        ) : (
+                                            <>
+                                                <Shield className="w-4 h-4 text-secondary" /> Sign in with FID
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {/* Custom FID Portal Configuration */}
+                                    <div className="mt-2 text-center">
+                                        <button
+                                            type="button"
+                                            className="text-[11px] text-text-muted hover:text-primary transition-colors inline-flex items-center justify-center gap-1 mx-auto"
+                                            onClick={() => setShowPortalConfig(!showPortalConfig)}
+                                        >
+                                            <Settings className="w-3 h-3" />
+                                            <span>
+                                                {customPortalUrl.trim() ? `FID Portal: ${getEffectivePortalUrl()}` : 'Configura Portale FID'}
+                                            </span>
+                                        </button>
+
+                                        {showPortalConfig && (
+                                            <div className="mt-2 p-3 bg-base-200/80 border border-base-300 rounded-lg text-left space-y-2 text-xs animate-fadeIn">
+                                                <label className="block text-[11px] font-medium text-text-muted">
+                                                    Indirizzo Portale FID (Provider SSO)
+                                                </label>
+                                                <div className="flex gap-1.5">
+                                                    <input
+                                                        type="text"
+                                                        className="input input-xs input-bordered w-full font-mono text-xs"
+                                                        placeholder={DEFAULT_PORTAL}
+                                                        value={customPortalUrl}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setCustomPortalUrl(val);
+                                                            if (val.trim()) {
+                                                                localStorage.setItem('tunecamp_custom_fid_portal', val.trim());
+                                                            } else {
+                                                                localStorage.removeItem('tunecamp_custom_fid_portal');
+                                                            }
+                                                        }}
+                                                    />
+                                                    {customPortalUrl && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-xs btn-ghost text-rose-400 shrink-0"
+                                                            title="Ripristina Predefinito"
+                                                            onClick={() => {
+                                                                setCustomPortalUrl('');
+                                                                localStorage.removeItem('tunecamp_custom_fid_portal');
+                                                            }}
+                                                        >
+                                                            <RotateCcw className="w-3 h-3" />
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                                    <span className="text-[10px] text-text-muted">Preset:</span>
+                                                    <button
+                                                        type="button"
+                                                        className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-colors ${!customPortalUrl.trim() ? 'bg-primary/20 border-primary text-primary font-semibold' : 'bg-base-300 border-base-100 hover:bg-base-100'}`}
+                                                        onClick={() => {
+                                                            setCustomPortalUrl('');
+                                                            localStorage.removeItem('tunecamp_custom_fid_portal');
+                                                        }}
+                                                    >
+                                                        tunecamp.org
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-colors ${customPortalUrl.includes('5173') ? 'bg-primary/20 border-primary text-primary font-semibold' : 'bg-base-300 border-base-100 hover:bg-base-100'}`}
+                                                        onClick={() => {
+                                                            const localUrl = 'http://localhost:5173';
+                                                            setCustomPortalUrl(localUrl);
+                                                            localStorage.setItem('tunecamp_custom_fid_portal', localUrl);
+                                                        }}
+                                                    >
+                                                        localhost:5173
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
                             )}
-                        </button>
+                        </>
                     )}
                 </form>
                 )}

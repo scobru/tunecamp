@@ -41,6 +41,9 @@ export const authApi = {
     linkZenAccount: (zenPubKey: string, challenge: any, seaSignature: string) =>
         handleResponse(api.post<{ success: boolean; passport: any }>('auth/zen/link', { zenPubKey, challenge, seaSignature })),
 
+    loginWithSso: (ssoToken: any, apSeed: string) =>
+        handleResponse(api.post<{ success: boolean; token: string; isNewUser: boolean; username: string }>('auth/zen/sso', { ssoToken, apSeed })),
+
     // --- API Tokens ---
     getApiTokens: () => handleResponse(api.get<any[]>('users/me/api-tokens')),
     createApiToken: (name: string) => handleResponse(api.post<{ token: string }>('users/me/api-tokens', { name })),

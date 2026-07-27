@@ -788,6 +788,8 @@ const Profile = () => {
             )}
           </div>
 
+          <ZenIdentityCard />
+
           {/* API Tokens Panel */}
           {isCuratorOrAbove && (
             <div className="card bg-base-200 border border-base-content/10 p-6 space-y-4">
@@ -1263,8 +1265,6 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
             </button>
           </div>
         </div>
-
-        <ZenIdentityCard />
       </div>
 
       {/* Right Column: Monetization & Federation */}

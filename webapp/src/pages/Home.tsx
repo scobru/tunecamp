@@ -31,12 +31,25 @@ const Home = () => {
   const stats: any = catalog?.stats || {};
   const genres: string[] = (stats.genres || []).slice(0, HOME_GENRES_LIMIT);
 
-  const { user } = useAuthStore();
+  const { user, role } = useAuthStore();
   const { currentTrack, isPlaying, togglePlay, progress, duration, playQueue, recentlyPlayed } = usePlayerStore();
 
   // Peer/network plays carry a `siteUrl` (remote instance) — mostly raw MP3s with
   // no cover/metadata, so keep "Jump back in" to local library plays only.
-  const localRecentlyPlayed = (recentlyPlayed || []).filter((i: any) => !i.siteUrl);
+  //
+  // `recentlyPlayed` is persisted to localStorage (usePlayerStore) and survives
+  // logout/account switches on the same browser, so it can still hold private-library
+  // tracks a previous, privileged session played. Re-check visibility here the same
+  // way the server's VisibilityGuardian would (mirrors src/server/common/visibility.ts).
+  const canViewPrivateLibrary = role === 'admin' || role === 'super_user' || role === 'root_admin' || !!user?.isRootAdmin;
+  const localRecentlyPlayed = (recentlyPlayed || []).filter((i: any) => {
+    if (i.siteUrl) return false;
+    if (canViewPrivateLibrary) return true;
+    if (i.albumVisibility && i.albumVisibility !== 'public' && i.albumVisibility !== 'unlisted') {
+      return !!user && (String(i.owner_id) === String(user.userId) || (i.artistId && String(i.artistId) === String(user.artistId)));
+    }
+    return true;
+  });
 
   const handleResume = () => {
     togglePlay();

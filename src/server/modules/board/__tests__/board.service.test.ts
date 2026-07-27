@@ -38,7 +38,7 @@ describe('BoardService', () => {
             expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('SELECT bm.*, COALESCE(a.avatar, gu.avatar) AS avatar'));
             expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('FROM board_messages bm'));
             expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('LEFT JOIN admin a ON bm.username = a.username COLLATE NOCASE'));
-            expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('LEFT JOIN gun_users gu ON a.gun_pub = gu.pub'));
+            expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('LEFT JOIN zen_users gu ON a.zen_pub = gu.pub'));
             expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('ORDER BY bm.id DESC LIMIT ?'));
 
             expect(mockAll).toHaveBeenCalledWith(100);

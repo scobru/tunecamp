@@ -28,6 +28,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const ResetPasswordSecurity = lazy(() => import("./pages/ResetPasswordSecurity"));
+const SsoCallback = lazy(() => import("./pages/SsoCallback"));
 const MyMusic = lazy(() => import("./pages/MyMusic"));
 const Publish = lazy(() => import("./pages/Publish"));
 const Social = lazy(() => import("./pages/Social"));
@@ -268,6 +269,8 @@ function App() {
             {/* Other */}
             <Route path="/support" element={<Support />} />
             <Route path="/tools" element={<Tools />} />
+            
+            <Route path="/auth/sso/callback" element={<SsoCallback />} />
 
             {/* Catch-all */}
             <Route path="*" element={<Navigate to="/" replace />} />
