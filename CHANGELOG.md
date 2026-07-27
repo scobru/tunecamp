@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.11.8] - 2026-07-27
+
+### Fixed
+- **`webapp` build failing with `TS2769: No overload matches call` on `PluginOption`.** `vitepress` (root devDependency) hard-pins `vite@^5.4.14`, which npm hoisted to root `node_modules`. `@vitejs/plugin-react` (used in `webapp/vite.config.ts`) resolved that old v5 `Plugin` type while `vitest`'s own nested `vite@7.x` copy gave `defineConfig`/`PluginOption` a structurally different v7 type, so `tsc` saw two incompatible `Plugin` types colliding in the same config. Pinned `"vite": "^7.3.1"` at the root and ran `npm dedupe`; `vitepress` keeps its own isolated `vite@5.4.21` copy while everything else shares one root `vite@7.x`.
+
 ## [3.11.7] - 2026-07-27
 
 ### Fixed
