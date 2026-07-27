@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.11.1] - 2026-07-27
+
+### Fixed
+- **FID SSO login silently failing to persist session.** `POST /api/auth/zen/sso` hardcoded `tokenVersion: 0` when issuing the JWT for returning users, instead of reading the account's actual `token_version`. Any user whose tokens had been revoked (logout, password change, admin action) got a JWT that always failed `verifyToken`'s version check — the SSO response reported success but the user was never actually authenticated on subsequent requests.
+
 ## [3.11.0] - 2026-07-26
 
 ### Added

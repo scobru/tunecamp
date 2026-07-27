@@ -339,7 +339,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 artistId: user.artist_id,
                 role: user.role,
                 isActive: user.is_active === 1,
-                tokenVersion: 0
+                tokenVersion: (user as any).token_version ?? 0
             });
 
             return res.json({
