@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.11.6] - 2026-07-27
+
+### Fixed
+- **FID/Zen identity linking unreachable for listeners without an artist profile.** `ZenIdentityCard` (the "link your global FID identity" panel) was rendered only inside `ArtistProfileEditor`, which itself only mounts when `activeTab === "artist" && hasArtistProfile` — so a listener with no linked artist profile had no way to reach it at all. Moved to the "Settings" tab of `Profile.tsx` (next to the existing Fediverse/ActivityPub identity panel), which is visible to every authenticated user regardless of artist status.
+
 ## [3.11.5] - 2026-07-27
 
 ### Changed
