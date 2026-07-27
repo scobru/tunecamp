@@ -1,6 +1,6 @@
 {
   "name": "tunecamp",
-  "version": "3.11.1",
+  "version": "3.11.2",
   "description": "A decentralized music platform for artists and labels, with streaming, federation, and Subsonic API support",
   "main": "dist/server/server.js",
   "type": "module",

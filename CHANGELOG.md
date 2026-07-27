@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.11.2] - 2026-07-27
+
+### Fixed
+- **Freshly established FID SSO session immediately wiped on login.** The global 401 handler in `services/api/client.ts` cleared `tunecamp_token` and dispatched `auth:unauthorized` on *any* 401 as long as a token existed in `localStorage`, without checking that the 401 belonged to a request that actually used that token. A stale, unauthenticated request fired at page load could resolve after the SSO callback stored a valid token, wiping the brand-new session and reverting the UI to logged-out. Now only invalidates the session when the failing request's `Authorization` header matches the current token.
+
 ## [3.11.1] - 2026-07-27
 
 ### Fixed

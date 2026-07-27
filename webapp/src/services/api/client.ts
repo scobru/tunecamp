@@ -33,10 +33,16 @@ export const handleResponse = async <T>(request: Promise<{ data: T }>): Promise<
     } catch (error: any) {
         const status: number = error.response?.status ?? 0;
         if (status === 401) {
-            const isAuthEndpoint = error.config?.url?.includes('/auth/');
-            const hasToken = !!localStorage.getItem('tunecamp_token');
-            
-            if (isAuthEndpoint || hasToken) {
+            // Only invalidate the session if the 401 came from a request that used the
+            // CURRENT token. A stale request started before login/logout (e.g. fired
+            // anonymously at page load) can resolve after a fresh token is stored; it
+            // must not wipe a session it has nothing to do with.
+            const currentToken = localStorage.getItem('tunecamp_token');
+            const requestAuthHeader: string | undefined = error.config?.headers?.Authorization;
+            const requestToken = requestAuthHeader?.replace(/^Bearer\s+/i, '');
+            const usedCurrentToken = !!currentToken && requestToken === currentToken;
+
+            if (usedCurrentToken) {
                 localStorage.removeItem('tunecamp_token');
                 window.dispatchEvent(new Event('auth:unauthorized'));
             }
