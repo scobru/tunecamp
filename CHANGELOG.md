@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.11.4] - 2026-07-27
+
+### Fixed
+- **FID SSO account hijack / everyone landing on the same curator account.** `POST /api/auth/zen/sso` looked up the local account by `username OR alias` and, if `gun_pub` was unset, silently linked that account to the incoming Zen pubkey — so a FID login whose derived username collided with an existing, unrelated local account (or its alias) took over that account's role, including curator/admin. New FID identities also failed outright if no local account already used that exact username. Now looks up strictly by `gun_pub` (the FID identity) first; a new identity always gets a fresh `NORMAL_USER` account, and if the desired handle is taken it's registered under a unique internal username with the requested handle kept as the public alias.
+
 ## [3.11.3] - 2026-07-27
 
 ### Fixed

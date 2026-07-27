@@ -286,41 +286,44 @@ export function createZenRoutes(container: ServiceContainer): Router {
             const privateKeyPem = privateKeyObj.export({ type: "pkcs8", format: "pem" }).toString();
             const publicKeyPem = publicKeyObj.export({ type: "spki", format: "pem" }).toString();
 
-            const username = ssoToken.username;
-            let user = authService.getUserByUsername(username);
+            const desiredUsername = ssoToken.username;
+            const zenPubKey = ssoToken.zenPubKey;
+
+            // Look up by FID identity (gun_pub) first, never by username: matching on
+            // username/alias alone would let anyone log in as an unrelated existing
+            // account (possibly a curator/admin) just by picking a colliding handle.
+            let user = db.prepare(
+                "SELECT id, username, artist_id, role, is_active, gun_pub, token_version FROM admin WHERE gun_pub = ?"
+            ).get(zenPubKey) as any;
 
             let isNewUser = false;
             let userId: number;
 
-            // Register user if not exists
             if (!user) {
                 isNewUser = true;
                 const randomPassword = crypto.randomBytes(16).toString("hex");
                 const DEFAULT_QUOTA = 1024 * 1024 * 1024;
-                
-                // Register as a standard listener (NORMAL_USER) without auto-creating an artist profile
                 const role = UserRole.NORMAL_USER;
-                const created = await authService.createUser(username, randomPassword, null, DEFAULT_QUOTA, ssoToken.zenPubKey, role);
+
+                // If the desired handle is already taken by someone else, register
+                // under a unique internal username but keep the requested handle as
+                // the public alias/slug, and still map it to this FID identity.
+                const collision = authService.getUserByUsername(desiredUsername);
+                const username = collision ? `${desiredUsername}-${zenPubKey.slice(0, 6)}` : desiredUsername;
+
+                const created = await authService.createUser(username, randomPassword, null, DEFAULT_QUOTA, zenPubKey, role);
                 userId = created.id;
+                if (collision) {
+                    authService.updateUserProfile(username, { alias: desiredUsername });
+                }
                 user = authService.getUserByUsername(username);
             } else {
                 userId = user.id;
-                
-                // 1. Check if user is linked to a different Zen PubKey
-                const userGunPub = (user as any).gun_pub;
-                if (userGunPub && ssoToken.zenPubKey && userGunPub !== ssoToken.zenPubKey) {
-                    return res.status(401).json({ error: "This account is linked to a different Zen PubKey" });
-                }
 
-                // 2. Link Zen PubKey if not set yet
-                if (!userGunPub && ssoToken.zenPubKey) {
-                    db.prepare("UPDATE admin SET gun_pub = ? WHERE id = ?").run(ssoToken.zenPubKey, user.id);
-                }
-
-                // 3. Update ActivityPub keys on existing artist if present
+                // Update ActivityPub keys on existing artist if present
                 if (user.artist_id && publicKeyPem && privateKeyPem) {
                     const artist = db.prepare("SELECT public_key FROM artists WHERE id = ?").get(user.artist_id) as { public_key?: string } | undefined;
-                    if (!artist || !artist.public_key || userGunPub !== ssoToken.zenPubKey) {
+                    if (!artist || !artist.public_key) {
                         db.prepare("UPDATE artists SET public_key = ?, private_key = ? WHERE id = ?")
                           .run(publicKeyPem, privateKeyPem, user.artist_id);
                     }
@@ -335,7 +338,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
             const token = authService.generateToken({
                 userId,
                 isAdmin: user.role === 'admin' || user.role === 'root_admin',
-                username,
+                username: user.username,
                 artistId: user.artist_id,
                 role: user.role,
                 isActive: user.is_active === 1,
@@ -346,7 +349,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 success: true,
                 token,
                 expiresIn: "7d",
-                username,
+                username: user.username,
                 artistId: user.artist_id,
                 role: user.role,
                 isNewUser
