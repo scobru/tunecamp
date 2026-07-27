@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.11.3] - 2026-07-27
+
+### Fixed
+- **Private-library tracks leaking into "Jump back in" for unauthorized viewers.** `recentlyPlayed` is persisted to `localStorage` (`usePlayerStore`) and survives logout/account switches on the same browser, so a previous privileged session's private plays stayed visible to anyone using that browser afterward. `Home.tsx` now re-checks each item's `albumVisibility`/ownership against the current viewer (mirroring `VisibilityGuardian`) before rendering, and `logout()` clears `recentlyPlayed` outright.
+
 ## [3.11.2] - 2026-07-27
 
 ### Fixed
