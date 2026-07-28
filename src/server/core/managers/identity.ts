@@ -101,12 +101,5 @@ updateSubscription(userId: number, status: string, expiresAt: string): void {
             db.prepare("UPDATE fid_registry SET verified = 1 WHERE id = ?").run(id);
         },
 
-        // FID WebAuthn SSO - trust-on-first-use credentialId -> public key binding
-        getFidWebauthnKey(credentialId: string): string | undefined {
-            return (db.prepare("SELECT public_key_pem FROM fid_webauthn_credentials WHERE credential_id = ?").get(credentialId) as any)?.public_key_pem;
-        },
-        registerFidWebauthnKey(credentialId: string, publicKeyPem: string): void {
-            db.prepare("INSERT OR IGNORE INTO fid_webauthn_credentials (credential_id, public_key_pem) VALUES (?, ?)").run(credentialId, publicKeyPem);
-        },
     };
 }

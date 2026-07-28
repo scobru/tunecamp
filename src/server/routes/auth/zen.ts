@@ -336,28 +336,10 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 return res.status(400).json({ error: "Missing ssoToken or apSeed payload" });
             }
 
-            // For WebAuthn, never trust the publicKeyPem embedded in the token itself
-            // (client-supplied, forgeable) — verify against the key we stored the
-            // first time this credentialId was seen (trust-on-first-use).
-            let trustedWebauthnKey: string | undefined;
-            let isFirstWebauthnSighting = false;
-            if (ssoToken.masterKeySource?.type === 'webauthn') {
-                trustedWebauthnKey = database.getFidWebauthnKey(ssoToken.masterKeySource.credentialId);
-                if (!trustedWebauthnKey) {
-                    // Nothing pinned yet for this credentialId, so the only key available is
-                    // the one the token declares. validateSsoToken refuses to make that choice
-                    // implicitly (it would let anyone self-sign), so we make it here and
-                    // explicitly: the assertion still has to verify against that key, proving
-                    // the caller holds the private half, and the key is pinned below.
-                    isFirstWebauthnSighting = true;
-                    trustedWebauthnKey = ssoToken.masterKeySource.publicKeyPem;
-                }
-            }
-
             // Verify SSO token using FidSsoHandler from fid package
             let validation;
             try {
-                validation = await ssoHandler.validateSsoToken(ssoToken, undefined, trustedWebauthnKey);
+                validation = await ssoHandler.validateSsoToken(ssoToken);
             } catch (e) {
                 // Handle buffer length mismatch in older fid package (fixed in f75135d)
                 if (e instanceof RangeError && e.message.includes("Input buffers must have the same byte length")) {
@@ -370,12 +352,6 @@ export function createZenRoutes(container: ServiceContainer): Router {
             if (!validation.valid) {
                 const status = validation.error?.includes("expired") ? 401 : 400;
                 return res.status(status).json({ error: validation.error });
-            }
-
-            // First successful login for this credentialId: pin its public key so
-            // future /sso calls above verify against it instead of the token's own claim.
-            if (isFirstWebauthnSighting) {
-                database.registerFidWebauthnKey(ssoToken.masterKeySource.credentialId, ssoToken.masterKeySource.publicKeyPem);
             }
 
             // Derive Ed25519 keypair from apSeed (Zero-Knowledge Proof of Master Key)
@@ -399,12 +375,9 @@ export function createZenRoutes(container: ServiceContainer): Router {
             const publicKeyPem = publicKeyObj.export({ type: "spki", format: "pem" }).toString();
 
             const desiredUsername = ssoToken.username;
-            // Stable per-source identity key stored in zen_pub: Zen SEA uses the raw
-            // pubKey, WebAuthn uses its credentialId (ssoToken.zenPubKey is always ''
-            // for WebAuthn tokens, so it can't be used for lookup/storage there).
-            const zenPubKey = ssoToken.masterKeySource?.type === 'webauthn'
-                ? `webauthn:${ssoToken.masterKeySource.credentialId}`
-                : ssoToken.zenPubKey;
+            // Stable identity key stored in zen_pub: the Zen SEA secp256k1 public key.
+            // It is the same on every instance, which is what makes the identity portable.
+            const zenPubKey = ssoToken.zenPubKey;
 
             // Look up by FID identity (zen_pub) first, never by username: matching on
             // username/alias alone would let anyone log in as an unrelated existing
