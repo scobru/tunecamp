@@ -23,6 +23,19 @@ export interface User {
     can_peer?: number;
 }
 
+export interface FidRegistry {
+    id: number;
+    user_id: number;
+    instance_domain: string;
+    artist_id: number | null;
+    artist_name: string | null;
+    artist_slug: string | null;
+    public_key: string | null;
+    passport_signature: string | null;
+    linked_at: string;
+    verified: number;
+}
+
 export interface Artist {
     id: number;
     name: string;
@@ -449,6 +462,33 @@ updateSubscription(userId: number, status: string, expiresAt: string): void;
 
     // Phase 4: ActivityPub user keys
     updateUserApKeys(userId: number, pubKey: string, privKey: string): void;
+
+    // FID Registry - Cross-instance artist linking
+    getFidRegistry(userId: number): FidRegistry[];
+    getFidRegistryByInstance(userId: number, instanceDomain: string): FidRegistry | undefined;
+    addFidRegistryEntry(entry: {
+        userId: number;
+        instanceDomain: string;
+        artistId?: number | null;
+        artistName?: string | null;
+        artistSlug?: string | null;
+        publicKey?: string | null;
+        passportSignature?: string | null;
+    }): number;
+    updateFidRegistryEntry(id: number, data: {
+        artistId?: number | null;
+        artistName?: string | null;
+        artistSlug?: string | null;
+        publicKey?: string | null;
+        passportSignature?: string | null;
+        verified?: number;
+    }): void;
+    deleteFidRegistryEntry(id: number): void;
+    verifyFidRegistryEntry(id: number): void;
+
+    // FID WebAuthn SSO - trust-on-first-use credentialId -> public key binding
+    getFidWebauthnKey(credentialId: string): string | undefined;
+    registerFidWebauthnKey(credentialId: string, publicKeyPem: string): void;
 }
 
 export interface LibraryManager {

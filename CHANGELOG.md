@@ -2,6 +2,56 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.12.0] - 2026-07-28
+
+### Added
+
+- **SSO code exchange — the ActivityPub seed no longer travels through the browser.** The portal now POSTs `{ ssoToken, apSeed, mode: "code" }` straight to `POST /api/auth/zen/sso` and receives only a one-time code (2 min TTL, burned on first redemption), which it appends to the callback as `?fid_code=`. The webapp trades it for its JWT on the new `POST /api/auth/zen/sso/exchange`. In code mode the response deliberately contains **no** session token: the portal is a third party and must never hold a session for this instance.
+- `POST /api/auth/zen/sso` accepts cross-origin requests (`origin: '*'`, no credentials): the portal is by design a different origin and may be self-hosted, so the signed FID token is the security boundary, not the origin. `/sso/exchange` is excluded and stays under strict CORS — only the user's own webapp may redeem a code.
+- Tests covering code mode: a code is returned instead of a session, redeems exactly once, and unknown/missing codes are refused.
+
+### Changed
+
+- The hash-fragment SSO flow (`#payload=`) still works for older portals but is **deprecated**; it puts the derived ActivityPub key in the address bar. It will be removed once the deployed portals are on the code flow.
+
+### Security
+
+- **SSO payloads survived in browser history.** `SsoCallback` read `window.location.hash`, which carries the `ssoToken` and the derived ActivityPub seed, but left it in the address bar and in the history entry — so the back button, session restore, and any later reader of `location.hash` could recover it. The hash is now scrubbed with `history.replaceState` as soon as it is read.
+- **WebAuthn trust-on-first-use is now an explicit decision, not a library default.** `POST /api/auth/zen/sso` looks up the pinned key for the `credentialId` and, only when nothing is pinned yet, passes the token's own key as the reference — the assertion still has to verify against it, proving the caller holds the private half — then pins it. `fid`'s `validateSsoToken` no longer accepts a self-declared key implicitly, so the previous code path (passing `undefined` on first login) would have refused every first passkey login.
+
+### Changed
+
+- **Requires `fid` 3.0.0** (single-use SSO tokens, PRF-derived passkey identities, `masterKeySource` as an object, redirect allow-listing). Passkey users' derived ActivityPub keypair changes with this upgrade; accounts are unaffected, since they are keyed by `zen_pub = webauthn:<credentialId>`.
+
+### Added
+
+- Regression test covering the passkey pinning path: a first `/sso` call pins the credential's public key, and a second call signing the same `credentialId` with a different keypair is rejected with "does not match registered credential".
+
+## [3.11.10] - 2026-07-28
+
+### Added
+- **FID registry API** (`/api/fid-registry`, `authMiddleware.requireUser`) — CRUD for the logged-in user's cross-instance artist links (`GET /`, `GET /:instanceDomain`, `POST /`, `PATCH /:id`, `POST /:id/verify`, `DELETE /:id`), backed by the existing `fid_registry` table.
+- **FID/MCP auth middleware** (`authMiddleware.requireFidAuth`) — authenticates requests carrying an `Authorization: FID <zen_pub_key>` header (for the MCP server), via new `AuthService.getUserByZenPubKey` / `authenticateByFid`.
+
+### Security
+- **FID registry endpoints had no ownership check (IDOR).** `PATCH /api/fid-registry/:id`, `POST /api/fid-registry/:id/verify`, and `DELETE /api/fid-registry/:id` operated on any registry entry id without verifying it belonged to the requesting user, so any authenticated user could modify, verify, or delete another user's cross-instance artist link by guessing/enumerating ids. Fixed by requiring the entry to appear in `database.getFidRegistry(req.userId)` before acting on it.
+- **FID WebAuthn SSO trusted an attacker-controlled public key.** `POST /api/auth/zen/sso` verified the WebAuthn signature against `masterKeySource.publicKeyPem`, which is part of the client-supplied token payload. An attacker who knew (or guessed) a victim's `credentialId` — public by nature of WebAuthn — could self-sign a token with their own keypair and log in as the account bound to that `credentialId`, since accounts are looked up by `zen_pub = webauthn:<credentialId>` with no username check. Fixed with trust-on-first-use: the public key is now pinned to `credentialId` in a new `fid_webauthn_credentials` table on first login, and every subsequent `/sso` call verifies against the stored key via `fid`'s new `validateSsoToken(token, maxAgeMs, trustedWebauthnKey)` parameter, ignoring the token's self-declared key.
+
+## [3.11.9] - 2026-07-27
+
+### Fixed
+- **`npm ci` failing in CI (`Missing: @types/react@18.3.31`, `@types/prop-types@15.7.15`) after the 3.11.8 vite fix.** `@docsearch/react` (pulled in transitively by `vitepress`) declares `@types/react`/`react`/`react-dom` as *optional* peers, and npm's optional-peer resolution isn't deterministic across npm major versions — regenerating `package-lock.json` with local npm 11 silently dropped that nested `@types/react` copy, which `npm ci` (running npm ~10.9 in CI) then flagged as inconsistent. Pinned `"@docsearch/react": { "@types/react": "18.3.31" }` in `overrides` so the nested copy is always included, and regenerated `package-lock.json` with npm 10.9.2 (matching CI's Node 22) so the resolved tree matches what CI actually validates.
+
+## [3.11.8] - 2026-07-27
+
+### Fixed
+- **`webapp` build failing with `TS2769: No overload matches call` on `PluginOption`.** `vitepress` (root devDependency) hard-pins `vite@^5.4.14`, which npm hoisted to root `node_modules`. `@vitejs/plugin-react` (used in `webapp/vite.config.ts`) resolved that old v5 `Plugin` type while `vitest`'s own nested `vite@7.x` copy gave `defineConfig`/`PluginOption` a structurally different v7 type, so `tsc` saw two incompatible `Plugin` types colliding in the same config. Pinned `"vite": "^7.3.1"` at the root and ran `npm dedupe`; `vitepress` keeps its own isolated `vite@5.4.21` copy while everything else shares one root `vite@7.x`.
+
+## [3.11.7] - 2026-07-27
+
+### Fixed
+- **FID/Zen SSO and Instance Linking never actually verified any cryptographic signature.** `fid` v1.x's `consumeChallenge`/`validateSsoToken` never checked a real Zen SEA signature at all (the "signature" was either absent or an unverifiable HMAC keyed by the signer's own private key), meaning anyone who knew a target's `zenPubKey` could impersonate them through `POST /api/auth/zen/link` or `POST /api/auth/zen/sso`. Upgraded to `fid` v2.0.1, which performs real secp256k1 signature verification (backed by `scobru/zen`). `zen.ts`'s `/link` route now requires and verifies `seaSignature` against the submitted `zenPubKey` before consuming the challenge nonce, and `/sso` awaits the now-async `validateSsoToken` (previously un-awaited, which would have made every SSO login fail outright against the new async API).
+
 ## [3.11.6] - 2026-07-27
 
 ### Fixed

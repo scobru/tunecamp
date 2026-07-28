@@ -1,7 +1,7 @@
 declare const __APP_VERSION__: string;
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Save, CheckCircle2, Palette, Cog, Layout, Wallet, Shield, OctagonAlert, Eye, EyeOff, Copy, Trash2, RotateCcw, Scale } from "lucide-react";
+import { Save, CheckCircle2, Palette, Cog, Layout, Wallet, Shield, OctagonAlert, Trash2, RotateCcw, Scale } from "lucide-react";
 import type { SiteSettings } from "../../types";
 import { useWalletStore } from "../../stores/useWalletStore";
 import { TuneCampFactory, TuneCampCheckout } from "shogun-contracts-sdk";
@@ -10,7 +10,7 @@ import { applyThemeFont } from "../../utils/themeFont";
 export const AdminSettingsPanel = () => {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [loading, setLoading] = useState(false);
-  const [subTab, setSubTab] = useState<"general" | "features" | "branding" | "payments" | "legal" | "security">("general");
+  const [subTab, setSubTab] = useState<"general" | "features" | "branding" | "payments" | "legal">("general");
   const [message, setMessage] = useState("");
   const [bgFile, setBgFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -22,16 +22,6 @@ export const AdminSettingsPanel = () => {
 
   const [isCheckingOnChain, setIsCheckingOnChain] = useState(false);
   const [hasOnChainInstance, setHasOnChainInstance] = useState(false);
-
-  const [showSecret, setShowSecret] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const handleCopySecret = () => {
-    if (!settings?.jwtSecret) return;
-    navigator.clipboard.writeText(settings.jwtSecret);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleDeploy = async () => {
     if (!activeSigner || !isReady) {
@@ -227,7 +217,7 @@ export const AdminSettingsPanel = () => {
     { id: "branding", label: "Branding & Theme", icon: Palette },
     { id: "payments", label: "Payments & Web3", icon: Wallet },
     { id: "legal", label: "Legal Pages", icon: Scale },
-    { id: "security", label: "Security & Keys", icon: Shield },
+
   ];
 
   const isLiveEnabled = settings.hideLive !== true && settings.hideLive !== "true";
@@ -235,6 +225,7 @@ export const AdminSettingsPanel = () => {
   const isSocialEnabled = settings.hideSocial !== true && settings.hideSocial !== "true";
   const isNetworkEnabled = settings.hideNetwork !== true && settings.hideNetwork !== "true";
   const isDigEnabled = settings.hideDig !== true && settings.hideDig !== "true";
+  const isDjEnabled = settings.hideDj !== true && settings.hideDj !== "true";
   const isSamplesEnabled = settings.hideSamples !== true && settings.hideSamples !== "true";
 
   return (
@@ -511,6 +502,21 @@ export const AdminSettingsPanel = () => {
                     className="toggle toggle-primary toggle-md shrink-0 ml-4"
                     checked={isNetworkEnabled}
                     onChange={(e) => setSettings({ ...settings, hideNetwork: !e.target.checked })}
+                  />
+                </label>
+              </div>
+
+              <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
+                <label className="label cursor-pointer justify-between">
+                  <div>
+                    <span className="label-text font-bold">Show DJ Booth</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Allow DJs to start live sets and display the "DJ" section in navigation.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    checked={isDjEnabled}
+                    onChange={(e) => setSettings({ ...settings, hideDj: !e.target.checked })}
                   />
                 </label>
               </div>
@@ -1231,51 +1237,7 @@ export const AdminSettingsPanel = () => {
             </div>
           )}
 
-          {/* Security & System Keys */}
-          {subTab === "security" && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="flex items-center gap-2 mb-4 text-error/80 border-b border-base-content/5 pb-2">
-                <Shield size={20} />
-                <h4 className="font-bold text-base tracking-normal">Security & System Keys</h4>
-              </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-medium text-sm">Server Master Key (JWT Secret)</span>
-                </label>
-                <div className="flex gap-2 items-center">
-                  <input
-                    type={showSecret ? "text" : "password"}
-                    readOnly
-                    className="input input-bordered bg-base-300/50 font-mono text-xs flex-1 cursor-default select-all"
-                    value={settings.jwtSecret || "Not configured or restricted"}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-square btn-outline btn-sm"
-                    onClick={() => setShowSecret(!showSecret)}
-                    title={showSecret ? "Hide secret" : "Reveal secret"}
-                  >
-                    {showSecret ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-square btn-outline btn-sm"
-                    onClick={handleCopySecret}
-                    title="Copy to clipboard"
-                    disabled={!settings.jwtSecret}
-                  >
-                    {copied ? <CheckCircle2 size={16} className="text-success" /> : <Copy size={16} />}
-                  </button>
-                </div>
-                <label className="label">
-                  <span className="label-text-alt text-error/80 text-[11px] flex items-center gap-1 font-medium mt-1">
-                    <OctagonAlert size={12} />
-                    WARNING: This is the server's master cryptographic key. Keep it secret and secure. It is used to derive user wallets.
-                  </span>
-                </label>
-              </div>
-            </div>
-          )}
+
         </div>
       </div>
 

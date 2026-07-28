@@ -71,6 +71,21 @@ export function createApp(config: ServerConfig): AppSetupResult {
     app.use('/api/auth/zen/user', publicFederationCors);
     app.use('/api/auth/zen/verify', publicFederationCors);
 
+    // POST /api/auth/zen/sso is called by the FID identity portal, which is by design a
+    // different origin (and may be one the user self-hosts), so the origin cannot be the
+    // security boundary here — the signed SSO token is. The request carries no cookies and,
+    // in code mode, hands the portal nothing but a one-time code. /sso/exchange is
+    // deliberately excluded: only the user's own webapp may trade a code for a session.
+    const ssoPortalCors = cors({ origin: '*', credentials: false, methods: ['POST', 'OPTIONS'] });
+    app.use('/api/auth/zen/sso', (req, res, next) => {
+        if (req.path !== '/' || !!req.headers.cookie || !!req.headers.authorization) return next();
+        ssoPortalCors(req, res, (err?: any) => {
+            if (err) return next(err);
+            res.locals.skipStrictCors = true;
+            next();
+        });
+    });
+
     app.use((req, res, next) => {
         if (res.locals.skipStrictCors) {
             return next();

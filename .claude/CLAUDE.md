@@ -31,14 +31,18 @@
 - Dedup by `file_path` via `mergeTracks` is fine; filesystem reorganization is not.
 
 ### ZEN / Gun.js
-- **ZEN has been fully removed** (PR #370, 2026-06-15). Do not re-import `zen`, `zendb.service`, `zen.worker`, or `gun`.
-- Instance discovery now uses **federated HTTP** (NodeInfo `/.well-known/nodeinfo`, `/peers` endpoint, gossip crawler).
-- Future plan (Phase C, not yet started): re-add ZEN scoped only to ephemeral presence ("who is listening now") and real-time collaborative playlists — but not for auth, discovery, or social.
-- The main thread must never import ZEN. Any future ZEN operations go through a worker_thread RPC.
+- **The old ZEN P2P graph (`zendb.service`, `zen.worker`, `gun`) is fully removed** (PR #370, 2026-06-15) and must not be reimported.
+- Instance discovery uses **federated HTTP** (NodeInfo `/.well-known/nodeinfo`, `/peers` endpoint, gossip crawler).
+- **ZEN SEA / WebAuthn identity was reintroduced via the `fid` package** for cross-instance SSO and portable cryptographic identity — see Federation & Auth below. This is a crypto identity layer, not the old P2P graph database.
+- The main thread must never import the old ZEN P2P graph directly. Ephemeral presence ("who is listening now") and real-time collaborative playlists over P2P are still not implemented — any future work there goes through a worker_thread RPC.
 
 ### Federation & Auth
-- Auth is **username + password + JWT, per-instance**. No cross-instance SSO, no portable cryptographic identity.
-- ActivityPub federates interactions, not logins (Mastodon/Funkwhale model).
+- Auth is **username + password + JWT, per-instance, plus optional FID SSO**.
+- FID SSO (`POST /api/auth/zen/sso`, `src/server/routes/auth/zen.ts`) uses the `fid` package (`FidChallengeManager`, `FidPassportIssuer`, `FidSsoHandler`) to verify a signed SSO token and derive a deterministic Ed25519 ActivityPub keypair from a master key source — Zen SEA (secp256k1) or WebAuthn passkey. This is the portable cryptographic identity across instances.
+- Users authenticating via FID are looked up by `zen_pub`, never by username alone, so a colliding local handle can't be hijacked via SSO. For passkeys `zen_pub` is `webauthn:<credentialId>`.
+- **A WebAuthn SSO token's own `publicKeyPem` is never a trust anchor.** The key is pinned to its `credentialId` in `fid_webauthn_credentials` on first login (trust-on-first-use) and every later `/sso` call verifies against the stored key. Passing `undefined` as `trustedWebauthnKey` makes `validateSsoToken` fail closed — the first-sighting case must be decided explicitly in `zen.ts`, not left to the library.
+- SSO tokens are single-use (nonce burned by `fid`'s `FidReplayStore`) and passkey identities derive from the WebAuthn PRF secret, never from public key material. The `apSeed` in the SSO payload is the domain-scoped ActivityPub key the instance legitimately needs; the user's master secret never leaves their browser.
+- ActivityPub federates interactions, not logins for non-FID accounts (Mastodon/Funkwhale model).
 - Transactions (purchases/collections) are local to the artist's instance.
 - RSS/Atom feeds can be followed: stored as `remote_actors` with `type='rss'`; items as `remote_content`.
 

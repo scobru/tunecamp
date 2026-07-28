@@ -13,8 +13,34 @@ export const SsoCallback = () => {
     useEffect(() => {
         const handleCallback = async () => {
             try {
-                // The global portal sets the payload in the URL hash fragment to prevent leakage
+                // Preferred flow: the portal already POSTed the SSO token and the derived
+                // ActivityPub seed to this instance and left only a one-time code here, so no
+                // key material ever touches the URL. Scrub the code as soon as it is read —
+                // it is single-use, but it should not linger in history either.
+                const search = new URLSearchParams(window.location.search);
+                const code = search.get('fid_code');
                 const hash = window.location.hash;
+                if (code || hash) {
+                    search.delete('fid_code');
+                    const query = search.toString();
+                    window.history.replaceState(null, '', window.location.pathname + (query ? `?${query}` : ''));
+                }
+
+                if (code) {
+                    const exchanged = await (API as any).exchangeSsoCode(code);
+                    if (!exchanged.success || !exchanged.token) {
+                        throw new Error("Risposta invalida dal server");
+                    }
+                    API.setToken(exchanged.token);
+                    await checkAuth();
+                    notify.success(exchanged.isNewUser ? "Benvenuto! Identità FID creata con successo." : "Accesso effettuato con FID!");
+                    navigate('/', { replace: true });
+                    return;
+                }
+
+                // Legacy flow: older portals put { ssoToken, apSeed } in the hash fragment.
+                // The fragment is never sent to a server and never appears in a Referer, but it
+                // does survive in the back button and in session restore, hence the scrub above.
                 let ssoToken: any = null;
                 let apSeed: string = '';
 

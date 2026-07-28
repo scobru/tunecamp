@@ -54,6 +54,8 @@ export interface AuthService {
     addPurchasedTracks(userId: number, count: number, currentEffectiveQuota: number): void;
     getAdminById(id: number): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean; can_peer: number } | undefined;
     getUserByUsername(username: string): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean; can_peer: number } | undefined;
+    getUserByZenPubKey(zenPubKey: string): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean; can_peer: number } | undefined;
+    authenticateByFid(zenPubKey: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number; role: UserRole; isActive: boolean; tokenVersion: number } | false>;
     listAdmins(): { id: number; username: string; artist_id: number | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; can_peer: number }[];
     deleteAdmin(id: number): void;
     deleteUsersBatch(ids: number[]): void;
@@ -104,7 +106,8 @@ export interface AuthService {
     getPublicProfileEnabled(userId: number): boolean;
     /** Sets the user's public-profile opt-in flag. */
     setPublicProfileEnabled(userId: number, enabled: boolean): void;
-}
+
+    }
 
 export function createAuthService(
     db: Database,
@@ -479,6 +482,35 @@ export function createAuthService(
             return false;
         },
 
+        async authenticateByFid(zenPubKey: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number; role: UserRole; isActive: boolean; tokenVersion: number } | false> {
+            const user = db.prepare(`
+                SELECT a.id, a.username, a.artist_id, a.role, a.is_active, a.token_version, a.can_peer, ar.name as artist_name
+                FROM admin a
+                LEFT JOIN artists ar ON a.artist_id = ar.id
+                WHERE a.zen_pub = ?
+            `).get(zenPubKey) as any;
+
+            if (!user) {
+                return false;
+            }
+
+            if (!user.is_active) {
+                return false;
+            }
+
+            const userRole = user.role || 'admin';
+
+            return {
+                success: true,
+                id: user.id,
+                isAdmin: VisibilityGuardian.isAdminRole(userRole),
+                artistId: user.artist_id,
+                role: userRole,
+                isActive: user.is_active === 1,
+                tokenVersion: user.token_version,
+            };
+        },
+
         async createAdmin(username: string, password: string, artistId: number | null = null, role: UserRole = UserRole.ADMIN): Promise<{ id: number }> {
             const hash = await this.hashPassword(password);
             const result = db.prepare("INSERT INTO admin (username, password_hash, artist_id, role, storage_quota, is_active) VALUES (?, ?, ?, ?, 0, 1)").run(username, hash, artistId, role);
@@ -564,6 +596,25 @@ export function createAuthService(
                 LEFT JOIN artists ar ON a.artist_id = ar.id
                 WHERE a.username = ? COLLATE NOCASE OR a.alias = ? COLLATE NOCASE
             `).get(username, username) as any;
+
+            if (!row) {
+                return undefined;
+            }
+
+            return {
+                ...row,
+                role: row.role || 'admin',
+                is_root: row.id === 1
+            };
+        },
+
+        getUserByZenPubKey(zenPubKey: string): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean; can_peer: number } | undefined {
+            const row = db.prepare(`
+                SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, a.can_peer, ar.name as artist_name
+                FROM admin a
+                LEFT JOIN artists ar ON a.artist_id = ar.id
+                WHERE a.zen_pub = ?
+            `).get(zenPubKey) as any;
 
             if (!row) {
                 return undefined;

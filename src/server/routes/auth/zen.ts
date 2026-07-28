@@ -9,6 +9,45 @@ import crypto from "node:crypto";
 // Global FID challenge manager and passport issuer instances
 const fidChallengeManager = new FidChallengeManager(10, 5);
 
+/**
+ * One-time authorization codes for the SSO code-exchange flow.
+ *
+ * The portal POSTs the SSO token and the derived ActivityPub seed straight to this
+ * server and gets back a short-lived code instead of a session. Only the code travels
+ * through the browser's address bar, so the seed never lands in history, in a Referer,
+ * or in anything that reads `location`. The webapp then trades the code for its JWT.
+ *
+ * ponytail: in-process Map — matches the single-process SQLite deployment this instance
+ * targets. Move to the DB (or Redis) if the server is ever run in cluster mode, otherwise
+ * a code minted by one worker is unredeemable on another.
+ */
+const SSO_CODE_TTL_MS = 2 * 60 * 1000;
+const ssoCodes = new Map<string, { session: Record<string, unknown>; expiresAt: number }>();
+
+function mintSsoCode(session: Record<string, unknown>): string {
+    const code = crypto.randomBytes(32).toString("base64url");
+    ssoCodes.set(code, { session, expiresAt: Date.now() + SSO_CODE_TTL_MS });
+    return code;
+}
+
+/** Redeems a code. Returns undefined if unknown, already used, or expired — codes are single-use. */
+function redeemSsoCode(code: string): Record<string, unknown> | undefined {
+    const entry = ssoCodes.get(code);
+    if (!entry) return undefined;
+    ssoCodes.delete(code);
+    if (Date.now() > entry.expiresAt) return undefined;
+    return entry.session;
+}
+
+// Codes are removed on redemption; this only clears the ones nobody ever came back for.
+const ssoCodeSweeper = setInterval(() => {
+    const now = Date.now();
+    for (const [code, entry] of ssoCodes) {
+        if (now > entry.expiresAt) ssoCodes.delete(code);
+    }
+}, SSO_CODE_TTL_MS);
+ssoCodeSweeper.unref?.();
+
 export function createZenRoutes(container: ServiceContainer): Router {
     const authMiddleware = container.authMiddleware;
     const authService = container.authService;
@@ -54,19 +93,19 @@ export function createZenRoutes(container: ServiceContainer): Router {
             return res.status(401).json({ error: "Authentication required" });
         }
 
-        const { zenPubKey, challenge } = req.body;
+        const { zenPubKey, challenge, seaSignature } = req.body;
 
-        if (!zenPubKey || !challenge || !challenge.nonce || !challenge.instanceDomain) {
-            return res.status(400).json({ error: "Missing zenPubKey, challenge, or nonce" });
+        if (!zenPubKey || !challenge || !challenge.nonce || !challenge.instanceDomain || !seaSignature) {
+            return res.status(400).json({ error: "Missing zenPubKey, challenge, nonce, or seaSignature" });
         }
 
         const profile = authService.getUserProfile?.(username);
         const displayUsername = profile?.alias || username;
 
-        // Consume one-time challenge nonce via FID Challenge Manager
-        const isValid = fidChallengeManager.consumeChallenge(displayUsername, challenge.nonce);
+        // Verify the Zen SEA signature over the challenge and consume the one-time nonce
+        const isValid = await fidChallengeManager.consumeChallenge(displayUsername, challenge.nonce, seaSignature, zenPubKey);
         if (!isValid) {
-            return res.status(400).json({ error: "Invalid or expired challenge nonce" });
+            return res.status(400).json({ error: "Invalid signature, or invalid/expired challenge nonce" });
         }
 
         const instanceDomain = req.hostname || (config as any).host || "localhost";
@@ -210,6 +249,29 @@ export function createZenRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * GET /api/auth/zen/instances
+     * Returns the FID registry entries for the authenticated user.
+     * Used by the global portal to discover which instances a user has artists on.
+     */
+    router.get("/instances", authMiddleware.requireUser, async (req: AuthenticatedRequest, res) => {
+        const username = req.username;
+        if (!username) {
+            return res.status(401).json({ error: "Authentication required" });
+        }
+
+        const user = authService.getUserByUsername(username);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const entries = database.getFidRegistry(user.id);
+        return res.json({
+            success: true,
+            instances: entries
+        });
+    });
+
+    /**
      * POST /api/auth/zen/verify
      * Verifies an Instance Passport JSON to cryptographically prove it was issued by this instance.
      * Accessible via public CORS so the global portal can call it.
@@ -248,10 +310,28 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 return res.status(400).json({ error: "Missing ssoToken or apSeed payload" });
             }
 
+            // For WebAuthn, never trust the publicKeyPem embedded in the token itself
+            // (client-supplied, forgeable) — verify against the key we stored the
+            // first time this credentialId was seen (trust-on-first-use).
+            let trustedWebauthnKey: string | undefined;
+            let isFirstWebauthnSighting = false;
+            if (ssoToken.masterKeySource?.type === 'webauthn') {
+                trustedWebauthnKey = database.getFidWebauthnKey(ssoToken.masterKeySource.credentialId);
+                if (!trustedWebauthnKey) {
+                    // Nothing pinned yet for this credentialId, so the only key available is
+                    // the one the token declares. validateSsoToken refuses to make that choice
+                    // implicitly (it would let anyone self-sign), so we make it here and
+                    // explicitly: the assertion still has to verify against that key, proving
+                    // the caller holds the private half, and the key is pinned below.
+                    isFirstWebauthnSighting = true;
+                    trustedWebauthnKey = ssoToken.masterKeySource.publicKeyPem;
+                }
+            }
+
             // Verify SSO token using FidSsoHandler from fid package
             let validation;
             try {
-                validation = ssoHandler.validateSsoToken(ssoToken);
+                validation = await ssoHandler.validateSsoToken(ssoToken, undefined, trustedWebauthnKey);
             } catch (e) {
                 // Handle buffer length mismatch in older fid package (fixed in f75135d)
                 if (e instanceof RangeError && e.message.includes("Input buffers must have the same byte length")) {
@@ -264,6 +344,12 @@ export function createZenRoutes(container: ServiceContainer): Router {
             if (!validation.valid) {
                 const status = validation.error?.includes("expired") ? 401 : 400;
                 return res.status(status).json({ error: validation.error });
+            }
+
+            // First successful login for this credentialId: pin its public key so
+            // future /sso calls above verify against it instead of the token's own claim.
+            if (isFirstWebauthnSighting) {
+                database.registerFidWebauthnKey(ssoToken.masterKeySource.credentialId, ssoToken.masterKeySource.publicKeyPem);
             }
 
             // Derive Ed25519 keypair from apSeed (Zero-Knowledge Proof of Master Key)
@@ -287,7 +373,12 @@ export function createZenRoutes(container: ServiceContainer): Router {
             const publicKeyPem = publicKeyObj.export({ type: "spki", format: "pem" }).toString();
 
             const desiredUsername = ssoToken.username;
-            const zenPubKey = ssoToken.zenPubKey;
+            // Stable per-source identity key stored in zen_pub: Zen SEA uses the raw
+            // pubKey, WebAuthn uses its credentialId (ssoToken.zenPubKey is always ''
+            // for WebAuthn tokens, so it can't be used for lookup/storage there).
+            const zenPubKey = ssoToken.masterKeySource?.type === 'webauthn'
+                ? `webauthn:${ssoToken.masterKeySource.credentialId}`
+                : ssoToken.zenPubKey;
 
             // Look up by FID identity (zen_pub) first, never by username: matching on
             // username/alias alone would let anyone log in as an unrelated existing
@@ -345,7 +436,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 tokenVersion: (user as any).token_version ?? 0
             });
 
-            return res.json({
+            const session = {
                 success: true,
                 token,
                 expiresIn: "7d",
@@ -353,11 +444,39 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 artistId: user.artist_id,
                 role: user.role,
                 isNewUser
-            });
+            };
+
+            // Code mode: the caller is the identity portal, a third party that must never
+            // hold a session for this instance. Hand back only a one-time code, which the
+            // user's own browser trades for the JWT on /sso/exchange.
+            if (req.body?.mode === "code") {
+                return res.json({ success: true, code: mintSsoCode(session), expiresIn: SSO_CODE_TTL_MS / 1000 });
+            }
+
+            return res.json(session);
         } catch (error: any) {
             console.error("SSO Login error:", error.message, error.stack);
             res.status(500).json({ error: "SSO Login failed" });
         }
+    });
+
+    /**
+     * POST /api/auth/zen/sso/exchange
+     * Trades a one-time code minted by POST /sso (mode: "code") for the session JWT.
+     * Codes expire after 2 minutes and are burned on the first redemption.
+     */
+    router.post("/sso/exchange", rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }), (req, res) => {
+        const { code } = req.body ?? {};
+        if (typeof code !== "string" || !code) {
+            return res.status(400).json({ error: "Missing code" });
+        }
+
+        const session = redeemSsoCode(code);
+        if (!session) {
+            return res.status(400).json({ error: "Invalid, expired or already used code" });
+        }
+
+        return res.json(session);
     });
 
     return router;

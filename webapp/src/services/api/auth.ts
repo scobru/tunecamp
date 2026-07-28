@@ -44,6 +44,10 @@ export const authApi = {
     loginWithSso: (ssoToken: any, apSeed: string) =>
         handleResponse(api.post<{ success: boolean; token: string; isNewUser: boolean; username: string }>('auth/zen/sso', { ssoToken, apSeed })),
 
+    /** Trades the one-time code left by the portal in the callback URL for the session JWT. */
+    exchangeSsoCode: (code: string) =>
+        handleResponse(api.post<{ success: boolean; token: string; isNewUser: boolean; username: string }>('auth/zen/sso/exchange', { code })),
+
     // --- API Tokens ---
     getApiTokens: () => handleResponse(api.get<any[]>('users/me/api-tokens')),
     createApiToken: (name: string) => handleResponse(api.post<{ token: string }>('users/me/api-tokens', { name })),

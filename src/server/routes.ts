@@ -16,6 +16,7 @@ import { createPlaylistsRoutes } from "./routes/library/playlists.js";
 import { createUploadRoutes } from "./routes/library/upload.js";
 import { createReleaseRouter } from "./routes/library/releases.js";
 import { createImportRoutes } from "./routes/library/import.js";
+import { createFidRegistryRoutes } from "./routes/library/fid-registry.js";
 import { createStatsRoutes } from "./routes/admin/stats.js";
 import { createUsersRoutes } from "./routes/auth/users.js";
 import { createZenRoutes } from "./routes/auth/zen.js";
@@ -94,6 +95,7 @@ export function registerRoutes(app: express.Express, server: http.Server, contai
     app.use("/api/dig", authMiddleware.requireUser, requireModuleEnabled(container, "hideDig"), createDigRoutes(container));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(container));
     app.use("/api/collab", authMiddleware.requireUser, createCollabRoutes(container));
+    app.use("/api/fid-registry", authMiddleware.requireUser, createFidRegistryRoutes(container));
 
     if (hasGDrive) {
         app.use("/api/storage", createStorageRouter(container));

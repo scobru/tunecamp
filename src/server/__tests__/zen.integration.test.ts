@@ -3,6 +3,8 @@ import request from "supertest";
 import { createZenRoutes } from "../routes/auth/zen.js";
 import { jest } from "@jest/globals";
 import crypto from "node:crypto";
+import { generateKeyPair, signPayload } from "fid";
+import type { FidKeyPair } from "fid";
 
 describe("Zen SEA Integration Routes", () => {
     let app: express.Express;
@@ -30,16 +32,35 @@ describe("Zen SEA Integration Routes", () => {
             generateToken: jest.fn()
         },
         database: {
-            prepare: jest.fn()
+            prepare: jest.fn(),
+            getFidWebauthnKey: (credentialId: string) => webauthnKeys.get(credentialId),
+            registerFidWebauthnKey: (credentialId: string, publicKeyPem: string) => {
+                if (!webauthnKeys.has(credentialId)) webauthnKeys.set(credentialId, publicKeyPem);
+            }
         },
         config: { jwtSecret: "test-secret", host: "test.tunecamp.net" }
     };
 
     // Keyed by username, mirrors the `admin` table rows the real DB would hold.
     let usersByUsername: Record<string, any> = {};
+    // Stands in for the fid_webauthn_credentials table (credentialId -> pinned public key PEM).
+    const webauthnKeys = new Map<string, string>();
     let nextUserId = 100;
 
+    // Real Zen SEA keypairs so signature verification in the routes under test
+    // succeeds against genuine crypto rather than fake/hardcoded strings.
+    let baseKeys: FidKeyPair;
+    let altKeys1: FidKeyPair;
+    let altKeys2: FidKeyPair;
+
+    beforeAll(async () => {
+        baseKeys = await generateKeyPair();
+        altKeys1 = await generateKeyPair();
+        altKeys2 = await generateKeyPair();
+    });
+
     beforeEach(() => {
+        webauthnKeys.clear();
         app = express();
         app.use(express.json());
         app.use("/api/auth/zen", createZenRoutes(mockContainer));
@@ -52,7 +73,7 @@ describe("Zen SEA Integration Routes", () => {
                 artist_name: "Scobru Artist",
                 is_active: 1,
                 created_at: "2026-07-25T00:00:00Z",
-                zen_pub: "0DGULtYbQYzYDlRUddrRNoS7NrEzGIZAsQrXSKQYThMX1",
+                zen_pub: baseKeys.pub,
                 role: "admin",
                 token_version: 0
             }
@@ -110,7 +131,7 @@ describe("Zen SEA Integration Routes", () => {
             });
 
         expect(res.status).toBe(400);
-        expect(res.body.error).toContain("Invalid or expired challenge nonce");
+        expect(res.body.error).toContain("invalid/expired challenge nonce");
     });
 
     test("POST /api/auth/zen/link issues Instance Passport Badge on valid nonce", async () => {
@@ -119,21 +140,23 @@ describe("Zen SEA Integration Routes", () => {
             .set("Authorization", "Bearer test-token");
 
         const challenge = challengeRes.body.challenge;
+        const linkKeys = await generateKeyPair();
+        const seaSignature = await signPayload(`scobru:${challenge.nonce}`, linkKeys.priv);
 
         const linkRes = await request(app)
             .post("/api/auth/zen/link")
             .set("Authorization", "Bearer test-token")
             .send({
-                zenPubKey: "QmZenTest123",
+                zenPubKey: linkKeys.pub,
                 challenge,
-                seaSignature: "mock_sig"
+                seaSignature
             });
 
         expect(linkRes.status).toBe(200);
         expect(linkRes.body.success).toBe(true);
         expect(linkRes.body.passport).toBeDefined();
         expect(linkRes.body.passport.localUsername).toBe("scobru");
-        expect(linkRes.body.passport.zenPubKey).toBe("QmZenTest123");
+        expect(linkRes.body.passport.zenPubKey).toBe(linkKeys.pub);
         expect(linkRes.body.passport.passportSignature).toBeDefined();
     });
 
@@ -142,18 +165,21 @@ describe("Zen SEA Integration Routes", () => {
         return crypto.randomBytes(32).toString("hex");
     }
 
-    // Helper to generate a valid SSO token
-    function validSsoToken(overrides: any = {}) {
-        return {
+    // Builds a real, verifiably-signed SSO token. `keys` picks the signing identity
+    // (defaults to the seeded `scobru` user's keypair); `overrides` adjusts other fields.
+    async function buildSsoToken(overrides: Record<string, any> = {}, keys: FidKeyPair = baseKeys) {
+        const fields = {
             clientId: "tunecamp-instance",
             instanceDomain: "sudorecords.scobrudot.dev",
             username: "scobru",
-            zenPubKey: "0DGULtYbQYzYDlRUddrRNoS7NrEzGIZAsQrXSKQYThMX1",
+            zenPubKey: keys.pub,
             issuedAt: Date.now(),
-            signature: "5db5d4a77267f7483e54f86b8ebf39918149f969d088d15c63b6c4e892b398a2",
-            nonce: "c905eda3fa4e2dee7e4f126ddd54cbbf",
+            nonce: crypto.randomBytes(16).toString("hex"),
             ...overrides
         };
+        const tokenPayload = `${fields.clientId}:${fields.instanceDomain}:${fields.username}:${fields.zenPubKey}:${fields.issuedAt}:${fields.nonce}`;
+        const signature = await signPayload(tokenPayload, keys.priv);
+        return { ...fields, signature };
     }
 
     test("POST /api/auth/zen/sso rejects missing ssoToken or apSeed", async () => {
@@ -173,25 +199,28 @@ describe("Zen SEA Integration Routes", () => {
     });
 
     test("POST /api/auth/zen/sso rejects expired token", async () => {
+        const token = await buildSsoToken({ issuedAt: Date.now() - 20 * 60 * 1000 });
         const res = await request(app)
             .post("/api/auth/zen/sso")
-            .send({ ssoToken: { ...validSsoToken(), issuedAt: Date.now() - 20 * 60 * 1000 }, apSeed: validApSeed() });
+            .send({ ssoToken: token, apSeed: validApSeed() });
         expect(res.status).toBe(401);
         expect(res.body.error).toContain("expired");
     });
 
     test("POST /api/auth/zen/sso rejects invalid apSeed length", async () => {
+        const token = await buildSsoToken();
         const res = await request(app)
             .post("/api/auth/zen/sso")
-            .send({ ssoToken: validSsoToken(), apSeed: "invalid" });
+            .send({ ssoToken: token, apSeed: "invalid" });
         expect(res.status).toBe(400);
         expect(res.body.error).toContain("apSeed");
     });
 
     test("POST /api/auth/zen/sso creates new user on valid request", async () => {
+        const token = await buildSsoToken({ username: "newlistener" }, altKeys1);
         const res = await request(app)
             .post("/api/auth/zen/sso")
-            .send({ ssoToken: validSsoToken({ username: "newlistener", zenPubKey: "brandNewZenPubKey1234567890" }), apSeed: validApSeed() });
+            .send({ ssoToken: token, apSeed: validApSeed() });
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
         expect(res.body.token).toBe("mock-jwt-token");
@@ -200,22 +229,132 @@ describe("Zen SEA Integration Routes", () => {
     });
 
     test("POST /api/auth/zen/sso registers under a unique username when the desired handle is taken, keeping it as alias", async () => {
+        const token = await buildSsoToken({ username: "scobru" }, altKeys2);
         const res = await request(app)
             .post("/api/auth/zen/sso")
-            .send({ ssoToken: validSsoToken({ username: "scobru", zenPubKey: "collidingZenPubKey0987654" }), apSeed: validApSeed() });
+            .send({ ssoToken: token, apSeed: validApSeed() });
+        const expectedUsername = `scobru-${altKeys2.pub.slice(0, 6)}`;
         expect(res.status).toBe(200);
         expect(res.body.isNewUser).toBe(true);
-        expect(res.body.username).toBe("scobru-collid");
-        expect(mockContainer.authService.updateUserProfile).toHaveBeenCalledWith("scobru-collid", { alias: "scobru" });
+        expect(res.body.username).toBe(expectedUsername);
+        expect(mockContainer.authService.updateUserProfile).toHaveBeenCalledWith(expectedUsername, { alias: "scobru" });
     });
 
     test("POST /api/auth/zen/sso logs in existing user on valid request", async () => {
+        const token = await buildSsoToken();
         const res = await request(app)
             .post("/api/auth/zen/sso")
-            .send({ ssoToken: validSsoToken(), apSeed: validApSeed() });
+            .send({ ssoToken: token, apSeed: validApSeed() });
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
         expect(res.body.username).toBe("scobru");
+    });
+
+    // Minimal raw(r||s) -> DER encoder, mirroring what a real authenticator emits.
+    function rawToDer(raw: Uint8Array): Uint8Array {
+        const half = raw.length / 2;
+        const encodeInt = (bytes: Uint8Array) => {
+            let b = bytes;
+            let i = 0;
+            while (i < b.length - 1 && b[i] === 0 && (b[i + 1] & 0x80) === 0) i++;
+            b = b.slice(i);
+            if (b[0] & 0x80) b = Uint8Array.from([0, ...b]);
+            return Uint8Array.from([0x02, b.length, ...b]);
+        };
+        const r = encodeInt(raw.slice(0, half));
+        const s = encodeInt(raw.slice(half));
+        return Uint8Array.from([0x30, r.length + s.length, ...r, ...s]);
+    }
+
+    // Builds a genuinely signed WebAuthn SSO token for `credentialId`, signed by `keyPair`.
+    async function buildWebauthnSsoToken(credentialId: string, keyPair: CryptoKey extends never ? never : any, username = "passkeyuser") {
+        const spki = Buffer.from(await crypto.subtle.exportKey("spki", keyPair.publicKey)).toString("base64");
+        const publicKeyPem = `-----BEGIN PUBLIC KEY-----\n${spki.match(/.{1,64}/g)!.join("\n")}\n-----END PUBLIC KEY-----\n`;
+
+        const fields = {
+            clientId: "tunecamp-instance",
+            instanceDomain: "sudorecords.scobrudot.dev",
+            username,
+            zenPubKey: "",
+            issuedAt: Date.now(),
+            nonce: crypto.randomBytes(16).toString("hex")
+        };
+        const tokenPayload = `${fields.clientId}:${fields.instanceDomain}:${fields.username}:${credentialId}:${fields.issuedAt}:${fields.nonce}`;
+
+        const authenticatorData = new Uint8Array(37);
+        const challenge = crypto.createHash("sha256").update(tokenPayload).digest().toString("base64url");
+        const clientDataJSON = new TextEncoder().encode(JSON.stringify({ type: "webauthn.get", challenge }));
+        const clientDataHash = new Uint8Array(await crypto.subtle.digest("SHA-256", clientDataJSON));
+        const signed = Uint8Array.from([...authenticatorData, ...clientDataHash]);
+        const rawSig = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, keyPair.privateKey, signed));
+
+        return {
+            ...fields,
+            signature: Buffer.from(rawToDer(rawSig)).toString("base64url"),
+            masterKeySource: { type: "webauthn", credentialId, publicKeyPem },
+            webauthnAssertion: {
+                authenticatorData: Buffer.from(authenticatorData).toString("base64url"),
+                clientDataJSON: Buffer.from(clientDataJSON).toString("base64url")
+            }
+        };
+    }
+
+    test("POST /api/auth/zen/sso pins a passkey on first use and refuses a different key for the same credentialId", async () => {
+        const victim = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+        const attacker = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+        const credentialId = "cred-passkey-1";
+
+        // First sighting: nothing pinned yet, so the token's own key is accepted and stored.
+        const first = await request(app)
+            .post("/api/auth/zen/sso")
+            .send({ ssoToken: await buildWebauthnSsoToken(credentialId, victim), apSeed: validApSeed() });
+        expect(first.status).toBe(200);
+        expect(first.body.success).toBe(true);
+        expect(webauthnKeys.get(credentialId)).toBeDefined();
+
+        // The attacker knows the credentialId (it travels in every token) but not the private
+        // half, so they sign with their own key and claim the victim's credential.
+        const forged = await request(app)
+            .post("/api/auth/zen/sso")
+            .send({ ssoToken: await buildWebauthnSsoToken(credentialId, attacker), apSeed: validApSeed() });
+        expect(forged.status).toBe(400);
+        expect(forged.body.error).toContain("does not match registered credential");
+    });
+
+    test("POST /api/auth/zen/sso in code mode returns a code instead of a session, redeemable exactly once", async () => {
+        const token = await buildSsoToken({ username: "codeuser" }, altKeys1);
+        const res = await request(app)
+            .post("/api/auth/zen/sso")
+            .send({ ssoToken: token, apSeed: validApSeed(), mode: "code" });
+
+        expect(res.status).toBe(200);
+        expect(res.body.code).toEqual(expect.any(String));
+        // The portal is a third party: it must never come away holding a session for this instance.
+        expect(res.body.token).toBeUndefined();
+
+        const exchanged = await request(app)
+            .post("/api/auth/zen/sso/exchange")
+            .send({ code: res.body.code });
+        expect(exchanged.status).toBe(200);
+        expect(exchanged.body.token).toBe("mock-jwt-token");
+        expect(exchanged.body.username).toBe("codeuser");
+
+        // The code travels in the callback URL, so whoever reads it afterwards must get nothing.
+        const replayed = await request(app)
+            .post("/api/auth/zen/sso/exchange")
+            .send({ code: res.body.code });
+        expect(replayed.status).toBe(400);
+        expect(replayed.body.error).toContain("already used");
+    });
+
+    test("POST /api/auth/zen/sso/exchange rejects a missing or unknown code", async () => {
+        expect((await request(app).post("/api/auth/zen/sso/exchange").send({})).status).toBe(400);
+
+        const bogus = await request(app)
+            .post("/api/auth/zen/sso/exchange")
+            .send({ code: "not-a-real-code" });
+        expect(bogus.status).toBe(400);
+        expect(bogus.body.error).toContain("Invalid");
     });
 
     test("GET /api/auth/zen/user/:username/public exports only public data", async () => {

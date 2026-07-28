@@ -408,10 +408,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
         if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) return res.status(403).json({ error: "Super Root access required" });
         try {
             const settings = identity.getAllSettings();
-            res.json({
-                ...settings,
-                jwtSecret: config.jwtSecret
-            });
+            // jwtSecret is never exposed to the client — it lives only server-side.
+            res.json(settings);
         } catch (error) {
             console.error("Error getting settings:", error);
             res.status(500).json({ error: "Failed to get settings" });
@@ -552,6 +550,9 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 settingsChanged = true;
             }
             if (publicUrl !== undefined) {
+                if (publicUrl && !/^https?:\/\/.+\..+/.test(publicUrl)) {
+                    return res.status(400).json({ error: "publicUrl must be a valid URL with protocol (e.g. https://mysite.com)" });
+                }
                 identity.setSetting("publicUrl", publicUrl);
                 settingsChanged = true;
             }
@@ -644,11 +645,17 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 }
                 identity.setSetting("trackcapTopupTracksGranted", String(tracks));
             }
-            if (soulseek_username !== undefined) {
-                identity.setSetting("soulseek_username", soulseek_username);
-            }
-            if (soulseek_password !== undefined) {
-                identity.setSetting("soulseek_password", soulseek_password);
+            if (soulseek_username !== undefined || soulseek_password !== undefined) {
+                const u = soulseek_username !== undefined ? soulseek_username : identity.getSetting("soulseek_username");
+                const p = soulseek_password !== undefined ? soulseek_password : identity.getSetting("soulseek_password");
+                if (u && !p) {
+                    return res.status(400).json({ error: "soulseek_password is required when soulseek_username is set" });
+                }
+                if (p && !u) {
+                    return res.status(400).json({ error: "soulseek_username is required when soulseek_password is set" });
+                }
+                identity.setSetting("soulseek_username", String(u || ""));
+                identity.setSetting("soulseek_password", String(p || ""));
             }
             if (stripe_secret_key !== undefined) {
                 identity.setSetting("stripe_secret_key", stripe_secret_key);
@@ -712,8 +719,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
             // Reconnect Soulseek if credentials changed (only when the plugin is enabled)
             if ((soulseek_username !== undefined || soulseek_password !== undefined) && isDownloadProviderEnabled("soulseek")) {
-                const sUsername = soulseek_username !== undefined ? soulseek_username : identity.getSetting("soulseek_username");
-                const sPassword = soulseek_password !== undefined ? soulseek_password : identity.getSetting("soulseek_password");
+                const sUsername = soulseek_username !== undefined ? soulseek_username : identity.getSetting("soulseek_username") || "";
+                const sPassword = soulseek_password !== undefined ? soulseek_password : identity.getSetting("soulseek_password") || "";
                 if (sUsername && sPassword) {
                     soulseekService?.connect(sUsername, sPassword).catch((err: any) => console.error("Failed to reconnect Soulseek:", err));
                 }
