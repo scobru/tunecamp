@@ -87,20 +87,27 @@ export function createZenRoutes(container: ServiceContainer): Router {
      * POST /api/auth/zen/link
      * Verifies the SEA signed challenge and returns an Instance Passport Badge via FID.
      */
-    router.post("/link", authMiddleware.requireUser, rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req: AuthenticatedRequest, res) => {
-        const username = req.username;
-        if (!username) {
-            return res.status(401).json({ error: "Authentication required" });
-        }
-
+    router.post("/link", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req: AuthenticatedRequest, res) => {
         const { zenPubKey, challenge, seaSignature } = req.body;
 
         if (!zenPubKey || !challenge || !challenge.nonce || !challenge.instanceDomain || !seaSignature) {
             return res.status(400).json({ error: "Missing zenPubKey, challenge, nonce, or seaSignature" });
         }
 
+        // Look up the user by zen_pub — the portal authenticates via the
+        // signed challenge, not a session cookie. This mirrors the /sso flow.
+        const user = db.prepare(
+            "SELECT id, username, artist_id, role, is_active, zen_pub, token_version FROM admin WHERE zen_pub = ?"
+        ).get(zenPubKey) as any;
+
+        if (!user) {
+            return res.status(401).json({ error: "FID identity not found" });
+        }
+
+        const username = user.username;
         const profile = authService.getUserProfile?.(username);
         const displayUsername = profile?.alias || username;
+        const instanceDomain = req.hostname || (config as any).host || "localhost";
 
         // Verify the Zen SEA signature over the challenge and consume the one-time nonce
         const isValid = await fidChallengeManager.consumeChallenge(displayUsername, challenge.nonce, seaSignature, zenPubKey);
@@ -108,7 +115,6 @@ export function createZenRoutes(container: ServiceContainer): Router {
             return res.status(400).json({ error: "Invalid signature, or invalid/expired challenge nonce" });
         }
 
-        const instanceDomain = req.hostname || (config as any).host || "localhost";
         const passport = passportIssuer.issuePassport(instanceDomain, displayUsername, zenPubKey);
 
         return res.json({
