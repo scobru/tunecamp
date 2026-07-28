@@ -107,14 +107,12 @@ describe('resolveSafePath', () => {
         expect(result?.includes(path.resolve(rootDir))).toBe(true);
     });
 
-    test('should return null when rootDir is the filesystem root and userPath is valid', () => {
-        // Since path.resolve('/', 'foo') resolves to '/foo' and path.relative('/', '/foo') resolves to 'foo'
-        // the check `!absPath.startsWith(resolvedRoot + path.sep)` evaluates to:
-        // !('/foo'.startsWith('/' + '/')) -> !('/foo'.startsWith('//')) -> !false -> true
-        // and absPath !== resolvedRoot -> '/foo' !== '/' -> true
-        // Thus, isSafePath('/', '/foo') returns false.
+    test('should resolve a valid path when rootDir is the filesystem root', () => {
+        // The expectation is computed, not hardcoded: path.resolve('/', 'foo') is '/foo' on
+        // POSIX but 'C:\foo' on Windows, where '/' resolves against the current drive. The
+        // old literal '/foo' failed on Windows even though resolveSafePath behaved correctly.
         const result = fileUtils.resolveSafePath('/', 'foo');
-        expect(result).toBe("/foo");
+        expect(result).toBe(path.resolve('/', 'foo'));
     });
 });
 

@@ -485,10 +485,6 @@ updateSubscription(userId: number, status: string, expiresAt: string): void;
     }): void;
     deleteFidRegistryEntry(id: number): void;
     verifyFidRegistryEntry(id: number): void;
-
-    // FID WebAuthn SSO - trust-on-first-use credentialId -> public key binding
-    getFidWebauthnKey(credentialId: string): string | undefined;
-    registerFidWebauthnKey(credentialId: string, publicKeyPem: string): void;
 }
 
 export interface LibraryManager {
