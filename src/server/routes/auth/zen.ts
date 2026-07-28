@@ -63,12 +63,32 @@ export function createZenRoutes(container: ServiceContainer): Router {
 
     /**
      * GET /api/auth/zen/challenge
-     * Generates a cryptographic challenge for the logged-in user to sign with their Zen SEA key via FID.
+     * Generates a cryptographic challenge to sign with a Zen SEA key via FID.
+     *
+     * Two callers: the instance's own webapp, which has a session, and the FID portal,
+     * which is a different origin with no cookie and names the account by the zenPubKey
+     * it holds the private half of. A challenge is only a server-generated nonce and
+     * authorises nothing by itself — /link below is the authenticating step, verifying
+     * the SEA signature over this nonce against the account's stored zen_pub. Rate
+     * limited because it is now reachable without a session.
      */
-    router.get("/challenge", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
-        const username = req.username;
+    router.get("/challenge", rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }), authMiddleware.optionalAuth, (req: AuthenticatedRequest, res) => {
+        let username = req.username;
+
         if (!username) {
-            return res.status(401).json({ error: "Authentication required" });
+            const zenPubKey = typeof req.query.zenPubKey === "string" ? req.query.zenPubKey : "";
+            if (!zenPubKey) {
+                return res.status(401).json({ error: "Authentication required, or pass zenPubKey" });
+            }
+            // Resolve the account exactly as /link does, so the challenge is stored under
+            // the same username consumeChallenge will look it up by. Resolving from a
+            // caller-supplied username instead would silently mismatch whenever the
+            // account's alias differs from what the caller typed.
+            const linkedUser = db.prepare("SELECT username FROM admin WHERE zen_pub = ?").get(zenPubKey) as any;
+            if (!linkedUser) {
+                return res.status(404).json({ error: "FID identity not found" });
+            }
+            username = String(linkedUser.username);
         }
 
         const profile = authService.getUserProfile?.(username);

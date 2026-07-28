@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.13.0] - 2026-07-28
+
+### Fixed
+
+- **"Add to Registry" in the FID portal could never reach the instance.** `GET /api/auth/zen/challenge` was behind `requireUser` and strict CORS, but the portal is a different origin holding no session for the instance — the browser blocked the request before the route ran (`TypeError: Failed to fetch`). The endpoint now accepts an unauthenticated `?zenPubKey=` and resolves the account with the same `SELECT username FROM admin WHERE zen_pub = ?` lookup `/link` uses, so the challenge is stored under the username `consumeChallenge` will look it up by. Resolving from a caller-supplied username instead would mismatch whenever the account's alias differs from what the caller typed.
+
+### Security
+
+- The opened `/challenge` path hands out nothing but a server-generated nonce and authorises nothing by itself — `POST /link` remains the authenticating step, verifying the Zen SEA signature over `${username}:${nonce}`. It is restricted to requests carrying no cookie or `Authorization` header (a session request still takes the strict-CORS path), returns 404 for a `zenPubKey` no account is linked to, and is now rate limited (30 / 15 min); it previously had no limiter at all.
+
 ## [3.12.0] - 2026-07-28
 
 ### Added

@@ -20,7 +20,14 @@ describe("Zen SEA Integration Routes", () => {
             }
             return res.status(401).json({ error: "Authentication required" });
         },
-        optionalAuth: (req: any, res: any, next: any) => next()
+        optionalAuth: (req: any, res: any, next: any) => {
+            if (req.headers.authorization === "Bearer test-token") {
+                req.username = mockUser.username;
+                req.userId = mockUser.id;
+                req.user = mockUser;
+            }
+            return next();
+        }
     };
 
     const mockContainer: any = {
@@ -103,9 +110,32 @@ describe("Zen SEA Integration Routes", () => {
         });
     });
 
-    test("GET /api/auth/zen/challenge requires authentication", async () => {
+    test("GET /api/auth/zen/challenge requires a session or a zenPubKey", async () => {
         const res = await request(app).get("/api/auth/zen/challenge");
         expect(res.status).toBe(401);
+    });
+
+    test("GET /api/auth/zen/challenge rejects an unknown zenPubKey", async () => {
+        const strangerKeys = await generateKeyPair();
+        const res = await request(app)
+            .get("/api/auth/zen/challenge")
+            .query({ zenPubKey: strangerKeys.pub });
+
+        expect(res.status).toBe(404);
+    });
+
+    // The FID portal is a different origin with no session cookie; it identifies itself
+    // by the zen_pub already linked to the account, and the signature it returns to
+    // /link is what actually authenticates.
+    test("GET /api/auth/zen/challenge issues a challenge for a linked zenPubKey without a session", async () => {
+        const res = await request(app)
+            .get("/api/auth/zen/challenge")
+            .query({ zenPubKey: baseKeys.pub });
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.challenge.username).toBe("scobru");
+        expect(res.body.challenge.nonce).toBeDefined();
     });
 
     test("GET /api/auth/zen/challenge returns challenge with nonce for logged in user", async () => {
@@ -125,7 +155,7 @@ describe("Zen SEA Integration Routes", () => {
             .post("/api/auth/zen/link")
             .set("Authorization", "Bearer test-token")
             .send({
-                zenPubKey: "QmZenTest123",
+                zenPubKey: baseKeys.pub,
                 challenge: { nonce: "invalid_nonce", instanceDomain: "test.tunecamp.net" },
                 seaSignature: "mock_sig"
             });
@@ -140,14 +170,15 @@ describe("Zen SEA Integration Routes", () => {
             .set("Authorization", "Bearer test-token");
 
         const challenge = challengeRes.body.challenge;
-        const linkKeys = await generateKeyPair();
-        const seaSignature = await signPayload(`scobru:${challenge.nonce}`, linkKeys.priv);
+        // /link resolves the account by zen_pub, so the signing key must be the one
+        // already linked to the user the challenge was issued for.
+        const seaSignature = await signPayload(`scobru:${challenge.nonce}`, baseKeys.priv);
 
         const linkRes = await request(app)
             .post("/api/auth/zen/link")
             .set("Authorization", "Bearer test-token")
             .send({
-                zenPubKey: linkKeys.pub,
+                zenPubKey: baseKeys.pub,
                 challenge,
                 seaSignature
             });
@@ -156,7 +187,7 @@ describe("Zen SEA Integration Routes", () => {
         expect(linkRes.body.success).toBe(true);
         expect(linkRes.body.passport).toBeDefined();
         expect(linkRes.body.passport.localUsername).toBe("scobru");
-        expect(linkRes.body.passport.zenPubKey).toBe(linkKeys.pub);
+        expect(linkRes.body.passport.zenPubKey).toBe(baseKeys.pub);
         expect(linkRes.body.passport.passportSignature).toBeDefined();
     });
 
