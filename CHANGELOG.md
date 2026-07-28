@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.12.0] - 2026-07-28
+
+### Added
+
+- **SSO code exchange — the ActivityPub seed no longer travels through the browser.** The portal now POSTs `{ ssoToken, apSeed, mode: "code" }` straight to `POST /api/auth/zen/sso` and receives only a one-time code (2 min TTL, burned on first redemption), which it appends to the callback as `?fid_code=`. The webapp trades it for its JWT on the new `POST /api/auth/zen/sso/exchange`. In code mode the response deliberately contains **no** session token: the portal is a third party and must never hold a session for this instance.
+- `POST /api/auth/zen/sso` accepts cross-origin requests (`origin: '*'`, no credentials): the portal is by design a different origin and may be self-hosted, so the signed FID token is the security boundary, not the origin. `/sso/exchange` is excluded and stays under strict CORS — only the user's own webapp may redeem a code.
+- Tests covering code mode: a code is returned instead of a session, redeems exactly once, and unknown/missing codes are refused.
+
+### Changed
+
+- The hash-fragment SSO flow (`#payload=`) still works for older portals but is **deprecated**; it puts the derived ActivityPub key in the address bar. It will be removed once the deployed portals are on the code flow.
+
+### Security
+
+- **SSO payloads survived in browser history.** `SsoCallback` read `window.location.hash`, which carries the `ssoToken` and the derived ActivityPub seed, but left it in the address bar and in the history entry — so the back button, session restore, and any later reader of `location.hash` could recover it. The hash is now scrubbed with `history.replaceState` as soon as it is read.
+- **WebAuthn trust-on-first-use is now an explicit decision, not a library default.** `POST /api/auth/zen/sso` looks up the pinned key for the `credentialId` and, only when nothing is pinned yet, passes the token's own key as the reference — the assertion still has to verify against it, proving the caller holds the private half — then pins it. `fid`'s `validateSsoToken` no longer accepts a self-declared key implicitly, so the previous code path (passing `undefined` on first login) would have refused every first passkey login.
+
+### Changed
+
+- **Requires `fid` 3.0.0** (single-use SSO tokens, PRF-derived passkey identities, `masterKeySource` as an object, redirect allow-listing). Passkey users' derived ActivityPub keypair changes with this upgrade; accounts are unaffected, since they are keyed by `zen_pub = webauthn:<credentialId>`.
+
+### Added
+
+- Regression test covering the passkey pinning path: a first `/sso` call pins the credential's public key, and a second call signing the same `credentialId` with a different keypair is rejected with "does not match registered credential".
+
 ## [3.11.10] - 2026-07-28
 
 ### Added

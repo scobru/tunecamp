@@ -9,6 +9,45 @@ import crypto from "node:crypto";
 // Global FID challenge manager and passport issuer instances
 const fidChallengeManager = new FidChallengeManager(10, 5);
 
+/**
+ * One-time authorization codes for the SSO code-exchange flow.
+ *
+ * The portal POSTs the SSO token and the derived ActivityPub seed straight to this
+ * server and gets back a short-lived code instead of a session. Only the code travels
+ * through the browser's address bar, so the seed never lands in history, in a Referer,
+ * or in anything that reads `location`. The webapp then trades the code for its JWT.
+ *
+ * ponytail: in-process Map — matches the single-process SQLite deployment this instance
+ * targets. Move to the DB (or Redis) if the server is ever run in cluster mode, otherwise
+ * a code minted by one worker is unredeemable on another.
+ */
+const SSO_CODE_TTL_MS = 2 * 60 * 1000;
+const ssoCodes = new Map<string, { session: Record<string, unknown>; expiresAt: number }>();
+
+function mintSsoCode(session: Record<string, unknown>): string {
+    const code = crypto.randomBytes(32).toString("base64url");
+    ssoCodes.set(code, { session, expiresAt: Date.now() + SSO_CODE_TTL_MS });
+    return code;
+}
+
+/** Redeems a code. Returns undefined if unknown, already used, or expired — codes are single-use. */
+function redeemSsoCode(code: string): Record<string, unknown> | undefined {
+    const entry = ssoCodes.get(code);
+    if (!entry) return undefined;
+    ssoCodes.delete(code);
+    if (Date.now() > entry.expiresAt) return undefined;
+    return entry.session;
+}
+
+// Codes are removed on redemption; this only clears the ones nobody ever came back for.
+const ssoCodeSweeper = setInterval(() => {
+    const now = Date.now();
+    for (const [code, entry] of ssoCodes) {
+        if (now > entry.expiresAt) ssoCodes.delete(code);
+    }
+}, SSO_CODE_TTL_MS);
+ssoCodeSweeper.unref?.();
+
 export function createZenRoutes(container: ServiceContainer): Router {
     const authMiddleware = container.authMiddleware;
     const authService = container.authService;
@@ -275,8 +314,18 @@ export function createZenRoutes(container: ServiceContainer): Router {
             // (client-supplied, forgeable) — verify against the key we stored the
             // first time this credentialId was seen (trust-on-first-use).
             let trustedWebauthnKey: string | undefined;
+            let isFirstWebauthnSighting = false;
             if (ssoToken.masterKeySource?.type === 'webauthn') {
                 trustedWebauthnKey = database.getFidWebauthnKey(ssoToken.masterKeySource.credentialId);
+                if (!trustedWebauthnKey) {
+                    // Nothing pinned yet for this credentialId, so the only key available is
+                    // the one the token declares. validateSsoToken refuses to make that choice
+                    // implicitly (it would let anyone self-sign), so we make it here and
+                    // explicitly: the assertion still has to verify against that key, proving
+                    // the caller holds the private half, and the key is pinned below.
+                    isFirstWebauthnSighting = true;
+                    trustedWebauthnKey = ssoToken.masterKeySource.publicKeyPem;
+                }
             }
 
             // Verify SSO token using FidSsoHandler from fid package
@@ -299,7 +348,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
 
             // First successful login for this credentialId: pin its public key so
             // future /sso calls above verify against it instead of the token's own claim.
-            if (ssoToken.masterKeySource?.type === 'webauthn' && !trustedWebauthnKey) {
+            if (isFirstWebauthnSighting) {
                 database.registerFidWebauthnKey(ssoToken.masterKeySource.credentialId, ssoToken.masterKeySource.publicKeyPem);
             }
 
@@ -387,7 +436,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 tokenVersion: (user as any).token_version ?? 0
             });
 
-            return res.json({
+            const session = {
                 success: true,
                 token,
                 expiresIn: "7d",
@@ -395,11 +444,39 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 artistId: user.artist_id,
                 role: user.role,
                 isNewUser
-            });
+            };
+
+            // Code mode: the caller is the identity portal, a third party that must never
+            // hold a session for this instance. Hand back only a one-time code, which the
+            // user's own browser trades for the JWT on /sso/exchange.
+            if (req.body?.mode === "code") {
+                return res.json({ success: true, code: mintSsoCode(session), expiresIn: SSO_CODE_TTL_MS / 1000 });
+            }
+
+            return res.json(session);
         } catch (error: any) {
             console.error("SSO Login error:", error.message, error.stack);
             res.status(500).json({ error: "SSO Login failed" });
         }
+    });
+
+    /**
+     * POST /api/auth/zen/sso/exchange
+     * Trades a one-time code minted by POST /sso (mode: "code") for the session JWT.
+     * Codes expire after 2 minutes and are burned on the first redemption.
+     */
+    router.post("/sso/exchange", rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }), (req, res) => {
+        const { code } = req.body ?? {};
+        if (typeof code !== "string" || !code) {
+            return res.status(400).json({ error: "Missing code" });
+        }
+
+        const session = redeemSsoCode(code);
+        if (!session) {
+            return res.status(400).json({ error: "Invalid, expired or already used code" });
+        }
+
+        return res.json(session);
     });
 
     return router;

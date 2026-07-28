@@ -39,7 +39,9 @@
 ### Federation & Auth
 - Auth is **username + password + JWT, per-instance, plus optional FID SSO**.
 - FID SSO (`POST /api/auth/zen/sso`, `src/server/routes/auth/zen.ts`) uses the `fid` package (`FidChallengeManager`, `FidPassportIssuer`, `FidSsoHandler`) to verify a signed SSO token and derive a deterministic Ed25519 ActivityPub keypair from a master key source — Zen SEA (secp256k1) or WebAuthn passkey. This is the portable cryptographic identity across instances.
-- Users authenticating via FID are looked up by `zen_pub`, never by username alone, so a colliding local handle can't be hijacked via SSO.
+- Users authenticating via FID are looked up by `zen_pub`, never by username alone, so a colliding local handle can't be hijacked via SSO. For passkeys `zen_pub` is `webauthn:<credentialId>`.
+- **A WebAuthn SSO token's own `publicKeyPem` is never a trust anchor.** The key is pinned to its `credentialId` in `fid_webauthn_credentials` on first login (trust-on-first-use) and every later `/sso` call verifies against the stored key. Passing `undefined` as `trustedWebauthnKey` makes `validateSsoToken` fail closed — the first-sighting case must be decided explicitly in `zen.ts`, not left to the library.
+- SSO tokens are single-use (nonce burned by `fid`'s `FidReplayStore`) and passkey identities derive from the WebAuthn PRF secret, never from public key material. The `apSeed` in the SSO payload is the domain-scoped ActivityPub key the instance legitimately needs; the user's master secret never leaves their browser.
 - ActivityPub federates interactions, not logins for non-FID accounts (Mastodon/Funkwhale model).
 - Transactions (purchases/collections) are local to the artist's instance.
 - RSS/Atom feeds can be followed: stored as `remote_actors` with `type='rss'`; items as `remote_content`.
