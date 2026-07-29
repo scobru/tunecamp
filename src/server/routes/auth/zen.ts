@@ -201,8 +201,8 @@ export function createZenRoutes(container: ServiceContainer): Router {
             let releases: any[] = [];
             try {
                 const albumQuery = `
-                    SELECT DISTINCT id, title, cover_path as cover_url, date as release_date, type, status, visibility
-                    FROM albums 
+                    SELECT DISTINCT id, title, date as release_date, type, status, visibility
+                    FROM albums
                     WHERE (
                         owner_id = ? 
                         OR (artist_id IS NOT NULL AND artist_id IN (${placeholders}))
@@ -223,28 +223,32 @@ export function createZenRoutes(container: ServiceContainer): Router {
             } catch (queryErr) {
                 try {
                     releases = db.prepare(
-                        `SELECT id, title, cover_path as cover_url, date as release_date, type FROM albums WHERE artist_id IN (${placeholders})`
+                        `SELECT id, title, date as release_date, type FROM albums WHERE artist_id IN (${placeholders})`
                     ).all(...artistIds) || [];
                 } catch(e) {}
             }
+            // cover_path is a server-local filesystem path, not a URL — point at the
+            // dedicated cover route instead so cross-instance clients get a real image.
+            releases = releases.map((r: any) => ({ ...r, cover_url: `/api/albums/${r.id}/cover` }));
 
             // Get public playlists created by user
             let playlists: any[] = [];
             try {
                 playlists = db.prepare(
-                    `SELECT id, name, cover_path as cover_url, created_at FROM playlists WHERE (LOWER(username) = LOWER(?) OR LOWER(username) = LOWER(?)) AND is_public = 1`
+                    `SELECT id, name, created_at FROM playlists WHERE (LOWER(username) = LOWER(?) OR LOWER(username) = LOWER(?)) AND is_public = 1`
                 ).all(user.username, userAlias) || [];
             } catch(e) {
                 console.warn("[ZEN-PUBLIC] Error querying playlists:", e);
             }
+            playlists = playlists.map((p: any) => ({ ...p, cover_url: `/api/playlists/${p.id}/cover` }));
 
             // Get public likes / starred items created by user
             let likes: any[] = [];
             try {
                 likes = db.prepare(`
                     SELECT s.item_type as type, s.item_id as id, s.created_at,
-                           a.title as album_title, a.cover_path as album_cover,
-                           t.title as track_title, t.artist_name as track_artist
+                           a.title as album_title, a.id as album_id,
+                           t.title as track_title, t.artist_name as track_artist, t.album_id as track_album_id
                     FROM starred_items s
                     LEFT JOIN albums a ON (s.item_type = 'album' OR s.item_type = 'release') AND CAST(a.id AS TEXT) = s.item_id
                     LEFT JOIN tracks t ON s.item_type = 'track' AND CAST(t.id AS TEXT) = s.item_id
@@ -254,6 +258,10 @@ export function createZenRoutes(container: ServiceContainer): Router {
             } catch(e) {
                 console.warn("[ZEN-PUBLIC] Error querying starred_items:", e);
             }
+            likes = likes.map((l: any) => {
+                const coverAlbumId = l.album_id || l.track_album_id;
+                return { ...l, album_cover: coverAlbumId ? `/api/albums/${coverAlbumId}/cover` : null };
+            });
 
             return res.json({
                 success: true,
