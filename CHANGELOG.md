@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.3.1] - 2026-07-29
+
+### Removed
+
+- Dead `gun_cache` table, `getGunCache`/`setGunCache`/`clearExpiredGunCache` DB helpers, and `GunCacheEntry` type (zero callers, leftover from removed ZEN P2P graph).
+- Dead `publishedToZen` admin API alias (never sent by any client, name collided with FID Zen SSO identity naming). `publishedToGunDB` alias and `published_to_gundb` federation-publish column are untouched.
+- Leftover `dgram`/`child_process`/`os`/`zlib`/`stream` entries from webapp's `vite-plugin-node-polyfills` config and the dead `"zen"` alias (pointed at a non-existent `src/zen.js`), both residue of the removed ZEN/Gun.js stack.
+
 ## [4.3.0] - 2026-07-29
 
 ### Added

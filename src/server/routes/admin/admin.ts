@@ -1124,9 +1124,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                     ? body.additional_artworks
                     : JSON.stringify(body.additional_artworks);
             }
-            if (body.publishedToZen !== undefined) {
-                updates.published_to_gundb = body.publishedToZen;
-            } else if (body.publishedToGunDB !== undefined) {
+            if (body.publishedToGunDB !== undefined) {
                 updates.published_to_gundb = body.publishedToGunDB;
             } else if (updates.visibility === 'public' || updates.visibility === 'unlisted') {
                 updates.published_to_gundb = true;

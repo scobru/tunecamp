@@ -16,7 +16,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     nodePolyfills({
-      include: ['buffer', 'crypto', 'fs', 'path', 'process', 'util', 'zlib', 'os', 'child_process', 'dgram', 'url', 'events', 'stream'],
+      include: ['buffer', 'crypto', 'fs', 'path', 'process', 'util', 'url', 'events'],
       globals: {
         Buffer: true,
         global: true,
@@ -27,7 +27,6 @@ export default defineConfig({
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {
-      "zen": path.resolve(__dirname, "./src/zen.js"),
       "@": path.resolve(__dirname, "./src"),
       "node:fs/promises": path.resolve(__dirname, "./src/stubs/empty.js"),
       "node:url": "url",

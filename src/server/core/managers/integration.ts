@@ -92,10 +92,5 @@ export function createIntegrationManager(db: DatabaseType): IntegrationManager {
             db.prepare(`UPDATE assets SET ${fields.join(", ")} WHERE id = ?`).run(...params);
         },
         deleteAsset: (id: number) => { db.prepare("DELETE FROM assets WHERE id = ?").run(id); },
-
-        // Gun Cache
-        getGunCache: (k: string) => db.prepare("SELECT * FROM gun_cache WHERE key = ?").get(k) as any,
-        setGunCache: (k: string, v: string, t: string, ttl: number) => { db.prepare("INSERT OR REPLACE INTO gun_cache (key, value, type, expires_at) VALUES (?, ?, ?, ?)").run(k, v, t, Date.now() + ttl * 1000); },
-        clearExpiredGunCache: () => { db.prepare("DELETE FROM gun_cache WHERE expires_at < ?").run(Date.now()); },
     };
 }
