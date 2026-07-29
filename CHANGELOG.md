@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.1.1] - 2026-07-29
+
+### Fixed
+
+- `ZenIdentityCard` (webapp) retried `/api/auth/zen/set` after a failure using the stale challenge — `FidChallengeManager.consumeChallenge` burns the nonce on every attempt past validation (success or failure), so the retry always failed with "Invalid signature, or invalid/expired challenge nonce". A failed submit now clears `challenge`/`signedJsonInput`, forcing the user back to "Genera Challenge".
+
 ## [4.1.0] - 2026-07-29
 
 ### Added

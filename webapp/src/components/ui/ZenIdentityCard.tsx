@@ -97,7 +97,12 @@ export const ZenIdentityCard: React.FC = () => {
         } catch (err: any) {
             const msg = err?.message || "Errore collegamento identità Zen";
             console.error("[ZenIdentityCard] Errore linking:", err);
-            setError(msg);
+            // The nonce is consumed server-side on any attempt past field validation
+            // (success or failure), so a dead challenge can never be retried — force
+            // the user back to "Genera Challenge" instead of showing a doomed retry.
+            setChallenge(null);
+            setSignedJsonInput("");
+            setError(`${msg} — genera un nuovo challenge e ripeti la procedura.`);
             notify.error(msg, "Errore linking");
         } finally {
             setLoading(false);
