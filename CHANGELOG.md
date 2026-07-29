@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.0.1] - 2026-07-29
+
+### Fixed
+
+- `GET /api/auth/zen/user/:username/public` returned `cover_path` verbatim as `cover_url`/`album_cover` for releases, playlists, and starred items. `cover_path` is a path resolved server-side against `musicDir` (see `GET /api/albums/:id/cover`) — not a servable URL. Cross-instance clients (FID portal, website profile aggregation) that joined it with `baseUrl` got a broken or, if another route happened to overlap, a wrong image. Now returns `/api/albums/:id/cover` and `/api/playlists/:id/cover` instead.
+
 ## [4.0.0] - 2026-07-28
 
 ### ⚠️ Breaking
