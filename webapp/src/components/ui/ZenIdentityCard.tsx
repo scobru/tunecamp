@@ -4,7 +4,7 @@ import API from "../../services/api";
 import { notify } from "../../utils/notify";
 
 const CHALLENGE_KEY = "tunecamp_zen_challenge";
-const PASSPORT_KEY = "tunecamp_zen_passport";
+const LINKED_KEY = "tunecamp_zen_linked";
 
 export const ZenIdentityCard: React.FC = () => {
     const [loading, setLoading] = useState(false);
@@ -12,14 +12,12 @@ export const ZenIdentityCard: React.FC = () => {
         const saved = localStorage.getItem(CHALLENGE_KEY);
         return saved ? JSON.parse(saved) : null;
     });
-    const [zenPubKeyInput, setZenPubKeyInput] = useState("");
-    const [passportJsonInput, setPassportJsonInput] = useState("");
-    const [passport, setPassport] = useState<any>(() => {
-        const saved = localStorage.getItem(PASSPORT_KEY);
+    const [signedJsonInput, setSignedJsonInput] = useState("");
+    const [linked, setLinked] = useState<any>(() => {
+        const saved = localStorage.getItem(LINKED_KEY);
         return saved ? JSON.parse(saved) : null;
     });
     const [copiedChallenge, setCopiedChallenge] = useState(false);
-    const [copiedPassport, setCopiedPassport] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Persist challenge to localStorage
@@ -60,54 +58,38 @@ export const ZenIdentityCard: React.FC = () => {
         notify.success("Challenge copiato! Incollalo su tunecamp.org (sezione 'Firma Challenge') per firmare.");
     };
 
-    const handleCopyPassport = () => {
-        if (!passport) return;
-        navigator.clipboard.writeText(JSON.stringify(passport, null, 2));
-        setCopiedPassport(true);
-        setTimeout(() => setCopiedPassport(false), 2000);
-        notify.success("JSON del Passaporto copiato negli appunti! Incollalo su tunecamp.org per completare il binding.");
-    };
-
     const handleLinkZen = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
 
-        // Option A: Raw Passport JSON pasted directly
-        if (passportJsonInput.trim()) {
-            try {
-                const parsed = JSON.parse(passportJsonInput.trim());
-                if (!parsed.instanceDomain || !parsed.zenPubKey || !parsed.passportSignature) {
-                    throw new Error("Passaporto JSON malformato: campi richiesti mancanti");
-                }
-                setPassport(parsed);
-                localStorage.setItem(PASSPORT_KEY, JSON.stringify(parsed));
-                setChallenge(null);
-                setPassportJsonInput("");
-                setZenPubKeyInput("");
-                notify.success("Passaporto importato e collegato con successo!");
-                return;
-            } catch (pErr: any) {
-                notify.error(pErr.message || "Passaporto JSON non valido", "Errore Importazione");
-                return;
-            }
+        if (!challenge) {
+            notify.error("Genera prima un challenge di vincolo");
+            return;
         }
 
-        // Option B: Challenge + Zen PubKey
-        if (!challenge || !zenPubKeyInput.trim()) {
-            notify.error("Genera prima un challenge oppure incolla la tua Zen PubKey / Passaporto JSON");
+        let zenPubKey: string;
+        let seaSignature: string;
+        try {
+            const parsed = JSON.parse(signedJsonInput.trim());
+            if (!parsed.zenPubKey || !parsed.seaSignature) {
+                throw new Error("JSON malformato: servono i campi zenPubKey e seaSignature");
+            }
+            zenPubKey = parsed.zenPubKey;
+            seaSignature = parsed.seaSignature;
+        } catch (pErr: any) {
+            notify.error(pErr.message || "Incolla il JSON firmato restituito da tunecamp.org", "Errore importazione");
             return;
         }
 
         setLoading(true);
         try {
-            const seaSignature = `sea_signed_${Date.now()}`;
-            const res = await API.linkZenAccount(zenPubKeyInput.trim(), challenge, seaSignature);
-            if (res.success && res.passport) {
-                setPassport(res.passport);
-                localStorage.setItem(PASSPORT_KEY, JSON.stringify(res.passport));
+            const res = await API.setZenAccount(zenPubKey, challenge, seaSignature);
+            if (res.success) {
+                const state = { zenPubKey: res.zenPub, instanceDomain: window.location.hostname, linkedAt: Date.now() };
+                setLinked(state);
+                localStorage.setItem(LINKED_KEY, JSON.stringify(state));
                 setChallenge(null);
-                setZenPubKeyInput("");
-                setPassportJsonInput("");
+                setSignedJsonInput("");
                 notify.success("Identità Zen SEA collegata con successo!");
             } else {
                 throw new Error("Risposta del server non valida");
@@ -115,7 +97,12 @@ export const ZenIdentityCard: React.FC = () => {
         } catch (err: any) {
             const msg = err?.message || "Errore collegamento identità Zen";
             console.error("[ZenIdentityCard] Errore linking:", err);
-            setError(msg);
+            // The nonce is consumed server-side on any attempt past field validation
+            // (success or failure), so a dead challenge can never be retried — force
+            // the user back to "Genera Challenge" instead of showing a doomed retry.
+            setChallenge(null);
+            setSignedJsonInput("");
+            setError(`${msg} — genera un nuovo challenge e ripeti la procedura.`);
             notify.error(msg, "Errore linking");
         } finally {
             setLoading(false);
@@ -123,12 +110,11 @@ export const ZenIdentityCard: React.FC = () => {
     };
 
     const handleUnlink = () => {
-        localStorage.removeItem(PASSPORT_KEY);
+        localStorage.removeItem(LINKED_KEY);
         localStorage.removeItem(CHALLENGE_KEY);
-        setPassport(null);
+        setLinked(null);
         setChallenge(null);
-        setZenPubKeyInput("");
-        setPassportJsonInput("");
+        setSignedJsonInput("");
         notify.info("Identità Zen scollegata da questa istanza locale.");
     };
 
@@ -146,34 +132,24 @@ export const ZenIdentityCard: React.FC = () => {
                 </div>
             </div>
 
-            {passport ? (
+            {linked ? (
                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-5 space-y-4">
                     <div className="flex items-center justify-between">
                         <span className="flex items-center gap-2 text-emerald-400 font-medium text-sm">
                             <ShieldCheck className="w-5 h-5" /> Istanza Collegata a Zen SEA
                         </span>
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={handleCopyPassport}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-lg text-xs font-semibold transition-colors"
-                            >
-                                {copiedPassport ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                                {copiedPassport ? "Copiato!" : "Copia Passaporto JSON"}
-                            </button>
-                            <button
-                                onClick={handleUnlink}
-                                className="text-xs text-rose-400 hover:text-rose-300 underline font-medium"
-                            >
-                                Scollega
-                            </button>
-                        </div>
+                        <button
+                            onClick={handleUnlink}
+                            className="text-xs text-rose-400 hover:text-rose-300 underline font-medium"
+                        >
+                            Scollega
+                        </button>
                     </div>
 
                     <div className="text-xs text-text-secondary space-y-1.5 font-mono bg-black/30 p-3 rounded-lg border border-emerald-500/20">
-                        <div><strong className="text-text-muted font-sans">Zen PubKey:</strong> {passport.zenPubKey}</div>
-                        <div><strong className="text-text-muted font-sans">Dominio Istanza:</strong> {passport.instanceDomain}</div>
-                        <div><strong className="text-text-muted font-sans">Utente Locale:</strong> @{passport.localUsername}</div>
-                        <div><strong className="text-text-muted font-sans">Data Rilascio:</strong> {new Date(passport.issuedAt).toLocaleString()}</div>
+                        <div><strong className="text-text-muted font-sans">Zen PubKey:</strong> {linked.zenPubKey}</div>
+                        <div><strong className="text-text-muted font-sans">Dominio Istanza:</strong> {linked.instanceDomain}</div>
+                        <div><strong className="text-text-muted font-sans">Collegato il:</strong> {new Date(linked.linkedAt).toLocaleString()}</div>
                     </div>
                 </div>
             ) : (
@@ -192,8 +168,8 @@ export const ZenIdentityCard: React.FC = () => {
                         <ol className="list-decimal list-inside space-y-1 text-text-muted leading-relaxed">
                             <li>Clicca su <strong>"Genera Challenge"</strong> qui sotto per creare il token di vincolo dell'istanza.</li>
                             <li>Copia il Challenge e incollalo su <strong>tunecamp.org/profile.html</strong> (sezione <em>"Firma Challenge"</em>).</li>
-                            <li>Il sito web firmerà il Challenge con la tua chiave privata Zen e genererà il <strong>Passaporto JSON</strong>.</li>
-                            <li>Incolla qui la tua <strong>Zen PubKey</strong> o il <strong>Passaporto JSON</strong> di ritorno per attivare il collegamento.</li>
+                            <li>Il sito web firmerà il Challenge con la tua chiave privata Zen SEA e ti restituirà un JSON <code>{"{ zenPubKey, seaSignature }"}</code>.</li>
+                            <li>Incolla qui quel JSON per verificare la firma e attivare il collegamento.</li>
                         </ol>
                     </div>
 
@@ -230,24 +206,17 @@ export const ZenIdentityCard: React.FC = () => {
                             {/* Step 2 Form */}
                             <form onSubmit={handleLinkZen} className="space-y-3 pt-2">
                                 <div className="text-xs font-semibold text-text-primary flex items-center gap-1">
-                                    <ArrowRight className="w-3.5 h-3.5 text-primary" /> Passo 2: Inserisci Zen PubKey o Passaporto Firmato
+                                    <ArrowRight className="w-3.5 h-3.5 text-primary" /> Passo 2: Incolla il JSON firmato
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-text-secondary mb-1">
-                                        Zen PubKey Globale (`~pubKey`) o Passaporto JSON di ritorno da tunecamp.org
+                                        JSON firmato di ritorno da tunecamp.org (<code>{"{ zenPubKey, seaSignature }"}</code>)
                                     </label>
-                                    <input
-                                        type="text"
-                                        value={zenPubKeyInput}
-                                        onChange={(e) => setZenPubKeyInput(e.target.value)}
-                                        placeholder="Incolla qui la tua Zen PubKey..."
-                                        className="w-full px-3 py-2 bg-surface border border-surface-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-primary font-mono text-xs mb-2"
-                                    />
                                     <textarea
                                         rows={3}
-                                        value={passportJsonInput}
-                                        onChange={(e) => setPassportJsonInput(e.target.value)}
-                                        placeholder='In alternativa, incolla qui il Passaporto JSON completo {"instanceDomain": "...", "passportSignature": "..."}'
+                                        value={signedJsonInput}
+                                        onChange={(e) => setSignedJsonInput(e.target.value)}
+                                        placeholder='{"zenPubKey": "...", "seaSignature": "..."}'
                                         className="w-full px-3 py-2 bg-surface border border-surface-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-primary font-mono text-xs resize-none"
                                     ></textarea>
                                 </div>
