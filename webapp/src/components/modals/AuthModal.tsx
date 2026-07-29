@@ -428,6 +428,17 @@ export const AuthModal = () => {
                                                     >
                                                         localhost:5173
                                                     </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-colors ${customPortalUrl.includes('fid-portal.vercel.app') ? 'bg-primary/20 border-primary text-primary font-semibold' : 'bg-base-300 border-base-100 hover:bg-base-100'}`}
+                                                        onClick={() => {
+                                                            const fidPortalUrl = 'https://fid-portal.vercel.app';
+                                                            setCustomPortalUrl(fidPortalUrl);
+                                                            localStorage.setItem('tunecamp_custom_fid_portal', fidPortalUrl);
+                                                        }}
+                                                    >
+                                                        fid-portal.vercel.app
+                                                    </button>
                                                 </div>
                                             </div>
                                         )}
