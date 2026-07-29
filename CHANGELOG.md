@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.1.1] - 2026-07-29
+
+### Fixed
+
+- `ZenIdentityCard` (webapp) retried `/api/auth/zen/set` after a failure using the stale challenge — `FidChallengeManager.consumeChallenge` burns the nonce on every attempt past validation (success or failure), so the retry always failed with "Invalid signature, or invalid/expired challenge nonce". A failed submit now clears `challenge`/`signedJsonInput`, forcing the user back to "Genera Challenge".
+
+## [4.1.0] - 2026-07-29
+
+### Added
+
+- **`POST /api/auth/zen/set`** — binds a Zen SEA identity (`zen_pub`) to the currently authenticated (JWT/session) account for the first time. `/link` requires `zen_pub` already set, so it can't be reused for this case; `/set` trusts the session and verifies a signed challenge instead, rejecting if the key is already claimed by another account.
+- **`FidRegistryCard`** (webapp Settings/Profile) — lists and lets the user register cross-instance artist links via `/api/fid-registry`, which previously had no frontend caller. The portal/website sign the link and produce a copyable JSON entry; the user pastes it here to persist it server-side.
+
+### Fixed
+
+- `tunecamp-website/profile.html` and the webapp's `ZenIdentityCard` produced fake, unverifiable signatures (`sea_signed_...`) and fabricated passports (`HMAC_...`) instead of real `Zen.sign` output. Both now sign with the actual Zen SEA private key and submit to a real endpoint (`/api/auth/zen/set` for first-time linking).
+
 ## [4.0.1] - 2026-07-29
 
 ### Fixed
