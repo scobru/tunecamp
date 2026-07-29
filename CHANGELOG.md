@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.3.0] - 2026-07-29
+
+### Added
+
+- Home page shows a "Community Feed" section (latest board messages, public `/api/board/history`) above "Recent Releases" when the instance `mode` is `community` and `boardEnabled` is on — makes the Setup Wizard's `mode` toggle have a visible effect.
+
 ## [4.2.0] - 2026-07-29
 
 ### Added

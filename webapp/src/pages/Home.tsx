@@ -5,10 +5,10 @@ import API from "../services/api";
 import { Library } from "lucide-react";
 import { ReleaseCard } from "../components/ui/ReleaseCard";
 import { queryKeys } from "../hooks/queries";
-import { useSiteSettingsStore } from "../stores/useSiteSettingsStore";
+import { useSiteSettingsStore, truthy } from "../stores/useSiteSettingsStore";
 import { useAuthStore } from "../stores/useAuthStore";
 import { usePlayerStore } from "../stores/usePlayerStore";
-import { Play, Pause, Shuffle } from "lucide-react";
+import { Play, Pause, Shuffle, MessageSquare } from "lucide-react";
 import clsx from "clsx";
 
 const Home = () => {
@@ -18,6 +18,14 @@ const Home = () => {
     queryFn: () => API.getCatalog(),
   });
   const { settings: siteSettings, fetchFlags, isModuleHidden } = useSiteSettingsStore();
+
+  const isCommunityMode = siteSettings?.mode === 'community' && truthy(siteSettings?.boardEnabled);
+  const { data: boardHistory } = useQuery({
+    queryKey: ["board", "history", 5],
+    queryFn: () => API.getBoardHistory(5),
+    enabled: isCommunityMode,
+  });
+  const communityFeed = (boardHistory || []).slice(-5).reverse();
 
   // Cap the number of items shown on Home to reduce cognitive load.
   // The full lists live behind the "View All" links (cf. Spotify redesign:
@@ -243,6 +251,40 @@ const Home = () => {
                 <div className="px-1">
                   <h3 className="font-bold text-sm truncate group-hover:text-primary transition-colors">{item.title}</h3>
                   <p className="text-xs opacity-60 truncate">{item.artistName || item.artist || ""}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Community Feed — only when the instance is running in Community mode with the board on */}
+      {isCommunityMode && communityFeed.length > 0 && (
+        <div className="space-y-6">
+          <div className="flex items-end justify-between px-2">
+            <div>
+              <h2 className="text-2xl font-black tracking-tighter mb-1 flex items-center gap-2">
+                <MessageSquare size={22} className="text-primary" /> Community Feed
+              </h2>
+              <p className="text-sm opacity-40 font-medium">Latest posts from the board</p>
+            </div>
+            <Link to="/board" className="btn btn-link btn-sm no-underline opacity-40 hover:opacity-100 tracking-normal font-black text-xs">
+              View All →
+            </Link>
+          </div>
+
+          <div className="space-y-3 px-2">
+            {communityFeed.map((msg: any) => (
+              <div key={msg.id} className="flex items-start gap-3 p-3 rounded-2xl bg-base-200/30 border border-base-content/5">
+                <img
+                  src={msg.avatar || "/placeholder.png"}
+                  alt={msg.username}
+                  className="w-9 h-9 rounded-full object-cover shrink-0"
+                  onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.png' }}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold truncate">{msg.username}</p>
+                  <p className="text-sm opacity-70 break-words">{msg.message}</p>
                 </div>
               </div>
             ))}
