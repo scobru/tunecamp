@@ -144,6 +144,50 @@ export function createZenRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * POST /api/auth/zen/set
+     * First-time binding of a Zen SEA identity to the *currently authenticated* (password/JWT)
+     * account. Unlike /link, this does not look up the account by zen_pub — there is none yet —
+     * it trusts the session and only verifies that the caller holds the private key for
+     * zenPubKey via the signed challenge. This is the endpoint the "Sign Challenge" flow on
+     * the portal/website should point users back to.
+     */
+    router.post("/set", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), authMiddleware.requireUser, async (req: AuthenticatedRequest, res) => {
+        const { zenPubKey, challenge, seaSignature } = req.body;
+        const username = req.username;
+
+        if (!username) {
+            return res.status(401).json({ error: "Authentication required" });
+        }
+        if (!zenPubKey || !challenge || !challenge.nonce || !seaSignature) {
+            return res.status(400).json({ error: "Missing zenPubKey, challenge, or seaSignature" });
+        }
+
+        const profile = authService.getUserProfile?.(username);
+        const displayUsername = profile?.alias || username;
+
+        // The challenge must have been issued to this same session (GET /challenge resolves
+        // `username` from the JWT when one is present), so the nonce is already bound to us.
+        const isValid = await fidChallengeManager.consumeChallenge(displayUsername, challenge.nonce, seaSignature, zenPubKey);
+        if (!isValid) {
+            return res.status(400).json({ error: "Invalid signature, or invalid/expired challenge nonce" });
+        }
+
+        const user = authService.getUserByUsername(username);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const taken = db.prepare("SELECT id FROM admin WHERE zen_pub = ? AND id != ?").get(zenPubKey, user.id);
+        if (taken) {
+            return res.status(409).json({ error: "This Zen identity is already linked to a different account" });
+        }
+
+        db.prepare("UPDATE admin SET zen_pub = ? WHERE id = ?").run(zenPubKey, user.id);
+
+        return res.json({ success: true, zenPub: zenPubKey });
+    });
+
+    /**
      * GET /api/auth/zen/user/:username/public
      * Returns ONLY public profile data and public releases/tracks for Zen identity aggregation.
      */
