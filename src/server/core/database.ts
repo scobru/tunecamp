@@ -449,14 +449,10 @@ export function createDatabase(dbPath: string): DatabaseService {
         CREATE INDEX IF NOT EXISTS idx_fid_registry_user ON fid_registry(user_id);
         CREATE INDEX IF NOT EXISTS idx_fid_registry_instance ON fid_registry(instance_domain);
 
-        -- Trust-on-first-use store for FID WebAuthn SSO: binds a credentialId to the
-        -- public key seen at first login, so later /sso calls verify the token's
-        -- signature against the key we stored, not a self-declared key on the token.
-        CREATE TABLE IF NOT EXISTS fid_webauthn_credentials (
-            credential_id TEXT PRIMARY KEY,
-            public_key_pem TEXT NOT NULL,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
+        -- NOTE: fid_webauthn_credentials is intentionally no longer created. FID dropped the
+        -- WebAuthn/passkey path (v4) because a passkey is bound to one Relying Party domain,
+        -- which forked identities across origins and made the portal a hard dependency.
+        -- Existing databases keep the orphaned table; it is unused and safe to drop manually.
 
         CREATE TABLE IF NOT EXISTS gun_cache (
             key TEXT PRIMARY KEY,

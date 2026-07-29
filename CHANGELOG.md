@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.0.1] - 2026-07-29
+
+### Fixed
+
+- `GET /api/auth/zen/user/:username/public` returned `cover_path` verbatim as `cover_url`/`album_cover` for releases, playlists, and starred items. `cover_path` is a path resolved server-side against `musicDir` (see `GET /api/albums/:id/cover`) — not a servable URL. Cross-instance clients (FID portal, website profile aggregation) that joined it with `baseUrl` got a broken or, if another route happened to overlap, a wrong image. Now returns `/api/albums/:id/cover` and `/api/playlists/:id/cover` instead.
+
+## [4.0.0] - 2026-07-28
+
+### ⚠️ Breaking
+
+- **WebAuthn/passkey login is removed.** FID dropped it in v4: a passkey is bound to a Relying Party ID (eTLD+1), so the same person logging in through `fid-portal.vercel.app` and through `tunecamp.org` got two different credentials, two different master keys and two different accounts. Identity is now Zen SEA only — a secp256k1 keypair derived from `alias:passphrase`, which is the same on every instance by construction.
+- **Accounts whose `zen_pub` is `webauthn:<credentialId>` can no longer authenticate.** A WebAuthn PRF secret is not extractable from an authenticator and cannot be converted into a Zen keypair, so there is no migration path — affected users must create a Zen identity in the portal and be re-linked. Check with `SELECT username FROM admin WHERE zen_pub LIKE 'webauthn:%'` before upgrading.
+- **Requires `fid` ≥ 4.0.0.** `"fid": "github:scobru/fid"` resolves from git — fid must be pushed and reinstalled first, or `validateSsoToken`'s changed signature will not match.
+
+### Changed
+
+- `validateSsoToken(ssoToken)` is called with one argument. `fid` v4 removed the `trustedWebauthnKey` parameter along with the trust-on-first-use pinning it enforced: a Zen public key *is* the identity, so a token signed by a different keypair is a different user, not an impersonation of this one.
+- `POST /api/auth/zen/sso` no longer looks up or pins credential keys; `zen_pub` is read straight from the token's Zen public key.
+- Removed `getFidWebauthnKey` / `registerFidWebauthnKey` from `IdentityManager` and its interface.
+
+### Fixed
+
+- **Two tests failed on Windows for platform reasons, not code reasons.** `resolveSafePath › ...filesystem root` hardcoded the POSIX literal `/foo`, but `path.resolve('/', 'foo')` is `C:\foo` on Windows — the expectation is now computed the same way the code resolves it. `ffmpeg.ts › acquireTaskSlot ...` called `jest.mock('os', ...)` inside the test body, which is not hoisted and never reached `ffmpeg.js`'s dynamic ESM import, so the module used the real core count while the test asserted the mocked one (3 vs 4 on an 8-core machine); the expected limit is now derived from `os.cpus().length` with the same `[2, 4]` clamp as `MAX_CONCURRENT_TASKS`.
+
+### Database
+
+- `fid_webauthn_credentials` is **no longer created** on schema init. Existing databases keep the table, orphaned and unused — no `DROP` is issued, so a downgrade loses nothing. Drop it manually once you are sure you are not rolling back.
+
+## [3.13.0] - 2026-07-28
+
+### Fixed
+
+- **"Add to Registry" in the FID portal could never reach the instance.** `GET /api/auth/zen/challenge` was behind `requireUser` and strict CORS, but the portal is a different origin holding no session for the instance — the browser blocked the request before the route ran (`TypeError: Failed to fetch`). The endpoint now accepts an unauthenticated `?zenPubKey=` and resolves the account with the same `SELECT username FROM admin WHERE zen_pub = ?` lookup `/link` uses, so the challenge is stored under the username `consumeChallenge` will look it up by. Resolving from a caller-supplied username instead would mismatch whenever the account's alias differs from what the caller typed.
+
+### Security
+
+- The opened `/challenge` path hands out nothing but a server-generated nonce and authorises nothing by itself — `POST /link` remains the authenticating step, verifying the Zen SEA signature over `${username}:${nonce}`. It is restricted to requests carrying no cookie or `Authorization` header (a session request still takes the strict-CORS path), returns 404 for a `zenPubKey` no account is linked to, and is now rate limited (30 / 15 min); it previously had no limiter at all.
+
 ## [3.12.0] - 2026-07-28
 
 ### Added

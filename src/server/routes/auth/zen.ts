@@ -63,12 +63,32 @@ export function createZenRoutes(container: ServiceContainer): Router {
 
     /**
      * GET /api/auth/zen/challenge
-     * Generates a cryptographic challenge for the logged-in user to sign with their Zen SEA key via FID.
+     * Generates a cryptographic challenge to sign with a Zen SEA key via FID.
+     *
+     * Two callers: the instance's own webapp, which has a session, and the FID portal,
+     * which is a different origin with no cookie and names the account by the zenPubKey
+     * it holds the private half of. A challenge is only a server-generated nonce and
+     * authorises nothing by itself — /link below is the authenticating step, verifying
+     * the SEA signature over this nonce against the account's stored zen_pub. Rate
+     * limited because it is now reachable without a session.
      */
-    router.get("/challenge", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
-        const username = req.username;
+    router.get("/challenge", rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }), authMiddleware.optionalAuth, (req: AuthenticatedRequest, res) => {
+        let username = req.username;
+
         if (!username) {
-            return res.status(401).json({ error: "Authentication required" });
+            const zenPubKey = typeof req.query.zenPubKey === "string" ? req.query.zenPubKey : "";
+            if (!zenPubKey) {
+                return res.status(401).json({ error: "Authentication required, or pass zenPubKey" });
+            }
+            // Resolve the account exactly as /link does, so the challenge is stored under
+            // the same username consumeChallenge will look it up by. Resolving from a
+            // caller-supplied username instead would silently mismatch whenever the
+            // account's alias differs from what the caller typed.
+            const linkedUser = db.prepare("SELECT username FROM admin WHERE zen_pub = ?").get(zenPubKey) as any;
+            if (!linkedUser) {
+                return res.status(404).json({ error: "FID identity not found" });
+            }
+            username = String(linkedUser.username);
         }
 
         const profile = authService.getUserProfile?.(username);
@@ -87,20 +107,27 @@ export function createZenRoutes(container: ServiceContainer): Router {
      * POST /api/auth/zen/link
      * Verifies the SEA signed challenge and returns an Instance Passport Badge via FID.
      */
-    router.post("/link", authMiddleware.requireUser, rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req: AuthenticatedRequest, res) => {
-        const username = req.username;
-        if (!username) {
-            return res.status(401).json({ error: "Authentication required" });
-        }
-
+    router.post("/link", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req: AuthenticatedRequest, res) => {
         const { zenPubKey, challenge, seaSignature } = req.body;
 
         if (!zenPubKey || !challenge || !challenge.nonce || !challenge.instanceDomain || !seaSignature) {
             return res.status(400).json({ error: "Missing zenPubKey, challenge, nonce, or seaSignature" });
         }
 
+        // Look up the user by zen_pub — the portal authenticates via the
+        // signed challenge, not a session cookie. This mirrors the /sso flow.
+        const user = db.prepare(
+            "SELECT id, username, artist_id, role, is_active, zen_pub, token_version FROM admin WHERE zen_pub = ?"
+        ).get(zenPubKey) as any;
+
+        if (!user) {
+            return res.status(401).json({ error: "FID identity not found" });
+        }
+
+        const username = user.username;
         const profile = authService.getUserProfile?.(username);
         const displayUsername = profile?.alias || username;
+        const instanceDomain = req.hostname || (config as any).host || "localhost";
 
         // Verify the Zen SEA signature over the challenge and consume the one-time nonce
         const isValid = await fidChallengeManager.consumeChallenge(displayUsername, challenge.nonce, seaSignature, zenPubKey);
@@ -108,7 +135,6 @@ export function createZenRoutes(container: ServiceContainer): Router {
             return res.status(400).json({ error: "Invalid signature, or invalid/expired challenge nonce" });
         }
 
-        const instanceDomain = req.hostname || (config as any).host || "localhost";
         const passport = passportIssuer.issuePassport(instanceDomain, displayUsername, zenPubKey);
 
         return res.json({
@@ -175,8 +201,8 @@ export function createZenRoutes(container: ServiceContainer): Router {
             let releases: any[] = [];
             try {
                 const albumQuery = `
-                    SELECT DISTINCT id, title, cover_path as cover_url, date as release_date, type, status, visibility
-                    FROM albums 
+                    SELECT DISTINCT id, title, date as release_date, type, status, visibility
+                    FROM albums
                     WHERE (
                         owner_id = ? 
                         OR (artist_id IS NOT NULL AND artist_id IN (${placeholders}))
@@ -197,28 +223,32 @@ export function createZenRoutes(container: ServiceContainer): Router {
             } catch (queryErr) {
                 try {
                     releases = db.prepare(
-                        `SELECT id, title, cover_path as cover_url, date as release_date, type FROM albums WHERE artist_id IN (${placeholders})`
+                        `SELECT id, title, date as release_date, type FROM albums WHERE artist_id IN (${placeholders})`
                     ).all(...artistIds) || [];
                 } catch(e) {}
             }
+            // cover_path is a server-local filesystem path, not a URL — point at the
+            // dedicated cover route instead so cross-instance clients get a real image.
+            releases = releases.map((r: any) => ({ ...r, cover_url: `/api/albums/${r.id}/cover` }));
 
             // Get public playlists created by user
             let playlists: any[] = [];
             try {
                 playlists = db.prepare(
-                    `SELECT id, name, cover_path as cover_url, created_at FROM playlists WHERE (LOWER(username) = LOWER(?) OR LOWER(username) = LOWER(?)) AND is_public = 1`
+                    `SELECT id, name, created_at FROM playlists WHERE (LOWER(username) = LOWER(?) OR LOWER(username) = LOWER(?)) AND is_public = 1`
                 ).all(user.username, userAlias) || [];
             } catch(e) {
                 console.warn("[ZEN-PUBLIC] Error querying playlists:", e);
             }
+            playlists = playlists.map((p: any) => ({ ...p, cover_url: `/api/playlists/${p.id}/cover` }));
 
             // Get public likes / starred items created by user
             let likes: any[] = [];
             try {
                 likes = db.prepare(`
                     SELECT s.item_type as type, s.item_id as id, s.created_at,
-                           a.title as album_title, a.cover_path as album_cover,
-                           t.title as track_title, t.artist_name as track_artist
+                           a.title as album_title, a.id as album_id,
+                           t.title as track_title, t.artist_name as track_artist, t.album_id as track_album_id
                     FROM starred_items s
                     LEFT JOIN albums a ON (s.item_type = 'album' OR s.item_type = 'release') AND CAST(a.id AS TEXT) = s.item_id
                     LEFT JOIN tracks t ON s.item_type = 'track' AND CAST(t.id AS TEXT) = s.item_id
@@ -228,6 +258,10 @@ export function createZenRoutes(container: ServiceContainer): Router {
             } catch(e) {
                 console.warn("[ZEN-PUBLIC] Error querying starred_items:", e);
             }
+            likes = likes.map((l: any) => {
+                const coverAlbumId = l.album_id || l.track_album_id;
+                return { ...l, album_cover: coverAlbumId ? `/api/albums/${coverAlbumId}/cover` : null };
+            });
 
             return res.json({
                 success: true,
@@ -310,28 +344,10 @@ export function createZenRoutes(container: ServiceContainer): Router {
                 return res.status(400).json({ error: "Missing ssoToken or apSeed payload" });
             }
 
-            // For WebAuthn, never trust the publicKeyPem embedded in the token itself
-            // (client-supplied, forgeable) — verify against the key we stored the
-            // first time this credentialId was seen (trust-on-first-use).
-            let trustedWebauthnKey: string | undefined;
-            let isFirstWebauthnSighting = false;
-            if (ssoToken.masterKeySource?.type === 'webauthn') {
-                trustedWebauthnKey = database.getFidWebauthnKey(ssoToken.masterKeySource.credentialId);
-                if (!trustedWebauthnKey) {
-                    // Nothing pinned yet for this credentialId, so the only key available is
-                    // the one the token declares. validateSsoToken refuses to make that choice
-                    // implicitly (it would let anyone self-sign), so we make it here and
-                    // explicitly: the assertion still has to verify against that key, proving
-                    // the caller holds the private half, and the key is pinned below.
-                    isFirstWebauthnSighting = true;
-                    trustedWebauthnKey = ssoToken.masterKeySource.publicKeyPem;
-                }
-            }
-
             // Verify SSO token using FidSsoHandler from fid package
             let validation;
             try {
-                validation = await ssoHandler.validateSsoToken(ssoToken, undefined, trustedWebauthnKey);
+                validation = await ssoHandler.validateSsoToken(ssoToken);
             } catch (e) {
                 // Handle buffer length mismatch in older fid package (fixed in f75135d)
                 if (e instanceof RangeError && e.message.includes("Input buffers must have the same byte length")) {
@@ -344,12 +360,6 @@ export function createZenRoutes(container: ServiceContainer): Router {
             if (!validation.valid) {
                 const status = validation.error?.includes("expired") ? 401 : 400;
                 return res.status(status).json({ error: validation.error });
-            }
-
-            // First successful login for this credentialId: pin its public key so
-            // future /sso calls above verify against it instead of the token's own claim.
-            if (isFirstWebauthnSighting) {
-                database.registerFidWebauthnKey(ssoToken.masterKeySource.credentialId, ssoToken.masterKeySource.publicKeyPem);
             }
 
             // Derive Ed25519 keypair from apSeed (Zero-Knowledge Proof of Master Key)
@@ -373,12 +383,9 @@ export function createZenRoutes(container: ServiceContainer): Router {
             const publicKeyPem = publicKeyObj.export({ type: "spki", format: "pem" }).toString();
 
             const desiredUsername = ssoToken.username;
-            // Stable per-source identity key stored in zen_pub: Zen SEA uses the raw
-            // pubKey, WebAuthn uses its credentialId (ssoToken.zenPubKey is always ''
-            // for WebAuthn tokens, so it can't be used for lookup/storage there).
-            const zenPubKey = ssoToken.masterKeySource?.type === 'webauthn'
-                ? `webauthn:${ssoToken.masterKeySource.credentialId}`
-                : ssoToken.zenPubKey;
+            // Stable identity key stored in zen_pub: the Zen SEA secp256k1 public key.
+            // It is the same on every instance, which is what makes the identity portable.
+            const zenPubKey = ssoToken.zenPubKey;
 
             // Look up by FID identity (zen_pub) first, never by username: matching on
             // username/alias alone would let anyone log in as an unrelated existing

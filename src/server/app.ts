@@ -86,6 +86,34 @@ export function createApp(config: ServerConfig): AppSetupResult {
         });
     });
 
+    // POST /api/auth/zen/link is called by the FID identity portal to register a
+    // cross-instance link. The portal authenticates via a Zen SEA signed challenge
+    // (zenPubKey + seaSignature), not a session cookie, so it must be accessible
+    // cross-origin and cannot rely on authMiddleware.requireUser.
+    const linkPortalCors = cors({ origin: '*', credentials: false, methods: ['POST', 'OPTIONS'] });
+    app.use('/api/auth/zen/link', (req, res, next) => {
+        if (req.path !== '/' || !!req.headers.cookie || !!req.headers.authorization) return next();
+        linkPortalCors(req, res, (err?: any) => {
+            if (err) return next(err);
+            res.locals.skipStrictCors = true;
+            next();
+        });
+    });
+
+    // GET /api/auth/zen/challenge is step 1 of the same portal flow /link completes, so
+    // it needs the same cross-origin allowance — without it the portal's fetch is blocked
+    // by the browser before it ever reaches the route. It hands out nothing but a nonce;
+    // the signature verified in /link is what authenticates.
+    const challengePortalCors = cors({ origin: '*', credentials: false, methods: ['GET', 'OPTIONS'] });
+    app.use('/api/auth/zen/challenge', (req, res, next) => {
+        if (req.path !== '/' || !!req.headers.cookie || !!req.headers.authorization) return next();
+        challengePortalCors(req, res, (err?: any) => {
+            if (err) return next(err);
+            res.locals.skipStrictCors = true;
+            next();
+        });
+    });
+
     app.use((req, res, next) => {
         if (res.locals.skipStrictCors) {
             return next();
