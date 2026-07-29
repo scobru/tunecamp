@@ -225,8 +225,9 @@ export const AdminSettingsPanel = () => {
   const isSocialEnabled = settings.hideSocial !== true && settings.hideSocial !== "true";
   const isNetworkEnabled = settings.hideNetwork !== true && settings.hideNetwork !== "true";
   const isDigEnabled = settings.hideDig !== true && settings.hideDig !== "true";
-  const isDjEnabled = settings.hideDj !== true && settings.hideDj !== "true";
   const isSamplesEnabled = settings.hideSamples !== true && settings.hideSamples !== "true";
+  const isCollabEnabled = settings.hideCollab !== true && settings.hideCollab !== "true";
+  const isLabEnabled = settings.hideLab !== true && settings.hideLab !== "true";
 
   return (
     <form onSubmit={handleSave} className="space-y-6 w-full">
@@ -509,21 +510,6 @@ export const AdminSettingsPanel = () => {
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
                 <label className="label cursor-pointer justify-between">
                   <div>
-                    <span className="label-text font-bold">Show DJ Booth</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Allow DJs to start live sets and display the "DJ" section in navigation.</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
-                    checked={isDjEnabled}
-                    onChange={(e) => setSettings({ ...settings, hideDj: !e.target.checked })}
-                  />
-                </label>
-              </div>
-
-              <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
                     <span className="label-text font-bold">Show Crate Digging (Dig)</span>
                     <p className="text-[11px] opacity-50 mt-0.5">Allow users to find music via Bandcamp collectors seed crawling.</p>
                   </div>
@@ -536,7 +522,6 @@ export const AdminSettingsPanel = () => {
                 </label>
               </div>
 
-
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
                 <label className="label cursor-pointer justify-between">
                   <div>
@@ -548,6 +533,36 @@ export const AdminSettingsPanel = () => {
                     className="toggle toggle-primary toggle-md shrink-0 ml-4"
                     checked={isSamplesEnabled}
                     onChange={(e) => setSettings({ ...settings, hideSamples: !e.target.checked })}
+                  />
+                </label>
+              </div>
+
+              <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
+                <label className="label cursor-pointer justify-between">
+                  <div>
+                    <span className="label-text font-bold">Show Collab</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Allow users to open the multitrack collaboration workspace.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    checked={isCollabEnabled}
+                    onChange={(e) => setSettings({ ...settings, hideCollab: !e.target.checked })}
+                  />
+                </label>
+              </div>
+
+              <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
+                <label className="label cursor-pointer justify-between">
+                  <div>
+                    <span className="label-text font-bold">Show Lab Apps</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Display the Lab section with its collection of standalone tools/apps.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    checked={isLabEnabled}
+                    onChange={(e) => setSettings({ ...settings, hideLab: !e.target.checked })}
                   />
                 </label>
               </div>

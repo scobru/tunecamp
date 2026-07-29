@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.2.0] - 2026-07-29
+
+### Added
+
+- Collab and Lab modules now gated by `hideCollab`/`hideLab` site-settings flags, enforced by `ModuleGuard` on `/collab`, `/collab/:id`, `/lab`, `/lab/:appId` and by `requireModuleEnabled` on `/api/collab`, `/api/lab-apps`, `/api/live`. Sidebar hides Dig/Lab/Collab nav items when their flag is set.
+
+### Removed
+
+- `hideDj` flag removed (superseded by `hideCollab`/`hideLab`) from the site-settings schema, admin route, and `catalog.service.ts` allowlist.
+
 ## [4.1.1] - 2026-07-29
 
 ### Fixed

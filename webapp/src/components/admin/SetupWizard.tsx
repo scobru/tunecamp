@@ -29,8 +29,9 @@ interface ProfilePreset {
     hideNetwork: boolean;
     hideDig: boolean;
     hideLive: boolean;
-    hideDj: boolean;
     hideSamples: boolean;
+    hideCollab: boolean;
+    hideLab: boolean;
     allowPublicRegistration: boolean;
     listenerSelfPublish: boolean;
     mode: 'label' | 'community';
@@ -53,8 +54,9 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideNetwork: true,
       hideDig: true,
       hideLive: true,
-      hideDj: true,
       hideSamples: true,
+      hideCollab: true,
+      hideLab: true,
       allowPublicRegistration: false,
       listenerSelfPublish: false,
       mode: "label"
@@ -79,8 +81,9 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideNetwork: false,
       hideDig: true,
       hideLive: true,
-      hideDj: true,
       hideSamples: true,
+      hideCollab: true,
+      hideLab: true,
       allowPublicRegistration: true,
       listenerSelfPublish: false,
       mode: "label"
@@ -105,8 +108,9 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideNetwork: false,
       hideDig: false,
       hideLive: true,
-      hideDj: false,
       hideSamples: true,
+      hideCollab: true,
+      hideLab: true,
       allowPublicRegistration: true,
       listenerSelfPublish: true,
       mode: "community"
@@ -131,8 +135,9 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideNetwork: true,
       hideDig: false,
       hideLive: false,
-      hideDj: false,
       hideSamples: true,
+      hideCollab: true,
+      hideLab: true,
       allowPublicRegistration: true,
       listenerSelfPublish: false,
       mode: "community"
@@ -157,8 +162,9 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideNetwork: true,
       hideDig: true,
       hideLive: true,
-      hideDj: true,
       hideSamples: false,
+      hideCollab: false,
+      hideLab: false,
       allowPublicRegistration: true,
       listenerSelfPublish: true,
       mode: "community"
@@ -251,11 +257,14 @@ export const SetupWizard = () => {
     if (flagsConfig.hideDig && !isTrue(currentSettings.hideDig)) {
       warnings.push("The Dig section (audio crate-digging) will be disabled.");
     }
-    if (flagsConfig.hideDj && !isTrue(currentSettings.hideDj)) {
-      warnings.push("The DJ / Web Radio feature will be disabled.");
-    }
     if (flagsConfig.hideSamples && !isTrue(currentSettings.hideSamples)) {
       warnings.push("The Free Samples showcase will be disabled.");
+    }
+    if (flagsConfig.hideCollab && !isTrue(currentSettings.hideCollab)) {
+      warnings.push("The Collab workspace will be disabled.");
+    }
+    if (flagsConfig.hideLab && !isTrue(currentSettings.hideLab)) {
+      warnings.push("The Lab Apps section will be disabled.");
     }
     if (!flagsConfig.allowPublicRegistration && isTrue(currentSettings.allowPublicRegistration)) {
       warnings.push("Public registrations will be disabled (only administrators can add users).");
@@ -285,8 +294,9 @@ export const SetupWizard = () => {
         hideNetwork: flagsConfig.hideNetwork,
         hideDig: flagsConfig.hideDig,
         hideLive: flagsConfig.hideLive,
-        hideDj: flagsConfig.hideDj,
         hideSamples: flagsConfig.hideSamples,
+        hideCollab: flagsConfig.hideCollab,
+        hideLab: flagsConfig.hideLab,
         allowPublicRegistration: flagsConfig.allowPublicRegistration,
         listenerSelfPublish: flagsConfig.listenerSelfPublish,
         mode: flagsConfig.mode
@@ -465,21 +475,6 @@ export const SetupWizard = () => {
               <div className="form-control">
                 <label className="label cursor-pointer justify-between py-1.5">
                   <div>
-                    <span className="label-text font-semibold text-sm">DJ / Web Radio</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Enable radio scheduling, live playlists and automations</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-primary toggle-sm"
-                    checked={!flagsConfig.hideDj}
-                    onChange={(e) => setFlagsConfig({ ...flagsConfig, hideDj: !e.target.checked })}
-                  />
-                </label>
-              </div>
-
-              <div className="form-control">
-                <label className="label cursor-pointer justify-between py-1.5">
-                  <div>
                     <span className="label-text font-semibold text-sm">Free Samples</span>
                     <p className="text-[11px] opacity-50 mt-0.5">Public samples showcase and sample uploads</p>
                   </div>
@@ -522,6 +517,36 @@ export const SetupWizard = () => {
                     className="toggle toggle-primary toggle-sm"
                     checked={!flagsConfig.hideDig}
                     onChange={(e) => setFlagsConfig({ ...flagsConfig, hideDig: !e.target.checked })}
+                  />
+                </label>
+              </div>
+
+              <div className="form-control">
+                <label className="label cursor-pointer justify-between py-1.5">
+                  <div>
+                    <span className="label-text font-semibold text-sm">Collab Workspace</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Multitrack collaboration workspace for co-producing tracks</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary toggle-sm"
+                    checked={!flagsConfig.hideCollab}
+                    onChange={(e) => setFlagsConfig({ ...flagsConfig, hideCollab: !e.target.checked })}
+                  />
+                </label>
+              </div>
+
+              <div className="form-control">
+                <label className="label cursor-pointer justify-between py-1.5">
+                  <div>
+                    <span className="label-text font-semibold text-sm">Lab Apps</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Standalone tools and experiments in the Lab section</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary toggle-sm"
+                    checked={!flagsConfig.hideLab}
+                    onChange={(e) => setFlagsConfig({ ...flagsConfig, hideLab: !e.target.checked })}
                   />
                 </label>
               </div>

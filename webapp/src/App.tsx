@@ -259,12 +259,12 @@ function App() {
 
 
             {/* Lab */}
-            <Route path="/lab" element={<Lab />} />
-            <Route path="/lab/:appId" element={<LabApp />} />
+            <Route path="/lab" element={<ModuleGuard flag="hideLab"><Lab /></ModuleGuard>} />
+            <Route path="/lab/:appId" element={<ModuleGuard flag="hideLab"><LabApp /></ModuleGuard>} />
 
             {/* Collab */}
-            <Route path="/collab" element={<Collab />} />
-            <Route path="/collab/:id" element={<CollabDetail />} />
+            <Route path="/collab" element={<ModuleGuard flag="hideCollab"><Collab /></ModuleGuard>} />
+            <Route path="/collab/:id" element={<ModuleGuard flag="hideCollab"><CollabDetail /></ModuleGuard>} />
 
             {/* Other */}
             <Route path="/support" element={<Support />} />

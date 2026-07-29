@@ -29,7 +29,7 @@ Organized by functional domain:
 See [component-inventory.md](./component-inventory.md) for the full, per-file catalog.
 
 ### 2. Pages (`pages/`)
-Each file is generally a route target wired up in `App.tsx`. Some legacy paths (`/tracks`, `/favorites`, `/playlists`, `/my-playlists`) now redirect into the merged `Library` page rather than rendering a dedicated component — the standalone `ContentSearch` page has been removed and folded into `Search.tsx`. Routes are wrapped with guard components (`AdminGuard`, `EditorGuard`, `RootAdminGuard`, `ManagerOrRootGuard`, `ModuleGuard`) that gate access by role or by instance feature flag (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideDj`).
+Each file is generally a route target wired up in `App.tsx`. Some legacy paths (`/tracks`, `/favorites`, `/playlists`, `/my-playlists`) now redirect into the merged `Library` page rather than rendering a dedicated component — the standalone `ContentSearch` page has been removed and folded into `Search.tsx`. Routes are wrapped with guard components (`AdminGuard`, `EditorGuard`, `RootAdminGuard`, `ManagerOrRootGuard`, `ModuleGuard`) that gate access by role or by instance feature flag (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideSamples`, `hideCollab`, `hideLab`).
 
 ### 3. Frontend Plugin System (`core/plugins/`, `plugins/`)
 Optional integrations (Telegram, OpenRouter/AI, metadata providers, YouTube/yt-dlp, …) register themselves as `FrontendPlugin` objects with a small `PluginRegistry` (`core/plugins/registry.tsx`) instead of being hardcoded into the admin UI:
@@ -42,7 +42,7 @@ Optional integrations (Telegram, OpenRouter/AI, metadata providers, YouTube/yt-d
 Zustand stores, one per concern:
 - `useAuthStore`: logged-in user, JWT/session state, role.
 - `useConfigStore`: backend integration health (Soulseek, iTunes, MusicBrainz, Discogs, Telegram, OpenRouter, Stripe, MoonPay, Google Drive, YouTube, Spotify, …) used to drive plugin status badges.
-- `useSiteSettingsStore`: public site settings and per-module visibility flags (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideDj`) consumed by `ModuleGuard`.
+- `useSiteSettingsStore`: public site settings and per-module visibility flags (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideSamples`, `hideCollab`, `hideLab`) consumed by `ModuleGuard`.
 - `usePlayerStore`: playback state — current track, queue, shuffle/original queue, volume, progress (persisted).
 - `useNowPlayingStore`: the user's "now listening" presence opt-in, kept in sync with the player heartbeat.
 - `useWalletStore`: connected wallet (provider, signer, address, ETH/USDC balances).
