@@ -72,7 +72,7 @@ Non sono componenti in senso tradizionale, ma fanno parte della superficie UI: o
 
 Ogni file è generalmente collegato a una rotta in `App.tsx`. Pagine principali: `Home`, `Library` (navigazione unificata di tracce/preferiti/playlist — `/tracks`, `/favorites`, `/playlists` e `/my-playlists` reindirizzano qui), `Releases` (serve anche `/albums`), `AlbumDetails`, `Artists`, `ArtistDetails`, `Store`, `PlaylistDetails`, `MyMusic`, `Search` (copre anche ciò che prima era la pagina separata `ContentSearch`), `Network`, `Social`, `Post`, `Board`, `Dig` (crate digging), `Live` (streaming live HLS), `Radio`, `NowListening`, `Stats`, `Profile`, `UserProfile`, `Wallet`, `Support`, `Tools`, `About`, `Legal`, `Changelog`, `Guide`, `SharePage`, `Files` (file browser riservato al root-admin), `Archive` (riservata a manager/root), `Publish`, `Admin`, `AdminReleaseEditor`, `Lab` / `LabApp` (strumenti audio sandboxed nel browser), `ResetPassword` / `ResetPasswordSecurity`.
 
-Diverse rotte sono protette da componenti wrapper piuttosto che da logica interna alla pagina: `AdminGuard`, `EditorGuard`, `RootAdminGuard`, `ManagerOrRootGuard` (basati sul ruolo) e `ModuleGuard` (feature flag dell'istanza `hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideDj` da `useSiteSettingsStore`).
+Diverse rotte sono protette da componenti wrapper piuttosto che da logica interna alla pagina: `AdminGuard`, `EditorGuard`, `RootAdminGuard`, `ManagerOrRootGuard` (basati sul ruolo) e `ModuleGuard` (feature flag dell'istanza `hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideSamples`, `hideCollab`, `hideLab` da `useSiteSettingsStore`).
 
 ## Note sullo Sviluppo
 

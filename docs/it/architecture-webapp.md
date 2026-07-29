@@ -29,7 +29,7 @@ Organizzati per dominio funzionale:
 Per il catalogo completo, file per file, vedi [component-inventory.md](./component-inventory.md).
 
 ### 2. Pagine (`pages/`)
-Ogni file è generalmente collegato a una rotta in `App.tsx`. Alcuni percorsi legacy (`/tracks`, `/favorites`, `/playlists`, `/my-playlists`) ora reindirizzano alla pagina unificata `Library` invece di renderizzare un componente dedicato — la vecchia pagina separata `ContentSearch` è stata rimossa e assorbita in `Search.tsx`. Le rotte sono avvolte da componenti guard (`AdminGuard`, `EditorGuard`, `RootAdminGuard`, `ManagerOrRootGuard`, `ModuleGuard`) che limitano l'accesso in base al ruolo o a un feature flag dell'istanza (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideDj`).
+Ogni file è generalmente collegato a una rotta in `App.tsx`. Alcuni percorsi legacy (`/tracks`, `/favorites`, `/playlists`, `/my-playlists`) ora reindirizzano alla pagina unificata `Library` invece di renderizzare un componente dedicato — la vecchia pagina separata `ContentSearch` è stata rimossa e assorbita in `Search.tsx`. Le rotte sono avvolte da componenti guard (`AdminGuard`, `EditorGuard`, `RootAdminGuard`, `ManagerOrRootGuard`, `ModuleGuard`) che limitano l'accesso in base al ruolo o a un feature flag dell'istanza (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideSamples`, `hideCollab`, `hideLab`).
 
 ### 3. Sistema di Plugin Frontend (`core/plugins/`, `plugins/`)
 Le integrazioni opzionali (Telegram, OpenRouter/AI, provider di metadati, YouTube/yt-dlp, …) si registrano come oggetti `FrontendPlugin` presso un piccolo `PluginRegistry` (`core/plugins/registry.tsx`) invece di essere cablate a mano nell'UI di amministrazione:
@@ -42,7 +42,7 @@ Le integrazioni opzionali (Telegram, OpenRouter/AI, provider di metadati, YouTub
 Store Zustand, uno per ciascuna area:
 - `useAuthStore`: utente connesso, stato sessione/JWT, ruolo.
 - `useConfigStore`: salute delle integrazioni backend (Soulseek, iTunes, MusicBrainz, Discogs, Telegram, OpenRouter, Stripe, MoonPay, Google Drive, YouTube, Spotify, …) usata per i badge di stato dei plugin.
-- `useSiteSettingsStore`: impostazioni pubbliche dell'istanza e flag di visibilità per modulo (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideDj`) consumati da `ModuleGuard`.
+- `useSiteSettingsStore`: impostazioni pubbliche dell'istanza e flag di visibilità per modulo (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideSamples`, `hideCollab`, `hideLab`) consumati da `ModuleGuard`.
 - `usePlayerStore`: stato di riproduzione — traccia corrente, coda, coda originale/shuffle, volume, avanzamento (persistito).
 - `useNowPlayingStore`: preferenza opt-in "now listening" dell'utente, sincronizzata con l'heartbeat del player.
 - `useWalletStore`: wallet connesso (provider, signer, indirizzo, saldi ETH/USDC).

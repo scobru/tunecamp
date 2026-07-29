@@ -463,12 +463,12 @@ describe('Admin Routes Vulnerability Check', () => {
         const response = await request(app)
             .put('/admin/settings')
             .set('x-username', 'root')
-            .send({ mode: 'personal', siteName: 'My Library', hideDj: true });
+            .send({ mode: 'personal', siteName: 'My Library', hideCollab: true });
 
         expect(response.status).toBe(200);
         expect(mockDatabase.setSetting).toHaveBeenCalledWith('mode', 'personal');
         expect(mockDatabase.setSetting).toHaveBeenCalledWith('siteName', 'My Library');
-        expect(mockDatabase.setSetting).toHaveBeenCalledWith('hideDj', 'true');
+        expect(mockDatabase.setSetting).toHaveBeenCalledWith('hideCollab', 'true');
     });
 
     describe('Super User Restriction', () => {

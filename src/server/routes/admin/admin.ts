@@ -457,8 +457,9 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 hideSocial,
                 hideNetwork,
                 hideDig,
-                hideDj,
                 hideSamples,
+                hideCollab,
+                hideLab,
                 membershipMonthlyPrice,
                 trackcapTopupPriceUsd,
                 trackcapTopupTracksGranted,
@@ -504,12 +505,16 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 identity.setSetting("hideDig", isTrue(hideDig) ? "true" : "false");
             }
 
-            if (hideDj !== undefined) {
-                identity.setSetting("hideDj", isTrue(hideDj) ? "true" : "false");
-            }
-
             if (hideSamples !== undefined) {
                 identity.setSetting("hideSamples", isTrue(hideSamples) ? "true" : "false");
+            }
+
+            if (hideCollab !== undefined) {
+                identity.setSetting("hideCollab", isTrue(hideCollab) ? "true" : "false");
+            }
+
+            if (hideLab !== undefined) {
+                identity.setSetting("hideLab", isTrue(hideLab) ? "true" : "false");
             }
 
             if (web3Enabled !== undefined) {

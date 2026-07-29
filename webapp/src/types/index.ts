@@ -294,8 +294,9 @@ export interface SiteSettings {
     hideSocial?: boolean | string;
     hideNetwork?: boolean | string;
     hideDig?: boolean | string;
-    hideDj?: boolean | string;
     hideSamples?: boolean | string;
+    hideCollab?: boolean | string;
+    hideLab?: boolean | string;
     membershipMonthlyPrice?: number | string;
     peerEnabled?: boolean | string;
     peerAllowDownloads?: boolean | string;

@@ -94,7 +94,7 @@ export function registerRoutes(app: express.Express, server: http.Server, contai
     app.use("/api/sample-packs", authMiddleware.optionalAuth, requireModuleEnabled(container, "hideSamples", { allowAdmin: true }), createSamplePacksRoutes(container));
     app.use("/api/dig", authMiddleware.requireUser, requireModuleEnabled(container, "hideDig"), createDigRoutes(container));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(container));
-    app.use("/api/collab", authMiddleware.requireUser, createCollabRoutes(container));
+    app.use("/api/collab", authMiddleware.requireUser, requireModuleEnabled(container, "hideCollab", { allowAdmin: true }), createCollabRoutes(container));
     app.use("/api/fid-registry", authMiddleware.requireUser, createFidRegistryRoutes(container));
 
     if (hasGDrive) {
@@ -115,7 +115,7 @@ export function registerRoutes(app: express.Express, server: http.Server, contai
     app.use("/api/mcp", authMiddleware.requireUser, createMcpRoutes(container));
     app.use("/api/comments", createCommentsRoutes(container));
     app.use("/api/board", authMiddleware.optionalAuth, requireModuleEnabled(container, "boardEnabled", { invert: true, allowAdmin: true }), createBoardRoutes(container));
-    app.use("/api/live", createLiveRoutes(container));
+    app.use("/api/live", requireModuleEnabled(container, "hideLive", { allowAdmin: true }), createLiveRoutes(container));
     app.use("/api/radio", createRadioRoutes(container));
     app.use("/api/now-playing", createNowPlayingRoutes(container));
     app.use("/api/unlock", createUnlockRoutes(container));
@@ -127,6 +127,6 @@ export function registerRoutes(app: express.Express, server: http.Server, contai
     app.use("/api/admin/tasks", authMiddleware.requireAdmin, createTaskRoutes(container));
     app.use("/api/search", authMiddleware.optionalAuth, createSearchRoutes(container));
     app.use("/api/peers", createPeersRoutes(container));
-    app.use("/api/lab-apps", createLabAppsRoutes(container));
+    app.use("/api/lab-apps", requireModuleEnabled(container, "hideLab", { allowAdmin: true }), createLabAppsRoutes(container));
     app.use("/api/admin/lab-apps", authMiddleware.requireUser, createLabAppsRoutes(container));
 }

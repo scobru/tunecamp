@@ -57,6 +57,9 @@ export const Sidebar = () => {
   const hideSocial = isModuleHidden("hideSocial");
   const hideNetwork = isModuleHidden("hideNetwork");
   const hideSamples = isModuleHidden("hideSamples");
+  const hideDig = isModuleHidden("hideDig");
+  const hideCollab = isModuleHidden("hideCollab");
+  const hideLab = isModuleHidden("hideLab");
 
   const isRoot = user?.isRootAdmin || role === 'root_admin';
   const isAdmin = role === 'admin' || isRoot || role === 'super_user';
@@ -192,9 +195,9 @@ export const Sidebar = () => {
                   {!sidebarCollapsed && <span className="text-label-large font-medium tracking-normal">More</span>}
                 </summary>
                 <ul className={clsx(sidebarCollapsed ? "hidden" : "")}>
-                  <NavItem to="/dig" icon={Shovel} label="Dig" />
-                  <NavItem to="/lab" icon={FlaskConical} label="Lab" />
-                  <NavItem to="/collab" icon={Users} label="Collab" />
+                  {!hideDig && <NavItem to="/dig" icon={Shovel} label="Dig" />}
+                  {!hideLab && <NavItem to="/lab" icon={FlaskConical} label="Lab" />}
+                  {!hideCollab && <NavItem to="/collab" icon={Users} label="Collab" />}
                 </ul>
               </details>
             </li>
