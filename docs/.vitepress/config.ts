@@ -50,6 +50,7 @@ export default defineConfig({
             text: '🚀 Getting Started',
             items: [
               { text: 'Quick Start', link: '/getting-started' },
+              { text: 'Deploy on Railway', link: '/railway' },
               { text: 'API & Services Setup', link: '/api-setup-guide' },
               { text: 'Nginx', link: '/NGINX' },
               { text: 'Backup & Migration', link: '/backup-migration' },
@@ -59,6 +60,7 @@ export default defineConfig({
             text: '🎧 User Guide',
             items: [
               { text: 'Roles & Permissions', link: '/ROLES' },
+              { text: 'Karma System (Archived)', link: '/karma' },
               { text: 'Radio', link: '/radio' },
               { text: 'Subsonic Protocol', link: '/subsonic' },
               { text: 'Social & Community', link: '/social-features' },
@@ -79,6 +81,7 @@ export default defineConfig({
           {
             text: '💻 Developer Guide',
             items: [
+              { text: 'Architecture Decisions', link: '/ARCHITECTURE-DECISIONS' },
               { text: 'Development Guide', link: '/development-guide' },
               { text: 'Contributing', link: '/CONTRIBUTING' },
               { text: 'Backend Architecture', link: '/architecture-backend' },
@@ -91,11 +94,13 @@ export default defineConfig({
               { text: 'Lab App: Audiofabric', link: '/audiofabric' },
               { text: 'Lab App: 4-Track Recorder', link: '/4-track-recorder' },
               { text: 'Collab', link: '/COLLAB' },
+              { text: 'i18n Plan', link: '/i18n-plan' },
             ],
           },
           {
             text: '🔌 Integrations',
             items: [
+              { text: 'FID Identity & Passports', link: '/FID-IDENTITY' },
               { text: 'AI Integrations', link: '/ai-integrations' },
               { text: 'Smart Contracts', link: '/smart-contracts' },
               { text: 'Google Drive', link: '/google-drive' },
@@ -108,6 +113,7 @@ export default defineConfig({
               { text: 'Project Overview', link: '/project-overview' },
               { text: 'Status & Maturity', link: '/STATUS' },
               { text: 'Comparison with Funkwhale', link: '/comparison-funkwhale' },
+              { text: 'Performance Audit', link: '/PERFORMANCE-AUDIT' },
               { text: 'Audio Fingerprinting', link: '/audio-fingerprinting' },
               { text: 'Payments Security Review', link: '/security-review-payments' },
             ],
@@ -142,6 +148,7 @@ export default defineConfig({
             text: '🚀 Per Iniziare',
             items: [
               { text: 'Avvio Rapido', link: '/it/getting-started' },
+              { text: 'Deploy su Railway', link: '/it/railway' },
               { text: 'Configurazione API e Servizi', link: '/it/api-setup-guide' },
               { text: 'Nginx', link: '/it/NGINX' },
               { text: 'Backup e Migrazione', link: '/it/backup-migration' },
@@ -151,6 +158,7 @@ export default defineConfig({
             text: '🎧 Guida Utente',
             items: [
               { text: 'Ruoli e Permessi', link: '/it/ROLES' },
+              { text: 'Sistema Karma (Archiviato)', link: '/it/karma' },
               { text: 'Radio', link: '/it/radio' },
               { text: 'Protocollo Subsonic', link: '/it/subsonic' },
               { text: 'Social e Community', link: '/it/social-features' },
@@ -171,6 +179,7 @@ export default defineConfig({
           {
             text: '💻 Guida Sviluppatore',
             items: [
+              { text: 'Decisioni di Architettura', link: '/it/ARCHITECTURE-DECISIONS' },
               { text: 'Guida allo Sviluppo', link: '/it/development-guide' },
               { text: 'Contribuire', link: '/it/CONTRIBUTING' },
               { text: 'Architettura Backend', link: '/it/architecture-backend' },
@@ -182,11 +191,14 @@ export default defineConfig({
               { text: 'Applicazioni Lab', link: '/it/LAB' },
               { text: 'App Lab: Audiofabric', link: '/it/audiofabric' },
               { text: 'App Lab: Registratore a 4 tracce', link: '/it/4-track-recorder' },
+              { text: 'Collab', link: '/it/COLLAB' },
+              { text: 'Piano i18n', link: '/it/i18n-plan' },
             ],
           },
           {
             text: '🔌 Integrazioni',
             items: [
+              { text: 'Identità FID & Passaporti', link: '/it/FID-IDENTITY' },
               { text: 'Integrazioni AI', link: '/it/ai-integrations' },
               { text: 'Smart Contracts', link: '/it/smart-contracts' },
               { text: 'Google Drive', link: '/it/google-drive' },
@@ -199,6 +211,7 @@ export default defineConfig({
               { text: 'Panoramica Progetto', link: '/it/project-overview' },
               { text: 'Stato e Maturità', link: '/it/STATUS' },
               { text: 'Confronto con Funkwhale', link: '/it/comparison-funkwhale' },
+              { text: 'Audit Prestazioni', link: '/it/PERFORMANCE-AUDIT' },
               { text: 'Impronte Digitali Audio', link: '/it/audio-fingerprinting' },
               { text: 'Revisione Sicurezza Pagamenti', link: '/it/security-review-payments' },
             ],
