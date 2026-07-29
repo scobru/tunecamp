@@ -40,6 +40,15 @@ export const authApi = {
     getZenChallenge: () => handleResponse(api.get<{ success: boolean; challenge: any }>('auth/zen/challenge')),
     linkZenAccount: (zenPubKey: string, challenge: any, seaSignature: string) =>
         handleResponse(api.post<{ success: boolean; passport: any }>('auth/zen/link', { zenPubKey, challenge, seaSignature })),
+    /** First-time bind of a Zen SEA identity to the logged-in (JWT) account. */
+    setZenAccount: (zenPubKey: string, challenge: any, seaSignature: string) =>
+        handleResponse(api.post<{ success: boolean; zenPub: string }>('auth/zen/set', { zenPubKey, challenge, seaSignature })),
+
+    // --- FID Registry (cross-instance artist links) ---
+    getFidRegistry: () => handleResponse(api.get<{ success: boolean; entries: any[] }>('fid-registry')),
+    addFidRegistryEntry: (entry: { instanceDomain: string; artistId?: string | number; artistName?: string; artistSlug?: string; publicKey?: string; passportSignature?: string }) =>
+        handleResponse(api.post<{ success: boolean; entry: any }>('fid-registry', entry)),
+    deleteFidRegistryEntry: (id: number) => handleResponse(api.delete(`fid-registry/${id}`)),
 
     loginWithSso: (ssoToken: any, apSeed: string) =>
         handleResponse(api.post<{ success: boolean; token: string; isNewUser: boolean; username: string }>('auth/zen/sso', { ssoToken, apSeed })),
