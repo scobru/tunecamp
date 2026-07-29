@@ -131,3 +131,33 @@ You can help strengthen the network's resilience, speed, and decentralization by
 - **Endpoint**: `GET /api/auth/zen/user/:username/public`
 - **Auth Required**: No (Public)
 - **Response**: Returns **only** public profile info, public releases, and public playlists for cross-instance aggregation on `fid-portal.vercel.app`.
+
+### 5. Instance Discovery for Portal
+- **Endpoint**: `GET /api/auth/zen/instances`
+- **Auth Required**: Yes (`requireUser`)
+- **Response**: Returns the user's `fid_registry` entries (linked instances with artist info, passport signatures, verification status).
+- **Purpose**: Allows the global portal to discover which instances a user has linked without querying every instance.
+
+### 6. Cross-Instance Artist Linking (FID Registry)
+- **Table**: `fid_registry` (per-instance, tracks linked instances per user)
+- **Endpoints** (`/api/fid-registry`, auth required):
+  - `GET /` — list all linked instances for current user
+  - `GET /:instanceDomain` — get specific instance entry
+  - `POST /` — add new link `{ instanceDomain, artistId?, artistName?, artistSlug?, publicKey?, passportSignature? }`
+  - `PATCH /:id` — update entry (artist info, passport, verified flag)
+  - `POST /:id/verify` — mark as verified
+  - `DELETE /:id` — unlink instance
+- **Flow**: User authenticates on Instance A, gets passport from Instance B via fid-portal, posts passport to Instance A's `/api/fid-registry` to link the artist on Instance B.
+
+### 7. MCP Server FID Authentication
+- **Auth Header**: `Authorization: FID <zen_pub_key>`
+- **Middleware**: `requireFidAuth` in `auth.ts`
+- **Behavior**: Looks up user by `zen_pub` key, derives context, grants access to MCP tools (search_music, list_recent_albums, scan_library, get_system_stats) without JWT.
+- **Use Case**: AI assistants (Claude Desktop, etc.) authenticate via user's FID identity to inspect/manage catalog across instances.
+
+### 8. Unified Profile Aggregation (tunecamp-website/profile.html)
+- **Data Source**: Aggregates `publicReleases`, `publicLikes`, `publicPlaylists` from all linked instances via their `/api/auth/zen/user/:username/public` endpoints.
+- **Storage**: Caches per-instance data in `localStorage` (`tunecamp_instance_data`).
+- **Tabs**: Releases, Favorites (starred), Playlists — each shows instance badge.
+- **Auto-sync**: On login, `loadLinkedInstances()` fetches registry and auto-syncs verified instances.
+- **Manual sync**: "Sync" button per instance in the Linked Instances list.
