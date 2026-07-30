@@ -5,9 +5,12 @@ export default {
   // Only search src/ — webapp tests are vitest, and slash-based ignore
   // patterns don't match Windows backslash paths.
   roots: ['<rootDir>/src'],
-  // Allow Jest to transform ESM-only packages from node_modules (e.g. node-fetch v3+)
+  // Allow Jest to transform ESM-only packages from node_modules (e.g. node-fetch v3+).
+  // d3-array/d3-scale/d3-shape (and their d3-* deps) ship "type": "module" with
+  // no CJS build, so they must run as real ESM under --experimental-vm-modules
+  // rather than through the CJS transform.
   transformIgnorePatterns: [
-    '/node_modules/(?!(node-fetch|webtorrent)/)'
+    '/node_modules/(?!(node-fetch|webtorrent|d3-array|d3-scale|d3-shape|d3-path|d3-color|d3-interpolate|d3-format|d3-time|d3-time-format)/)'
   ],
   // Resolve `./foo.js` -> `./foo.ts` at the resolver level (see jest.resolver.cjs)
   // so jest.unstable_mockModule and real imports agree on the same absolute path.

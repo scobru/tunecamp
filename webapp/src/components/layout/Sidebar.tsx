@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useUIStore } from "../../stores/useUIStore";
-import { useSiteSettingsStore } from "../../stores/useSiteSettingsStore";
+import { useSiteSettingsStore, truthy } from "../../stores/useSiteSettingsStore";
 import {
   Home,
   Search,
@@ -19,6 +19,7 @@ import {
   LogOut,
   Upload,
   MessageSquare,
+  MessageCircle,
   Library,
   Wrench,
   ShoppingBag,
@@ -209,6 +210,7 @@ export const Sidebar = () => {
           <ul className="menu menu-sm p-0 gap-1">
             {!hideNetwork && <NavItem to="/network" icon={Globe} label="Network" />}
             <NavItem to="/board" icon={MessageSquare} label="Board" />
+            {truthy(settings?.peerChatEnabled) && <NavItem to="/chat" icon={MessageCircle} label="Chat" />}
             {isAuthenticated && <NavItem to="/now-listening" icon={Headphones} label="Now Listening" />}
             {isAuthenticated && <NavItem to="/stats" icon={BarChart2} label="Stats" />}
           </ul>

@@ -1,4 +1,4 @@
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach, afterEach, beforeAll } from '@jest/globals';
 import { EventEmitter } from 'events';
 
 const mockStream = new EventEmitter() as any;
@@ -34,9 +34,14 @@ jest.unstable_mockModule('../../media/ffmpeg.js', () => ({
     releaseTaskSlot: jest.fn()
 }));
 
-const fsMock = await import('fs-extra');
-const ffmpegMediaMock = await import('../../media/ffmpeg.js');
-const { WaveformPeakService } = await import('../waveform-peak.service.js');
+let fsMock: any;
+let ffmpegMediaMock: any;
+let WaveformPeakService: any;
+beforeAll(async () => {
+    fsMock = await import('fs-extra');
+    ffmpegMediaMock = await import('../../media/ffmpeg.js');
+    ({ WaveformPeakService } = await import('../waveform-peak.service.js'));
+});
 
 describe('WaveformPeakService', () => {
     beforeEach(() => {

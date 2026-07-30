@@ -14,7 +14,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Cog,
-  Music2
+  Music2,
+  MessageCircle
 } from "lucide-react";
 
 interface ProfilePreset {
@@ -32,6 +33,9 @@ interface ProfilePreset {
     hideSamples: boolean;
     hideCollab: boolean;
     hideLab: boolean;
+    // Inverted when saved: the stored setting is `peerChatEnabled`, but every
+    // other module in this wizard is expressed as `hide*`, so keep it uniform.
+    hideChat: boolean;
     allowPublicRegistration: boolean;
     listenerSelfPublish: boolean;
     mode: 'label' | 'community';
@@ -57,6 +61,7 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideSamples: true,
       hideCollab: true,
       hideLab: true,
+      hideChat: true,
       allowPublicRegistration: false,
       listenerSelfPublish: false,
       mode: "label"
@@ -84,6 +89,7 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideSamples: true,
       hideCollab: true,
       hideLab: true,
+      hideChat: true,
       allowPublicRegistration: true,
       listenerSelfPublish: false,
       mode: "label"
@@ -111,6 +117,7 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideSamples: true,
       hideCollab: true,
       hideLab: true,
+      hideChat: false,
       allowPublicRegistration: true,
       listenerSelfPublish: true,
       mode: "community"
@@ -138,6 +145,7 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideSamples: true,
       hideCollab: true,
       hideLab: true,
+      hideChat: true,
       allowPublicRegistration: true,
       listenerSelfPublish: false,
       mode: "community"
@@ -165,6 +173,7 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideSamples: false,
       hideCollab: false,
       hideLab: false,
+      hideChat: true,
       allowPublicRegistration: true,
       listenerSelfPublish: true,
       mode: "community"
@@ -175,6 +184,34 @@ const PRESETS: Record<string, ProfilePreset> = {
       "Upload your first sample pack from the Publish page",
       "Pick a license (CC0, CC BY, CC BY-SA, or Royalty-Free) for your uploads",
       "Invite other sound designers to self-publish their own samples"
+    ]
+  },
+  listeningRoom: {
+    id: "listeningRoom",
+    name: "Listening Room",
+    description: "A chat room with a record player. Everything else is off: people talk in the lobby, listen to your library and connect their own Sidecamp folders.",
+    gradient: "from-rose-500/20 to-red-500/20 border-rose-500/30 hover:border-rose-500/60",
+    icon: MessageCircle,
+    flags: {
+      hideStore: true,
+      hideSocial: true,
+      hideNetwork: false,
+      hideDig: true,
+      hideLive: true,
+      hideSamples: true,
+      hideCollab: true,
+      hideLab: true,
+      hideChat: false,
+      allowPublicRegistration: true,
+      listenerSelfPublish: false,
+      mode: "community"
+    },
+    taglineTemplate: "[Room Name] — Listening Room",
+    descTemplate: "A small room for listening together. Join the lobby, talk to whoever is around and play from the shared library.",
+    nextSteps: [
+      "Open registrations so people can join the lobby",
+      "Point Sidecamp at this instance to share a private folder with the room",
+      "Send direct messages: they are end-to-end encrypted and never stored here"
     ]
   }
 };
@@ -218,7 +255,7 @@ export const SetupWizard = () => {
     const nameToUse = isDefaultName ? (id === "artist" ? "My Artist Name" : id === "label" ? "My Record Label" : "My Community") : currentName;
     setSiteName(nameToUse);
 
-    const descToUse = currentDesc || preset.descTemplate.replace("[Artist Name]", nameToUse).replace("[Label Name]", nameToUse).replace("[Curator Name]", nameToUse).replace("[Station Name]", nameToUse).replace("[Studio Name]", nameToUse);
+    const descToUse = currentDesc || preset.descTemplate.replace("[Artist Name]", nameToUse).replace("[Label Name]", nameToUse).replace("[Curator Name]", nameToUse).replace("[Station Name]", nameToUse).replace("[Studio Name]", nameToUse).replace("[Room Name]", nameToUse);
     setSiteDescription(descToUse);
   };
 
@@ -266,6 +303,10 @@ export const SetupWizard = () => {
     if (flagsConfig.hideLab && !isTrue(currentSettings.hideLab)) {
       warnings.push("The Lab Apps section will be disabled.");
     }
+    // Chat is stored as an enable flag, so the comparison is inverted here.
+    if (flagsConfig.hideChat && isTrue(currentSettings.peerChatEnabled)) {
+      warnings.push("Peer Chat will be disabled (the lobby and direct messages go away).");
+    }
     if (!flagsConfig.allowPublicRegistration && isTrue(currentSettings.allowPublicRegistration)) {
       warnings.push("Public registrations will be disabled (only administrators can add users).");
     }
@@ -297,6 +338,7 @@ export const SetupWizard = () => {
         hideSamples: flagsConfig.hideSamples,
         hideCollab: flagsConfig.hideCollab,
         hideLab: flagsConfig.hideLab,
+        peerChatEnabled: !flagsConfig.hideChat,
         allowPublicRegistration: flagsConfig.allowPublicRegistration,
         listenerSelfPublish: flagsConfig.listenerSelfPublish,
         mode: flagsConfig.mode
@@ -547,6 +589,21 @@ export const SetupWizard = () => {
                     className="toggle toggle-primary toggle-sm"
                     checked={!flagsConfig.hideLab}
                     onChange={(e) => setFlagsConfig({ ...flagsConfig, hideLab: !e.target.checked })}
+                  />
+                </label>
+              </div>
+
+              <div className="form-control">
+                <label className="label cursor-pointer justify-between py-1.5">
+                  <div>
+                    <span className="label-text font-semibold text-sm">Peer Chat</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Real-time lobby plus end-to-end encrypted direct messages</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary toggle-sm"
+                    checked={!flagsConfig.hideChat}
+                    onChange={(e) => setFlagsConfig({ ...flagsConfig, hideChat: !e.target.checked })}
                   />
                 </label>
               </div>

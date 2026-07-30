@@ -578,6 +578,18 @@ export function createDatabase(dbPath: string): DatabaseService {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        -- Real-time peer chat lobby backlog (/ws/peer + /ws/chat). Distinct from
+        -- board_messages, which is the asynchronous message board. Only lobby
+        -- traffic lands here: direct messages are end-to-end encrypted and the
+        -- server holds nothing but ciphertext, so storing them serves no one.
+        -- Trimmed to the most recent LOBBY_HISTORY_CAP rows on every insert.
+        CREATE TABLE IF NOT EXISTS peer_chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+
         -- Digging ("Dig") feature: external crate-digging sessions inspired by Badger.
         CREATE TABLE IF NOT EXISTS dig_sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -3,6 +3,7 @@ import http from 'http';
 import { WebSocket as WSClient } from 'ws';
 import { canUsePeer, createPeerWsHandler } from './peer.ws.js';
 import { PeerService } from './peer.service.js';
+import { createChatService, ChatService } from '../chat/chat.service.js';
 import { UserRole } from '../../common/visibility.js';
 import type { DatabaseService } from '../../core/database.types.js';
 
@@ -66,6 +67,7 @@ function waitForUnexpectedResponse(ws: WSClient, timeoutMs = 2000): Promise<numb
 describe('createPeerWsHandler', () => {
     let server: http.Server;
     let peerService: PeerService;
+    let chatService: ChatService;
     let clients: WSClient[] = [];
 
     afterEach(async () => {
@@ -91,11 +93,13 @@ describe('createPeerWsHandler', () => {
 
         peerService = new PeerService(mockDatabase);
         peerService.stopHeartbeat(); // avoid interval leaking across tests
+        chatService = createChatService();
 
         const container = {
             identity: { getSetting: (key: string) => settings[key] },
             authService: { verifyToken: jest.fn(), getUserByUsername: jest.fn() },
             peerService,
+            chatService,
         } as any;
 
         server = http.createServer();

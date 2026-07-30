@@ -1,15 +1,14 @@
 import { jest } from '@jest/globals';
-
-jest.unstable_mockModule('fs-extra', () => ({
-    default: {
-        unlink: jest.fn(),
-        ensureDirSync: jest.fn(),
-    }
-}));
-
-const { cleanupParts } = await import('./backup.js');
-const mockedFs = (await import('fs-extra')).default;
+import fsExtra from 'fs-extra';
 import path from 'path';
+
+let cleanupParts: any;
+let mockedFs: any;
+beforeAll(async () => {
+    ({ cleanupParts } = await import('./backup.js'));
+    mockedFs = fsExtra;
+    jest.spyOn(mockedFs, 'unlink').mockImplementation(async () => undefined as any);
+});
 
 describe('cleanupParts', () => {
     beforeEach(() => {

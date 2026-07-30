@@ -1,18 +1,23 @@
 import { jest } from '@jest/globals';
 import type { DatabaseService } from '../../../core/database.types.js';
+import type { createRssService as CreateRssService } from '../rss.service.js';
 
 // Setup ESM mock for isSafeUrl before importing rss.service
 jest.unstable_mockModule('../../../../utils/networkUtils.js', () => ({
     isSafeUrl: jest.fn().mockResolvedValue(true),
 }));
 
-// Now import after mocking
-const { createRssService } = await import('../rss.service.js');
-const { isSafeUrl } = await import('../../../../utils/networkUtils.js');
+let createRssService: typeof CreateRssService;
+let isSafeUrl: any;
+
+beforeAll(async () => {
+    ({ createRssService } = await import('../rss.service.js'));
+    ({ isSafeUrl } = await import('../../../../utils/networkUtils.js'));
+});
 
 describe('createRssService', () => {
     let mockDb: jest.Mocked<DatabaseService>;
-    let rssService: ReturnType<typeof createRssService>;
+    let rssService: ReturnType<CreateRssService>;
     let globalFetchBackup: typeof global.fetch;
 
     beforeEach(() => {

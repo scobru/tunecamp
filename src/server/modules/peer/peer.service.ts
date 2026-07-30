@@ -16,7 +16,6 @@ export interface ActivePeerSession {
     lastPongAt: number;
     allowDownloads: boolean;
     pendingRequests: Map<string, Response>;
-    pubkey?: string;
 }
 
 interface PendingImport {
@@ -472,44 +471,6 @@ export class PeerService {
         return this.database.peer.getActivePeerSessions(SESSION_STALE_MS);
     }
 
-    // Relay a chat message. An empty toUsername broadcasts to every other live
-    // session (lobby); otherwise it's delivered only to sessions of that username.
-    // Returns true if delivered to at least one socket.
-    relayChat(fromSessionId: string, toUsername: string, text: string): boolean {
-        const from = this.activeSessions.get(fromSessionId);
-        if (!from) return false;
-        const clean = String(text ?? "").slice(0, 2000);
-        if (!clean.trim()) return false;
-        const isLobby = !toUsername;
-        let delivered = false;
-        for (const session of this.activeSessions.values()) {
-            if (session.id === fromSessionId || session.ws.readyState !== 1) continue;
-            if (isLobby || session.username === toUsername) {
-                session.ws.send(JSON.stringify({ type: "chat", from: from.username, text: clean, ts: Date.now(), lobby: isLobby }));
-                delivered = true;
-            }
-        }
-        return delivered;
-    }
-
-    // Store a session's E2E public key (opaque to the server — just relayed for
-    // client-side encryption), broadcast it to already-connected peers, and
-    // return the keys already known for those peers so the caller can send
-    // them back to the newly-announcing session.
-    setPubkey(sessionId: string, pubkey: string): { username: string; pubkey: string }[] {
-        const session = this.activeSessions.get(sessionId);
-        if (!session) return [];
-        session.pubkey = pubkey;
-        const roster: { username: string; pubkey: string }[] = [];
-        for (const other of this.activeSessions.values()) {
-            if (other.id === sessionId) continue;
-            if (other.ws.readyState === 1) {
-                other.ws.send(JSON.stringify({ type: "pubkey", from: session.username, pubkey }));
-            }
-            if (other.pubkey) roster.push({ username: other.username, pubkey: other.pubkey });
-        }
-        return roster;
-    }
 }
 export function createPeerService(database: DatabaseService, apService?: ActivityPubService): PeerService {
     return new PeerService(database, apService);

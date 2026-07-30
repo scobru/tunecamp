@@ -419,6 +419,7 @@ export class CatalogService {
             "themeFont", "themeBlur", "themeOverlayOpacity", "communityLink", "chatEnabled", "boardEnabled", "siteHandle",
             "hideLive", "hideStore", "hideSocial", "hideNetwork", "hideDig", "hideSamples", "hideCollab", "hideLab",
             "membershipMonthlyPrice", "peerEnabled", "peerAllowDownloads", "peerFederation",
+            "peerChatEnabled", "peerChatGuestEnabled",
             "brandPrimary", "brandAccent", "instanceProfile"
         ];
         const res: any = {};
@@ -445,6 +446,8 @@ export class CatalogService {
                     else if (k === 'peerEnabled') res[k] = 'false';
                     else if (k === 'peerAllowDownloads') res[k] = 'true';
                     else if (k === 'peerFederation') res[k] = 'false';
+                    else if (k === 'peerChatEnabled') res[k] = 'false';
+                    else if (k === 'peerChatGuestEnabled') res[k] = 'false';
                     else res[k] = '';
                 }
             }
