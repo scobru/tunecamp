@@ -16,6 +16,7 @@ export interface ChatMessage {
 	self?: boolean;
 	lobby?: boolean;
 	e2e?: boolean;
+	to?: string;
 }
 
 export type ChatStatus = "offline" | "connecting" | "online";
@@ -24,7 +25,7 @@ const MAX_MESSAGES = 200;
 const RECONNECT_MS = 5000;
 
 // Sidecamp-style: show connected peers in the lobby.
-export function usePeerChat(enabled: boolean) {
+export function usePeerChat(enabled: boolean, activePeer: string) {
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [status, setStatus] = useState<ChatStatus>("offline");
 	const [username, setUsername] = useState<string>("");
@@ -112,6 +113,7 @@ export function usePeerChat(enabled: boolean) {
 							text: plain ?? "[Encrypted message — key exchange pending]",
 							ts: msg.ts,
 							e2e: true,
+							to: msg.from,
 						});
 					}
 				}
@@ -120,7 +122,9 @@ export function usePeerChat(enabled: boolean) {
 			ws.onclose = () => {
 				setStatus("offline");
 				peerKeysRef.current.clear();
-				setPeers((prev) => prev.filter((p) => p.username !== username));
+				// Nobody is reachable without the socket; the poll below refills
+				// the roster once we are back.
+				setPeers([]);
 				if (!closedByUsRef.current) {
 					reconnectRef.current = setTimeout(connect, RECONNECT_MS);
 				}
@@ -139,7 +143,10 @@ export function usePeerChat(enabled: boolean) {
 			setStatus("offline");
 			setPeers([]);
 		};
-	}, [enabled, append, refreshPeers, username]);
+		// `username` and `refreshPeers` are deliberately not dependencies: the
+		// socket sets `username` from auth_ok, so listing it here would tear the
+		// connection down and rebuild it on every successful connect.
+	}, [enabled, append]);
 
 	useEffect(() => {
 		if (!enabled) return;
@@ -176,11 +183,20 @@ export function usePeerChat(enabled: boolean) {
 				self: true,
 				lobby: !to,
 				e2e,
+				to,
 			});
 			return true;
 		},
 		[append],
 	);
 
-	return { messages, status, username, peers, sendMessage };
+	const visibleMessages = activePeer
+		? messages.filter(
+				(m) =>
+					m.lobby !== true &&
+					(m.from === activePeer || (m.self && m.to === activePeer)),
+			)
+		: messages.filter((m) => m.lobby !== false);
+
+	return { messages: visibleMessages, status, username, peers, sendMessage };
 }
