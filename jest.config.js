@@ -9,7 +9,7 @@ export default {
   // and @fedify/fedify's transitive ESM-only deps like structured-field-values,
   // url-template, etc. — its .cjs bundle plain-`require()`s them instead of bundling).
   transformIgnorePatterns: [
-    '/node_modules/(?!(node-fetch|webtorrent|@fedify|structured-field-values|url-template|uri-template-router|urlpattern-polyfill|es-toolkit|byte-encodings|multicodec|@multiformats|json-canon|p-limit|yocto-queue)/)'
+    '/node_modules/(?!(fid|node-fetch|webtorrent|@fedify|structured-field-values|url-template|uri-template-router|urlpattern-polyfill|es-toolkit|byte-encodings|multicodec|@multiformats|json-canon|p-limit|yocto-queue)/)'
   ],
   // Resolve `./foo.js` -> `./foo.ts` at the resolver level (see jest.resolver.cjs)
   // so jest.unstable_mockModule and real imports agree on the same absolute path.
@@ -22,6 +22,7 @@ export default {
     '^fluent-ffmpeg$': '<rootDir>/__mocks__/fluent-ffmpeg.ts',
     '^stripe$': '<rootDir>/__mocks__/stripe.ts',
     '^ethers$': '<rootDir>/__mocks__/ethers.ts',
+    '^telegraf$': '<rootDir>/__mocks__/telegraf.ts',
     '^(.*[/\\\\]workers[/\\\\]worker-pool)\\.js$': '<rootDir>/__mocks__/worker-pool.ts',
   },
   transform: {
