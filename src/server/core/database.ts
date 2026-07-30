@@ -454,13 +454,6 @@ export function createDatabase(dbPath: string): DatabaseService {
         -- which forked identities across origins and made the portal a hard dependency.
         -- Existing databases keep the orphaned table; it is unused and safe to drop manually.
 
-        CREATE TABLE IF NOT EXISTS gun_cache (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL,
-            type TEXT NOT NULL,
-            expires_at INTEGER NOT NULL
-        );
-
         CREATE TABLE IF NOT EXISTS unlock_codes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             code TEXT NOT NULL UNIQUE,

@@ -429,13 +429,6 @@ export interface StorageAccount {
     created_at: string;
 }
 
-interface GunCacheEntry {
-    key: string;
-    value: string;
-    type: string;
-    expires_at: number;
-}
-
 export interface IdentityManager {
     // Users
     getUser(id: number): User | undefined;
@@ -835,11 +828,6 @@ export interface IntegrationManager {
     createAsset(data: any): number;
     updateAsset(id: number, data: any): void;
     deleteAsset(id: number): void;
-
-    // Gun Cache
-    getGunCache(key: string): GunCacheEntry | undefined;
-    setGunCache(key: string, value: string, type: string, ttl: number): void;
-    clearExpiredGunCache(): void;
 }
 
 export interface PeerSession {

@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "child_process";
+import childProcess, { type ChildProcess } from "child_process";
 import path from "path";
 import os from "os";
 import fs from "fs-extra";
@@ -231,7 +231,11 @@ export class RadioService {
         ];
 
         // Explicitly disable shell to prevent SAST false positive command injection warnings
-        const proc = spawn(ffmpegBin, args, { stdio: ["ignore", "ignore", "pipe"], shell: false });
+        const proc = childProcess.spawn(ffmpegBin, args, { stdio: ["ignore", "ignore", "pipe"], shell: false });
+
+        proc.on("error", (err) => {
+            console.error(`📻 [Radio] ffmpeg process error:`, err.message);
+        });
 
         proc.stderr?.on("data", (d: Buffer) => {
             const msg = d.toString().trim();

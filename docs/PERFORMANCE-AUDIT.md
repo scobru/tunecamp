@@ -24,7 +24,7 @@ Sequential I/O where concurrency is trivial (per-file `await` in `for` loops), m
 - [ ] `src/server/modules/catalog/catalog.service.ts:217-230` `batchDeleteTracks()` — each `deleteTrack()` re-triggers `syncRelease(albumId)`; N tracks same album = N re-syncs. Fix: dedupe album_ids, sync once after loop.
 - [ ] `src/server/modules/storage/storage-usage.service.ts:33-55,159` `dirSize()` — sequential `await fs.stat` per file, uncached, run on every admin overview request. Fix: `Promise.all` + short TTL cache.
 - [ ] `webapp/src/components/layout/MainLayout.tsx:6-11` — `CheckoutModal` (pulls in `ethers`), `AuthModal`, `PlaylistModal`, `UnlockModal`, admin modals statically imported into app shell for every visitor. Fix: `React.lazy()`.
-- [ ] `webapp/vite.config.ts:18-19` — `vite-plugin-node-polyfills` includes `dgram`/`child_process`/`os`/`zlib`/`stream`, leftover from removed ZEN/Gun.js stack. Fix: trim to what `ethers` actually needs.
+- [x] `webapp/vite.config.ts:18-19` — `vite-plugin-node-polyfills` includes `dgram`/`child_process`/`os`/`zlib`/`stream`, leftover from removed ZEN/Gun.js stack. Fixed: trimmed from `include`, only `buffer`/`crypto`/`fs`/`path`/`process`/`util`/`url`/`events` remain (used by `ethers`/other libs). Also removed the dead `"zen" → src/zen.js` alias (file didn't exist, never imported).
 
 ### Low
 - [ ] `src/server/repositories/album.repository.ts:99-115` `getWithStats()` — no LIMIT/pagination.

@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.3.2] - 2026-07-30
+
+### Added
+
+- Test coverage for `src/server/middleware/auth.ts`: `requireAdmin`, `requireManager`, `requireRootAdmin`, `requireFidAuth`, `requireWriteAccess`, and the DB-user role/isActive override branch shared by `requireUser`/`optionalAuth`. File goes from 44.5%/46.4% (stmt/branch) to 100%/85.5%.
+
+## [4.3.1] - 2026-07-29
+
+### Removed
+
+- Dead `gun_cache` table, `getGunCache`/`setGunCache`/`clearExpiredGunCache` DB helpers, and `GunCacheEntry` type (zero callers, leftover from removed ZEN P2P graph).
+- Dead `publishedToZen` admin API alias (never sent by any client, name collided with FID Zen SSO identity naming). `publishedToGunDB` alias and `published_to_gundb` federation-publish column are untouched.
+- Leftover `dgram`/`child_process`/`os`/`zlib`/`stream` entries from webapp's `vite-plugin-node-polyfills` config and the dead `"zen"` alias (pointed at a non-existent `src/zen.js`), both residue of the removed ZEN/Gun.js stack.
+
+## [4.3.0] - 2026-07-29
+
+### Added
+
+- Home page shows a "Community Feed" section (latest board messages, public `/api/board/history`) above "Recent Releases" when the instance `mode` is `community` and `boardEnabled` is on — makes the Setup Wizard's `mode` toggle have a visible effect.
+
 ## [4.2.0] - 2026-07-29
 
 ### Added
