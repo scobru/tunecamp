@@ -9,7 +9,10 @@ jest.unstable_mockModule("../../../common/network.js", () => ({
     fetchJsonSafe: mockFetchJsonSafe
 }));
 
-const { createPeersRoutes } = await import("../peers.js");
+let createPeersRoutes: any;
+beforeAll(async () => {
+    ({ createPeersRoutes } = await import("../peers.js"));
+});
 
 const mockAuthMiddleware = {
     requireUser: (req: any, res: any, next: any) => {

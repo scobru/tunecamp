@@ -6,6 +6,7 @@ import { adminApi } from './admin';
 import { networkApi } from './network';
 import { mediaApi } from './media';
 import { commerceApi } from './commerce';
+import { chatApi } from './chat';
 
 export { ApiError };
 
@@ -17,6 +18,7 @@ const API = {
     ...networkApi,
     ...mediaApi,
     ...commerceApi,
+    ...chatApi,
 };
 
 export default API;

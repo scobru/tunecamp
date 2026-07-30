@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.3.4] - 2026-07-30
+
+### Fixed
+
+- `peer.service.test.ts`: fixed a race in the `requestImport` tests where `ws.send` was inspected synchronously before the real `fs.promises.mkdir` await had resolved, causing `mock.calls[0]` to be `undefined` and leaving a dangling 5-minute import timeout that crashed the Jest worker. Tests now await a `waitForSend` helper that resolves once `ws.send` is actually invoked.
+
 ## [4.3.3] - 2026-07-30
 
 ### Added
