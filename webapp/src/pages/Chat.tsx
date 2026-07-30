@@ -33,8 +33,10 @@ export default function Chat() {
 	}, [fetchFlags]);
 
 	const isChatEnabled = truthy(siteSettings?.peerChatEnabled);
-	const { messages, status, username, peers, sendMessage } =
-		usePeerChat(isChatEnabled);
+	const { messages, status, username, peers, sendMessage } = usePeerChat(
+		isChatEnabled,
+		to,
+	);
 
 	const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
 		bottomRef.current?.scrollIntoView({ behavior });
@@ -131,8 +133,9 @@ export default function Chat() {
 								<MessageCircle size={32} className="opacity-20 mx-auto" />
 								<p className="text-sm opacity-50">Nothing here yet.</p>
 								<p className="text-xs opacity-40">
-									Say hello to the lobby, or enter a peer username below for a
-									direct message.
+									{to
+										? `Start an encrypted conversation with ${to}.`
+										: "Say hello to the lobby, or select a peer for a direct message."}
 								</p>
 							</div>
 						)}
@@ -272,8 +275,9 @@ export default function Chat() {
 			</div>
 
 			<p className="text-xs opacity-50">
-				Lobby messages are visible to everyone connected. Direct messages are
-				end-to-end encrypted and never stored.
+				{to
+					? "Messages are end-to-end encrypted and never stored on the server."
+					: "Lobby messages are visible to everyone connected. Direct messages are end-to-end encrypted and never stored."}
 			</p>
 		</div>
 	);
