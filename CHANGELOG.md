@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.3.3] - 2026-07-30
+
+### Added
+
+- Test coverage for `src/server/routes/library/tracks.ts`: list/starred/pricing, track create, batch update/delete, localize, star/unstar/rating, lyrics, single-track read/update, cover, metadata match, and stream/download access guards. File goes from 13%/2.7% (stmt/branch) to 73.4%/63.6%.
+
 ## [4.3.2] - 2026-07-30
 
 ### Added
