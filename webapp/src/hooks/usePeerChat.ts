@@ -1,141 +1,186 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import API from '../services/api';
-import { generateKeyPair, encryptFor, decryptFrom, type KeyPair } from '../services/e2eCrypto';
+import { useState, useEffect, useRef, useCallback } from "react";
+import API from "../services/api";
+import { chatApi } from "../services/api/chat";
+import {
+	generateKeyPair,
+	encryptFor,
+	decryptFrom,
+	type KeyPair,
+} from "../services/e2eCrypto";
+import type { PeerInfo } from "../services/api/chat";
 
 export interface ChatMessage {
-    from: string;
-    text: string;
-    ts: number;
-    self?: boolean;
-    lobby?: boolean;
-    e2e?: boolean;
+	from: string;
+	text: string;
+	ts: number;
+	self?: boolean;
+	lobby?: boolean;
+	e2e?: boolean;
 }
 
-export type ChatStatus = 'offline' | 'connecting' | 'online';
+export type ChatStatus = "offline" | "connecting" | "online";
 
-// Matches Sidecamp: the chat identity is per-session, not per-account. It buys
-// forward secrecy across reloads at the cost of not being able to read direct
-// messages sent while you were away — which is the right trade for a lobby.
 const MAX_MESSAGES = 200;
 const RECONNECT_MS = 5000;
 
+// Sidecamp-style: show connected peers in the lobby.
 export function usePeerChat(enabled: boolean) {
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [status, setStatus] = useState<ChatStatus>('offline');
-    const [username, setUsername] = useState<string>('');
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [status, setStatus] = useState<ChatStatus>("offline");
+	const [username, setUsername] = useState<string>("");
+	const [peers, setPeers] = useState<PeerInfo[]>([]);
 
-    const wsRef = useRef<WebSocket | null>(null);
-    const keyPairRef = useRef<KeyPair | null>(null);
-    const peerKeysRef = useRef<Map<string, string>>(new Map());
-    const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    // Survives reconnects: the effect must not tear down a socket it just opened.
-    const closedByUsRef = useRef(false);
+	const wsRef = useRef<WebSocket | null>(null);
+	const keyPairRef = useRef<KeyPair | null>(null);
+	const peerKeysRef = useRef<Map<string, string>>(new Map());
+	const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const closedByUsRef = useRef(false);
 
-    const append = useCallback((msg: ChatMessage) => {
-        setMessages((prev) => [...prev, msg].slice(-MAX_MESSAGES));
-    }, []);
+	const append = useCallback((msg: ChatMessage) => {
+		setMessages((prev) => [...prev, msg].slice(-MAX_MESSAGES));
+	}, []);
 
-    useEffect(() => {
-        if (!enabled) return;
+	const refreshPeers = useCallback(async () => {
+		try {
+			const { clients } = await chatApi.getPeers();
+			setPeers(clients);
+		} catch {
+			// Non-blocking: the lobby still works without a peer list.
+		}
+	}, []);
 
-        closedByUsRef.current = false;
-        keyPairRef.current = generateKeyPair();
+	useEffect(() => {
+		if (!enabled) return;
 
-        API.getChatHistory()
-            .then(({ messages: history }) => {
-                setMessages(history.map((m) => ({ from: m.username, text: m.message, ts: m.created_at, lobby: true })));
-            })
-            .catch((err) => {
-                // Guests have no backlog (the endpoint requires a session); the
-                // live stream still works, so this is not worth surfacing.
-                console.debug('No chat history available:', err?.message);
-            });
+		closedByUsRef.current = false;
+		keyPairRef.current = generateKeyPair();
 
-        const connect = () => {
-            if (closedByUsRef.current) return;
-            setStatus('connecting');
-            const ws = new WebSocket(API.getChatWsUrl());
-            wsRef.current = ws;
+		API.getChatHistory()
+			.then(({ messages: history }) => {
+				setMessages(
+					history.map((m) => ({
+						from: m.username,
+						text: m.message,
+						ts: m.created_at,
+						lobby: true,
+					})),
+				);
+			})
+			.catch(() => {
+				console.debug("No chat history available");
+			});
 
-            ws.onmessage = (event) => {
-                let msg: any;
-                try {
-                    msg = JSON.parse(event.data);
-                } catch {
-                    return;
-                }
+		const connect = () => {
+			if (closedByUsRef.current) return;
+			setStatus("connecting");
+			const ws = new WebSocket(API.getChatWsUrl());
+			wsRef.current = ws;
 
-                if (msg.type === 'auth_ok') {
-                    setStatus('online');
-                    setUsername(msg.username ?? '');
-                    ws.send(JSON.stringify({ type: 'pubkey', pubkey: keyPairRef.current!.publicKey }));
-                } else if (msg.type === 'pubkey') {
-                    peerKeysRef.current.set(msg.from, msg.pubkey);
-                } else if (msg.type === 'chat') {
-                    if (msg.lobby) {
-                        append({ from: msg.from, text: msg.text, ts: msg.ts, lobby: true });
-                    } else {
-                        const senderKey = peerKeysRef.current.get(msg.from);
-                        const plain = senderKey
-                            ? decryptFrom(msg.text, senderKey, keyPairRef.current!.secretKey)
-                            : null;
-                        append({
-                            from: msg.from,
-                            text: plain ?? '[Encrypted message — key exchange pending]',
-                            ts: msg.ts,
-                            e2e: true,
-                        });
-                    }
-                }
-            };
+			ws.onmessage = (event) => {
+				let msg: any;
+				try {
+					msg = JSON.parse(event.data);
+				} catch {
+					return;
+				}
 
-            ws.onclose = () => {
-                setStatus('offline');
-                peerKeysRef.current.clear();
-                if (!closedByUsRef.current) {
-                    reconnectRef.current = setTimeout(connect, RECONNECT_MS);
-                }
-            };
+				if (msg.type === "auth_ok") {
+					setStatus("online");
+					setUsername(msg.username ?? "");
+					ws.send(
+						JSON.stringify({
+							type: "pubkey",
+							pubkey: keyPairRef.current!.publicKey,
+						}),
+					);
+				} else if (msg.type === "pubkey") {
+					peerKeysRef.current.set(msg.from, msg.pubkey);
+					setPeers((prev) => {
+						if (prev.some((p) => p.username === msg.from)) return prev;
+						return [...prev, { username: msg.from, pubkey: true }];
+					});
+				} else if (msg.type === "chat") {
+					if (msg.lobby) {
+						append({ from: msg.from, text: msg.text, ts: msg.ts, lobby: true });
+					} else {
+						const senderKey = peerKeysRef.current.get(msg.from);
+						const plain = senderKey
+							? decryptFrom(msg.text, senderKey, keyPairRef.current!.secretKey)
+							: null;
+						append({
+							from: msg.from,
+							text: plain ?? "[Encrypted message — key exchange pending]",
+							ts: msg.ts,
+							e2e: true,
+						});
+					}
+				}
+			};
 
-            // 'error' is always followed by 'close', which owns the retry.
-            ws.onerror = () => ws.close();
-        };
+			ws.onclose = () => {
+				setStatus("offline");
+				peerKeysRef.current.clear();
+				setPeers((prev) => prev.filter((p) => p.username !== username));
+				if (!closedByUsRef.current) {
+					reconnectRef.current = setTimeout(connect, RECONNECT_MS);
+				}
+			};
 
-        connect();
+			ws.onerror = () => ws.close();
+		};
 
-        return () => {
-            closedByUsRef.current = true;
-            if (reconnectRef.current) clearTimeout(reconnectRef.current);
-            wsRef.current?.close();
-            wsRef.current = null;
-            setStatus('offline');
-        };
-    }, [enabled, append]);
+		connect();
 
-    /**
-     * Send to the lobby (empty `to`) or a direct message to one peer.
-     * Direct messages are encrypted for the recipient when their key is known.
-     */
-    const sendMessage = useCallback((to: string, text: string): boolean => {
-        const ws = wsRef.current;
-        const keyPair = keyPairRef.current;
-        if (ws?.readyState !== WebSocket.OPEN || !keyPair || !text.trim()) return false;
+		return () => {
+			closedByUsRef.current = true;
+			if (reconnectRef.current) clearTimeout(reconnectRef.current);
+			wsRef.current?.close();
+			wsRef.current = null;
+			setStatus("offline");
+			setPeers([]);
+		};
+	}, [enabled, append, refreshPeers, username]);
 
-        let payload = text;
-        let e2e = false;
-        if (to) {
-            const pubkey = peerKeysRef.current.get(to);
-            if (pubkey) {
-                payload = encryptFor(text, pubkey, keyPair.secretKey);
-                e2e = true;
-            }
-            // No key yet: the peer has not announced one (older client, or the
-            // exchange is still in flight). Sidecamp sends plaintext here too.
-        }
-        ws.send(JSON.stringify({ type: 'chat', to, text: payload }));
-        append({ from: to ? `→ ${to}` : '→ Lobby', text, ts: Date.now(), self: true, lobby: !to, e2e });
-        return true;
-    }, [append]);
+	useEffect(() => {
+		if (!enabled) return;
+		const id = setInterval(refreshPeers, 5000);
+		// Defer initial fetch so it's not a synchronous setState in effect body.
+		const timeoutId = setTimeout(() => refreshPeers(), 0);
+		return () => {
+			clearInterval(id);
+			clearTimeout(timeoutId);
+		};
+	}, [enabled, refreshPeers]);
 
-    return { messages, status, username, sendMessage };
+	const sendMessage = useCallback(
+		(to: string, text: string): boolean => {
+			const ws = wsRef.current;
+			const keyPair = keyPairRef.current;
+			if (ws?.readyState !== WebSocket.OPEN || !keyPair || !text.trim())
+				return false;
+
+			let payload = text;
+			let e2e = false;
+			if (to) {
+				const pubkey = peerKeysRef.current.get(to);
+				if (pubkey) {
+					payload = encryptFor(text, pubkey, keyPair.secretKey);
+					e2e = true;
+				}
+			}
+			ws.send(JSON.stringify({ type: "chat", to, text: payload }));
+			append({
+				from: to ? `→ ${to}` : "→ Lobby",
+				text,
+				ts: Date.now(),
+				self: true,
+				lobby: !to,
+				e2e,
+			});
+			return true;
+		},
+		[append],
+	);
+
+	return { messages, status, username, peers, sendMessage };
 }
