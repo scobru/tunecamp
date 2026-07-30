@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.3.3] - 2026-07-30
+
+### Added
+
+- Test coverage for `src/server/modules/catalog/catalog.service.ts`: `promoteToRelease`, `setVisibility`, `deleteAlbum`, `deleteTrack`, `batchDeleteTracks`, star/rating helpers, `getSettings`, `getLegalPages`, `getRemoteTracks`, `getRandomTracks`, and `updateAlbum`'s artist-resolution branches. File goes from 14.3%/8.5% (stmt/branch) to 50.3%/45.5%.
+
 ## [4.3.2] - 2026-07-30
 
 ### Added
