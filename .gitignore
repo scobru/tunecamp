@@ -91,3 +91,7 @@ test.db
 test-benchmark.js
 test-runner.js
 test-config.json
+
+# Pix Agent
+.pi/
+.pi-lens/

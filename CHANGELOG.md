@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.3.4] - 2026-07-30
+
+### Fixed
+
+- `peer.service.test.ts`: fixed a race in the `requestImport` tests where `ws.send` was inspected synchronously before the real `fs.promises.mkdir` await had resolved, causing `mock.calls[0]` to be `undefined` and leaving a dangling 5-minute import timeout that crashed the Jest worker. Tests now await a `waitForSend` helper that resolves once `ws.send` is actually invoked.
+
+## [4.3.3] - 2026-07-30
+
+### Added
+
+- Test coverage for `src/server/routes/library/tracks.ts`: list/starred/pricing, track create, batch update/delete, localize, star/unstar/rating, lyrics, single-track read/update, cover, metadata match, and stream/download access guards. File goes from 13%/2.7% (stmt/branch) to 73.4%/63.6%.
+- Test coverage for `src/server/modules/catalog/catalog.service.ts`: `promoteToRelease`, `setVisibility`, `deleteAlbum`, `deleteTrack`, `batchDeleteTracks`, star/rating helpers, `getSettings`, `getLegalPages`, `getRemoteTracks`, `getRandomTracks`, and `updateAlbum`'s artist-resolution branches. File goes from 14.3%/8.5% (stmt/branch) to 50.3%/45.5%.
+
+## [4.3.2] - 2026-07-30
+
+### Added
+
+- Test coverage for `src/server/middleware/auth.ts`: `requireAdmin`, `requireManager`, `requireRootAdmin`, `requireFidAuth`, `requireWriteAccess`, and the DB-user role/isActive override branch shared by `requireUser`/`optionalAuth`. File goes from 44.5%/46.4% (stmt/branch) to 100%/85.5%.
+
 ## [4.3.1] - 2026-07-29
 
 ### Removed
