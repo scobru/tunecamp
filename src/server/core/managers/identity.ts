@@ -11,8 +11,15 @@ export function createIdentityManager(db: DatabaseType): IdentityManager {
             return Number(db.prepare("INSERT INTO admin (username, password_hash, artist_id, role) VALUES (?, ?, ?, ?)").run(u, p, aid || null, r).lastInsertRowid);
         },
         updateUser(id: number, data: Partial<User>): void {
-            const f = Object.keys(data).map(k => `${k} = ?`).join(", ");
-            db.prepare(`UPDATE admin SET ${f} WHERE id = ?`).run(...Object.values(data), id);
+            const allowed = new Set([
+                "username", "password_hash", "artist_id", "is_active", "role",
+                "storage_quota", "storage_used", "subscription_status", "subscription_expires_at",
+                "ap_public_key", "ap_private_key", "artist_unlinked", "can_peer",
+            ]);
+            const keys = Object.keys(data).filter(k => allowed.has(k));
+            if (!keys.length) return;
+            const f = keys.map(k => `${k} = ?`).join(", ");
+            db.prepare(`UPDATE admin SET ${f} WHERE id = ?`).run(...keys.map(k => (data as any)[k]), id);
         },
         getAllUsers: () => db.prepare("SELECT * FROM admin").all() as User[],
         deleteUser: (id: number) => { db.prepare("DELETE FROM admin WHERE id = ?").run(id); },
@@ -89,9 +96,18 @@ updateSubscription(userId: number, status: string, expiresAt: string): void {
             passportSignature?: string | null;
             verified?: number;
         }): void {
-            const fields = Object.keys(data).map(k => `${k} = ?`).join(", ");
-            const values = Object.values(data);
-            if (fields.length === 0) return;
+            const columnMap: Record<string, string> = {
+                artistId: "artist_id",
+                artistName: "artist_name",
+                artistSlug: "artist_slug",
+                publicKey: "public_key",
+                passportSignature: "passport_signature",
+                verified: "verified",
+            };
+            const keys = Object.keys(data).filter(k => k in columnMap);
+            if (!keys.length) return;
+            const fields = keys.map(k => `${columnMap[k]} = ?`).join(", ");
+            const values = keys.map(k => (data as any)[k]);
             db.prepare(`UPDATE fid_registry SET ${fields} WHERE id = ?`).run(...values, id);
         },
         deleteFidRegistryEntry(id: number): void {

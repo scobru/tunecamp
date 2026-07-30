@@ -8,7 +8,13 @@ export function createIntegrationManager(db: DatabaseType): IntegrationManager {
         getStorageAccount: (id: number) => db.prepare("SELECT * FROM storage_accounts WHERE id = ?").get(id) as StorageAccount | undefined,
         getStorageAccountByProvider: (uid: number, p: string) => db.prepare("SELECT * FROM storage_accounts WHERE user_id = ? AND provider = ?").get(uid, p) as StorageAccount | undefined,
         createStorageAccount: (a: any) => Number(db.prepare("INSERT INTO storage_accounts (user_id, provider, account_email, access_token, refresh_token, expiry_date) VALUES (?, ?, ?, ?, ?, ?)").run(a.user_id, a.provider, a.account_email, a.access_token, a.refresh_token, a.expiry_date).lastInsertRowid),
-        updateStorageAccount: (id: number, a: any) => { const f = Object.keys(a).map(k => `${k} = ?`).join(", "); db.prepare(`UPDATE storage_accounts SET ${f} WHERE id = ?`).run(...Object.values(a), id); },
+        updateStorageAccount: (id: number, a: any) => {
+            const allowed = new Set(["user_id", "provider", "account_email", "access_token", "refresh_token", "expiry_date"]);
+            const keys = Object.keys(a).filter(k => allowed.has(k));
+            if (!keys.length) return;
+            const f = keys.map(k => `${k} = ?`).join(", ");
+            db.prepare(`UPDATE storage_accounts SET ${f} WHERE id = ?`).run(...keys.map(k => a[k]), id);
+        },
         deleteStorageAccount: (id: number) => { db.prepare("DELETE FROM storage_accounts WHERE id = ?").run(id); },
         getPrimaryAdminId: () => { const a = db.prepare("SELECT id FROM admin WHERE role IN ('admin', 'super_user', 'root_admin') ORDER BY id ASC LIMIT 1").get() as any; return a ? a.id : null; },
 

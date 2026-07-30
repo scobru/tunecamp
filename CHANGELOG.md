@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.3.5] - 2026-07-30
+
+### Fixed
+
+- `identity.ts`/`integration.ts` managers: `updateUser`, `updateFidRegistryEntry`, and `updateStorageAccount` now allowlist updatable columns instead of building the `UPDATE ... SET` clause from arbitrary object keys, closing a SQL injection vector via caller-controlled key names.
+
+### Added
+
+- Coverage for `src/server/modules/activitypub/activitypub.service.ts` (`activitypub.service.test.ts`, 79 tests).
+
 ## [4.3.4] - 2026-07-30
 
 ### Fixed
