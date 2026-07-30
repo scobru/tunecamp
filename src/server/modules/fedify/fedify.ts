@@ -241,8 +241,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
         if (artist) {
             // Get public releases
-            const albums = dbService.getAlbumsByArtist(artist.id, VisibilityProfile.PUBLIC_STAGE);
-            const releases = albums.filter(a => a.is_release && a.is_public);
+            const releases = dbService.getReleasesByArtist(artist.id, VisibilityProfile.PUBLIC_STAGE);
             
             // Get public posts
             const posts = dbService.getPostsByArtist(artist.id, VisibilityProfile.PUBLIC_STAGE);
@@ -413,138 +412,56 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
     federation
         .setInboxListeners("/users/{handle}/inbox", "/inbox")
         .on(Follow, async (ctx, follow) => {
-            // Get the target (who is being followed)
             if (follow.objectId == null) return;
 
             const parsed = ctx.parseUri(follow.objectId);
             if (parsed?.type !== "actor") return;
 
             const handle = parsed.identifier;
+            const isSite = isSiteHandle(handle, dbService);
 
-            // Handle site follow (relay or other instances)
-            if (isSiteHandle(handle, dbService)) {
-                const docLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
-                const follower = await follow.getActor({ documentLoader: docLoader }).catch(() => null) || await follow.getActor(ctx).catch(() => null);
-
-                // Derive the follower URI even when the actor document could not be
-                // fetched — `Follow.actorId` is always present — so a transient network
-                // failure never silently drops the follow (which previously required the
-                // remote to re-send the request, and left nothing to recover on restart).
-                const followerUri = follower?.id?.toString() || follow.actorId?.toString();
-                if (!followerUri) {
-                    console.warn("⚠️ Site Follow received without a resolvable actor URI; ignoring.");
-                    return;
-                }
-                const followerInbox = follower?.inboxId?.toString() || "";
-                const sharedInbox = follower?.endpoints?.sharedInbox?.toString();
-
-                console.log(`📥 New site follower: ${followerUri}`);
-
-                // Persist immediately and unconditionally so the follow is durable.
-                dbService.addFollower(-1, followerUri, followerInbox, sharedInbox);
-                dbService.acceptFollower(-1, followerUri);
-                if (follower) cacheFollowerActor(follower);
-
-                if (follower) {
-                    await ctx.sendActivity(
-                        { handle: getSiteHandle(dbService) },
-                        follower,
-                        new Accept({ actor: follow.objectId, object: follow }),
-                    ).catch(e => console.warn(`⚠️ Failed to send site Accept to ${followerUri}:`, e?.message));
-                } else {
-                    console.warn(`⚠️ Site follower ${followerUri} stored, but Accept not sent (actor unresolved). It will be re-attempted on the next Follow or Sync.`);
-                }
-                return;
-            }
-
-            const artist = dbService.getArtistBySlug(handle);
-            if (!artist) return;
-
-            // Get the follower actor
-            const docLoader = await getAuthenticatedLoader(ctx, handle);
+            const docLoader = await getAuthenticatedLoader(ctx, isSite ? getSiteHandle(dbService) : handle);
             const follower = await follow.getActor({ documentLoader: docLoader }).catch(() => null) || await follow.getActor(ctx).catch(() => null);
 
+            // Derive the follower URI even when the actor document could not be
+            // fetched — `Follow.actorId` is always present — so a transient network
+            // failure never silently drops the follow (which previously required the
+            // remote to re-send the request, and left nothing to recover on restart).
             const followerUri = follower?.id?.toString() || follow.actorId?.toString();
             if (!followerUri) {
-                console.warn(`⚠️ Follow for ${artist.name} received without a resolvable actor URI; ignoring.`);
+                console.warn(`⚠️ Follow for ${handle} received without a resolvable actor URI; ignoring.`);
                 return;
             }
             const followerInbox = follower?.inboxId?.toString() || "";
             const sharedInbox = follower?.endpoints?.sharedInbox?.toString();
 
-            // Persist the follower up-front so it survives transient fetch failures and
-            // instance restarts, even before we manage to resolve their inbox.
-            dbService.addFollower(artist.id, followerUri, followerInbox, sharedInbox);
-            if (follower) cacheFollowerActor(follower);
-            console.log(`📥 New follower for ${artist.name}: ${followerUri}`);
+            const outcome = handleFollowActivity(dbService, handle, isSite, followerUri, followerInbox, sharedInbox, follower, cacheFollowerActor);
+            if (!outcome || !outcome.autoAccept) return;
 
-            // Respect the artist's manual-approval preference: leave the request pending
-            // (surfaced under "Pending requests") instead of auto-accepting.
-            if ((artist as any).manually_approves_followers) {
-                console.log(`⏳ Follow from ${followerUri} left pending — ${artist.name} requires manual approval.`);
-                return;
-            }
-
-            dbService.acceptFollower(artist.id, followerUri);
-
-            // Send Accept activity back to the follower (only possible once resolved).
-            if (follower) {
+            if (outcome.follower) {
                 await ctx.sendActivity(
-                    { handle: handle },
-                    follower,
+                    { handle: outcome.handle },
+                    outcome.follower,
                     new Accept({ actor: follow.objectId, object: follow }),
                 ).catch(e => console.warn(`⚠️ Failed to send Accept to ${followerUri}:`, e?.message));
             } else {
-                console.warn(`⚠️ Follower ${followerUri} accepted for ${artist.name}, but Accept not sent (actor unresolved).`);
+                console.warn(`⚠️ Follower ${followerUri} accepted for ${outcome.handle}, but Accept not sent (actor unresolved).`);
             }
         })
         .on(Accept, async (ctx, accept) => {
             // Handle Accept from a Relay
             const docLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
             const actor = await accept.getActor({ documentLoader: docLoader }).catch(() => null) || await accept.getActor(ctx).catch(() => null);
-            if (!actor) return;
-
-            console.log(`✅ Received Accept from: ${actor.id?.toString()}`);
-
-            // Save as remote actor
-            dbService.upsertRemoteActor({
-                uri: actor.id?.toString() || "",
-                type: actor instanceof Person ? 'Person' : 'Service',
-                username: actor.preferredUsername?.toString() || null,
-                name: actor.name?.toString() || null,
-                summary: actor.summary?.toString() || null,
-                icon_url: (actor as any).icon?.id?.toString() || (actor as any).icon?.toString() || null,
-                inbox_url: actor.inboxId?.toString() || null,
-                outbox_url: actor.outboxId?.toString() || null,
-            });
+            handleAcceptActivity(dbService, actor);
         })
         .on(Announce, async (ctx, announce) => {
             try {
                 const objectUri = announce.objectId?.toString();
-                if (objectUri) {
-                    const note = dbService.getApNote(objectUri);
-                    if (note) {
-                        const docLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
-                        const actor = await announce.getActor({ documentLoader: docLoader }).catch(() => null) || await announce.getActor(ctx).catch(() => null);
-                        const actorUri = actor?.id?.toString();
-                        if (actor && actorUri) {
-                            dbService.addApInteraction(objectUri, actorUri, 'announce', announce.id?.toString());
-                            console.log(`🔁 Boost received from ${actorUri} for note ${objectUri}`);
-                            
-                            // Upsert remote actor
-                            dbService.upsertRemoteActor({
-                                uri: actorUri,
-                                type: actor instanceof Person ? 'Person' : 'Service',
-                                username: actor.preferredUsername?.toString() || null,
-                                name: actor.name?.toString() || null,
-                                summary: (actor as any).summary?.toString() || null,
-                                icon_url: (actor as any).icon?.id?.toString() || (actor as any).icon?.toString() || null,
-                                inbox_url: actor.inboxId?.toString() || null,
-                                outbox_url: actor.outboxId?.toString() || null,
-                            });
-                        }
-                        return;
-                    }
+                if (objectUri && dbService.getApNote(objectUri)) {
+                    const docLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
+                    const actor = await announce.getActor({ documentLoader: docLoader }).catch(() => null) || await announce.getActor(ctx).catch(() => null);
+                    handleAnnounceBoost(dbService, objectUri, announce.id?.toString(), actor);
+                    return;
                 }
             } catch (e) {
                 console.error("❌ Error processing Announce boost:", e);
@@ -559,76 +476,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 const author = await (object as any).getAttribution({ documentLoader: docLoader }).catch(() => null) || await (object as any).getAttribution(ctx).catch(() => null);
                 if (!author) return;
 
-                // Extract metadata (Tunecamp specific mapping)
-                let audioUrl: string | null = null;
-                let coverUrl: string | null = null;
-                let duration: number | null = null;
-                let title = "Untitled";
-                let content: string | null = null;
-
-                if (object instanceof Note) {
-                    const note = object;
-                    title = note.content?.toString().replace(/<[^>]*>/g, '') || "Untitled";
-                    content = note.content?.toString() || null;
-
-                    // We look at attachments for Audio in Notes
-                    for await (const attachment of note.getAttachments()) {
-                        const type = (attachment as any).type?.toString().toLowerCase();
-                        const mediaType = (attachment as any).mediaType?.toString().toLowerCase();
-                        
-                        if (type?.includes('audio') || mediaType?.startsWith('audio/')) {
-                            audioUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
-                            duration = (attachment as any).duration || null;
-                        } else if (type?.includes('image') || mediaType?.startsWith('image/')) {
-                            coverUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
-                        }
-                    }
-                } else if (object instanceof Audio) {
-                    const audio = object;
-                    title = audio.name?.toString() || "Untitled";
-                    content = audio.content?.toString() || null;
-                    audioUrl = audio.id?.toString() || (audio as any).url?.toString() || null;
-                    // Fedify Audio duration is a Temporal.Duration
-                    duration = audio.duration ? (audio.duration.total('second')) : null;
-                    
-                    const icon = await audio.getIcon();
-                    if (icon) {
-                        coverUrl = icon.id?.toString() || (icon as any).url?.toString() || null;
-                    }
-                }
-
-                if (!audioUrl) return; // Only care about tracks/releases
-
-                console.log(`📡 Discovered remote content: ${object.id?.toString()} by ${author.name?.toString()}`);
-
-                // Upsert remote actor
-                const authorUri = author.id?.toString() || "";
-                dbService.upsertRemoteActor({
-                    uri: authorUri,
-                    type: author instanceof Person ? 'Person' : 'Service',
-                    username: author.preferredUsername?.toString() || null,
-                    name: author.name?.toString() || null,
-                    summary: author.summary?.toString() || null,
-                    icon_url: (author as any).icon?.id?.toString() || (author as any).icon?.toString() || null,
-                    inbox_url: (author as any).inboxId?.toString() || null,
-                    outbox_url: (author as any).outboxId?.toString() || null,
-                });
-
-                // Upsert remote content
-                dbService.upsertRemoteContent({
-                    ap_id: object.id?.toString() || "",
-                    actor_uri: authorUri,
-                    type: 'release', 
-                    title,
-                    content,
-                    url: (object as any).url?.toString() || null,
-                    cover_url: coverUrl,
-                    stream_url: audioUrl,
-                    artist_name: author.name?.toString() || author.preferredUsername?.toString() || "Unknown Artist",
-                    album_name: (object as any).summary?.toString() || null,
-                    duration,
-                    published_at: object.published?.toString() || null,
-                });
+                await handleAnnounceDiscovery(dbService, object, author);
             } catch (e) {
                 console.error("❌ Error processing Announce:", e);
             }
@@ -646,24 +494,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             const artist = note.artist_id ? dbService.getArtist(note.artist_id) : null;
             const docLoader = await getAuthenticatedLoader(ctx, artist?.slug || getSiteHandle(dbService));
             const actor = await like.getActor({ documentLoader: docLoader }).catch(() => null) || await like.getActor(ctx).catch(() => null);
-            if (!actor || !actor.id) return;
-            const actorUri = actor.id.toString();
-
-            dbService.addLike(actorUri, note.note_type as 'album' | 'track' | 'post', note.content_id);
-            dbService.addApInteraction(objectUri, actorUri, 'like', like.id?.toString());
-            console.log(`❤️ Like received from ${actorUri} for ${note.note_type} ${note.content_slug}`);
-
-            // Upsert remote actor
-            dbService.upsertRemoteActor({
-                uri: actorUri,
-                type: actor instanceof Person ? 'Person' : 'Service',
-                username: actor.preferredUsername?.toString() || null,
-                name: actor.name?.toString() || null,
-                summary: (actor as any).summary?.toString() || null,
-                icon_url: (actor as any).icon?.id?.toString() || (actor as any).icon?.toString() || null,
-                inbox_url: actor.inboxId?.toString() || null,
-                outbox_url: actor.outboxId?.toString() || null,
-            });
+            handleLikeActivity(dbService, objectUri, like.id?.toString(), actor);
         })
         .on(Undo, async (ctx, undo) => {
             const docLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
@@ -677,60 +508,31 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 if (parsed?.type !== "actor") return;
 
                 const handle = parsed.identifier;
-                if (isSiteHandle(handle, dbService)) {
-                    const docLoaderFollow = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
-                    const unfollower = await undo.getActor({ documentLoader: docLoaderFollow }).catch(() => null) || await undo.getActor(ctx).catch(() => null);
-                    const unfollowerUri = unfollower?.id?.toString();
-                    console.log(`📥 Site unfollowed by: ${unfollowerUri}`);
-                    if (unfollowerUri) {
-                        dbService.removeFollower(-1, unfollowerUri);
-                    }
-                    return;
-                }
+                const isSite = isSiteHandle(handle, dbService);
+                if (!isSite && !dbService.getArtistBySlug(handle)) return;
 
-                const artist = dbService.getArtistBySlug(handle);
-                if (!artist) return;
-
-                const docLoaderFollow = await getAuthenticatedLoader(ctx, handle);
+                const docLoaderFollow = await getAuthenticatedLoader(ctx, isSite ? getSiteHandle(dbService) : handle);
                 const unfollower = await undo.getActor({ documentLoader: docLoaderFollow }).catch(() => null) || await undo.getActor(ctx).catch(() => null);
-                const unfollowerUri = unfollower?.id?.toString();
-
-                if (!unfollowerUri) return;
-
-                dbService.removeFollower(artist.id, unfollowerUri);
-                console.log(`📥 Unfollowed ${artist.name}: ${unfollowerUri}`);
+                handleUndoFollow(dbService, handle, isSite, unfollower?.id?.toString());
             } else if (object instanceof Like) {
                 const like = object;
                 const objectUri = like.objectId?.toString();
                 if (!objectUri) return;
-
                 const note = dbService.getApNote(objectUri);
                 if (!note) return;
 
                 const artist = note.artist_id ? dbService.getArtist(note.artist_id) : null;
                 const docLoaderLike = await getAuthenticatedLoader(ctx, artist?.slug || getSiteHandle(dbService));
                 const actor = await undo.getActor({ documentLoader: docLoaderLike }).catch(() => null) || await undo.getActor(ctx).catch(() => null);
-                const actorUri = actor?.id?.toString();
-                if (!actorUri) return;
-
-                dbService.removeLike(actorUri, note.note_type as 'album' | 'track' | 'post', note.content_id);
-                dbService.removeApInteraction(objectUri, actorUri, 'like');
-                console.log(`💔 Undo Like received from ${actorUri} for ${note.note_type} ${note.content_slug}`);
+                handleUndoLike(dbService, objectUri, actor?.id?.toString());
             } else if (object instanceof Announce) {
                 const announce = object;
                 const objectUri = announce.objectId?.toString();
-                if (!objectUri) return;
-
-                const note = dbService.getApNote(objectUri);
-                if (!note) return;
+                if (!objectUri || !dbService.getApNote(objectUri)) return;
 
                 const docLoaderAnnounce = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
                 const actor = await undo.getActor({ documentLoader: docLoaderAnnounce }).catch(() => null) || await undo.getActor(ctx).catch(() => null);
-                const actorUri = actor?.id?.toString();
-                if (!actorUri) return;
-
-                dbService.removeApInteraction(objectUri, actorUri, 'announce');
-                console.log(`💔 Undo Announce received from ${actorUri} for ${note.note_type} ${note.content_slug}`);
+                handleUndoAnnounce(dbService, objectUri, actor?.id?.toString());
             }
         })
         .on(Create, async (ctx, create) => {
@@ -748,141 +550,8 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 const actorUri = create.actorId?.toString() || (object as any).attributionId?.toString();
                 if (!actorUri) return;
 
-                // 1. Reply handling: if this Create replies to one of OUR notes (or to an
-                //    existing reply on one), store it as a thread reply instead of a feed item.
-                const inReplyTo = (object as any).replyTargetId?.toString();
-                if (inReplyTo) {
-                    let parentNote = dbService.getApNote(inReplyTo);
-                    let targetNoteId = inReplyTo;
-                    if (!parentNote) {
-                        const parentReply = dbService.getApReply(inReplyTo);
-                        if (parentReply) {
-                            parentNote = dbService.getApNote(parentReply.note_id);
-                            targetNoteId = parentReply.note_id;
-                        }
-                    }
-
-                    if (parentNote) {
-                        const replyUri = object.id?.toString() || create.id?.toString();
-                        if (replyUri) {
-                            const actor = await create.getActor({ documentLoader: docLoader }).catch(() => null) || await create.getActor(ctx).catch(() => null);
-                            if (actor) cacheFollowerActor(actor);
-                            const content = (object as any).content?.toString() || (object as any).summary?.toString() || "";
-                            dbService.addApReply(targetNoteId, replyUri, actorUri, content, object.published?.toString() || new Date().toISOString());
-                            console.log(`💬 Stored reply from ${actorUri} on note ${targetNoteId} (replying to ${inReplyTo})`);
-                        }
-                    }
-                    // A reply that isn't to one of our notes is not a feed item — stop here.
-                    return;
-                }
-
-                // 2. Feed item handling (Post or Release/Track)
                 const actor = await create.getActor({ documentLoader: docLoader }).catch(() => null) || await create.getActor(ctx).catch(() => null);
-                if (actor) {
-                    cacheFollowerActor(actor);
-                }
-
-                if (object instanceof Note) {
-                    const note = object;
-                    let audioUrl: string | null = null;
-                    let coverUrl: string | null = null;
-                    let duration: number | null = null;
-
-                    for await (const attachment of note.getAttachments()) {
-                        const type = (attachment as any).type?.toString().toLowerCase();
-                        const mediaType = (attachment as any).mediaType?.toString().toLowerCase();
-                        
-                        if (type?.includes("audio") || mediaType?.startsWith("audio/")) {
-                            audioUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
-                            duration = (attachment as any).duration || null;
-                        } else if (type?.includes("image") || mediaType?.startsWith("image/")) {
-                            coverUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
-                        }
-                    }
-
-                    const apId = note.id?.toString();
-                    if (apId) {
-                        const rawContent = note.content?.toString() || note.summary?.toString() || "";
-                        if (audioUrl) {
-                            dbService.upsertRemoteContent({
-                                ap_id: apId,
-                                actor_uri: actorUri,
-                                type: "release",
-                                title: note.content?.toString().replace(/<[^>]*>/g, "").substring(0, 80) || "Untitled",
-                                content: rawContent,
-                                url: (note as any).url?.toString() || null,
-                                cover_url: coverUrl,
-                                stream_url: audioUrl,
-                                artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Unknown Artist",
-                                album_name: (note as any).summary?.toString() || null,
-                                duration,
-                                published_at: note.published?.toString() || new Date().toISOString(),
-                            });
-                            console.log(`📡 Stored remote release via Create Note inbox: ${apId}`);
-                        } else {
-                            dbService.upsertRemoteContent({
-                                ap_id: apId,
-                                actor_uri: actorUri,
-                                type: "post",
-                                title: (note as any).name?.toString() || rawContent.replace(/<[^>]*>?/gm, "").substring(0, 80) || "Untitled",
-                                content: rawContent,
-                                url: (note as any).url?.toString() || null,
-                                cover_url: coverUrl,
-                                stream_url: null,
-                                artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Remote Artist",
-                                album_name: null,
-                                published_at: note.published?.toString() || new Date().toISOString(),
-                            });
-                            console.log(`📡 Stored remote post via Create Note inbox: ${apId}`);
-                        }
-                    }
-                } else if (object instanceof Article) {
-                    const apId = object.id?.toString();
-                    if (apId) {
-                        const rawContent = (object as any).content?.toString() || (object as any).summary?.toString() || "";
-                        dbService.upsertRemoteContent({
-                            ap_id: apId,
-                            actor_uri: actorUri,
-                            type: "post",
-                            title: (object as any).name?.toString() || rawContent.replace(/<[^>]*>?/gm, "").substring(0, 80) || "Untitled",
-                            content: rawContent,
-                            url: (object as any).url?.toString() || null,
-                            cover_url: null,
-                            stream_url: null,
-                            artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Remote Artist",
-                            album_name: null,
-                            published_at: object.published?.toString() || new Date().toISOString(),
-                        });
-                        console.log(`📡 Stored remote post via Create Article inbox: ${apId}`);
-                    }
-                } else if (object instanceof Audio) {
-                    const apId = object.id?.toString();
-                    if (apId) {
-                        const audioUrl = object.id?.toString() || (object as any).url?.toString() || null;
-                        const duration = object.duration ? (object.duration.total("second")) : null;
-                        const icon = await object.getIcon();
-                        let coverUrl: string | null = null;
-                        if (icon) {
-                            coverUrl = icon.id?.toString() || (icon as any).url?.toString() || null;
-                        }
-                        const rawContent = (object as any).content?.toString() || (object as any).summary?.toString() || "";
-                        dbService.upsertRemoteContent({
-                            ap_id: apId,
-                            actor_uri: actorUri,
-                            type: "release",
-                            title: (object as any).name?.toString() || "Untitled",
-                            content: rawContent,
-                            url: (object as any).url?.toString() || null,
-                            cover_url: coverUrl,
-                            stream_url: audioUrl,
-                            artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Unknown Artist",
-                            album_name: (object as any).summary?.toString() || null,
-                            duration,
-                            published_at: object.published?.toString() || new Date().toISOString(),
-                        });
-                        console.log(`📡 Stored remote release via Create Audio inbox: ${apId}`);
-                    }
-                }
+                await handleCreateActivity(dbService, object as any, actorUri, actor, create.id?.toString(), cacheFollowerActor);
             } catch (e) {
                 console.error("❌ Error processing Create:", e);
             }
@@ -916,38 +585,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                     }
                 }
 
-                if (!aliases.includes(oldActorUri)) {
-                    console.warn(`⚠️ Move verification failed: new actor ${newActorUri} does not list old actor ${oldActorUri} in its alsoKnownAs (aliases found: ${JSON.stringify(aliases)}).`);
-                    return;
-                }
-
-                // 3. Validation passed! Update local followers database
-                const newInbox = newActor.inboxId?.toString();
-                const newSharedInbox = newActor.endpoints?.sharedInbox?.toString();
-                if (!newInbox) {
-                    console.warn(`⚠️ Move warning: new actor ${newActorUri} doesn't expose an inboxId. Cannot update followers inbox.`);
-                    return;
-                }
-
-                dbService.updateFollowerUri(oldActorUri, newActorUri, newInbox, newSharedInbox);
-                console.log(`✅ Move complete! Updated follower record from ${oldActorUri} to ${newActorUri}`);
-
-                // 4. Update cached remote actor if it exists
-                const existingRemote = dbService.getRemoteActor(oldActorUri);
-                if (existingRemote) {
-                    dbService.upsertRemoteActor({
-                        uri: newActorUri,
-                        type: newActor instanceof Person ? 'Person' : 'Service',
-                        username: newActor.preferredUsername?.toString() || null,
-                        name: newActor.name?.toString() || null,
-                        summary: (newActor as any).summary?.toString() || null,
-                        icon_url: (newActor as any).icon?.id?.toString() || (newActor as any).icon?.toString() || null,
-                        inbox_url: newInbox,
-                        outbox_url: newActor.outboxId?.toString() || null,
-                        is_followed: existingRemote.is_followed,
-                    });
-                    dbService.unfollowActor(oldActorUri);
-                }
+                handleMoveActivity(dbService, oldActorUri, newActorUri, newActor, aliases);
             } catch (e) {
                 console.error("❌ Error processing Move activity:", e);
             }
@@ -1046,5 +684,413 @@ export function handleUpdateObject(
             published_at: object.published?.toString() || new Date().toISOString(),
         } as any);
         console.log(`🔄 Updated remote content: ${apId}`);
+    }
+}
+
+export interface FollowOutcome {
+    /** Local handle (site handle or artist slug) the Accept should be sent from. */
+    handle: string;
+    /** False when the artist requires manual approval — request left pending. */
+    autoAccept: boolean;
+    /** The resolved follower actor to send the Accept to, if resolved. */
+    follower: any;
+}
+
+/**
+ * Apply an inbound Follow: persist the follower (site-wide or per-artist) and
+ * decide whether an Accept should be sent back. Extracted so the site-vs-artist
+ * and auto-vs-manual-approval branching is unit-testable without a live ctx.
+ */
+export function handleFollowActivity(
+    dbService: DatabaseService,
+    handle: string,
+    isSite: boolean,
+    followerUri: string,
+    followerInbox: string,
+    sharedInbox: string | undefined,
+    follower: any,
+    cacheActor: (actor: any) => void,
+): FollowOutcome | null {
+    if (isSite) {
+        console.log(`📥 New site follower: ${followerUri}`);
+        dbService.addFollower(-1, followerUri, followerInbox, sharedInbox);
+        dbService.acceptFollower(-1, followerUri);
+        if (follower) cacheActor(follower);
+        return { handle, autoAccept: true, follower };
+    }
+
+    const artist = dbService.getArtistBySlug(handle);
+    if (!artist) return null;
+
+    dbService.addFollower(artist.id, followerUri, followerInbox, sharedInbox);
+    if (follower) cacheActor(follower);
+    console.log(`📥 New follower for ${artist.name}: ${followerUri}`);
+
+    if ((artist as any).manually_approves_followers) {
+        console.log(`⏳ Follow from ${followerUri} left pending — ${artist.name} requires manual approval.`);
+        return { handle, autoAccept: false, follower };
+    }
+
+    dbService.acceptFollower(artist.id, followerUri);
+    return { handle, autoAccept: true, follower };
+}
+
+/** Apply an inbound Accept (from a relay): cache the accepting actor. */
+export function handleAcceptActivity(dbService: DatabaseService, actor: any): void {
+    if (!actor) return;
+    console.log(`✅ Received Accept from: ${actor.id?.toString()}`);
+    dbService.upsertRemoteActor({
+        uri: actor.id?.toString() || "",
+        type: actor instanceof Person ? 'Person' : 'Service',
+        username: actor.preferredUsername?.toString() || null,
+        name: actor.name?.toString() || null,
+        summary: actor.summary?.toString() || null,
+        icon_url: (actor as any).icon?.id?.toString() || (actor as any).icon?.toString() || null,
+        inbox_url: actor.inboxId?.toString() || null,
+        outbox_url: actor.outboxId?.toString() || null,
+    });
+}
+
+/** Apply an Announce that boosts one of our own notes (caller has already confirmed the note exists). */
+export function handleAnnounceBoost(dbService: DatabaseService, objectUri: string, announceId: string | undefined, actor: any): void {
+    if (!actor || !actor.id) return;
+    const actorUri = actor.id.toString();
+    dbService.addApInteraction(objectUri, actorUri, 'announce', announceId);
+    console.log(`🔁 Boost received from ${actorUri} for note ${objectUri}`);
+    dbService.upsertRemoteActor({
+        uri: actorUri,
+        type: actor instanceof Person ? 'Person' : 'Service',
+        username: actor.preferredUsername?.toString() || null,
+        name: actor.name?.toString() || null,
+        summary: (actor as any).summary?.toString() || null,
+        icon_url: (actor as any).icon?.id?.toString() || (actor as any).icon?.toString() || null,
+        inbox_url: actor.inboxId?.toString() || null,
+        outbox_url: actor.outboxId?.toString() || null,
+    });
+}
+
+/**
+ * Apply an Announce that discovers remote content (Note/Audio) via a relay or
+ * federating instance we don't already know. Maps the object to our
+ * `remote_content` schema and caches the author.
+ */
+export async function handleAnnounceDiscovery(dbService: DatabaseService, object: InstanceType<typeof Note> | InstanceType<typeof Audio>, author: any): Promise<void> {
+    let audioUrl: string | null = null;
+    let coverUrl: string | null = null;
+    let duration: number | null = null;
+    let title = "Untitled";
+    let content: string | null = null;
+
+    if (object instanceof Note) {
+        title = object.content?.toString().replace(/<[^>]*>/g, '') || "Untitled";
+        content = object.content?.toString() || null;
+
+        for await (const attachment of object.getAttachments()) {
+            const type = (attachment as any).type?.toString().toLowerCase();
+            const mediaType = (attachment as any).mediaType?.toString().toLowerCase();
+
+            if (type?.includes('audio') || mediaType?.startsWith('audio/')) {
+                audioUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
+                duration = (attachment as any).duration || null;
+            } else if (type?.includes('image') || mediaType?.startsWith('image/')) {
+                coverUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
+            }
+        }
+    } else if (object instanceof Audio) {
+        title = object.name?.toString() || "Untitled";
+        content = object.content?.toString() || null;
+        audioUrl = object.id?.toString() || (object as any).url?.toString() || null;
+        // Fedify Audio duration is a Temporal.Duration
+        duration = object.duration ? (object.duration.total('second')) : null;
+
+        const icon = await object.getIcon();
+        if (icon) {
+            coverUrl = icon.id?.toString() || (icon as any).url?.toString() || null;
+        }
+    }
+
+    if (!audioUrl) return; // Only care about tracks/releases
+
+    console.log(`📡 Discovered remote content: ${object.id?.toString()} by ${author.name?.toString()}`);
+
+    const authorUri = author.id?.toString() || "";
+    dbService.upsertRemoteActor({
+        uri: authorUri,
+        type: author instanceof Person ? 'Person' : 'Service',
+        username: author.preferredUsername?.toString() || null,
+        name: author.name?.toString() || null,
+        summary: author.summary?.toString() || null,
+        icon_url: (author as any).icon?.id?.toString() || (author as any).icon?.toString() || null,
+        inbox_url: (author as any).inboxId?.toString() || null,
+        outbox_url: (author as any).outboxId?.toString() || null,
+    });
+
+    dbService.upsertRemoteContent({
+        ap_id: object.id?.toString() || "",
+        actor_uri: authorUri,
+        type: 'release',
+        title,
+        content,
+        url: (object as any).url?.toString() || null,
+        cover_url: coverUrl,
+        stream_url: audioUrl,
+        artist_name: author.name?.toString() || author.preferredUsername?.toString() || "Unknown Artist",
+        album_name: (object as any).summary?.toString() || null,
+        duration,
+        published_at: object.published?.toString() || null,
+    });
+}
+
+/** Apply an inbound Like (caller has already resolved `objectUri` maps to one of our notes). */
+export function handleLikeActivity(dbService: DatabaseService, objectUri: string, likeId: string | undefined, actor: any): void {
+    const note = dbService.getApNote(objectUri);
+    if (!note) {
+        console.log(`⚠️ Received Like for unknown object: ${objectUri}`);
+        return;
+    }
+    if (!actor || !actor.id) return;
+    const actorUri = actor.id.toString();
+
+    dbService.addLike(actorUri, note.note_type as 'album' | 'track' | 'post', note.content_id);
+    dbService.addApInteraction(objectUri, actorUri, 'like', likeId);
+    console.log(`❤️ Like received from ${actorUri} for ${note.note_type} ${note.content_slug}`);
+
+    dbService.upsertRemoteActor({
+        uri: actorUri,
+        type: actor instanceof Person ? 'Person' : 'Service',
+        username: actor.preferredUsername?.toString() || null,
+        name: actor.name?.toString() || null,
+        summary: (actor as any).summary?.toString() || null,
+        icon_url: (actor as any).icon?.id?.toString() || (actor as any).icon?.toString() || null,
+        inbox_url: actor.inboxId?.toString() || null,
+        outbox_url: actor.outboxId?.toString() || null,
+    });
+}
+
+/** Apply an inbound Undo(Follow) — i.e. an unfollow. */
+export function handleUndoFollow(dbService: DatabaseService, handle: string, isSite: boolean, unfollowerUri: string | undefined): void {
+    if (!unfollowerUri) return;
+
+    if (isSite) {
+        console.log(`📥 Site unfollowed by: ${unfollowerUri}`);
+        dbService.removeFollower(-1, unfollowerUri);
+        return;
+    }
+
+    const artist = dbService.getArtistBySlug(handle);
+    if (!artist) return;
+
+    dbService.removeFollower(artist.id, unfollowerUri);
+    console.log(`📥 Unfollowed ${artist.name}: ${unfollowerUri}`);
+}
+
+/** Apply an inbound Undo(Like) (caller has already confirmed the note exists). */
+export function handleUndoLike(dbService: DatabaseService, objectUri: string, actorUri: string | undefined): void {
+    if (!actorUri) return;
+    const note = dbService.getApNote(objectUri);
+    if (!note) return;
+
+    dbService.removeLike(actorUri, note.note_type as 'album' | 'track' | 'post', note.content_id);
+    dbService.removeApInteraction(objectUri, actorUri, 'like');
+    console.log(`💔 Undo Like received from ${actorUri} for ${note.note_type} ${note.content_slug}`);
+}
+
+/** Apply an inbound Undo(Announce) (caller has already confirmed the note exists). */
+export function handleUndoAnnounce(dbService: DatabaseService, objectUri: string, actorUri: string | undefined): void {
+    if (!actorUri) return;
+    const note = dbService.getApNote(objectUri);
+    if (!note) return;
+
+    dbService.removeApInteraction(objectUri, actorUri, 'announce');
+    console.log(`💔 Undo Announce received from ${actorUri} for ${note.note_type} ${note.content_slug}`);
+}
+
+/**
+ * Apply an inbound Create wrapping a Note/Article/Audio: either store it as a
+ * thread reply (if it replies to one of our notes) or as a feed item in
+ * `remote_content`. Extracted so the reply-vs-feed branching and per-type
+ * mapping is unit-testable without a live ctx.
+ */
+export async function handleCreateActivity(
+    dbService: DatabaseService,
+    object: InstanceType<typeof Note> | InstanceType<typeof Article> | InstanceType<typeof Audio>,
+    actorUri: string,
+    actor: any,
+    createId: string | undefined,
+    cacheActor: (actor: any) => void,
+): Promise<void> {
+    // 1. Reply handling: if this Create replies to one of OUR notes (or to an
+    //    existing reply on one), store it as a thread reply instead of a feed item.
+    const inReplyTo = (object as any).replyTargetId?.toString();
+    if (inReplyTo) {
+        let parentNote = dbService.getApNote(inReplyTo);
+        let targetNoteId = inReplyTo;
+        if (!parentNote) {
+            const parentReply = dbService.getApReply(inReplyTo);
+            if (parentReply) {
+                parentNote = dbService.getApNote(parentReply.note_id);
+                targetNoteId = parentReply.note_id;
+            }
+        }
+
+        if (parentNote) {
+            const replyUri = object.id?.toString() || createId;
+            if (replyUri) {
+                if (actor) cacheActor(actor);
+                const content = (object as any).content?.toString() || (object as any).summary?.toString() || "";
+                dbService.addApReply(targetNoteId, replyUri, actorUri, content, object.published?.toString() || new Date().toISOString());
+                console.log(`💬 Stored reply from ${actorUri} on note ${targetNoteId} (replying to ${inReplyTo})`);
+            }
+        }
+        // A reply that isn't to one of our notes is not a feed item — stop here.
+        return;
+    }
+
+    // 2. Feed item handling (Post or Release/Track)
+    if (actor) cacheActor(actor);
+
+    if (object instanceof Note) {
+        const note = object;
+        let audioUrl: string | null = null;
+        let coverUrl: string | null = null;
+        let duration: number | null = null;
+
+        for await (const attachment of note.getAttachments()) {
+            const type = (attachment as any).type?.toString().toLowerCase();
+            const mediaType = (attachment as any).mediaType?.toString().toLowerCase();
+
+            if (type?.includes("audio") || mediaType?.startsWith("audio/")) {
+                audioUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
+                duration = (attachment as any).duration || null;
+            } else if (type?.includes("image") || mediaType?.startsWith("image/")) {
+                coverUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
+            }
+        }
+
+        const apId = note.id?.toString();
+        if (apId) {
+            const rawContent = note.content?.toString() || note.summary?.toString() || "";
+            if (audioUrl) {
+                dbService.upsertRemoteContent({
+                    ap_id: apId,
+                    actor_uri: actorUri,
+                    type: "release",
+                    title: note.content?.toString().replace(/<[^>]*>/g, "").substring(0, 80) || "Untitled",
+                    content: rawContent,
+                    url: (note as any).url?.toString() || null,
+                    cover_url: coverUrl,
+                    stream_url: audioUrl,
+                    artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Unknown Artist",
+                    album_name: (note as any).summary?.toString() || null,
+                    duration,
+                    published_at: note.published?.toString() || new Date().toISOString(),
+                });
+                console.log(`📡 Stored remote release via Create Note inbox: ${apId}`);
+            } else {
+                dbService.upsertRemoteContent({
+                    ap_id: apId,
+                    actor_uri: actorUri,
+                    type: "post",
+                    title: (note as any).name?.toString() || rawContent.replace(/<[^>]*>?/gm, "").substring(0, 80) || "Untitled",
+                    content: rawContent,
+                    url: (note as any).url?.toString() || null,
+                    cover_url: coverUrl,
+                    stream_url: null,
+                    artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Remote Artist",
+                    album_name: null,
+                    published_at: note.published?.toString() || new Date().toISOString(),
+                });
+                console.log(`📡 Stored remote post via Create Note inbox: ${apId}`);
+            }
+        }
+    } else if (object instanceof Article) {
+        const apId = object.id?.toString();
+        if (apId) {
+            const rawContent = (object as any).content?.toString() || (object as any).summary?.toString() || "";
+            dbService.upsertRemoteContent({
+                ap_id: apId,
+                actor_uri: actorUri,
+                type: "post",
+                title: (object as any).name?.toString() || rawContent.replace(/<[^>]*>?/gm, "").substring(0, 80) || "Untitled",
+                content: rawContent,
+                url: (object as any).url?.toString() || null,
+                cover_url: null,
+                stream_url: null,
+                artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Remote Artist",
+                album_name: null,
+                published_at: object.published?.toString() || new Date().toISOString(),
+            });
+            console.log(`📡 Stored remote post via Create Article inbox: ${apId}`);
+        }
+    } else if (object instanceof Audio) {
+        const apId = object.id?.toString();
+        if (apId) {
+            const audioUrl = object.id?.toString() || (object as any).url?.toString() || null;
+            const duration = object.duration ? (object.duration.total("second")) : null;
+            const icon = await object.getIcon();
+            let coverUrl: string | null = null;
+            if (icon) {
+                coverUrl = icon.id?.toString() || (icon as any).url?.toString() || null;
+            }
+            const rawContent = (object as any).content?.toString() || (object as any).summary?.toString() || "";
+            dbService.upsertRemoteContent({
+                ap_id: apId,
+                actor_uri: actorUri,
+                type: "release",
+                title: (object as any).name?.toString() || "Untitled",
+                content: rawContent,
+                url: (object as any).url?.toString() || null,
+                cover_url: coverUrl,
+                stream_url: audioUrl,
+                artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Unknown Artist",
+                album_name: (object as any).summary?.toString() || null,
+                duration,
+                published_at: object.published?.toString() || new Date().toISOString(),
+            });
+            console.log(`📡 Stored remote release via Create Audio inbox: ${apId}`);
+        }
+    }
+}
+
+/**
+ * Apply a verified Move: caller has already fetched the target actor and its
+ * `alsoKnownAs` aliases. This just checks the backlink and updates followers.
+ */
+export function handleMoveActivity(
+    dbService: DatabaseService,
+    oldActorUri: string,
+    newActorUri: string,
+    newActor: any,
+    aliases: string[],
+): void {
+    if (!aliases.includes(oldActorUri)) {
+        console.warn(`⚠️ Move verification failed: new actor ${newActorUri} does not list old actor ${oldActorUri} in its alsoKnownAs (aliases found: ${JSON.stringify(aliases)}).`);
+        return;
+    }
+
+    const newInbox = newActor.inboxId?.toString();
+    const newSharedInbox = newActor.endpoints?.sharedInbox?.toString();
+    if (!newInbox) {
+        console.warn(`⚠️ Move warning: new actor ${newActorUri} doesn't expose an inboxId. Cannot update followers inbox.`);
+        return;
+    }
+
+    dbService.updateFollowerUri(oldActorUri, newActorUri, newInbox, newSharedInbox);
+    console.log(`✅ Move complete! Updated follower record from ${oldActorUri} to ${newActorUri}`);
+
+    const existingRemote = dbService.getRemoteActor(oldActorUri);
+    if (existingRemote) {
+        dbService.upsertRemoteActor({
+            uri: newActorUri,
+            type: newActor instanceof Person ? 'Person' : 'Service',
+            username: newActor.preferredUsername?.toString() || null,
+            name: newActor.name?.toString() || null,
+            summary: (newActor as any).summary?.toString() || null,
+            icon_url: (newActor as any).icon?.id?.toString() || (newActor as any).icon?.toString() || null,
+            inbox_url: newInbox,
+            outbox_url: newActor.outboxId?.toString() || null,
+            is_followed: existingRemote.is_followed,
+        });
+        dbService.unfollowActor(oldActorUri);
     }
 }
