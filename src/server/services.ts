@@ -38,6 +38,7 @@ import { LiveService } from "./modules/live/live.service.js";
 import { RadioService } from "./modules/radio/radio.service.js";
 import { TelegramBotService } from "./modules/integrations/telegram-bot.js";
 import { createPeerService } from "./modules/peer/peer.service.js";
+import { createChatService } from "./modules/chat/chat.service.js";
 import { SampleRepository } from "./repositories/sample.repository.js";
 import { SamplePackRepository } from "./repositories/sample-pack.repository.js";
 import { CollabRepository } from "./repositories/collab.repository.js";
@@ -239,6 +240,7 @@ export async function bootstrapServices(config: ServerConfig): Promise<Bootstrap
     const radioService = new RadioService(database, config.musicDir);
     const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
     const peerService = createPeerService(database, apService);
+    const chatService = createChatService(database);
     const samplesRepository = new SampleRepository(database.db);
     const samplePacksRepository = new SamplePackRepository(database.db);
     const collabRepository = new CollabRepository(database.db);
@@ -277,6 +279,7 @@ export async function bootstrapServices(config: ServerConfig): Promise<Bootstrap
         liveService,
         radioService,
         peerService,
+        chatService,
         samplesRepository,
         samplePacksRepository,
         collabRepository,

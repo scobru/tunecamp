@@ -42,6 +42,8 @@ import { createStorageRouter } from "./routes/library/storage.js";
 import { createTaskRoutes } from "./routes/admin/tasks.js";
 import { createRadioRoutes } from "./routes/api/radio.js";
 import { createPeerWsHandler } from "./modules/peer/peer.ws.js";
+import { createChatWsHandler } from "./modules/chat/chat.ws.js";
+import { createChatRoutes } from "./routes/api/chat.js";
 import { createPeersRoutes } from "./routes/api/peers.js";
 import { createLabAppsRoutes } from "./routes/admin/lab-apps.js";
 import { createLifecycleRoutes } from "./routes/api/lifecycle.js";
@@ -51,6 +53,7 @@ export function registerRoutes(app: express.Express, server: http.Server, contai
     const { authMiddleware } = container;
 
     createPeerWsHandler(server, container);
+    createChatWsHandler(server, container);
 
     app.use("/api/admin/upload", authMiddleware.requireUser, createUploadRoutes(container));
     app.use("/api/admin/backup", authMiddleware.requireAdmin, createBackupRoutes(container, () => {
@@ -115,6 +118,7 @@ export function registerRoutes(app: express.Express, server: http.Server, contai
     app.use("/api/mcp", authMiddleware.requireUser, createMcpRoutes(container));
     app.use("/api/comments", createCommentsRoutes(container));
     app.use("/api/board", authMiddleware.optionalAuth, requireModuleEnabled(container, "boardEnabled", { invert: true, allowAdmin: true }), createBoardRoutes(container));
+    app.use("/api/chat", authMiddleware.requireUser, requireModuleEnabled(container, "peerChatEnabled", { invert: true, allowAdmin: true }), createChatRoutes(container));
     app.use("/api/live", requireModuleEnabled(container, "hideLive", { allowAdmin: true }), createLiveRoutes(container));
     app.use("/api/radio", createRadioRoutes(container));
     app.use("/api/now-playing", createNowPlayingRoutes(container));

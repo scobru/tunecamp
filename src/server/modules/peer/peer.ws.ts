@@ -73,6 +73,10 @@ export function createPeerWsHandler(server: http.Server, container: ServiceConta
                     // Register session
                     const sessionId = container.peerService.registerSession(ws, userId, username, ipAddress, allowDownloads);
 
+                    // Join the shared chat registry so daemons and browser
+                    // clients (/ws/chat) share one lobby.
+                    container.chatService.register(sessionId, username, ws);
+
                     // Send auth_ok
                     ws.send(JSON.stringify({ type: "auth_ok", sessionId }));
 
@@ -100,10 +104,10 @@ export function createPeerWsHandler(server: http.Server, container: ServiceConta
                                     container.peerService.handlePong(sessionId);
                                     break;
                                 case "chat":
-                                    container.peerService.relayChat(sessionId, message.to, message.text);
+                                    container.chatService.relayChat(sessionId, message.to, message.text);
                                     break;
                                 case "pubkey": {
-                                    const roster = container.peerService.setPubkey(sessionId, message.pubkey);
+                                    const roster = container.chatService.setPubkey(sessionId, message.pubkey);
                                     for (const r of roster) {
                                         ws.send(JSON.stringify({ type: "pubkey", from: r.username, pubkey: r.pubkey }));
                                     }
@@ -118,11 +122,13 @@ export function createPeerWsHandler(server: http.Server, container: ServiceConta
                     });
 
                     ws.on("close", () => {
+                        container.chatService.unregister(sessionId);
                         container.peerService.unregisterSession(sessionId);
                     });
 
                     ws.on("error", (err) => {
                         console.error(`[PeerWS] WebSocket error in session ${sessionId}:`, err);
+                        container.chatService.unregister(sessionId);
                         container.peerService.unregisterSession(sessionId);
                     });
                 });

@@ -1,39 +1,32 @@
-import { describe, test, expect, jest, beforeEach } from '@jest/globals';
+import { describe, test, expect, jest, beforeEach, beforeAll } from '@jest/globals';
 import path from 'path';
+import fsExtra from 'fs-extra';
 
 // Mock path for tests
 const dataDir = '/tmp/data';
 const cacheDir = path.join(dataDir, 'cache', 'waveforms');
 
-// Create mock implementations
-const mockEnsureDirSync = jest.fn();
-const mockPathExists = jest.fn();
-const mockReadFile = jest.fn();
-const mockWriteFile = jest.fn();
+// Spy on real fs-extra methods (module object is shared/mutable across imports)
+const mockEnsureDirSync = jest.spyOn(fsExtra, 'ensureDirSync').mockImplementation(() => {});
+const mockPathExists = jest.spyOn(fsExtra, 'pathExists').mockImplementation(async () => false);
+const mockReadFile = jest.spyOn(fsExtra, 'readFile').mockImplementation(async () => '' as any);
+const mockWriteFile = jest.spyOn(fsExtra, 'writeFile').mockImplementation(async () => undefined as any);
 const mockSvg = jest.fn();
-
-const mockFs = {
-    ensureDirSync: mockEnsureDirSync,
-    pathExists: mockPathExists,
-    readFile: mockReadFile,
-    writeFile: mockWriteFile,
-};
 
 const mockWaveformGenerator = jest.fn().mockImplementation(() => ({
     svg: mockSvg
 }));
 
 // Apply mocks before importing target module
-jest.unstable_mockModule('fs-extra', () => ({
-    default: mockFs
-}));
-
 jest.unstable_mockModule('../waveform.generator.js', () => ({
     WaveformGenerator: mockWaveformGenerator
 }));
 
 // Import target module dynamically after mocking
-const { WaveformService } = await import('../waveform.service.js');
+let WaveformService: any;
+beforeAll(async () => {
+    ({ WaveformService } = await import('../waveform.service.js'));
+});
 
 describe('WaveformService', () => {
     let service: any;

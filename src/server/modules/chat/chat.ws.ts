@@ -1,0 +1,117 @@
+import { WebSocketServer, type WebSocket } from "ws";
+import crypto from "crypto";
+import type * as http from "http";
+import type { ServiceContainer } from "../../core/container.js";
+
+// Browser transport for the chat lobby. Deliberately separate from /ws/peer:
+//
+//  - PeerService.registerSession() evicts any existing session for the same
+//    userId, so a webapp tab sharing that socket would kick the user's Sidecamp
+//    daemon offline, which reconnects, which kicks the tab — a loop.
+//  - Chatting is not sharing your local folders. /ws/peer is gated by the
+//    `can_peer` grant; this one only needs a valid session.
+//
+// Both register into the same ChatService, so daemons and browsers share one
+// lobby. The wire protocol is identical, so clients can be written once.
+
+// Proxies drop idle WebSockets (nginx defaults to 60s). Protocol-level pings
+// keep the connection warm and detect half-open sockets; browsers answer them
+// automatically, so no client code is involved.
+const HEARTBEAT_MS = 30_000;
+
+export function createChatWsHandler(server: http.Server, container: ServiceContainer) {
+    const wss = new WebSocketServer({ noServer: true });
+    const alive = new WeakMap<WebSocket, boolean>();
+
+    const heartbeat = setInterval(() => {
+        for (const ws of wss.clients) {
+            if (alive.get(ws) === false) {
+                ws.terminate();
+                continue;
+            }
+            alive.set(ws, false);
+            try { ws.ping(); } catch { /* terminated below on the next sweep */ }
+        }
+    }, HEARTBEAT_MS);
+    heartbeat.unref?.();
+    wss.on("close", () => clearInterval(heartbeat));
+
+    server.on("upgrade", async (request, socket, head) => {
+        try {
+            const url = new URL(request.url || "", `http://${request.headers.host || "localhost"}`);
+            if (url.pathname !== "/ws/chat") return;
+
+            if (container.identity.getSetting("peerChatEnabled") !== "true") {
+                socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
+                socket.destroy();
+                return;
+            }
+
+            const token = url.searchParams.get("token");
+            let username: string;
+
+            if (!token) {
+                if (container.identity.getSetting("peerChatGuestEnabled") !== "true") {
+                    socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+                    socket.destroy();
+                    return;
+                }
+                const rawGuest = (url.searchParams.get("guestName") || "").trim().substring(0, 20);
+                const safeGuest = rawGuest.replace(/[^a-zA-Z0-9_-]/g, "") || crypto.randomBytes(3).toString("hex");
+                username = `(Guest) ${safeGuest}`;
+            } else {
+                const payload = await container.authService.verifyToken(token);
+                if (!payload) {
+                    socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+                    socket.destroy();
+                    return;
+                }
+                username = payload.username;
+            }
+
+            wss.handleUpgrade(request, socket, head, (ws) => {
+                const clientId = crypto.randomUUID();
+                alive.set(ws, true);
+                ws.on("pong", () => alive.set(ws, true));
+
+                container.chatService.register(clientId, username, ws);
+                ws.send(JSON.stringify({ type: "auth_ok", sessionId: clientId, username }));
+
+                ws.on("message", (data, isBinary) => {
+                    if (isBinary) return;
+                    try {
+                        const message = JSON.parse(data.toString());
+                        switch (message.type) {
+                            case "chat":
+                                container.chatService.relayChat(clientId, message.to, message.text);
+                                break;
+                            case "pubkey": {
+                                const roster = container.chatService.setPubkey(clientId, message.pubkey);
+                                for (const r of roster) {
+                                    ws.send(JSON.stringify({ type: "pubkey", from: r.username, pubkey: r.pubkey }));
+                                }
+                                break;
+                            }
+                            default:
+                                console.warn(`[ChatWS] Unknown message type: ${message.type}`);
+                        }
+                    } catch (err) {
+                        console.error(`[ChatWS] Failed to parse message for client ${clientId}:`, err);
+                    }
+                });
+
+                ws.on("close", () => container.chatService.unregister(clientId));
+                ws.on("error", (err) => {
+                    console.error(`[ChatWS] WebSocket error for client ${clientId}:`, err);
+                    container.chatService.unregister(clientId);
+                });
+            });
+        } catch (err) {
+            console.error("[ChatWS] Upgrade failed:", err);
+            try {
+                socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+                socket.destroy();
+            } catch { /* socket already gone */ }
+        }
+    });
+}

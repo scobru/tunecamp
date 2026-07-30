@@ -590,6 +590,37 @@ export const AdminSettingsPanel = () => {
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
                 <label className="label cursor-pointer justify-between">
                   <div>
+                    <span className="label-text font-bold">Peer Chat</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Real-time lobby, plus direct messages that are end-to-end encrypted and never stored.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    checked={settings.peerChatEnabled === true || (settings.peerChatEnabled as unknown) === "true"}
+                    onChange={(e) => setSettings({ ...settings, peerChatEnabled: e.target.checked })}
+                  />
+                </label>
+              </div>
+
+              <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
+                <label className="label cursor-pointer justify-between">
+                  <div>
+                    <span className="label-text font-bold">Peer Chat for Guests</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Let logged-out visitors join the lobby. They get the live stream but never the stored backlog.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    disabled={!(settings.peerChatEnabled === true || (settings.peerChatEnabled as unknown) === "true")}
+                    checked={settings.peerChatGuestEnabled === true || (settings.peerChatGuestEnabled as unknown) === "true"}
+                    onChange={(e) => setSettings({ ...settings, peerChatGuestEnabled: e.target.checked })}
+                  />
+                </label>
+              </div>
+
+              <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
+                <label className="label cursor-pointer justify-between">
+                  <div>
                     <span className="label-text font-bold">Enable Peer Sharing</span>
                     <p className="text-[11px] opacity-50 mt-0.5">Allow authorized users to connect local daemons and share folders of local music.</p>
                   </div>

@@ -1,4 +1,4 @@
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach, beforeAll } from '@jest/globals';
 
 jest.unstable_mockModule('fs-extra', () => ({
     default: {
@@ -16,10 +16,16 @@ jest.unstable_mockModule('../waveform-peak.service.js', () => ({
     }
 }));
 
-const fsMock = await import('fs-extra');
-const ffmpegMock = await import('../../media/ffmpeg.js');
-const peakServiceMock = await import('../waveform-peak.service.js');
-const { WaveformGenerator } = await import('../waveform.generator.js');
+let fsMock: any;
+let ffmpegMock: any;
+let peakServiceMock: any;
+let WaveformGenerator: any;
+beforeAll(async () => {
+    fsMock = await import('fs-extra');
+    ffmpegMock = await import('../../media/ffmpeg.js');
+    peakServiceMock = await import('../waveform-peak.service.js');
+    ({ WaveformGenerator } = await import('../waveform.generator.js'));
+});
 
 describe('WaveformGenerator', () => {
     let generator: any;

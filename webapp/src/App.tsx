@@ -51,6 +51,7 @@ const Live = lazy(() => import("./pages/Live"));
 const RadioPage = lazy(() => import("./pages/Radio"));
 const NowListening = lazy(() => import("./pages/NowListening"));
 const Board = lazy(() => import("./pages/Board"));
+const Chat = lazy(() => import("./pages/Chat"));
 const Collab = lazy(() => import("./pages/Collab"));
 const CollabDetail = lazy(() => import("./pages/CollabDetail"));
 
@@ -240,6 +241,7 @@ function App() {
             <Route path="/publish" element={<Publish />} />
             <Route path="/social" element={<ModuleGuard flag="hideSocial"><Social /></ModuleGuard>} />
             <Route path="/board" element={<Board />} />
+            <Route path="/chat" element={<Chat />} />
             <Route path="/share/:id" element={<SharePage />} />
 
             {/* Admin - Protected */}
