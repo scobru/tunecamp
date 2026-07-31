@@ -52,10 +52,19 @@ describe('createChatWsHandler', () => {
 
     function setup(settings: Record<string, string>, verifyToken: any = jest.fn()) {
         db = new Database(':memory:');
-        db.exec(`CREATE TABLE peer_chat_messages (
+        db.exec(`CREATE TABLE peer_chat_bans (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL,
-            message TEXT NOT NULL,
+            username TEXT NOT NULL UNIQUE,
+            banned_by TEXT NOT NULL,
+            reason TEXT,
+            created_at INTEGER NOT NULL
+        )`);
+        db.exec(`CREATE TABLE peer_chat_mutes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            muted_by TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            reason TEXT,
             created_at INTEGER NOT NULL
         )`);
         chatService = createChatService({ db } as unknown as DatabaseService);
@@ -103,14 +112,34 @@ describe('createChatWsHandler', () => {
             expect(status).toBe(401);
         });
 
-        it('accepts a valid token and reports the authenticated username', async () => {
-            const verifyToken = jest.fn(async () => ({ userId: 7, username: 'alice' }));
+        it('accepts a valid token and reports the authenticated username and admin flag', async () => {
+            const verifyToken = jest.fn(async () => ({ userId: 7, username: 'alice', role: 'admin' }));
             const port = await setup({ peerChatEnabled: 'true' }, verifyToken);
 
             const authOk = await nextMessage(connect(port, '?token=good'), (m) => m.type === 'auth_ok');
 
             expect(authOk.username).toBe('alice');
+            expect(authOk.isAdmin).toBe(true);
             expect(authOk.sessionId).toEqual(expect.any(String));
+        });
+
+        it('recognizes manager role as admin in chat', async () => {
+            const verifyToken = jest.fn(async () => ({ userId: 8, username: 'mgr', role: 'manager' }));
+            const port = await setup({ peerChatEnabled: 'true' }, verifyToken);
+
+            const authOk = await nextMessage(connect(port, '?token=good'), (m) => m.type === 'auth_ok');
+
+            expect(authOk.username).toBe('mgr');
+            expect(authOk.isAdmin).toBe(true);
+        });
+
+        it('rejects banned user connection with 403', async () => {
+            const verifyToken = jest.fn(async () => ({ userId: 9, username: 'banneduser', role: 'user' }));
+            const port = await setup({ peerChatEnabled: 'true' }, verifyToken);
+            chatService.banUser('admin', 'banneduser', 'spam');
+
+            const status = await waitForUnexpectedResponse(connect(port, '?token=banned'));
+            expect(status).toBe(403);
         });
 
         it('accepts a guest and sanitizes the guest name', async () => {
@@ -119,6 +148,7 @@ describe('createChatWsHandler', () => {
             const authOk = await nextMessage(connect(port, '?guestName=Al!ce<script>'), (m) => m.type === 'auth_ok');
 
             expect(authOk.username).toBe('(Guest) Alcescript');
+            expect(authOk.isAdmin).toBe(false);
         });
 
         // No can_peer check here: chatting is not sharing your local folders.
@@ -133,7 +163,7 @@ describe('createChatWsHandler', () => {
         });
     });
 
-    describe('relaying', () => {
+    describe('relaying and moderation', () => {
         it('broadcasts a lobby message to other browser clients', async () => {
             const port = await setup({ peerChatEnabled: 'true', peerChatGuestEnabled: 'true' });
 
@@ -146,6 +176,38 @@ describe('createChatWsHandler', () => {
             const relayed = await nextMessage(bob, (m) => m.type === 'chat');
 
             expect(relayed).toMatchObject({ from: '(Guest) alice', text: 'hello lobby', lobby: true });
+        });
+
+        it('allows manager to execute admin_action kick', async () => {
+            const verifyToken = jest.fn(async (t: string) => {
+                if (t === 'mgr') return { userId: 1, username: 'mgr', role: 'manager' };
+                return { userId: 2, username: 'user1', role: 'user' };
+            });
+            const port = await setup({ peerChatEnabled: 'true' }, verifyToken);
+
+            const mgr = connect(port, '?token=mgr');
+            await nextMessage(mgr, (m) => m.type === 'auth_ok');
+
+            const user1 = connect(port, '?token=user1');
+            await nextMessage(user1, (m) => m.type === 'auth_ok');
+
+            mgr.send(JSON.stringify({ type: 'admin_action', action: 'kick', target: 'user1', reason: 'behave' }));
+            const kickedMsg = await nextMessage(user1, (m) => m.type === 'kicked');
+
+            expect(kickedMsg.reason).toBe('behave');
+        });
+
+        it('rejects admin_action from non-admin user', async () => {
+            const verifyToken = jest.fn(async () => ({ userId: 2, username: 'user1', role: 'user' }));
+            const port = await setup({ peerChatEnabled: 'true' }, verifyToken);
+
+            const user1 = connect(port, '?token=user1');
+            await nextMessage(user1, (m) => m.type === 'auth_ok');
+
+            user1.send(JSON.stringify({ type: 'admin_action', action: 'kick', target: 'someone' }));
+            const err = await nextMessage(user1, (m) => m.type === 'system');
+
+            expect(err.text).toContain('Admin permissions required');
         });
 
         it('reaches a client registered through the peer transport, so both share one lobby', async () => {

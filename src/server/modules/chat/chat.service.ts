@@ -22,6 +22,7 @@ interface ChatClient {
 	username: string;
 	ws: ChatSocket;
 	pubkey?: string;
+	isAdmin?: boolean;
 }
 
 export interface LobbyMessage {
@@ -41,7 +42,12 @@ export class ChatService {
 
 	constructor(private database: DatabaseService) {}
 
-	register(clientId: string, rawUsername: string, ws: ChatSocket): string {
+	register(
+		clientId: string,
+		rawUsername: string,
+		ws: ChatSocket,
+		isAdmin = false,
+	): string {
 		// Disambiguate duplicate usernames by appending a short session hash tag
 		const existingWithSameName = Array.from(this.clients.values()).filter(
 			(c) => c.rawUsername === rawUsername,
@@ -57,12 +63,186 @@ export class ChatService {
 			rawUsername,
 			username,
 			ws,
+			isAdmin,
 		});
 		return username;
 	}
 
 	unregister(clientId: string): void {
 		this.clients.delete(clientId);
+	}
+
+	isBanned(username: string): boolean {
+		try {
+			const ban = this.database.db
+				.prepare(
+					"SELECT id FROM peer_chat_bans WHERE LOWER(username) = LOWER(?)",
+				)
+				.get(username);
+			return !!ban;
+		} catch {
+			return false;
+		}
+	}
+
+	isMuted(username: string): boolean {
+		try {
+			const row = this.database.db
+				.prepare(
+					"SELECT expires_at FROM peer_chat_mutes WHERE LOWER(username) = LOWER(?)",
+				)
+				.get(username) as { expires_at: number } | undefined;
+			if (!row) return false;
+			if (Date.now() > row.expires_at) {
+				this.database.db
+					.prepare("DELETE FROM peer_chat_mutes WHERE LOWER(username) = LOWER(?)")
+					.run(username);
+				return false;
+			}
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	broadcastSystemMessage(text: string): void {
+		for (const client of this.clients.values()) {
+			if (client.ws.readyState === OPEN) {
+				try {
+					client.ws.send(
+						JSON.stringify({
+							type: "system",
+							text,
+							ts: Date.now(),
+						}),
+					);
+				} catch {}
+			}
+		}
+	}
+
+	kickUser(adminUsername: string, targetUsername: string, reason?: string): boolean {
+		let kicked = false;
+		const targetLower = targetUsername.toLowerCase().trim();
+
+		for (const [clientId, client] of Array.from(this.clients.entries())) {
+			if (
+				client.username.toLowerCase() === targetLower ||
+				client.rawUsername.toLowerCase() === targetLower ||
+				client.username.toLowerCase().startsWith(`${targetLower} #`)
+			) {
+				try {
+					client.ws.send(
+						JSON.stringify({
+							type: "kicked",
+							reason: reason || "Kicked by admin",
+						}),
+					);
+				} catch {}
+				this.unregister(clientId);
+				kicked = true;
+			}
+		}
+
+		if (kicked) {
+			this.broadcastSystemMessage(
+				`[System] ${targetUsername} was kicked by ${adminUsername}${
+					reason ? ` (${reason})` : ""
+				}`,
+			);
+		}
+		return kicked;
+	}
+
+	banUser(adminUsername: string, targetUsername: string, reason?: string): boolean {
+		const targetClean = targetUsername.trim();
+		try {
+			this.database.db
+				.prepare(
+					"INSERT OR REPLACE INTO peer_chat_bans (username, banned_by, reason, created_at) VALUES (?, ?, ?, ?)",
+				)
+				.run(targetClean.toLowerCase(), adminUsername, reason || null, Date.now());
+		} catch (err) {
+			console.error("[ChatService] Failed to record ban:", err);
+		}
+
+		this.kickUser(adminUsername, targetClean, reason ? `Banned: ${reason}` : "Banned by admin");
+		this.broadcastSystemMessage(
+			`[System] ${targetClean} was banned by ${adminUsername}${
+				reason ? ` (${reason})` : ""
+			}`,
+		);
+		return true;
+	}
+
+	unbanUser(adminUsername: string, targetUsername: string): boolean {
+		const targetClean = targetUsername.trim();
+		try {
+			this.database.db
+				.prepare("DELETE FROM peer_chat_bans WHERE LOWER(username) = LOWER(?)")
+				.run(targetClean);
+		} catch (err) {
+			console.error("[ChatService] Failed to remove ban:", err);
+		}
+		this.broadcastSystemMessage(`[System] ${targetClean} was unbanned by ${adminUsername}`);
+		return true;
+	}
+
+	muteUser(
+		adminUsername: string,
+		targetUsername: string,
+		durationMinutes = 15,
+		reason?: string,
+	): boolean {
+		const targetClean = targetUsername.trim();
+		const expiresAt = Date.now() + durationMinutes * 60 * 1000;
+		try {
+			this.database.db
+				.prepare(
+					"INSERT OR REPLACE INTO peer_chat_mutes (username, muted_by, expires_at, reason, created_at) VALUES (?, ?, ?, ?, ?)",
+				)
+				.run(targetClean.toLowerCase(), adminUsername, expiresAt, reason || null, Date.now());
+		} catch (err) {
+			console.error("[ChatService] Failed to record mute:", err);
+		}
+
+		this.broadcastSystemMessage(
+			`[System] ${targetClean} was muted by ${adminUsername} for ${durationMinutes}m${
+				reason ? ` (${reason})` : ""
+			}`,
+		);
+		return true;
+	}
+
+	unmuteUser(adminUsername: string, targetUsername: string): boolean {
+		const targetClean = targetUsername.trim();
+		try {
+			this.database.db
+				.prepare("DELETE FROM peer_chat_mutes WHERE LOWER(username) = LOWER(?)")
+				.run(targetClean);
+		} catch (err) {
+			console.error("[ChatService] Failed to remove mute:", err);
+		}
+		this.broadcastSystemMessage(`[System] ${targetClean} was unmuted by ${adminUsername}`);
+		return true;
+	}
+
+	clearLobbyHistory(adminUsername: string): void {
+		try {
+			this.database.db.prepare("DELETE FROM peer_chat_messages").run();
+		} catch (err) {
+			console.error("[ChatService] Failed to clear lobby history:", err);
+		}
+
+		for (const client of this.clients.values()) {
+			if (client.ws.readyState === OPEN) {
+				try {
+					client.ws.send(JSON.stringify({ type: "clear_history", ts: Date.now() }));
+				} catch {}
+			}
+		}
+
+		this.broadcastSystemMessage(`[System] Chat history was cleared by ${adminUsername}`);
 	}
 
 	// Relay a chat message. An empty toUsername broadcasts to every other live
@@ -74,6 +254,20 @@ export class ChatService {
 		const clean = String(text ?? "").slice(0, MAX_TEXT_LENGTH);
 		if (!clean.trim()) return false;
 		const isLobby = !toUsername;
+
+		if (isLobby && (this.isMuted(from.username) || this.isMuted(from.rawUsername))) {
+			try {
+				from.ws.send(
+					JSON.stringify({
+						type: "system",
+						text: "You are currently muted in the chat lobby.",
+						ts: Date.now(),
+					}),
+				);
+			} catch {}
+			return false;
+		}
+
 		if (isLobby) this.persistLobbyMessage(from.username, clean);
 		let delivered = false;
 		for (const client of this.clients.values()) {
