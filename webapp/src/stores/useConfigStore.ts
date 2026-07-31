@@ -18,6 +18,7 @@ interface HealthStatus {
   deezer: { online: boolean };
   lastfm: { configured: boolean; online: boolean };
   listenbrainz: { configured: boolean; online: boolean };
+  brevo?: { configured: boolean };
 }
 
 interface ConfigStore {

@@ -24,7 +24,7 @@ export const AuthModal = () => {
 	const [forgotMessage, setForgotMessage] = useState("");
 	const [forgotLoading, setForgotLoading] = useState(false);
 	const [showSetupOffer, setShowSetupOffer] = useState(false);
-	const { login, register, checkAuth, error, clearError, isFirstRun } =
+	const { login, register, checkAuth, error, clearError, isFirstRun, brevoConfigured } =
 		useAuthStore();
 	const [localError, setLocalError] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
@@ -297,7 +297,7 @@ export const AuthModal = () => {
 							/>
 						</div>
 
-						{mode === "login" && (
+						{mode === "login" && brevoConfigured && (
 							<button
 								type="button"
 								className="link link-hover text-xs opacity-70 -mt-2"

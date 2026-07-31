@@ -434,6 +434,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 adminFeePercentage, adminTreasuryAddress,
                 soulseek_username, soulseek_password,
                 stripe_secret_key, stripe_webhook_secret,
+                brevo_api_key, brevo_sender_email, brevo_sender_name,
                 discogs_token,
                 allowPublicRegistration,
                 siteLogo,
@@ -677,6 +678,16 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
             if (stripe_webhook_secret !== undefined) {
                 identity.setSetting("stripe_webhook_secret", stripe_webhook_secret);
+            }
+
+            if (brevo_api_key !== undefined) {
+                identity.setSetting("brevo_api_key", brevo_api_key);
+            }
+            if (brevo_sender_email !== undefined) {
+                identity.setSetting("brevo_sender_email", brevo_sender_email);
+            }
+            if (brevo_sender_name !== undefined) {
+                identity.setSetting("brevo_sender_name", brevo_sender_name);
             }
 
             if (discogs_token !== undefined) {
@@ -2408,6 +2419,13 @@ export function createAdminRoutes(container: ServiceContainer): Router {
         results.listenbrainz = {
             configured: !!identity.getSetting("listenbrainz_token"),
             online: true
+        };
+
+        // 14. Brevo (Email)
+        const brevoKey = identity.getSetting("brevo_api_key") || config.brevoApiKey;
+        const brevoEmail = identity.getSetting("brevo_sender_email") || config.brevoSenderEmail;
+        results.brevo = {
+            configured: !!(brevoKey && brevoEmail)
         };
 
         // 15. Spotify

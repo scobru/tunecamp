@@ -14,6 +14,7 @@ interface AuthState {
     isLoading: boolean;
     isFirstRun: boolean;
     mustChangePassword?: boolean;
+    brevoConfigured?: boolean;
     role: UserRole;
     error: string | null;
     isAuthenticating: boolean;
@@ -43,6 +44,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     isLoading: true,
     isFirstRun: false,
     mustChangePassword: false,
+    brevoConfigured: false,
     role: null,
     error: null,
     isAuthenticating: false,
@@ -86,6 +88,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 adminUser: transformedUser,
                 isFirstRun: !!status.firstRun,
                 mustChangePassword: !!status.mustChangePassword,
+                brevoConfigured: !!status.brevoConfigured,
                 role: (status.role as any) || null,
                 isLoading: false,
                 isAdminLoading: false,
