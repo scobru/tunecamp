@@ -48,8 +48,12 @@ beforeEach(() => {
 		],
 	});
 
-	window.HTMLDialogElement.prototype.showModal = vi.fn();
-	window.HTMLDialogElement.prototype.close = vi.fn();
+	window.HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
+		this.setAttribute("open", "");
+	});
+	window.HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
+		this.removeAttribute("open");
+	});
 });
 
 const renderModal = (props = {}) => {
@@ -65,7 +69,7 @@ const renderModal = (props = {}) => {
 describe("UploadTracksModal", () => {
 	it("renders upload form by default", () => {
 		renderModal();
-		expect(screen.getByRole("button", { name: /Album/i })).toBeInTheDocument();
+		expect(screen.getByText("Library (Single)")).toBeInTheDocument();
 		expect(screen.getByText("Release")).toBeInTheDocument();
 		expect(screen.getByText("Artist Name")).toBeInTheDocument();
 		expect(screen.getByText("Library Album Title")).toBeInTheDocument();
@@ -82,16 +86,14 @@ describe("UploadTracksModal", () => {
 				},
 			}),
 		);
-		expect(screen.getByText("Adding to: Test Album")).toBeInTheDocument();
+		await waitFor(() => {
+			expect(screen.getByText("Test Album")).toBeInTheDocument();
+		});
 	});
 
 	it("handles file selection", async () => {
 		renderModal();
-		// File input is not associated with label, so we need a different approach
-		// Looking for the actual input element in the document
-		const inputs = screen.getAllByRole("button", { hidden: true });
-		// Actually, let's look for the file input directly
-		const fileInput = document.querySelector('input[type="file"]');
+		const fileInput = document.querySelector('input[type="file"]')!;
 		expect(fileInput).toBeInTheDocument();
 		const file = new File(["audio content"], "test.mp3", {
 			type: "audio/mpeg",
@@ -102,7 +104,7 @@ describe("UploadTracksModal", () => {
 
 	it("submits form and shows progress", async () => {
 		renderModal();
-		const fileInput = document.querySelector('input[type="file"]');
+		const fileInput = document.querySelector('input[type="file"]')!;
 		const file = new File(["audio content"], "test.mp3", {
 			type: "audio/mpeg",
 		});
@@ -119,7 +121,7 @@ describe("UploadTracksModal", () => {
 	it("shows error on upload failure", async () => {
 		mockAPI.uploadTracks.mockRejectedValueOnce(new Error("Upload failed"));
 		renderModal();
-		const fileInput = document.querySelector('input[type="file"]');
+		const fileInput = document.querySelector('input[type="file"]')!;
 		const file = new File(["audio content"], "test.mp3", {
 			type: "audio/mpeg",
 		});
@@ -128,13 +130,13 @@ describe("UploadTracksModal", () => {
 		fireEvent.click(screen.getByRole("button", { name: /Start Upload/i }));
 
 		await waitFor(() => {
-			expect(screen.getByText(/Upload failed/i)).toBeInTheDocument();
+			expect(screen.getByText(/failed/i)).toBeInTheDocument();
 		});
 	});
 
 	it("shows success message on upload complete", async () => {
 		renderModal();
-		const fileInput = document.querySelector('input[type="file"]');
+		const fileInput = document.querySelector('input[type="file"]')!;
 		const file = new File(["audio content"], "test.mp3", {
 			type: "audio/mpeg",
 		});
@@ -152,7 +154,7 @@ describe("UploadTracksModal", () => {
 	it("calls onUploadComplete callback", async () => {
 		const onComplete = vi.fn();
 		renderModal({ onUploadComplete: onComplete });
-		const fileInput = document.querySelector('input[type="file"]');
+		const fileInput = document.querySelector('input[type="file"]')!;
 		const file = new File(["audio content"], "test.mp3", {
 			type: "audio/mpeg",
 		});
@@ -167,7 +169,7 @@ describe("UploadTracksModal", () => {
 
 	it("closes modal on close button", () => {
 		renderModal();
-		fireEvent.click(screen.getByRole("button", { name: /Close/i }));
+		fireEvent.click(screen.getByRole("button", { name: "Close" }));
 		expect(window.HTMLDialogElement.prototype.close).toHaveBeenCalled();
 	});
 

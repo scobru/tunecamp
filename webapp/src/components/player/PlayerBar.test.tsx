@@ -202,9 +202,9 @@ describe("PlayerBar", () => {
 	});
 
 	it("shows progress bar and time display", () => {
-		renderPlayer();
-		expect(screen.getByText("0:30")).toBeInTheDocument();
-		expect(screen.getByText("3:00")).toBeInTheDocument();
+		renderPlayer({ currentTime: 30, duration: 180 });
+		expect(screen.getByText(/0:30/)).toBeInTheDocument();
+		expect(screen.getByText(/3:00/)).toBeInTheDocument();
 	});
 
 	it("shows volume slider", () => {
@@ -219,14 +219,12 @@ describe("PlayerBar", () => {
 	        name: /more/i,
 	    }) || screen.getByRole("button", { name: /Toggle more/i });
 	    fireEvent.click(dropdownButton);
-	    expect(screen.getByText("Lyrics")).toBeInTheDocument();
+	    expect(screen.getByText("Lyrics", { selector: "a" })).toBeInTheDocument();
 	    expect(screen.getByText("Visualizer")).toBeInTheDocument();
 	    expect(screen.getByText("Radio Mode")).toBeInTheDocument();
 	    expect(screen.getByText("Add to Playlist")).toBeInTheDocument();
 	    expect(screen.getByText("Favorite Artist")).toBeInTheDocument();
 	    expect(screen.getByText("Favorite Album")).toBeInTheDocument();
-	});
-		expect(screen.getByText("Favorite Album")).toBeInTheDocument();
 	});
 
 it("opens lyrics panel when lyrics option is clicked", () => {
