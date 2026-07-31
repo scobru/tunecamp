@@ -1,6 +1,52 @@
 
-import { MessageSquare, Cpu, Activity, CreditCard, Globe } from 'lucide-react';
+import { MessageSquare, Cpu, Activity, CreditCard, Globe, Mail } from 'lucide-react';
 import { pluginRegistry } from '../../core/plugins/registry';
+
+// Brevo (Email)
+pluginRegistry.register({
+    id: 'brevo',
+    name: 'Brevo (Email)',
+    icon: <Mail className="text-primary" />,
+    description: 'Transactional email delivery for password resets.',
+    statusCheck: (status) => ({
+        status: status?.brevo?.configured ? 'online' : 'offline',
+        details: status?.brevo?.configured ? "API Key & Sender configured" : "Not configured"
+    }),
+    configPanel: ({ settings, setSettings }) => (
+        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
+            <div className="form-control">
+                <label className="label text-xs">API Key</label>
+                <input
+                    type="password"
+                    className="input input-sm input-bordered"
+                    placeholder="xkeysib-..."
+                    value={settings?.brevo_api_key || ''}
+                    onChange={e => setSettings({ ...settings!, brevo_api_key: e.target.value })}
+                />
+            </div>
+            <div className="form-control">
+                <label className="label text-xs">Sender Email</label>
+                <input
+                    type="email"
+                    className="input input-sm input-bordered"
+                    placeholder="noreply@example.com"
+                    value={settings?.brevo_sender_email || ''}
+                    onChange={e => setSettings({ ...settings!, brevo_sender_email: e.target.value })}
+                />
+            </div>
+            <div className="form-control">
+                <label className="label text-xs">Sender Name (Optional)</label>
+                <input
+                    type="text"
+                    className="input input-sm input-bordered"
+                    placeholder="TuneCamp"
+                    value={settings?.brevo_sender_name || ''}
+                    onChange={e => setSettings({ ...settings!, brevo_sender_name: e.target.value })}
+                />
+            </div>
+        </div>
+    )
+});
 
 // Telegram
 pluginRegistry.register({

@@ -39,7 +39,7 @@ export default function Chat() {
 	}, [fetchFlags]);
 
 	const isChatEnabled = truthy(siteSettings?.peerChatEnabled);
-	const { messages, status, username, isAdmin, peers, sendMessage, sendAdminAction } = usePeerChat(
+	const { messages, status, username, isAdmin, peers, unreadCounts, clearUnread, sendMessage, sendAdminAction } = usePeerChat(
 		isChatEnabled,
 		to,
 	);
@@ -306,11 +306,28 @@ export default function Chat() {
 						</div>
 					</div>
 					<div className="space-y-1 max-h-[50vh] overflow-y-auto">
+						{/* Explicit Lobby Option */}
+						<div
+							className={clsx(
+								"group w-full flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg text-xs cursor-pointer transition-colors",
+								to === ""
+									? "bg-primary/10 text-primary font-bold"
+									: "hover:bg-base-content/5",
+							)}
+							onClick={() => setTo("")}
+						>
+							<div className="flex items-center gap-2 min-w-0 flex-1">
+								<Globe size={14} className={to === "" ? "text-primary" : "opacity-60"} />
+								<span className="truncate">🌐 Public Lobby</span>
+							</div>
+						</div>
+
 						{peers.length === 0 && (
-							<p className="text-xs opacity-40 px-1">No peers connected yet.</p>
+							<p className="text-xs opacity-40 px-1 pt-2">No other peers connected.</p>
 						)}
 						{peers.map((peer) => {
 							const isSelf = peer.username === username;
+							const unread = unreadCounts[peer.username] || 0;
 							return (
 								<div
 									key={peer.username}
@@ -323,7 +340,14 @@ export default function Chat() {
 								>
 									<button
 										className="flex items-center gap-2 min-w-0 flex-1 text-left"
-										onClick={() => setTo(isSelf ? "" : peer.username)}
+										onClick={() => {
+											if (isSelf) {
+												setTo("");
+											} else {
+												setTo(peer.username);
+												clearUnread(peer.username);
+											}
+										}}
 									>
 										<span
 											className="w-2 h-2 rounded-full bg-success shrink-0"
@@ -341,6 +365,11 @@ export default function Chat() {
 											/>
 										)}
 									</button>
+									{unread > 0 && to !== peer.username && (
+										<span className="badge badge-sm badge-error text-white font-bold shrink-0">
+											{unread}
+										</span>
+									)}
 									{canModerate && !isSelf && (
 										<div className="hidden group-hover:flex items-center gap-1 shrink-0">
 											<button

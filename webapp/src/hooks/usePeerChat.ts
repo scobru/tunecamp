@@ -32,6 +32,15 @@ export function usePeerChat(enabled: boolean, activePeer: string) {
 	const [username, setUsername] = useState<string>("");
 	const [isAdmin, setIsAdmin] = useState<boolean>(false);
 	const [peers, setPeers] = useState<PeerInfo[]>([]);
+	const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+
+	const activePeerRef = useRef(activePeer);
+	useEffect(() => {
+		activePeerRef.current = activePeer;
+		if (activePeer) {
+			setUnreadCounts((prev) => ({ ...prev, [activePeer]: 0 }));
+		}
+	}, [activePeer]);
 
 	const wsRef = useRef<WebSocket | null>(null);
 	const keyPairRef = useRef<KeyPair | null>(null);
@@ -154,6 +163,12 @@ export function usePeerChat(enabled: boolean, activePeer: string) {
 							e2e: true,
 							to: msg.from,
 						});
+						if (msg.from !== activePeerRef.current) {
+							setUnreadCounts((prev) => ({
+								...prev,
+								[msg.from]: (prev[msg.from] || 0) + 1,
+							}));
+						}
 					}
 				}
 			};
@@ -289,12 +304,18 @@ export function usePeerChat(enabled: boolean, activePeer: string) {
 			)
 		: messages.filter((m) => m.lobby !== false);
 
+	const clearUnread = useCallback((peer: string) => {
+		setUnreadCounts((prev) => ({ ...prev, [peer]: 0 }));
+	}, []);
+
 	return {
 		messages: visibleMessages,
 		status,
 		username,
 		isAdmin,
 		peers,
+		unreadCounts,
+		clearUnread,
 		sendMessage,
 		sendAdminAction,
 	};

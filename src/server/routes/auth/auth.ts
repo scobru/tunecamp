@@ -12,6 +12,8 @@ export function createAuthRoutes(container: ServiceContainer): Router {
     const authService = container.authService;
     const authMiddleware = container.authMiddleware;
     const config = container.config;
+    const identity = container.identity;
+    const database = container.database;
     const apService: ServiceContainer['apService'] = (container as any).apService || null;
     const router = Router();
     router.use(json({ limit: "10mb" }));
@@ -200,7 +202,8 @@ export function createAuthRoutes(container: ServiceContainer): Router {
                     config,
                     email,
                     "Reset your password",
-                    `<p>Hi ${result.username},</p><p>Click the link below to reset your password. This link expires in 30 minutes.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, you can ignore this email.</p>`
+                    `<p>Hi ${result.username},</p><p>Click the link below to reset your password. This link expires in 30 minutes.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, you can ignore this email.</p>`,
+                    identity || database
                 );
             }
         } catch (error) {
@@ -292,6 +295,10 @@ export function createAuthRoutes(container: ServiceContainer): Router {
         const username = req.username || "";
         const dbUser = username ? authService.getUserByUsername(username) : null;
         const profile = username ? authService.getUserProfile(username) : null;
+        const brevoApiKey = (identity || database)?.getSetting("brevo_api_key") || config?.brevoApiKey;
+        const brevoSenderEmail = (identity || database)?.getSetting("brevo_sender_email") || config?.brevoSenderEmail;
+        const brevoConfigured = !!(brevoApiKey && brevoSenderEmail);
+
         res.json({
             authenticated: req.role !== UserRole.GUEST,
             username: username,
@@ -305,7 +312,8 @@ export function createAuthRoutes(container: ServiceContainer): Router {
             avatar: profile?.avatar || (username ? authService.getZenAvatar(username) : null),
             email: profile?.email || null,
             firstRun: authService.isFirstRun(),
-            mustChangePassword: username ? await authService.isDefaultPassword(username) : false
+            mustChangePassword: username ? await authService.isDefaultPassword(username) : false,
+            brevoConfigured
         });
     });
 

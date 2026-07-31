@@ -335,9 +335,7 @@ export const AdminSettingsPanel = () => {
                   onChange={(e) => setSettings({ ...settings, publicUrl: e.target.value })}
                   placeholder="https://sudorecords.dev"
                 />
-                <label className="label">
-                  <span className="label-text-alt opacity-40">Required for ActivityPub federation. Must contain protocol (e.g. https://) and domain.</span>
-                </label>
+                <p className="text-xs opacity-75 mt-1 px-1">Required for ActivityPub federation. Must contain protocol (e.g. https://) and domain.</p>
               </div>
 
 
@@ -356,7 +354,7 @@ export const AdminSettingsPanel = () => {
                     }
                   />
                 </label>
-                <p className="text-[11px] opacity-40 px-1 mt-1">If enabled, anyone can create an account on your node.</p>
+                <p className="text-xs opacity-75 px-1 mt-1">If enabled, anyone can create an account on your node.</p>
               </div>
 
               <div className="form-control pt-4 border-t border-base-content/5 mt-4">
@@ -374,7 +372,7 @@ export const AdminSettingsPanel = () => {
                     }
                   />
                 </label>
-                <p className="text-[11px] opacity-40 px-1 mt-1">If enabled, listeners can create an artist profile and publish releases directly without admin approval.</p>
+                <p className="text-xs opacity-75 px-1 mt-1">If enabled, listeners can create an artist profile and publish releases directly without admin approval.</p>
 
                 {(settings.listenerSelfPublish === true || (settings.listenerSelfPublish as unknown) === "true") && (
                   <div className="mt-3 pl-6">
@@ -391,7 +389,7 @@ export const AdminSettingsPanel = () => {
                         setSettings({ ...settings, listenerSelfPublishQuota: e.target.value })
                       }
                     />
-                    <p className="text-[11px] opacity-40 px-1 mt-1">Physical-upload quota assigned to a listener when they self-publish. Default 1024 MB (1&nbsp;GB); 0 = unlimited. Per-user quotas can still be adjusted in the Users panel.</p>
+                    <p className="text-xs opacity-75 px-1 mt-1">Physical-upload quota assigned to a listener when they self-publish. Default 1024 MB (1&nbsp;GB); 0 = unlimited. Per-user quotas can still be adjusted in the Users panel.</p>
                   </div>
                 )}
               </div>
@@ -410,7 +408,7 @@ export const AdminSettingsPanel = () => {
                     setSettings({ ...settings, listenerTrackCap: e.target.value })
                   }
                 />
-                <p className="text-[11px] opacity-40 px-1 mt-1">Max tracks a listener can upload before hitting their quota (0 = unlimited). Per-user overrides live in the Users panel; listeners can buy more slots below via Track-Slot Topup.</p>
+                <p className="text-xs opacity-75 px-1 mt-1">Max tracks a listener can upload before hitting their quota (0 = unlimited). Per-user overrides live in the Users panel; listeners can buy more slots below via Track-Slot Topup.</p>
               </div>
 
               <div className="form-control pt-4 border-t border-base-content/5 mt-4">
@@ -427,11 +425,11 @@ export const AdminSettingsPanel = () => {
                     <option key={h} value={String(h)}>{String(h).padStart(2, "0")}:00</option>
                   ))}
                 </select>
-                <p className="text-[11px] opacity-40 px-1 mt-1">Run a full library scan automatically once a day at this hour (server time). Pick an off-peak hour to keep imports away from listener traffic.</p>
+                <p className="text-xs opacity-75 px-1 mt-1">Run a full library scan automatically once a day at this hour (server time). Pick an off-peak hour to keep imports away from listener traffic.</p>
               </div>
 
               <div className="pt-4 border-t border-base-content/5 mt-4 flex items-center justify-between">
-                <span className="text-xs opacity-40 font-mono">TuneCamp v{__APP_VERSION__}</span>
+                <span className="text-xs opacity-60 font-mono">TuneCamp v{__APP_VERSION__}</span>
               </div>
             </div>
           )}
@@ -448,14 +446,14 @@ export const AdminSettingsPanel = () => {
               </p>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
+                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <span className="label-text font-bold">Show Live Streaming</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Allow artists to start live audio streams and display the "Live" section in navigation.</p>
+                    <p className="text-xs opacity-75 mt-0.5">Allow artists to start live audio streams and display the "Live" section in navigation.</p>
                   </div>
                   <input
                     type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    className="toggle toggle-primary toggle-md shrink-0"
                     checked={isLiveEnabled}
                     onChange={(e) => setSettings({ ...settings, hideLive: !e.target.checked })}
                   />
@@ -463,14 +461,14 @@ export const AdminSettingsPanel = () => {
               </div>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
+                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <span className="label-text font-bold">Show Digital Store</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Display the digital store and membership options in navigation. (Make sure Stripe or Web3 is configured).</p>
+                    <p className="text-xs opacity-75 mt-0.5">Display the digital store and membership options in navigation. (Make sure Stripe or Web3 is configured).</p>
                   </div>
                   <input
                     type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    className="toggle toggle-primary toggle-md shrink-0"
                     checked={isStoreEnabled}
                     onChange={(e) => setSettings({ ...settings, hideStore: !e.target.checked })}
                   />
@@ -478,14 +476,14 @@ export const AdminSettingsPanel = () => {
               </div>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
+                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <span className="label-text font-bold">Show Artist Social Hub</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Enable the ActivityPub community feeds, profile setups, and automation pages for artists.</p>
+                    <p className="text-xs opacity-75 mt-0.5">Enable the ActivityPub community feeds, profile setups, and automation pages for artists.</p>
                   </div>
                   <input
                     type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    className="toggle toggle-primary toggle-md shrink-0"
                     checked={isSocialEnabled}
                     onChange={(e) => setSettings({ ...settings, hideSocial: !e.target.checked })}
                   />
@@ -493,14 +491,14 @@ export const AdminSettingsPanel = () => {
               </div>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
+                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <span className="label-text font-bold">Show Federated Network</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Allow users to discover music and instances across the network.</p>
+                    <p className="text-xs opacity-75 mt-0.5">Allow users to discover music and instances across the network.</p>
                   </div>
                   <input
                     type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    className="toggle toggle-primary toggle-md shrink-0"
                     checked={isNetworkEnabled}
                     onChange={(e) => setSettings({ ...settings, hideNetwork: !e.target.checked })}
                   />
@@ -508,14 +506,14 @@ export const AdminSettingsPanel = () => {
               </div>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
+                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <span className="label-text font-bold">Show Crate Digging (Dig)</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Allow users to find music via Bandcamp collectors seed crawling.</p>
+                    <p className="text-xs opacity-75 mt-0.5">Allow users to find music via Bandcamp collectors seed crawling.</p>
                   </div>
                   <input
                     type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    className="toggle toggle-primary toggle-md shrink-0"
                     checked={isDigEnabled}
                     onChange={(e) => setSettings({ ...settings, hideDig: !e.target.checked })}
                   />
@@ -523,14 +521,14 @@ export const AdminSettingsPanel = () => {
               </div>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
+                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <span className="label-text font-bold">Show Free Samples</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Display the public samples showcase and let artists upload free samples/loops.</p>
+                    <p className="text-xs opacity-75 mt-0.5">Display the public samples showcase and let artists upload free samples/loops.</p>
                   </div>
                   <input
                     type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    className="toggle toggle-primary toggle-md shrink-0"
                     checked={isSamplesEnabled}
                     onChange={(e) => setSettings({ ...settings, hideSamples: !e.target.checked })}
                   />
@@ -538,14 +536,14 @@ export const AdminSettingsPanel = () => {
               </div>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
+                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <span className="label-text font-bold">Show Collab</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Allow users to open the multitrack collaboration workspace.</p>
+                    <p className="text-xs opacity-75 mt-0.5">Allow users to open the multitrack collaboration workspace.</p>
                   </div>
                   <input
                     type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    className="toggle toggle-primary toggle-md shrink-0"
                     checked={isCollabEnabled}
                     onChange={(e) => setSettings({ ...settings, hideCollab: !e.target.checked })}
                   />
@@ -553,14 +551,14 @@ export const AdminSettingsPanel = () => {
               </div>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
+                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <span className="label-text font-bold">Show Lab Apps</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Display the Lab section with its collection of standalone tools/apps.</p>
+                    <p className="text-xs opacity-75 mt-0.5">Display the Lab section with its collection of standalone tools/apps.</p>
                   </div>
                   <input
                     type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    className="toggle toggle-primary toggle-md shrink-0"
                     checked={isLabEnabled}
                     onChange={(e) => setSettings({ ...settings, hideLab: !e.target.checked })}
                   />
@@ -568,14 +566,14 @@ export const AdminSettingsPanel = () => {
               </div>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
+                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <span className="label-text font-bold">Message Board</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Show the built-in community message board to logged-in users.</p>
+                    <p className="text-xs opacity-75 mt-0.5">Show the built-in community message board to logged-in users.</p>
                   </div>
                   <input
                     type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    className="toggle toggle-primary toggle-md shrink-0"
                     checked={
                       settings.boardEnabled === true ||
                       (settings.boardEnabled as unknown) === "true" ||
@@ -588,14 +586,14 @@ export const AdminSettingsPanel = () => {
               </div>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
+                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <span className="label-text font-bold">Peer Chat</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Real-time lobby, plus direct messages that are end-to-end encrypted and never stored.</p>
+                    <p className="text-xs opacity-75 mt-0.5">Real-time lobby, plus direct messages that are end-to-end encrypted and never stored.</p>
                   </div>
                   <input
                     type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    className="toggle toggle-primary toggle-md shrink-0"
                     checked={settings.peerChatEnabled === true || (settings.peerChatEnabled as unknown) === "true"}
                     onChange={(e) => setSettings({ ...settings, peerChatEnabled: e.target.checked })}
                   />
@@ -603,14 +601,14 @@ export const AdminSettingsPanel = () => {
               </div>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
+                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <span className="label-text font-bold">Peer Chat for Guests</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Let logged-out visitors join the lobby. They get the live stream but never the stored backlog.</p>
+                    <p className="text-xs opacity-75 mt-0.5">Let logged-out visitors join the lobby. They get the live stream but never the stored backlog.</p>
                   </div>
                   <input
                     type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    className="toggle toggle-primary toggle-md shrink-0"
                     disabled={!(settings.peerChatEnabled === true || (settings.peerChatEnabled as unknown) === "true")}
                     checked={settings.peerChatGuestEnabled === true || (settings.peerChatGuestEnabled as unknown) === "true"}
                     onChange={(e) => setSettings({ ...settings, peerChatGuestEnabled: e.target.checked })}
@@ -619,14 +617,14 @@ export const AdminSettingsPanel = () => {
               </div>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
+                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <span className="label-text font-bold">Enable Peer Sharing</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Allow authorized users to connect local daemons and share folders of local music.</p>
+                    <p className="text-xs opacity-75 mt-0.5">Allow authorized users to connect local daemons and share folders of local music.</p>
                   </div>
                   <input
                     type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    className="toggle toggle-primary toggle-md shrink-0"
                     checked={settings.peerEnabled === true || (settings.peerEnabled as unknown) === "true"}
                     onChange={(e) => setSettings({ ...settings, peerEnabled: e.target.checked })}
                   />
@@ -634,14 +632,14 @@ export const AdminSettingsPanel = () => {
               </div>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
+                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <span className="label-text font-bold">Allow Peer Downloads</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Permit downloading tracks shared by connected peers (otherwise only streaming is allowed).</p>
+                    <p className="text-xs opacity-75 mt-0.5">Permit downloading tracks shared by connected peers (otherwise only streaming is allowed).</p>
                   </div>
                   <input
                     type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    className="toggle toggle-primary toggle-md shrink-0"
                     checked={settings.peerAllowDownloads !== false && (settings.peerAllowDownloads as unknown) !== "false"}
                     onChange={(e) => setSettings({ ...settings, peerAllowDownloads: e.target.checked })}
                   />
@@ -649,14 +647,14 @@ export const AdminSettingsPanel = () => {
               </div>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
+                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <span className="label-text font-bold">Federate Peer Tracks</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Advertise currently-shared peer tracks to other federated instances, which can stream them while the peer is online. Streaming only — no downloads are exposed.</p>
+                    <p className="text-xs opacity-75 mt-0.5">Advertise currently-shared peer tracks to other federated instances, which can stream them while the peer is online. Streaming only — no downloads are exposed.</p>
                   </div>
                   <input
                     type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    className="toggle toggle-primary toggle-md shrink-0"
                     checked={settings.peerFederation === true || (settings.peerFederation as unknown) === "true"}
                     onChange={(e) => setSettings({ ...settings, peerFederation: e.target.checked })}
                   />
@@ -1108,104 +1106,94 @@ export const AdminSettingsPanel = () => {
                   <h4 className="font-bold text-xs tracking-normal uppercase">Revenue & Fees (Label Admin)</h4>
                 </div>
 
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-medium text-sm">Monthly Subscription Price (USD)</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-base-content/50 font-bold">$</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="input input-bordered bg-base-300/50 w-40"
-                      value={settings.membershipMonthlyPrice ?? 10}
-                      onChange={(e) => setSettings({ ...settings, membershipMonthlyPrice: e.target.value })}
-                      placeholder="10.00"
-                    />
-                  </div>
-                  <label className="label">
-                    <span className="label-text-alt opacity-40 text-[11px]">Price charged for a monthly membership via Stripe Checkout. Applies to the "Subscribe" flow in the Store.</span>
-                  </label>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="form-control">
-                    <label className="label">
-                      <span className="label-text font-medium text-sm">Label Admin Fee (%)</span>
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      className="input input-bordered bg-base-300/50 w-full"
-                      value={settings.adminFeePercentage || 0}
-                      onChange={(e) => setSettings({ ...settings, adminFeePercentage: e.target.value })}
-                      placeholder="0"
-                    />
-                    <label className="label">
-                      <span className="label-text-alt opacity-40 text-[11px]">Percentage fee taken from direct payments. For smart contracts, this is fixed at 15%.</span>
-                    </label>
-                  </div>
-
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text font-medium text-sm">Admin Treasury Wallet</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="input input-bordered bg-base-300/50 font-mono text-xs w-full"
-                      value={settings.adminTreasuryAddress || ""}
-                      onChange={(e) => setSettings({ ...settings, adminTreasuryAddress: e.target.value })}
-                      placeholder="0x..."
-                    />
-                    <label className="label">
-                      <span className="label-text-alt opacity-40 text-[11px]">Address where label fees are sent.</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-base-content/5">
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text font-medium text-sm">Track-Slot Topup Price (USD)</span>
+                    <label className="label pb-1">
+                      <span className="label-text font-medium text-sm">Monthly Subscription Price (USD)</span>
                     </label>
                     <div className="flex items-center gap-2">
-                      <span className="text-base-content/50 font-bold">$</span>
+                      <span className="text-base-content/60 font-bold">$</span>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
                         className="input input-bordered bg-base-300/50 w-40"
-                        value={settings.trackcapTopupPriceUsd ?? 0}
-                        onChange={(e) => setSettings({ ...settings, trackcapTopupPriceUsd: e.target.value })}
-                        placeholder="0.00"
+                        value={settings.membershipMonthlyPrice ?? 10}
+                        onChange={(e) => setSettings({ ...settings, membershipMonthlyPrice: e.target.value })}
+                        placeholder="10.00"
                       />
                     </div>
-                    <label className="label">
-                      <span className="label-text-alt opacity-40 text-[11px]">Price of one Track-Slot Topup purchase via Stripe Checkout.</span>
-                    </label>
+                    <p className="text-xs opacity-75 mt-1 px-0.5">Price charged for a monthly membership via Stripe Checkout. Applies to the "Subscribe" flow in the Store.</p>
                   </div>
 
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text font-medium text-sm">Track-Slot Topup Tracks Granted</span>
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      className="input input-bordered bg-base-300/50 w-full"
-                      value={settings.trackcapTopupTracksGranted ?? 0}
-                      onChange={(e) => setSettings({ ...settings, trackcapTopupTracksGranted: e.target.value })}
-                      placeholder="0"
-                    />
-                    <label className="label">
-                      <span className="label-text-alt opacity-40 text-[11px]">Number of extra track slots added to the listener's cap per topup purchase.</span>
-                    </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="form-control">
+                      <label className="label pb-1">
+                        <span className="label-text font-medium text-sm">Label Admin Fee (%)</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        className="input input-bordered bg-base-300/50 w-full"
+                        value={settings.adminFeePercentage || 0}
+                        onChange={(e) => setSettings({ ...settings, adminFeePercentage: e.target.value })}
+                        placeholder="0"
+                      />
+                      <p className="text-xs opacity-75 mt-1 px-0.5">Percentage fee taken from direct payments. For smart contracts, this is fixed at 15%.</p>
+                    </div>
+
+                    <div className="form-control">
+                      <label className="label pb-1">
+                        <span className="label-text font-medium text-sm">Admin Treasury Wallet</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="input input-bordered bg-base-300/50 font-mono text-xs w-full"
+                        value={settings.adminTreasuryAddress || ""}
+                        onChange={(e) => setSettings({ ...settings, adminTreasuryAddress: e.target.value })}
+                        placeholder="0x..."
+                      />
+                      <p className="text-xs opacity-75 mt-1 px-0.5">Address where label fees are sent.</p>
+                    </div>
                   </div>
-                </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-base-content/5">
+                    <div className="form-control">
+                      <label className="label pb-1">
+                        <span className="label-text font-medium text-sm">Track-Slot Topup Price (USD)</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base-content/60 font-bold">$</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="input input-bordered bg-base-300/50 w-40"
+                          value={settings.trackcapTopupPriceUsd ?? 0}
+                          onChange={(e) => setSettings({ ...settings, trackcapTopupPriceUsd: e.target.value })}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <p className="text-xs opacity-75 mt-1 px-0.5">Price of one Track-Slot Topup purchase via Stripe Checkout.</p>
+                    </div>
+
+                    <div className="form-control">
+                      <label className="label pb-1">
+                        <span className="label-text font-medium text-sm">Track-Slot Topup Tracks Granted</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        className="input input-bordered bg-base-300/50 w-full"
+                        value={settings.trackcapTopupTracksGranted ?? 0}
+                        onChange={(e) => setSettings({ ...settings, trackcapTopupTracksGranted: e.target.value })}
+                        placeholder="0"
+                      />
+                      <p className="text-xs opacity-75 mt-1 px-0.5">Number of extra track slots added to the listener's cap per topup purchase.</p>
+                    </div>
+                  </div>
 
                 {web3Enabled && (
                   <div className="pt-4 border-t border-base-content/5 flex flex-col md:flex-row items-center gap-4">
