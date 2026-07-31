@@ -74,8 +74,8 @@ export function createChatWsHandler(server: http.Server, container: ServiceConta
                 alive.set(ws, true);
                 ws.on("pong", () => alive.set(ws, true));
 
-                container.chatService.register(clientId, username, ws);
-                ws.send(JSON.stringify({ type: "auth_ok", sessionId: clientId, username }));
+                const assignedUsername = container.chatService.register(clientId, username, ws);
+                ws.send(JSON.stringify({ type: "auth_ok", sessionId: clientId, username: assignedUsername }));
 
                 ws.on("message", (data, isBinary) => {
                     if (isBinary) return;
