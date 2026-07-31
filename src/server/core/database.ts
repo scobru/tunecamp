@@ -590,6 +590,23 @@ export function createDatabase(dbPath: string): DatabaseService {
             created_at INTEGER NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS peer_chat_bans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            banned_by TEXT NOT NULL,
+            reason TEXT,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS peer_chat_mutes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            muted_by TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            reason TEXT,
+            created_at INTEGER NOT NULL
+        );
+
         -- Digging ("Dig") feature: external crate-digging sessions inspired by Badger.
         CREATE TABLE IF NOT EXISTS dig_sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

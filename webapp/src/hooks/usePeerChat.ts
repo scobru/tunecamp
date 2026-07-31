@@ -17,6 +17,7 @@ export interface ChatMessage {
 	lobby?: boolean;
 	e2e?: boolean;
 	to?: string;
+	system?: boolean;
 }
 
 export type ChatStatus = "offline" | "connecting" | "online";
@@ -29,6 +30,7 @@ export function usePeerChat(enabled: boolean, activePeer: string) {
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [status, setStatus] = useState<ChatStatus>("offline");
 	const [username, setUsername] = useState<string>("");
+	const [isAdmin, setIsAdmin] = useState<boolean>(false);
 	const [peers, setPeers] = useState<PeerInfo[]>([]);
 
 	const wsRef = useRef<WebSocket | null>(null);
@@ -49,6 +51,24 @@ export function usePeerChat(enabled: boolean, activePeer: string) {
 			// Non-blocking: the lobby still works without a peer list.
 		}
 	}, []);
+
+	const sendAdminAction = useCallback(
+		(action: string, target?: string, reason?: string, duration?: number) => {
+			const ws = wsRef.current;
+			if (ws?.readyState === WebSocket.OPEN) {
+				ws.send(
+					JSON.stringify({
+						type: "admin_action",
+						action,
+						target,
+						reason,
+						duration,
+					}),
+				);
+			}
+		},
+		[],
+	);
 
 	useEffect(() => {
 		if (!enabled) return;
@@ -88,6 +108,7 @@ export function usePeerChat(enabled: boolean, activePeer: string) {
 				if (msg.type === "auth_ok") {
 					setStatus("online");
 					setUsername(msg.username ?? "");
+					setIsAdmin(!!msg.isAdmin);
 					ws.send(
 						JSON.stringify({
 							type: "pubkey",
@@ -99,6 +120,24 @@ export function usePeerChat(enabled: boolean, activePeer: string) {
 					setPeers((prev) => {
 						if (prev.some((p) => p.username === msg.from)) return prev;
 						return [...prev, { username: msg.from, pubkey: true }];
+					});
+				} else if (msg.type === "system") {
+					append({
+						from: "System",
+						text: msg.text,
+						ts: msg.ts || Date.now(),
+						lobby: true,
+						system: true,
+					});
+				} else if (msg.type === "clear_history") {
+					setMessages([]);
+				} else if (msg.type === "kicked") {
+					append({
+						from: "System",
+						text: `You were kicked from chat: ${msg.reason || "Kicked by admin"}`,
+						ts: Date.now(),
+						lobby: true,
+						system: true,
 					});
 				} else if (msg.type === "chat") {
 					if (msg.lobby) {
@@ -122,8 +161,6 @@ export function usePeerChat(enabled: boolean, activePeer: string) {
 			ws.onclose = () => {
 				setStatus("offline");
 				peerKeysRef.current.clear();
-				// Nobody is reachable without the socket; the poll below refills
-				// the roster once we are back.
 				setPeers([]);
 				if (!closedByUsRef.current) {
 					reconnectRef.current = setTimeout(connect, RECONNECT_MS);
@@ -143,15 +180,11 @@ export function usePeerChat(enabled: boolean, activePeer: string) {
 			setStatus("offline");
 			setPeers([]);
 		};
-		// `username` and `refreshPeers` are deliberately not dependencies: the
-		// socket sets `username` from auth_ok, so listing it here would tear the
-		// connection down and rebuild it on every successful connect.
 	}, [enabled, append]);
 
 	useEffect(() => {
 		if (!enabled) return;
 		const id = setInterval(refreshPeers, 5000);
-		// Defer initial fetch so it's not a synchronous setState in effect body.
 		const timeoutId = setTimeout(() => refreshPeers(), 0);
 		return () => {
 			clearInterval(id);
@@ -163,22 +196,80 @@ export function usePeerChat(enabled: boolean, activePeer: string) {
 		(to: string, text: string): boolean => {
 			const ws = wsRef.current;
 			const keyPair = keyPairRef.current;
-			if (ws?.readyState !== WebSocket.OPEN || !keyPair || !text.trim())
+			const cleanText = text.trim();
+			if (ws?.readyState !== WebSocket.OPEN || !keyPair || !cleanText)
 				return false;
 
-			let payload = text;
+			// IRC Slash Commands handling for admins and general commands (/help)
+			if (cleanText.startsWith("/")) {
+				const parts = cleanText.slice(1).split(/\s+/);
+				const cmd = parts[0]?.toLowerCase();
+				const target = parts[1];
+				const extra = parts.slice(2).join(" ");
+
+				if (cmd === "help") {
+					append({
+						from: "System",
+						text: "Available commands: /kick <user> [reason], /ban <user> [reason], /unban <user>, /mute <user> [minutes], /unmute <user>, /clear, /help",
+						ts: Date.now(),
+						lobby: true,
+						system: true,
+					});
+					return true;
+				}
+
+				if (["kick", "ban", "unban", "mute", "unmute", "clear"].includes(cmd)) {
+					if (!isAdmin) {
+						append({
+							from: "System",
+							text: "Error: Moderation commands are restricted to instance admins.",
+							ts: Date.now(),
+							lobby: true,
+							system: true,
+						});
+						return true;
+					}
+
+					if (cmd === "clear") {
+						sendAdminAction("clear");
+					} else if (!target) {
+						append({
+							from: "System",
+							text: `Usage: /${cmd} <username> [reason/minutes]`,
+							ts: Date.now(),
+							lobby: true,
+							system: true,
+						});
+					} else if (cmd === "kick") {
+						sendAdminAction("kick", target, extra || undefined);
+					} else if (cmd === "ban") {
+						sendAdminAction("ban", target, extra || undefined);
+					} else if (cmd === "unban") {
+						sendAdminAction("unban", target);
+					} else if (cmd === "mute") {
+						const minutes = parseInt(parts[2], 10) || 15;
+						const reason = parts.slice(3).join(" ") || undefined;
+						sendAdminAction("mute", target, reason, minutes);
+					} else if (cmd === "unmute") {
+						sendAdminAction("unmute", target);
+					}
+					return true;
+				}
+			}
+
+			let payload = cleanText;
 			let e2e = false;
 			if (to) {
 				const pubkey = peerKeysRef.current.get(to);
 				if (pubkey) {
-					payload = encryptFor(text, pubkey, keyPair.secretKey);
+					payload = encryptFor(cleanText, pubkey, keyPair.secretKey);
 					e2e = true;
 				}
 			}
 			ws.send(JSON.stringify({ type: "chat", to, text: payload }));
 			append({
 				from: to ? `→ ${to}` : "→ Lobby",
-				text,
+				text: cleanText,
 				ts: Date.now(),
 				self: true,
 				lobby: !to,
@@ -187,7 +278,7 @@ export function usePeerChat(enabled: boolean, activePeer: string) {
 			});
 			return true;
 		},
-		[append],
+		[append, isAdmin, sendAdminAction],
 	);
 
 	const visibleMessages = activePeer
@@ -198,5 +289,13 @@ export function usePeerChat(enabled: boolean, activePeer: string) {
 			)
 		: messages.filter((m) => m.lobby !== false);
 
-	return { messages: visibleMessages, status, username, peers, sendMessage };
+	return {
+		messages: visibleMessages,
+		status,
+		username,
+		isAdmin,
+		peers,
+		sendMessage,
+		sendAdminAction,
+	};
 }

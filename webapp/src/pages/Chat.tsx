@@ -11,6 +11,11 @@ import {
 	Globe,
 	ChevronDown,
 	Users,
+	ShieldAlert,
+	UserX,
+	VolumeX,
+	Trash2,
+	HelpCircle,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -20,8 +25,9 @@ const formatTime = (ts: number) =>
 export default function Chat() {
 	const { settings: siteSettings, fetchFlags } = useSiteSettingsStore();
 	const { role } = useAuthStore();
-	const isAdmin =
-		role === "admin" || role === "root_admin" || role === "super_user";
+	const roleStr = String(role || "");
+	const isSiteAdmin =
+		roleStr === "admin" || roleStr === "root_admin" || roleStr === "super_user" || roleStr === "manager";
 	const [to, setTo] = useState("");
 	const [text, setText] = useState("");
 	const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -33,10 +39,12 @@ export default function Chat() {
 	}, [fetchFlags]);
 
 	const isChatEnabled = truthy(siteSettings?.peerChatEnabled);
-	const { messages, status, username, peers, sendMessage } = usePeerChat(
+	const { messages, status, username, isAdmin, peers, sendMessage, sendAdminAction } = usePeerChat(
 		isChatEnabled,
 		to,
 	);
+
+	const canModerate = isSiteAdmin || isAdmin;
 
 	const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
 		bottomRef.current?.scrollIntoView({ behavior });
@@ -62,6 +70,23 @@ export default function Chat() {
 		setText("");
 	};
 
+	const handleAdminAction = (action: string, targetUser: string) => {
+		if (action === "kick") {
+			const reason = prompt(`Reason for kicking ${targetUser}?`);
+			if (reason !== null) sendAdminAction("kick", targetUser, reason || undefined);
+		} else if (action === "ban") {
+			const reason = prompt(`Reason for banning ${targetUser}?`);
+			if (reason !== null) sendAdminAction("ban", targetUser, reason || undefined);
+		} else if (action === "mute") {
+			const minutes = prompt(`Mute ${targetUser} for how many minutes?`, "15");
+			if (minutes !== null) {
+				const duration = parseInt(minutes, 10) || 15;
+				const reason = prompt(`Reason for muting ${targetUser}?`);
+				sendAdminAction("mute", targetUser, reason || undefined, duration);
+			}
+		}
+	};
+
 	if (!siteSettings) {
 		return (
 			<div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 opacity-50">
@@ -71,7 +96,7 @@ export default function Chat() {
 		);
 	}
 
-	if (!isChatEnabled && !isAdmin) {
+	if (!isChatEnabled && !canModerate) {
 		return (
 			<div className="max-w-md mx-auto my-16 p-8 text-center bg-base-200/50 rounded-3xl border border-base-content/5 glass-effect space-y-4">
 				<div className="w-16 h-16 rounded-full bg-warning/10 text-warning flex items-center justify-center mx-auto">
@@ -98,7 +123,7 @@ export default function Chat() {
 				gradientTo="to-primary/5"
 			/>
 
-			{!isChatEnabled && isAdmin && (
+			{!isChatEnabled && canModerate && (
 				<div className="alert alert-warning py-3 rounded-2xl shadow-m3-1 flex items-center gap-3">
 					<AlertCircle size={20} className="shrink-0" />
 					<div className="text-xs font-semibold">
@@ -107,22 +132,44 @@ export default function Chat() {
 				</div>
 			)}
 
-			<div className="flex items-center gap-3 text-xs">
-				<span
-					className={clsx("badge badge-sm gap-1", {
-						"badge-success": status === "online",
-						"badge-warning": status === "connecting",
-						"badge-ghost": status === "offline",
-					})}
-				>
-					{status}
-				</span>
-				{username && (
-					<span className="opacity-60">connected as {username}</span>
+			<div className="flex items-center justify-between gap-3 text-xs">
+				<div className="flex items-center gap-3">
+					<span
+						className={clsx("badge badge-sm gap-1", {
+							"badge-success": status === "online",
+							"badge-warning": status === "connecting",
+							"badge-ghost": status === "offline",
+						})}
+					>
+						{status}
+					</span>
+					{username && (
+						<span className="opacity-60">
+							connected as <strong className="text-base-content">{username}</strong>
+						</span>
+					)}
+					{canModerate && (
+						<span className="badge badge-sm badge-outline badge-secondary font-mono">
+							🛡️ Admin Mode
+						</span>
+					)}
+				</div>
+				{canModerate && (
+					<button
+						onClick={() => {
+							if (confirm("Clear all chat history for everyone?")) {
+								sendAdminAction("clear");
+							}
+						}}
+						className="btn btn-xs btn-ghost text-error gap-1 hover:bg-error/10"
+						title="Clear lobby chat history"
+					>
+						<Trash2 size={12} /> Clear Chat
+					</button>
 				)}
 			</div>
 
-			<div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-4">
+			<div className="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-4">
 				<div className="bg-base-200/50 rounded-3xl border border-base-content/5 glass-effect overflow-hidden">
 					<div
 						ref={scrollContainerRef}
@@ -140,6 +187,17 @@ export default function Chat() {
 							</div>
 						)}
 						{messages.map((m, i) => {
+							if (m.system) {
+								return (
+									<div key={`${m.ts}-${i}`} className="flex flex-col items-center my-1.5">
+										<div className="bg-base-300/80 border border-base-content/10 text-[11px] px-3 py-1 rounded-full text-base-content/70 font-mono shadow-xs flex items-center gap-1.5">
+											<ShieldAlert size={12} className="text-warning shrink-0" />
+											<span>{m.text}</span>
+											<span className="opacity-40 text-[9px] ml-1">{formatTime(m.ts)}</span>
+										</div>
+									</div>
+								);
+							}
 							const isSelf = m.self;
 							const label = isSelf ? "You" : m.from;
 							const align = isSelf ? "items-end" : "items-start";
@@ -149,7 +207,7 @@ export default function Chat() {
 							return (
 								<div
 									key={`${m.ts}-${i}`}
-									className={clsx("flex flex-col", align)}
+									className={clsx("flex flex-col group", align)}
 								>
 									<div className="flex items-baseline gap-2 text-xs mb-1 px-1">
 										<span className="font-semibold">{label}</span>
@@ -193,47 +251,59 @@ export default function Chat() {
 						</div>
 					)}
 
-					<div className="border-t border-base-content/5 p-3 flex flex-col sm:flex-row gap-2">
-						<input
-							className="input input-sm input-bordered rounded-xl sm:w-48"
-							value={to}
-							onChange={(e) => setTo(e.target.value)}
-							placeholder="Peer username (empty = lobby)"
-						/>
-						<input
-							className="input input-sm input-bordered rounded-xl flex-1"
-							value={text}
-							onChange={(e) => setText(e.target.value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter" && !e.shiftKey) {
-									e.preventDefault();
-									handleSend();
+					<div className="border-t border-base-content/5 p-3 flex flex-col gap-2">
+						{text.startsWith("/") && (
+							<div className="bg-base-300/80 border border-base-content/10 rounded-xl px-3 py-2 text-xs text-base-content/70 font-mono flex items-center gap-2">
+								<HelpCircle size={14} className="text-info shrink-0" />
+								<span>
+									Commands: <code>/kick &lt;user&gt; [reason]</code> | <code>/ban &lt;user&gt; [reason]</code> | <code>/mute &lt;user&gt; [min]</code> | <code>/unban</code> | <code>/unmute</code> | <code>/clear</code>
+								</span>
+							</div>
+						)}
+						<div className="flex flex-col sm:flex-row gap-2">
+							<input
+								className="input input-sm input-bordered rounded-xl sm:w-48"
+								value={to}
+								onChange={(e) => setTo(e.target.value)}
+								placeholder="Peer username (empty = lobby)"
+							/>
+							<input
+								className="input input-sm input-bordered rounded-xl flex-1 font-sans"
+								value={text}
+								onChange={(e) => setText(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" && !e.shiftKey) {
+										e.preventDefault();
+										handleSend();
+									}
+								}}
+								maxLength={2000}
+								placeholder={
+									status === "online"
+										? to
+											? "Encrypted message..."
+											: "Message or /command..."
+										: "Connecting..."
 								}
-							}}
-							maxLength={2000}
-							placeholder={
-								status === "online"
-									? to
-										? "Encrypted message..."
-										: "Message..."
-									: "Connecting..."
-							}
-							disabled={status !== "online"}
-						/>
-						<button
-							className="btn btn-sm btn-primary rounded-xl gap-2"
-							onClick={handleSend}
-							disabled={status !== "online" || !text.trim()}
-						>
-							<Send size={14} /> Send
-						</button>
+								disabled={status !== "online"}
+							/>
+							<button
+								className="btn btn-sm btn-primary rounded-xl gap-2"
+								onClick={handleSend}
+								disabled={status !== "online" || !text.trim()}
+							>
+								<Send size={14} /> Send
+							</button>
+						</div>
 					</div>
 				</div>
 
 				<div className="bg-base-200/50 rounded-3xl border border-base-content/5 glass-effect p-3">
-					<div className="flex items-center gap-2 text-xs font-semibold opacity-60 mb-2 px-1">
-						<Users size={14} />
-						Connected ({peers.length})
+					<div className="flex items-center justify-between text-xs font-semibold opacity-60 mb-2 px-1">
+						<div className="flex items-center gap-2">
+							<Users size={14} />
+							Connected ({peers.length})
+						</div>
 					</div>
 					<div className="space-y-1 max-h-[50vh] overflow-y-auto">
 						{peers.length === 0 && (
@@ -242,32 +312,70 @@ export default function Chat() {
 						{peers.map((peer) => {
 							const isSelf = peer.username === username;
 							return (
-								<button
+								<div
 									key={peer.username}
 									className={clsx(
-										"w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors",
+										"group w-full flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors",
 										to === peer.username
 											? "bg-primary/10 text-primary"
 											: "hover:bg-base-content/5",
 									)}
-									onClick={() => setTo(isSelf ? "" : peer.username)}
 								>
-									<span
-										className="w-2 h-2 rounded-full bg-success shrink-0"
-										aria-label="Online"
-									/>
-									<span className="truncate flex-1 text-left">
-										{peer.username}
-									</span>
-									{isSelf && <span className="opacity-40">you</span>}
-									{peer.pubkey && (
-										<Lock
-											size={10}
-											className="text-success"
-											aria-label="E2E ready"
+									<button
+										className="flex items-center gap-2 min-w-0 flex-1 text-left"
+										onClick={() => setTo(isSelf ? "" : peer.username)}
+									>
+										<span
+											className="w-2 h-2 rounded-full bg-success shrink-0"
+											aria-label="Online"
 										/>
+										<span className="truncate text-left font-medium">
+											{peer.username}
+										</span>
+										{isSelf && <span className="opacity-40 text-[10px]">you</span>}
+										{peer.pubkey && (
+											<Lock
+												size={10}
+												className="text-success shrink-0"
+												aria-label="E2E ready"
+											/>
+										)}
+									</button>
+									{canModerate && !isSelf && (
+										<div className="hidden group-hover:flex items-center gap-1 shrink-0">
+											<button
+												onClick={(e) => {
+													e.stopPropagation();
+													handleAdminAction("kick", peer.username);
+												}}
+												className="btn btn-ghost btn-xs btn-square text-warning"
+												title={`Kick ${peer.username}`}
+											>
+												<UserX size={12} />
+											</button>
+											<button
+												onClick={(e) => {
+													e.stopPropagation();
+													handleAdminAction("mute", peer.username);
+												}}
+												className="btn btn-ghost btn-xs btn-square opacity-70 hover:opacity-100"
+												title={`Mute ${peer.username}`}
+											>
+												<VolumeX size={12} />
+											</button>
+											<button
+												onClick={(e) => {
+													e.stopPropagation();
+													handleAdminAction("ban", peer.username);
+												}}
+												className="btn btn-ghost btn-xs btn-square text-error"
+												title={`Ban ${peer.username}`}
+											>
+												<ShieldAlert size={12} />
+											</button>
+										</div>
 									)}
-								</button>
+								</div>
 							);
 						})}
 					</div>
@@ -277,7 +385,7 @@ export default function Chat() {
 			<p className="text-xs opacity-50">
 				{to
 					? "Messages are end-to-end encrypted and never stored on the server."
-					: "Lobby messages are visible to everyone connected. Direct messages are end-to-end encrypted and never stored."}
+					: "Lobby messages are visible to everyone connected. Type /help for slash commands."}
 			</p>
 		</div>
 	);
