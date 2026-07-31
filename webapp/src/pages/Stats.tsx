@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { BarChart2, User, Music } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
-import { Panel } from 'tunecamp-design-system';
 
 const Stats = () => {
     const [topTracks, setTopTracks] = useState<any[]>([]);
@@ -50,7 +49,7 @@ const Stats = () => {
             ) : (
                 <div className="grid md:grid-cols-2 gap-8">
                     {/* Top Tracks */}
-                    <Panel variant="solid" padding="lg">
+                    <div className="card bg-base-200 p-6">
                         <h2 className="card-title flex items-center gap-2 mb-4">
                             <Music className="text-secondary"/> Top Tracks
                         </h2>
@@ -68,10 +67,10 @@ const Stats = () => {
                                 </div>
                             ))}
                         </div>
-                    </Panel>
+                    </div>
 
                     {/* Top Artists */}
-                    <Panel variant="solid" padding="lg">
+                    <div className="card bg-base-200 p-6">
                         <h2 className="card-title flex items-center gap-2 mb-4">
                             <User className="text-accent"/> Top Artists
                         </h2>
@@ -88,7 +87,7 @@ const Stats = () => {
                                 </div>
                             ))}
                         </div>
-                    </Panel>
+                    </div>
                 </div>
             )}
         </div>

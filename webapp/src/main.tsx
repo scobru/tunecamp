@@ -5,7 +5,6 @@ import ReactDOM from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import './index.css';
-import 'tunecamp-design-system/style.css';
 import './core/plugins'; // Bootstrap plugins
 
 import { BrowserRouter } from 'react-router-dom';

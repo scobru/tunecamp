@@ -3,9 +3,129 @@
 @plugin "@tailwindcss/typography";
 @plugin "daisyui";
 
-/* "tunecamp" (dark, default) + "light" themes now live in tunecamp-design-system,
-   single source of truth shared with the design system's own tokens.css. */
-@import "tunecamp-design-system/daisyui-theme.css";
+@plugin "daisyui/theme" {
+  name: "tunecamp";
+  default: true;
+  prefersdark: true;
+  color-scheme: dark;
+
+  --color-base-100: oklch(10% 0.01 280);
+  --color-base-200: oklch(14% 0.01 280);
+  --color-base-300: oklch(18% 0.02 280);
+  --color-base-content: oklch(98% 0.005 280);
+
+  --color-primary: oklch(65% 0.28 290);
+  --color-primary-content: oklch(100% 0 0);
+
+  --color-secondary: oklch(60% 0.02 280);
+  --color-secondary-content: oklch(100% 0 0);
+
+  --color-accent: oklch(75% 0.15 190);
+  --color-accent-content: oklch(10% 0.05 190);
+
+  --color-neutral: oklch(25% 0.01 280);
+  --color-neutral-content: oklch(98% 0.005 280);
+  --color-info: oklch(70% 0.12 240);
+  --color-success: oklch(65% 0.18 145);
+  --color-warning: oklch(80% 0.15 85);
+  --color-error: oklch(60% 0.2 30);
+
+  --radius-selector: 0.75rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1rem;
+
+  --rounded-btn: 9999px;
+  --rounded-badge: 0.375rem;
+  --tab-radius: 0.5rem;
+
+  --border-btn: 1px;
+  --animation-btn: 0.2s;
+  --btn-focus-scale: 0.98;
+
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@layer components {
+  .btn-glow-cyan:hover:not(:disabled) {
+    box-shadow: 0 0 24px oklch(75% 0.15 190 / 0.5), 0 0 48px oklch(75% 0.15 190 / 0.3);
+    border-color: oklch(75% 0.15 190);
+    color: oklch(75% 0.15 190);
+  }
+
+  .btn-glow-magenta:hover:not(:disabled) {
+    box-shadow: 0 0 24px oklch(75% 0.15 330 / 0.5), 0 0 48px oklch(75% 0.15 330 / 0.3);
+    border-color: oklch(75% 0.15 330);
+    color: oklch(75% 0.15 330);
+  }
+
+  .glow-cyan.playing .coverContainer,
+  .group:hover.glow-cyan .coverContainer {
+    border-color: oklch(75% 0.15 190);
+    box-shadow: 0 0 20px oklch(75% 0.15 190 / 0.4);
+  }
+
+  .glow-magenta.playing .coverContainer,
+  .group:hover.glow-magenta .coverContainer {
+    border-color: oklch(75% 0.15 330);
+    box-shadow: 0 0 20px oklch(75% 0.15 330 / 0.4);
+  }
+
+  .glow-orange.playing .coverContainer,
+  .group:hover.glow-orange .coverContainer {
+    border-color: oklch(75% 0.15 50);
+    box-shadow: 0 0 20px oklch(75% 0.15 50 / 0.4);
+  }
+
+  .glow-violet.playing .coverContainer,
+  .group:hover.glow-violet .coverContainer {
+    border-color: oklch(65% 0.28 290);
+    box-shadow: 0 0 20px oklch(65% 0.28 290 / 0.4);
+  }
+
+  .playing .coverContainer {
+    border-color: oklch(65% 0.28 290);
+  }
+
+  .animate-eq-pulse {
+    animation: eqPulse 0.8s ease-in-out infinite alternate;
+  }
+
+  @keyframes eqPulse {
+    0% { transform: scaleY(0.3); }
+    100% { transform: scaleY(1); }
+  }
+}
+
+@plugin "daisyui/theme" {
+  name: "light";
+  color-scheme: light;
+  --color-base-100: oklch(100% 0 0);
+  --color-base-200: oklch(93% 0.015 280);
+  --color-base-300: oklch(86% 0.025 280);
+  --color-base-content: oklch(15% 0.02 280);
+
+  --color-primary: oklch(60% 0.25 290);
+  --color-primary-content: oklch(100% 0 0);
+
+  --color-secondary: oklch(60% 0.01 280);
+  --color-secondary-content: oklch(100% 0 0);
+
+  --color-accent: oklch(70% 0.15 190);
+  --color-accent-content: oklch(10% 0.05 190);
+
+  --color-prominent: oklch(10% 0.02 280);
+
+  --radius-selector: 1rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1.5rem;
+  --rounded-btn: 9999px;
+  --rounded-badge: 0.5rem;
+}
 
 @plugin "daisyui/theme" {
   name: "grey";

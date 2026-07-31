@@ -239,6 +239,7 @@ export interface AuthStatus {
     firstRun?: boolean;
     mustChangePassword?: boolean;
     isActive?: boolean;
+    brevoConfigured?: boolean;
 }
 
 export interface SiteSettings {
@@ -283,6 +284,9 @@ export interface SiteSettings {
     openrouter_model?: string;
     stripe_secret_key?: string;
     stripe_webhook_secret?: string;
+    brevo_api_key?: string;
+    brevo_sender_email?: string;
+    brevo_sender_name?: string;
     discogs_token?: string;
     lastfm_api_key?: string;
     lastfm_session_key?: string;

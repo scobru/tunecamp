@@ -40,6 +40,7 @@ describe("AuthModal", () => {
 			user: null,
 			isAuthenticating: false,
 			mustChangePassword: false,
+			brevoConfigured: true,
 			adminUser: null,
 			isAdminAuthenticated: false,
 			isAdminLoading: false,
