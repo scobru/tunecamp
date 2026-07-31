@@ -33,7 +33,6 @@ import {
   FlaskConical,
   Info,
   Scale,
-  MoreHorizontal,
   Sparkles,
   Music2,
   Users,
@@ -183,25 +182,9 @@ export const Sidebar = () => {
             {!hideLive && <NavItem to="/live" icon={Radio} label="Live" />}
             {!hideStore && <NavItem to="/store" icon={ShoppingBag} label="Store" />}
             {!hideSamples && <NavItem to="/samples" icon={Music2} label="Samples" />}
-            <li>
-              <details>
-                <summary className={clsx(
-                  "flex items-center transition-all duration-300 [transition-timing-function:var(--ease-spring)] group",
-                  sidebarCollapsed
-                    ? "justify-center w-10 h-10 mx-auto rounded-xl p-0"
-                    : "gap-3 px-4 py-2 rounded-full",
-                  "hover:bg-base-300/50 text-base-content/70 hover:text-base-content"
-                )}>
-                  <MoreHorizontal size={20} className="flex-shrink-0 transition-transform group-hover:scale-110 opacity-60" />
-                  {!sidebarCollapsed && <span className="text-label-large font-medium tracking-normal">More</span>}
-                </summary>
-                <ul className={clsx(sidebarCollapsed ? "hidden" : "")}>
-                  {!hideDig && <NavItem to="/dig" icon={Shovel} label="Dig" />}
-                  {!hideLab && <NavItem to="/lab" icon={FlaskConical} label="Lab" />}
-                  {!hideCollab && <NavItem to="/collab" icon={Users} label="Collab" />}
-                </ul>
-              </details>
-            </li>
+            {!hideDig && <NavItem to="/dig" icon={Shovel} label="Dig" />}
+            {!hideLab && <NavItem to="/lab" icon={FlaskConical} label="Lab" />}
+            {!hideCollab && <NavItem to="/collab" icon={Users} label="Collab" />}
           </ul>
         </div>
 

@@ -49,6 +49,7 @@ export function createChatWsHandler(server: http.Server, container: ServiceConta
 
             const token = url.searchParams.get("token");
             let username: string;
+            let isAdmin = false;
 
             if (!token) {
                 if (container.identity.getSetting("peerChatGuestEnabled") !== "true") {
@@ -67,6 +68,14 @@ export function createChatWsHandler(server: http.Server, container: ServiceConta
                     return;
                 }
                 username = payload.username;
+                const roleStr = String(payload.role || "");
+                isAdmin = roleStr === "admin" || roleStr === "root_admin" || roleStr === "super_user" || roleStr === "manager" || !!payload.isRootAdmin;
+            }
+
+            if (container.chatService.isBanned(username)) {
+                socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+                socket.destroy();
+                return;
             }
 
             wss.handleUpgrade(request, socket, head, (ws) => {
@@ -74,8 +83,8 @@ export function createChatWsHandler(server: http.Server, container: ServiceConta
                 alive.set(ws, true);
                 ws.on("pong", () => alive.set(ws, true));
 
-                const assignedUsername = container.chatService.register(clientId, username, ws);
-                ws.send(JSON.stringify({ type: "auth_ok", sessionId: clientId, username: assignedUsername }));
+                const assignedUsername = container.chatService.register(clientId, username, ws, isAdmin);
+                ws.send(JSON.stringify({ type: "auth_ok", sessionId: clientId, username: assignedUsername, isAdmin }));
 
                 ws.on("message", (data, isBinary) => {
                     if (isBinary) return;
@@ -89,6 +98,27 @@ export function createChatWsHandler(server: http.Server, container: ServiceConta
                                 const roster = container.chatService.setPubkey(clientId, message.pubkey);
                                 for (const r of roster) {
                                     ws.send(JSON.stringify({ type: "pubkey", from: r.username, pubkey: r.pubkey }));
+                                }
+                                break;
+                            }
+                            case "admin_action": {
+                                if (!isAdmin) {
+                                    ws.send(JSON.stringify({ type: "system", text: "Error: Admin permissions required." }));
+                                    break;
+                                }
+                                const { action, target, reason, duration } = message;
+                                if (action === "kick" && target) {
+                                    container.chatService.kickUser(username, target, reason);
+                                } else if (action === "ban" && target) {
+                                    container.chatService.banUser(username, target, reason);
+                                } else if (action === "unban" && target) {
+                                    container.chatService.unbanUser(username, target);
+                                } else if (action === "mute" && target) {
+                                    container.chatService.muteUser(username, target, duration ? Number(duration) : 15, reason);
+                                } else if (action === "unmute" && target) {
+                                    container.chatService.unmuteUser(username, target);
+                                } else if (action === "clear") {
+                                    container.chatService.clearLobbyHistory(username);
                                 }
                                 break;
                             }

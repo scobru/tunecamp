@@ -21,6 +21,21 @@ describe('ChatService', () => {
             message TEXT NOT NULL,
             created_at INTEGER NOT NULL
         )`);
+        db.exec(`CREATE TABLE peer_chat_bans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            banned_by TEXT NOT NULL,
+            reason TEXT,
+            created_at INTEGER NOT NULL
+        )`);
+        db.exec(`CREATE TABLE peer_chat_mutes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            muted_by TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            reason TEXT,
+            created_at INTEGER NOT NULL
+        )`);
         chatService = createChatService({ db } as unknown as DatabaseService);
     });
 
@@ -220,6 +235,67 @@ describe('ChatService', () => {
                 { username: 'admin', pubkey: false },
                 { username: 'admin #admi', pubkey: false },
             ]);
+        });
+    });
+
+    describe('moderation features', () => {
+        it('kicks connected user and notifies lobby', () => {
+            const adminWs = fakeWs();
+            const userWs = fakeWs();
+            chatService.register('admin-id', 'admin', adminWs, true);
+            chatService.register('baduser-id', 'baduser', userWs);
+
+            const kicked = chatService.kickUser('admin', 'baduser', 'spamming');
+
+            expect(kicked).toBe(true);
+            expect(userWs.send).toHaveBeenCalledWith(expect.stringContaining('"type":"kicked"'));
+            expect(adminWs.send).toHaveBeenCalledWith(expect.stringContaining('[System] baduser was kicked by admin (spamming)'));
+            expect(chatService.getClients()).toHaveLength(1);
+        });
+
+        it('bans user, kicks them, and prevents reconnection check', () => {
+            const adminWs = fakeWs();
+            const userWs = fakeWs();
+            chatService.register('admin-id', 'admin', adminWs, true);
+            chatService.register('troll-id', 'troll', userWs);
+
+            chatService.banUser('admin', 'troll', 'trolling');
+
+            expect(chatService.isBanned('troll')).toBe(true);
+            expect(chatService.getClients()).toHaveLength(1);
+
+            chatService.unbanUser('admin', 'troll');
+            expect(chatService.isBanned('troll')).toBe(false);
+        });
+
+        it('mutes user and prevents sending lobby messages', () => {
+            const adminWs = fakeWs();
+            const userWs = fakeWs();
+            chatService.register('admin-id', 'admin', adminWs, true);
+            chatService.register('spammer-id', 'spammer', userWs);
+
+            chatService.muteUser('admin', 'spammer', 10, 'too fast');
+            expect(chatService.isMuted('spammer')).toBe(true);
+
+            const delivered = chatService.relayChat('spammer-id', '', 'spam message');
+            expect(delivered).toBe(false);
+            expect(userWs.send).toHaveBeenCalledWith(expect.stringContaining('currently muted'));
+
+            chatService.unmuteUser('admin', 'spammer');
+            expect(chatService.isMuted('spammer')).toBe(false);
+        });
+
+        it('clears lobby history', () => {
+            const adminWs = fakeWs();
+            chatService.register('admin-id', 'admin', adminWs, true);
+            chatService.relayChat('admin-id', '', 'test message');
+
+            expect(chatService.getHistory()).toHaveLength(1);
+
+            chatService.clearLobbyHistory('admin');
+
+            expect(chatService.getHistory()).toHaveLength(0);
+            expect(adminWs.send).toHaveBeenCalledWith(expect.stringContaining('"type":"clear_history"'));
         });
     });
 });
