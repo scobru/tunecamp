@@ -68,7 +68,8 @@ export function createChatWsHandler(server: http.Server, container: ServiceConta
                     return;
                 }
                 username = payload.username;
-                isAdmin = payload.role === "admin" || payload.role === "root_admin" || payload.role === "super_user" || payload.role === "manager" || !!payload.isRootAdmin;
+                const roleStr = String(payload.role || "");
+                isAdmin = roleStr === "admin" || roleStr === "root_admin" || roleStr === "super_user" || roleStr === "manager" || !!payload.isRootAdmin;
             }
 
             if (container.chatService.isBanned(username)) {
