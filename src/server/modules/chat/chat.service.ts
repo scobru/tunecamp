@@ -18,6 +18,7 @@ export interface ChatSocket {
 
 interface ChatClient {
 	id: string;
+	rawUsername: string;
 	username: string;
 	ws: ChatSocket;
 	pubkey?: string;
@@ -40,8 +41,24 @@ export class ChatService {
 
 	constructor(private database: DatabaseService) {}
 
-	register(clientId: string, username: string, ws: ChatSocket): void {
-		this.clients.set(clientId, { id: clientId, username, ws });
+	register(clientId: string, rawUsername: string, ws: ChatSocket): string {
+		// Disambiguate duplicate usernames by appending a short session hash tag
+		const existingWithSameName = Array.from(this.clients.values()).filter(
+			(c) => c.rawUsername === rawUsername,
+		);
+		const shortId = clientId.slice(0, 4);
+		const username =
+			existingWithSameName.length > 0
+				? `${rawUsername} #${shortId}`
+				: rawUsername;
+
+		this.clients.set(clientId, {
+			id: clientId,
+			rawUsername,
+			username,
+			ws,
+		});
+		return username;
 	}
 
 	unregister(clientId: string): void {
@@ -61,7 +78,11 @@ export class ChatService {
 		let delivered = false;
 		for (const client of this.clients.values()) {
 			if (client.id === fromClientId || client.ws.readyState !== OPEN) continue;
-			if (isLobby || client.username === toUsername) {
+			if (
+				isLobby ||
+				client.username === toUsername ||
+				client.rawUsername === toUsername
+			) {
 				client.ws.send(
 					JSON.stringify({
 						type: "chat",
@@ -118,11 +139,11 @@ export class ChatService {
 	}
 
 	getClients(): { username: string; pubkey: boolean }[] {
-		const seen = new Map<string, boolean>();
+		const result: { username: string; pubkey: boolean }[] = [];
 		for (const client of this.clients.values()) {
-			seen.set(client.username, !!client.pubkey);
+			result.push({ username: client.username, pubkey: !!client.pubkey });
 		}
-		return Array.from(seen, ([username, pubkey]) => ({ username, pubkey }));
+		return result;
 	}
 
 	// Chat must keep flowing even if the write fails: a broken backlog is an

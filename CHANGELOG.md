@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.4.0] - 2026-07-31
+
+### Added
+
+- Connected-peers list in the chat UI, and message filtering by the selected peer contact.
+
+### Fixed
+
+- `usePeerChat` reconnect loop: `username` was in the connection effect's dependency array but is set from the socket's own `auth_ok`, so every successful connect tore the WebSocket down and rebuilt it. `refreshPeers` was listed too but unused in that effect. On close the roster is now cleared outright instead of dropping only the local user.
+
 ## [4.3.4] - 2026-07-30
 
 ### Fixed

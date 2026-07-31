@@ -206,4 +206,20 @@ describe('ChatService', () => {
             consoleError.mockRestore();
         });
     });
+
+    describe('username disambiguation', () => {
+        it('disambiguates duplicate usernames with short session tag', () => {
+            const admin1Name = chatService.register('admin-session-1234', 'admin', fakeWs());
+            const admin2Name = chatService.register('admin-session-5678', 'admin', fakeWs());
+
+            expect(admin1Name).toBe('admin');
+            expect(admin2Name).toBe('admin #admi');
+
+            const clients = chatService.getClients();
+            expect(clients).toEqual([
+                { username: 'admin', pubkey: false },
+                { username: 'admin #admi', pubkey: false },
+            ]);
+        });
+    });
 });
