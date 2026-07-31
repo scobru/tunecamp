@@ -25,8 +25,9 @@ const formatTime = (ts: number) =>
 export default function Chat() {
 	const { settings: siteSettings, fetchFlags } = useSiteSettingsStore();
 	const { role } = useAuthStore();
+	const roleStr = String(role || "");
 	const isSiteAdmin =
-		role === "admin" || role === "root_admin" || role === "super_user" || role === "manager";
+		roleStr === "admin" || roleStr === "root_admin" || roleStr === "super_user" || roleStr === "manager";
 	const [to, setTo] = useState("");
 	const [text, setText] = useState("");
 	const [showScrollBtn, setShowScrollBtn] = useState(false);
