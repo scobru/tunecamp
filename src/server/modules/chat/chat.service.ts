@@ -55,15 +55,9 @@ export class ChatService {
 		// Allow multiple active connections per user (e.g. browser tab + Sidecamp daemon)
 		// without forcibly closing the previous socket and causing a reconnection loop.
 
-		// Disambiguate duplicate usernames by appending an incremental suffix
-		const existingWithSameName = Array.from(this.clients.values()).filter(
-			(c) => c.rawUsername === rawUsername,
-		);
-		const collisionCount = existingWithSameName.length;
-		const username =
-			collisionCount > 0
-				? `${rawUsername} #${collisionCount + 1}`
-				: rawUsername;
+		// Group multiple connections (e.g. browser tab + Sidecamp daemon) under
+		// the same username instead of appending a #2 suffix.
+		const username = rawUsername;
 
 		this.clients.set(clientId, {
 			id: clientId,
@@ -362,7 +356,7 @@ export class ChatService {
 		const client = this.clients.get(clientId);
 		if (!client) return [];
 		client.pubkey = pubkey;
-		const roster: { username: string; pubkey: string }[] = [];
+		const pubkeyMap = new Map<string, string>();
 		for (const other of this.clients.values()) {
 			if (other.id === clientId) continue;
 			if (other.ws.readyState === OPEN) {
@@ -370,8 +364,12 @@ export class ChatService {
 					JSON.stringify({ type: "pubkey", from: client.username, pubkey }),
 				);
 			}
-			if (other.pubkey)
-				roster.push({ username: other.username, pubkey: other.pubkey });
+			if (other.pubkey) pubkeyMap.set(other.username, other.pubkey);
+		}
+		
+		const roster: { username: string; pubkey: string }[] = [];
+		for (const [uname, pk] of pubkeyMap.entries()) {
+			roster.push({ username: uname, pubkey: pk });
 		}
 		return roster;
 	}
@@ -392,9 +390,15 @@ export class ChatService {
 	}
 
 	getClients(): { username: string; pubkey: boolean }[] {
-		const result: { username: string; pubkey: boolean }[] = [];
+		const map = new Map<string, boolean>();
 		for (const client of this.clients.values()) {
-			result.push({ username: client.username, pubkey: !!client.pubkey });
+			if (!map.has(client.username) || !!client.pubkey) {
+				map.set(client.username, !!client.pubkey);
+			}
+		}
+		const result: { username: string; pubkey: boolean }[] = [];
+		for (const [username, pubkey] of map.entries()) {
+			result.push({ username, pubkey });
 		}
 		return result;
 	}

@@ -7,6 +7,7 @@ Federated, self-hosted music platform: personal music server + Fediverse (Activi
 ## Ownership
 
 Monorepo, three subprojects:
+
 - `src/server/` — Express/TypeScript backend (SQLite, federation, catalog, auth, community, blockchain integration)
 - `webapp/` — React/Vite SPA frontend
 - `contracts/` — Solidity contracts (Base network)
@@ -22,7 +23,7 @@ Full session rules live in `.claude/CLAUDE.md` (git workflow, architecture decis
 - **Database**: SQLite (`better-sqlite3`, WAL) only. No Postgres/Redis while single-machine.
 - **Filesystem**: files are never moved or renamed. `consolidateFiles()` was removed — do not reintroduce file-moving logic.
 - **ZEN/Gun.js**: fully removed. Never re-import `zen`, `zendb.service`, `zen.worker`, or `gun` outside a worker_thread RPC.
-- **Auth**: username + password + JWT, per-instance. No cross-instance SSO.
+- **Auth**: username + password + JWT, per-instance. Cross-instance identity federation is provided by FID (Fediverse-ID); this is optional SSO, not the primary auth system.
 - **Publishing gate**: use `VisibilityGuardian.canPublishContent()`, never a raw `artistId` check.
 - **Playlists**: members-only, not restricted above `user` role.
 - **End of every feature**: update `CHANGELOG.md`, update `tunecamp-website` (landing/docs pages if the feature is user-facing), update `docs/` (architecture/API/data-model docs this repo owns), update `tunecamp-ecosystem` (Components table / relevant vendored doc under `docs/tunecamp/`). Do this alongside the changelog+version bump above, not as a separate pass.

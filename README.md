@@ -4,7 +4,7 @@
 
 ## Why This Exists
 
-Streaming platforms take significant cuts from artists and lock their communities into walled gardens. Tunecamp allows you to host your own music with a beautiful web interface, fully compatible with existing Subsonic mobile apps. It connects you to the Fediverse (via ActivityPub) as a broadcaster and uses federated HTTP gossip for instance discovery, giving artists ownership of their distribution without sacrificing reach.
+Streaming platforms take significant cuts from artists and lock their communities into walled gardens. Tunecamp allows you to host your own music with a beautiful web interface, fully compatible with existing Subsonic mobile apps. It connects you to the Fediverse (via ActivityPub) as a broadcaster and uses federated HTTP gossip for instance discovery, giving artists ownership of their distribution without sacrificing reach. For cross-instance identity and zero-knowledge SSO, it also supports **FID (Fediverse-ID)** via [`docs/FID-IDENTITY.md`](docs/FID-IDENTITY.md).
 
 ## Quick Start
 
@@ -47,6 +47,7 @@ docker-compose up -d --build
 - 📡 **ActivityPub**: Connect with the Fediverse (Mastodon, Funkwhale, Pleroma) as a broadcaster. Artists are ActivityPub actors with followers, posts, and release broadcasts.
 - 🌐 **Community Network**: Discover other Tunecamp instances via federated HTTP gossip, then fetch catalogs directly via HTTP REST for always-fresh content.
 - 🔗 **HTTP Federation**: Instances expose a public `/api/catalog` endpoint, enabling direct instance-to-instance content discovery without intermediary replication.
+- 🛂 **FID Cross-Instance Identity**: Optional Fediverse-ID integration for zero-knowledge SSO and deterministic ActivityPub identity derivation across instances. See [FID Identity →](docs/FID-IDENTITY.md).
 
 ### Streaming & Clients
 
@@ -57,6 +58,7 @@ docker-compose up -d --build
 - 📋 **Playlists**: Create and share playlists (public/private).
 - 🎙️ **Live Streaming (HLS)**: Artists broadcast live audio from the browser; the server transcodes it to HLS (AAC segments) with FFmpeg and serves a rolling playlist to all listeners.
 - 💬 **Social Interactions**: Add comments to tracks, write artist posts, and broadcast to the federated network via ActivityPub. See [social-features.md](docs/social-features.md).
+- 💬 **Chat & E2EE Direct Messaging**: Real-time instance community lobby and end-to-end encrypted 1-on-1 private messages via WebSockets (`/ws/chat`) and `@tunecamp/chat`. See [chat.md](docs/chat.md).
 
 ### Web3 & Monetization
 
