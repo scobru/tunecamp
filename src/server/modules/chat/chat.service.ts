@@ -118,7 +118,7 @@ export class ChatService {
 							ts: Date.now(),
 						}),
 					);
-				} catch {}
+				} catch (err) { console.error("[ChatService] error:", err); }
 			}
 		}
 	}
@@ -144,7 +144,7 @@ export class ChatService {
 							reason: reason || "Kicked by admin",
 						}),
 					);
-				} catch {}
+				} catch (err) { console.error("[ChatService] error:", err); }
 				this.unregister(clientId);
 				kicked = true;
 			}
@@ -269,7 +269,7 @@ export class ChatService {
 					client.ws.send(
 						JSON.stringify({ type: "clear_history", ts: Date.now() }),
 					);
-				} catch {}
+				} catch (err) { console.error("[ChatService] error:", err); }
 			}
 		}
 
@@ -300,7 +300,7 @@ export class ChatService {
 						ts: Date.now(),
 					}),
 				);
-			} catch {}
+			} catch (err) { console.error("[ChatService] error:", err); }
 			return false;
 		}
 
