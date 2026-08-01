@@ -786,11 +786,26 @@ export function createDatabase(dbPath: string): DatabaseService {
             1
         );
 
+        INSERT OR IGNORE INTO lab_apps (id, name, description, src, category, author, source_url, permissions, sandbox, allow, enabled) VALUES (
+            5,
+            'Wormhole',
+            'Secure and private remote file transfer (IPFS/WebRTC).',
+            'https://wormhole.scobrudot.dev',
+            'other',
+            'scobru',
+            'https://github.com/scobru/wormhole',
+            '["LIBRARY_READ", "USER_READ"]',
+            '["allow-scripts", "allow-same-origin", "allow-downloads"]',
+            '["clipboard-write *", "clipboard-read *"]',
+            1
+        );
+
         -- Migrate existing rows to the deployed Vercel URLs
         UPDATE lab_apps SET src = 'https://tunecamp-4-track-recorder.vercel.app' WHERE id = 1 AND src != 'https://tunecamp-4-track-recorder.vercel.app';
         UPDATE lab_apps SET src = 'https://tunecamp-audiofabric.vercel.app' WHERE id = 2 AND src != 'https://tunecamp-audiofabric.vercel.app';
         UPDATE lab_apps SET src = 'https://tunecamp-iris.vercel.app' WHERE id = 3 AND src != 'https://tunecamp-iris.vercel.app';
         UPDATE lab_apps SET src = 'https://tunecamp-beam.vercel.app' WHERE id = 4 AND src != 'https://tunecamp-beam.vercel.app';
+        UPDATE lab_apps SET src = 'https://wormhole.scobrudot.dev' WHERE id = 5 AND src != 'https://wormhole.scobrudot.dev';
 
         -- Collab: multi-artist collaborative track projects (native feature, no ZEN/realtime)
         CREATE TABLE IF NOT EXISTS collab_projects (
