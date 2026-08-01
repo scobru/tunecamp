@@ -55,6 +55,10 @@ export class ChatService {
 		if (userId !== undefined) {
 			const existingId = this.userIdMap.get(userId);
 			if (existingId !== undefined && existingId !== clientId) {
+				const existing = this.clients.get(existingId);
+				if (existing) {
+					try { existing.ws.close(); } catch (err) { console.error("[ChatService] Failed to close replaced session:", err); }
+				}
 				this.clients.delete(existingId);
 			}
 		}
