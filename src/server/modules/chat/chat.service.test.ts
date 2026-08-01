@@ -1,6 +1,6 @@
 import { describe, expect, it, jest, beforeEach, afterEach } from '@jest/globals';
 import Database from 'better-sqlite3';
-import { createChatService, ChatService } from './chat.service.js';
+import { createChatService, type ChatService } from './chat.service.js';
 import type { DatabaseService } from '../../core/database.types.js';
 
 function fakeWs() {
@@ -223,17 +223,17 @@ describe('ChatService', () => {
     });
 
     describe('username disambiguation', () => {
-        it('disambiguates duplicate usernames with short session tag', () => {
+        it('disambiguates duplicate usernames with incremental suffix', () => {
             const admin1Name = chatService.register('admin-session-1234', 'admin', fakeWs());
             const admin2Name = chatService.register('admin-session-5678', 'admin', fakeWs());
 
             expect(admin1Name).toBe('admin');
-            expect(admin2Name).toBe('admin #admi');
+            expect(admin2Name).toBe('admin #2');
 
             const clients = chatService.getClients();
             expect(clients).toEqual([
                 { username: 'admin', pubkey: false },
-                { username: 'admin #admi', pubkey: false },
+                { username: 'admin #2', pubkey: false },
             ]);
         });
     });
