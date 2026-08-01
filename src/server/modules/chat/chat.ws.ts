@@ -19,130 +19,198 @@ import type { ServiceContainer } from "../../core/container.js";
 // automatically, so no client code is involved.
 const HEARTBEAT_MS = 30_000;
 
-export function createChatWsHandler(server: http.Server, container: ServiceContainer) {
-    const wss = new WebSocketServer({ noServer: true });
-    const alive = new WeakMap<WebSocket, boolean>();
+export function createChatWsHandler(
+	server: http.Server,
+	container: ServiceContainer,
+) {
+	const wss = new WebSocketServer({ noServer: true });
+	const alive = new WeakMap<WebSocket, boolean>();
 
-    const heartbeat = setInterval(() => {
-        for (const ws of wss.clients) {
-            if (alive.get(ws) === false) {
-                ws.terminate();
-                continue;
-            }
-            alive.set(ws, false);
-            try { ws.ping(); } catch { /* terminated below on the next sweep */ }
-        }
-    }, HEARTBEAT_MS);
-    heartbeat.unref?.();
-    wss.on("close", () => clearInterval(heartbeat));
+	const heartbeat = setInterval(() => {
+		for (const ws of wss.clients) {
+			if (alive.get(ws) === false) {
+				ws.terminate();
+				continue;
+			}
+			alive.set(ws, false);
+			try {
+				ws.ping();
+			} catch {
+				/* terminated below on the next sweep */
+			}
+		}
+	}, HEARTBEAT_MS);
+	heartbeat.unref?.();
+	wss.on("close", () => clearInterval(heartbeat));
 
-    server.on("upgrade", async (request, socket, head) => {
-        try {
-            const url = new URL(request.url || "", `http://${request.headers.host || "localhost"}`);
-            if (url.pathname !== "/ws/chat") return;
+	server.on("upgrade", async (request, socket, head) => {
+		try {
+			const url = new URL(
+				request.url || "",
+				`http://${request.headers.host || "localhost"}`,
+			);
+			if (url.pathname !== "/ws/chat") return;
 
-            if (container.identity.getSetting("peerChatEnabled") !== "true") {
-                socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
-                socket.destroy();
-                return;
-            }
+			if (container.identity.getSetting("peerChatEnabled") !== "true") {
+				socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
+				socket.destroy();
+				return;
+			}
 
-            const token = url.searchParams.get("token");
-            let username: string;
-            let isAdmin = false;
-            let payload: { userId?: number | string; username: string; role?: string; isRootAdmin?: boolean } | null = null;
+			const token = url.searchParams.get("token");
+			let username: string;
+			let isAdmin = false;
+			let payload: {
+				userId?: number | string;
+				username: string;
+				role?: string;
+				isRootAdmin?: boolean;
+			} | null = null;
 
-            if (!token) {
-                if (container.identity.getSetting("peerChatGuestEnabled") !== "true") {
-                    socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-                    socket.destroy();
-                    return;
-                }
-                const rawGuest = (url.searchParams.get("guestName") || "").trim().substring(0, 20);
-                const safeGuest = rawGuest.replace(/[^a-zA-Z0-9_-]/g, "") || crypto.randomBytes(3).toString("hex");
-                username = `(Guest) ${safeGuest}`;
-            } else {
-                payload = await container.authService.verifyToken(token);
-                if (!payload) {
-                    socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-                    socket.destroy();
-                    return;
-                }
-                username = payload.username;
-                const roleStr = String(payload.role || "");
-                isAdmin = roleStr === "admin" || roleStr === "root_admin" || roleStr === "super_user" || roleStr === "manager" || !!payload.isRootAdmin;
-            }
+			if (!token) {
+				if (container.identity.getSetting("peerChatGuestEnabled") !== "true") {
+					socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+					socket.destroy();
+					return;
+				}
+				const rawGuest = (url.searchParams.get("guestName") || "")
+					.trim()
+					.substring(0, 20);
+				const safeGuest =
+					rawGuest.replace(/[^a-zA-Z0-9_-]/g, "") ||
+					crypto.randomBytes(3).toString("hex");
+				username = `(Guest) ${safeGuest}`;
+			} else {
+				payload = await container.authService.verifyToken(token);
+				if (!payload) {
+					socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+					socket.destroy();
+					return;
+				}
+				username = payload.username;
+				const roleStr = String(payload.role || "");
+				isAdmin =
+					roleStr === "admin" ||
+					roleStr === "root_admin" ||
+					roleStr === "super_user" ||
+					roleStr === "manager" ||
+					!!payload.isRootAdmin;
+			}
 
-            if (container.chatService.isBanned(username)) {
-                socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
-                socket.destroy();
-                return;
-            }
+			if (container.chatService.isBanned(username)) {
+				socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+				socket.destroy();
+				return;
+			}
 
-            wss.handleUpgrade(request, socket, head, (ws) => {
-                const clientId = crypto.randomUUID();
-                alive.set(ws, true);
-                ws.on("pong", () => alive.set(ws, true));
+			wss.handleUpgrade(request, socket, head, (ws) => {
+				const clientId = crypto.randomUUID();
+				alive.set(ws, true);
+				ws.on("pong", () => alive.set(ws, true));
 
-                const assignedUsername = container.chatService.register(clientId, username, ws, isAdmin, payload?.userId);
-                ws.send(JSON.stringify({ type: "auth_ok", sessionId: clientId, username: assignedUsername, isAdmin }));
+				const assignedUsername = container.chatService.register(
+					clientId,
+					username,
+					ws,
+					isAdmin,
+					payload?.userId,
+				);
+				ws.send(
+					JSON.stringify({
+						type: "auth_ok",
+						sessionId: clientId,
+						username: assignedUsername,
+						isAdmin,
+					}),
+				);
 
-                ws.on("message", (data, isBinary) => {
-                    if (isBinary) return;
-                    try {
-                        const message = JSON.parse(data.toString());
-                        switch (message.type) {
-                            case "chat":
-                                container.chatService.relayChat(clientId, message.to, message.text);
-                                break;
-                            case "pubkey": {
-                                const roster = container.chatService.setPubkey(clientId, message.pubkey);
-                                for (const r of roster) {
-                                    ws.send(JSON.stringify({ type: "pubkey", from: r.username, pubkey: r.pubkey }));
-                                }
-                                break;
-                            }
-                            case "admin_action": {
-                                if (!isAdmin) {
-                                    ws.send(JSON.stringify({ type: "system", text: "Error: Admin permissions required." }));
-                                    break;
-                                }
-                                const { action, target, reason, duration } = message;
-                                if (action === "kick" && target) {
-                                    container.chatService.kickUser(username, target, reason);
-                                } else if (action === "ban" && target) {
-                                    container.chatService.banUser(username, target, reason);
-                                } else if (action === "unban" && target) {
-                                    container.chatService.unbanUser(username, target);
-                                } else if (action === "mute" && target) {
-                                    container.chatService.muteUser(username, target, duration ? Number(duration) : 15, reason);
-                                } else if (action === "unmute" && target) {
-                                    container.chatService.unmuteUser(username, target);
-                                } else if (action === "clear") {
-                                    container.chatService.clearLobbyHistory(username);
-                                }
-                                break;
-                            }
-                            default:
-                                console.warn(`[ChatWS] Unknown message type: ${message.type}`);
-                        }
-                    } catch (err) {
-                        console.error(`[ChatWS] Failed to parse message for client ${clientId}:`, err);
-                    }
-                });
+				ws.on("message", (data, isBinary) => {
+					if (isBinary) return;
+					try {
+						const message = JSON.parse(data.toString());
+						switch (message.type) {
+							case "chat":
+								container.chatService.relayChat(
+									clientId,
+									message.to,
+									message.text,
+								);
+								break;
+							case "pubkey": {
+								const roster = container.chatService.setPubkey(
+									clientId,
+									message.pubkey,
+								);
+								for (const r of roster) {
+									ws.send(
+										JSON.stringify({
+											type: "pubkey",
+											from: r.username,
+											pubkey: r.pubkey,
+										}),
+									);
+								}
+								break;
+							}
+							case "admin_action": {
+								if (!isAdmin) {
+									ws.send(
+										JSON.stringify({
+											type: "system",
+											text: "Error: Admin permissions required.",
+										}),
+									);
+									break;
+								}
+								const { action, target, reason, duration } = message;
+								if (action === "kick" && target) {
+									container.chatService.kickUser(username, target, reason);
+								} else if (action === "ban" && target) {
+									container.chatService.banUser(username, target, reason);
+								} else if (action === "unban" && target) {
+									container.chatService.unbanUser(username, target);
+								} else if (action === "mute" && target) {
+									container.chatService.muteUser(
+										username,
+										target,
+										duration ? Number(duration) : 15,
+										reason,
+									);
+								} else if (action === "unmute" && target) {
+									container.chatService.unmuteUser(username, target);
+								} else if (action === "clear") {
+									container.chatService.clearLobbyHistory(username);
+								}
+								break;
+							}
+							default:
+								console.warn(`[ChatWS] Unknown message type: ${message.type}`);
+						}
+					} catch (err) {
+						console.error(
+							`[ChatWS] Failed to parse message for client ${clientId}:`,
+							err,
+						);
+					}
+				});
 
-                ws.on("close", () => container.chatService.unregister(clientId));
-                ws.on("error", (err) => {
-                    console.error(`[ChatWS] WebSocket error for client ${clientId}:`, err);
-                    container.chatService.unregister(clientId);
-                });
-            });
-        } catch (err) {
-            console.error("[ChatWS] Upgrade failed:", err);
-            try {
-                socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
-                socket.destroy();
-            } catch { /* socket already gone */ }
-        }
-    });
+				ws.on("close", () => container.chatService.unregister(clientId));
+				ws.on("error", (err) => {
+					console.error(
+						`[ChatWS] WebSocket error for client ${clientId}:`,
+						err,
+					);
+					container.chatService.unregister(clientId);
+				});
+			});
+		} catch (err) {
+			console.error("[ChatWS] Upgrade failed:", err);
+			try {
+				socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+				socket.destroy();
+			} catch {
+				/* socket already gone */
+			}
+		}
+	});
 }

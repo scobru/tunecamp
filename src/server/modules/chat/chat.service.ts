@@ -14,6 +14,7 @@ import type { DatabaseService } from "../../core/database.types.js";
 export interface ChatSocket {
 	readyState: number;
 	send(data: string): void;
+	close?(): void;
 }
 
 interface ChatClient {
@@ -57,7 +58,14 @@ export class ChatService {
 			if (existingId !== undefined && existingId !== clientId) {
 				const existing = this.clients.get(existingId);
 				if (existing) {
-					try { existing.ws.close(); } catch (err) { console.error("[ChatService] Failed to close replaced session:", err); }
+					try {
+						existing.ws.close?.();
+					} catch (err) {
+						console.error(
+							"[ChatService] Failed to close replaced session:",
+							err,
+						);
+					}
 				}
 				this.clients.delete(existingId);
 			}
@@ -141,7 +149,9 @@ export class ChatService {
 							ts: Date.now(),
 						}),
 					);
-				} catch (err) { console.error("[ChatService] error:", err); }
+				} catch (err) {
+					console.error("[ChatService] error:", err);
+				}
 			}
 		}
 	}
@@ -167,7 +177,9 @@ export class ChatService {
 							reason: reason || "Kicked by admin",
 						}),
 					);
-				} catch (err) { console.error("[ChatService] error:", err); }
+				} catch (err) {
+					console.error("[ChatService] error:", err);
+				}
 				this.unregister(clientId);
 				kicked = true;
 			}
@@ -292,7 +304,9 @@ export class ChatService {
 					client.ws.send(
 						JSON.stringify({ type: "clear_history", ts: Date.now() }),
 					);
-				} catch (err) { console.error("[ChatService] error:", err); }
+				} catch (err) {
+					console.error("[ChatService] error:", err);
+				}
 			}
 		}
 
@@ -323,7 +337,9 @@ export class ChatService {
 						ts: Date.now(),
 					}),
 				);
-			} catch (err) { console.error("[ChatService] error:", err); }
+			} catch (err) {
+				console.error("[ChatService] error:", err);
+			}
 			return false;
 		}
 

@@ -95,12 +95,12 @@ docker-compose up -d --build
 
 In addition to the core server, the TuneCamp ecosystem includes several companion projects:
 
-- [**sidecamp**](https://github.com/scobru/sidecamp): A standalone Electron desktop app that handles all P2P content acquisition — Soulseek search & download, BitTorrent, and yt-dlp audio ripping — plus peer file-sharing with any TuneCamp instance via a reverse WebSocket tunnel. Keeps the core server clean and compliant. Consumes `tunecamp-design-system` for theming (5-theme picker: dark/light/grey/nordic/nordic-dark). npm-workspaces monorepo hosting Sidecamp + Graphofone + Sidecamp CLI + shared packages.
+- [**sidecamp**](https://github.com/scobru/sidecamp): A standalone Electron desktop app that handles all P2P content acquisition — Soulseek search & download, BitTorrent, and yt-dlp audio ripping — plus peer file-sharing with any TuneCamp instance via a reverse WebSocket tunnel. Keeps the core server clean and compliant. npm-workspaces monorepo hosting Sidecamp + Graphofone + Sidecamp CLI + shared packages.
 - [**sidecamp-cli**](https://github.com/scobru/sidecamp/tree/main/apps/sidecamp-cli): Headless terminal client for the same Sidecamp functionality without Electron — multi-source search/download, track upload, and the P2P sharing daemon (`sidecamp share`). Published as global bin `sidecamp`.
 - [**tunecamp-website**](https://github.com/scobru/tunecamp-website): The landing page, global community directory, and web-based community audio player.
 - [**tunecamp-4-track-recorder**](https://github.com/scobru/tunecamp-4-track-recorder): A browser-based 4-track cassette recorder built with the Web Audio API and Svelte 5, featuring low-latency overdubbing and mixer capabilities.
 - [**tunecamp-audiofabric**](https://github.com/scobru/tunecamp-audiofabric): An interactive, real-time 3D WebGL music visualizer built with `regl` and the Web Audio API.
-- [**tunecamp-design-system**](https://github.com/scobru/tunecamp-design-system): Shared UI/design-token package (5-theme picker: dark/light/grey/nordic/nordic-dark) consumed by Sidecamp and Graphofone via npm `file:`/`github:`. Also piloted in TuneCamp core's webapp (`Panel` component) as the shared token source between Tailwind/DaisyUI and plain-CSS Electron apps.
+- **Design System**: `tunecamp-design-system` has been deprecated. Design tokens are now inlined directly in app styles.
 
 ## Installation & Setup
 

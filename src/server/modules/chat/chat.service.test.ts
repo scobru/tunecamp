@@ -278,8 +278,20 @@ describe("ChatService", () => {
 			const ws1 = fakeWs();
 			const ws2 = fakeWs();
 
-			const first = chatService.register("session-1", "homologo", ws1, false, 42);
-			const second = chatService.register("session-2", "homologo", ws2, false, 42);
+			const first = chatService.register(
+				"session-1",
+				"homologo",
+				ws1,
+				false,
+				42,
+			);
+			const second = chatService.register(
+				"session-2",
+				"homologo",
+				ws2,
+				false,
+				42,
+			);
 
 			expect(first).toBe("homologo");
 			expect(second).toBe("homologo");
