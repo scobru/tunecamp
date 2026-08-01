@@ -760,7 +760,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             3,
             'TuneCamp Iris',
             'Air-Gapped Optical File Transfer via Fountain Codes & WASM. Transfer stems and keys via light without a network.',
-            'https://tunecamp-iris-gka9obyfg-scobru-s-team.vercel.app',
+            'https://tunecamp-iris.vercel.app',
             'other',
             'TuneCamp Labs',
             'https://github.com/scobru/tunecamp-iris',
@@ -773,8 +773,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         -- Migrate existing rows to the deployed Vercel URLs
         UPDATE lab_apps SET src = 'https://tunecamp-4-track-recorder.vercel.app' WHERE id = 1 AND src != 'https://tunecamp-4-track-recorder.vercel.app';
         UPDATE lab_apps SET src = 'https://tunecamp-audiofabric.vercel.app' WHERE id = 2 AND src != 'https://tunecamp-audiofabric.vercel.app';
-        UPDATE lab_apps SET src = 'https://tunecamp-iris-gka9obyfg-scobru-s-team.vercel.app' WHERE id = 3 AND src != 'https://tunecamp-iris-gka9obyfg-scobru-s-team.vercel.app';
-        UPDATE lab_apps SET src = 'https://tunecamp-audiofabric.vercel.app' WHERE id = 2 AND src != 'https://tunecamp-audiofabric.vercel.app';
+        UPDATE lab_apps SET src = 'https://tunecamp-iris.vercel.app' WHERE id = 3 AND src != 'https://tunecamp-iris.vercel.app';
 
         -- Collab: multi-artist collaborative track projects (native feature, no ZEN/realtime)
         CREATE TABLE IF NOT EXISTS collab_projects (
