@@ -55,9 +55,10 @@ export class WebRTCPeerService {
       wsUrl.pathname = '/ws/chat';
       if (token) wsUrl.searchParams.set('token', token);
 
-      this.ws = new WebSocket(wsUrl.toString());
+      const socket = new WebSocket(wsUrl.toString());
+      this.ws = socket;
 
-      this.ws.onopen = async () => {
+      socket.onopen = async () => {
         try {
           // 2. Create RTCPeerConnection
           this.pc = new RTCPeerConnection({
@@ -68,8 +69,8 @@ export class WebRTCPeerService {
           });
 
           this.pc.onicecandidate = (event) => {
-            if (event.candidate && this.ws?.readyState === WebSocket.OPEN) {
-              this.ws.send(JSON.stringify({
+            if (event.candidate && socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({
                 type: 'rtc_signal',
                 toSessionId: targetSessionId,
                 to: targetUsername,
@@ -100,7 +101,7 @@ export class WebRTCPeerService {
                 }
                 chunks.push(bytes);
               } else if (msg.type === 'chunk_end') {
-                const blob = new Blob(chunks, { type: 'audio/mpeg' });
+                const blob = new Blob(chunks as BlobPart[], { type: 'audio/mpeg' });
                 const blobUrl = URL.createObjectURL(blob);
                 finishSuccess(blobUrl);
               } else if (msg.type === 'chunk_error') {
@@ -115,19 +116,21 @@ export class WebRTCPeerService {
           const offer = await this.pc.createOffer();
           await this.pc.setLocalDescription(offer);
 
-          this.ws.send(JSON.stringify({
-            type: 'rtc_signal',
-            toSessionId: targetSessionId,
-            to: targetUsername,
-            signal: { type: 'offer', sdp: offer }
-          }));
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'rtc_signal',
+              toSessionId: targetSessionId,
+              to: targetUsername,
+              signal: { type: 'offer', sdp: offer }
+            }));
+          }
 
         } catch (err: any) {
           finishError(err);
         }
       };
 
-      this.ws.onmessage = async (e) => {
+      socket.onmessage = async (e) => {
         try {
           const msg = JSON.parse(e.data);
           if (msg.type === 'rtc_signal' && msg.signal) {
@@ -142,7 +145,7 @@ export class WebRTCPeerService {
         }
       };
 
-      this.ws.onerror = (err) => {
+      socket.onerror = (_err) => {
         finishError(new Error("WebSocket signaling connection error"));
       };
     });
