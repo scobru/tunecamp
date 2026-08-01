@@ -753,8 +753,27 @@ export function createDatabase(dbPath: string): DatabaseService {
             '["autoplay"]',
             1
         );
+
+        -- Seed TuneCamp Iris (Air-Gapped Optical Transfer) if not already present
+        INSERT OR IGNORE INTO lab_apps (id, name, description, src, category, author, source_url, permissions, sandbox, allow, enabled)
+        VALUES (
+            3,
+            'TuneCamp Iris',
+            'Air-Gapped Optical File Transfer via Fountain Codes & WASM. Transfer stems and keys via light without a network.',
+            'https://tunecamp-iris-gka9obyfg-scobru-s-team.vercel.app',
+            'other',
+            'TuneCamp Labs',
+            'https://github.com/scobru/tunecamp-iris',
+            '["camera"]',
+            '["allow-scripts","allow-same-origin","allow-forms","allow-modals"]',
+            '["camera *"]',
+            1
+        );
+
         -- Migrate existing rows to the deployed Vercel URLs
         UPDATE lab_apps SET src = 'https://tunecamp-4-track-recorder.vercel.app' WHERE id = 1 AND src != 'https://tunecamp-4-track-recorder.vercel.app';
+        UPDATE lab_apps SET src = 'https://tunecamp-audiofabric.vercel.app' WHERE id = 2 AND src != 'https://tunecamp-audiofabric.vercel.app';
+        UPDATE lab_apps SET src = 'https://tunecamp-iris-gka9obyfg-scobru-s-team.vercel.app' WHERE id = 3 AND src != 'https://tunecamp-iris-gka9obyfg-scobru-s-team.vercel.app';
         UPDATE lab_apps SET src = 'https://tunecamp-audiofabric.vercel.app' WHERE id = 2 AND src != 'https://tunecamp-audiofabric.vercel.app';
 
         -- Collab: multi-artist collaborative track projects (native feature, no ZEN/realtime)
