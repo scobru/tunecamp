@@ -23,6 +23,7 @@ interface ChatClient {
 	ws: ChatSocket;
 	pubkey?: string;
 	isAdmin?: boolean;
+	userId?: number | string;
 }
 
 export interface LobbyMessage {
@@ -39,6 +40,7 @@ const LOBBY_HISTORY_CAP = 500;
 
 export class ChatService {
 	private clients = new Map<string, ChatClient>();
+	private userIdMap = new Map<number | string, string>();
 
 	constructor(private database: DatabaseService) {}
 
@@ -47,7 +49,16 @@ export class ChatService {
 		rawUsername: string,
 		ws: ChatSocket,
 		isAdmin = false,
+		userId?: number | string,
 	): string {
+		// If this user already has an active chat session, replace it to avoid duplicate lobby entries from browser + peer daemon.
+		if (userId !== undefined) {
+			const existingId = this.userIdMap.get(userId);
+			if (existingId !== undefined && existingId !== clientId) {
+				this.clients.delete(existingId);
+			}
+		}
+
 		// Disambiguate duplicate usernames by appending an incremental suffix
 		const existingWithSameName = Array.from(this.clients.values()).filter(
 			(c) => c.rawUsername === rawUsername,
@@ -64,11 +75,19 @@ export class ChatService {
 			username,
 			ws,
 			isAdmin,
+			userId,
 		});
+		if (userId !== undefined) {
+			this.userIdMap.set(userId, clientId);
+		}
 		return username;
 	}
 
 	unregister(clientId: string): void {
+		const client = this.clients.get(clientId);
+		if (client?.userId !== undefined) {
+			this.userIdMap.delete(client.userId);
+		}
 		this.clients.delete(clientId);
 	}
 

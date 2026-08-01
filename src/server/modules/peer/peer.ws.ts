@@ -1,7 +1,7 @@
 import { WebSocketServer } from "ws";
 import type * as http from "http";
 import type { ServiceContainer } from "../../core/container.js";
-import { UserRole, VisibilityGuardian } from "../../common/visibility.js";
+import { type UserRole, VisibilityGuardian } from "../../common/visibility.js";
 
 // Admins (Manager/Root Admin) can always connect a peer daemon; other users
 // need the per-user can_peer grant. Root admin (id 1) has no other way in:
@@ -75,7 +75,7 @@ export function createPeerWsHandler(server: http.Server, container: ServiceConta
 
                     // Join the shared chat registry so daemons and browser
                     // clients (/ws/chat) share one lobby.
-                    container.chatService.register(sessionId, username, ws);
+                    container.chatService.register(sessionId, username, ws, false, userId);
 
                     // Send auth_ok
                     ws.send(JSON.stringify({ type: "auth_ok", sessionId }));

@@ -50,6 +50,7 @@ export function createChatWsHandler(server: http.Server, container: ServiceConta
             const token = url.searchParams.get("token");
             let username: string;
             let isAdmin = false;
+            let payload: { userId?: number | string; username: string; role?: string; isRootAdmin?: boolean } | null = null;
 
             if (!token) {
                 if (container.identity.getSetting("peerChatGuestEnabled") !== "true") {
@@ -61,7 +62,7 @@ export function createChatWsHandler(server: http.Server, container: ServiceConta
                 const safeGuest = rawGuest.replace(/[^a-zA-Z0-9_-]/g, "") || crypto.randomBytes(3).toString("hex");
                 username = `(Guest) ${safeGuest}`;
             } else {
-                const payload = await container.authService.verifyToken(token);
+                payload = await container.authService.verifyToken(token);
                 if (!payload) {
                     socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
                     socket.destroy();
@@ -83,7 +84,7 @@ export function createChatWsHandler(server: http.Server, container: ServiceConta
                 alive.set(ws, true);
                 ws.on("pong", () => alive.set(ws, true));
 
-                const assignedUsername = container.chatService.register(clientId, username, ws, isAdmin);
+                const assignedUsername = container.chatService.register(clientId, username, ws, isAdmin, payload?.userId);
                 ws.send(JSON.stringify({ type: "auth_ok", sessionId: clientId, username: assignedUsername, isAdmin }));
 
                 ws.on("message", (data, isBinary) => {
