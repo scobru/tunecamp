@@ -1,10 +1,16 @@
 /**
  * ServiceContainer — Central dependency bag for all server services.
- * 
+ *
  * Replaces positional argument lists (up to 17 args) in route factory functions.
  * Each route factory destructures only the services it needs.
  */
-import type { DatabaseService, IdentityManager, LibraryManager, SocialManager, IntegrationManager } from "./database.types.js";
+import type {
+	DatabaseService,
+	IdentityManager,
+	LibraryManager,
+	SocialManager,
+	IntegrationManager,
+} from "./database.types.js";
 import type { ServerConfig } from "./config.js";
 import type { AuthService } from "../modules/auth/auth.service.js";
 import type { createAuthMiddleware } from "../middleware/auth.js";
@@ -24,7 +30,7 @@ import type { FederatedDiscoveryService } from "../modules/network/federated-dis
 import type { CatalogCacheService } from "../modules/network/catalog-cache.service.js";
 import type { LifecycleService } from "../modules/catalog/lifecycle.service.js";
 import type { TelegramBotService } from "../modules/integrations/telegram-bot.js";
-import type { SoulseekServiceContract, TorrentServiceContract } from "./plugin-contracts.js";
+import type { TorrentServiceContract } from "./plugin-contracts.js";
 import type { GoogleDriveService } from "../modules/storage/google-drive.service.js";
 import type { SubsonicService } from "../modules/subsonic/subsonic.service.js";
 import type { ScrobbleService } from "../modules/scrobble/scrobble.service.js";
@@ -42,63 +48,62 @@ import type { SamplePackRepository } from "../repositories/sample-pack.repositor
 import type { CollabRepository } from "../repositories/collab.repository.js";
 
 export interface ServiceContainer {
-    // Core
-    database: DatabaseService;
-    identity: IdentityManager;
-    library: LibraryManager;
-    social: SocialManager;
-    integration: IntegrationManager;
-    config: ServerConfig;
-    musicDir: string;
+	// Core
+	database: DatabaseService;
+	identity: IdentityManager;
+	library: LibraryManager;
+	social: SocialManager;
+	integration: IntegrationManager;
+	config: ServerConfig;
+	musicDir: string;
 
-    // Auth
-    authService: AuthService;
-    authMiddleware: ReturnType<typeof createAuthMiddleware>;
+	// Auth
+	authService: AuthService;
+	authMiddleware: ReturnType<typeof createAuthMiddleware>;
 
-    // Catalog & Library
-    scanner: Scanner;
-    scannerService: ScannerService;
-    catalogService: CatalogService;
-    discoveryService: DiscoveryService;
-    digService: DigService;
-    metadataService: MetadataService;
-    maintenanceService: MaintenanceService;
-    ytdlpService?: YtdlpServiceContract;
+	// Catalog & Library
+	scanner: Scanner;
+	scannerService: ScannerService;
+	catalogService: CatalogService;
+	discoveryService: DiscoveryService;
+	digService: DigService;
+	metadataService: MetadataService;
+	maintenanceService: MaintenanceService;
+	ytdlpService?: YtdlpServiceContract;
 
-    // Media & Playback
-    mediaEngine: MediaEngine;
-    waveformService: WaveformService;
-    streamingService: StreamingService;
-    subsonicService: SubsonicService;
-    scrobbleService: ScrobbleService;
-    playlistService: PlaylistService;
+	// Media & Playback
+	mediaEngine: MediaEngine;
+	waveformService: WaveformService;
+	streamingService: StreamingService;
+	subsonicService: SubsonicService;
+	scrobbleService: ScrobbleService;
+	playlistService: PlaylistService;
 
-    // Publishing & Federation
-    publishingService: PublishingService;
-    apService: ActivityPubService;
-    federatedDiscoveryService: FederatedDiscoveryService;
-    catalogCache: CatalogCacheService;
-    lifecycleService: LifecycleService;
+	// Publishing & Federation
+	publishingService: PublishingService;
+	apService: ActivityPubService;
+	federatedDiscoveryService: FederatedDiscoveryService;
+	catalogCache: CatalogCacheService;
+	lifecycleService: LifecycleService;
 
-    // Integrations
-    telegramBotService: TelegramBotService;
-    soulseekService?: SoulseekServiceContract;
-    torrentService?: TorrentServiceContract;
-    gdriveService?: GoogleDriveService;
-    boardService: BoardService;
-    liveService: LiveService;
-    radioService: RadioService;
-    peerService: PeerService;
-    chatService: ChatService;
-    samplesRepository: SampleRepository;
-    samplePacksRepository: SamplePackRepository;
-    collabRepository: CollabRepository;
+	// Integrations
+	telegramBotService: TelegramBotService;
+	torrentService?: TorrentServiceContract;
+	gdriveService?: GoogleDriveService;
+	boardService: BoardService;
+	liveService: LiveService;
+	radioService: RadioService;
+	peerService: PeerService;
+	chatService: ChatService;
+	samplesRepository: SampleRepository;
+	samplePacksRepository: SamplePackRepository;
+	collabRepository: CollabRepository;
 
-    // AI
-    openRouterService: OpenRouterService;
+	// AI
+	openRouterService: OpenRouterService;
 
-    // Storage
-    storage: LocalDiskStorage;
+	// Storage
+	storage: LocalDiskStorage;
 }
 
 /**
@@ -107,19 +112,19 @@ export interface ServiceContainer {
  * service not explicitly provided — keep that behavior centralized here.
  */
 export function resolveService<K extends keyof ServiceContainer>(
-    container: ServiceContainer,
-    key: K
+	container: ServiceContainer,
+	key: K,
 ): ServiceContainer[K] {
-    const val = (container as any)[key] ?? (container.database as any)?.[key];
-    if (val !== undefined && val !== null) {
-        return val as ServiceContainer[K];
-    }
-    
-    // Optional services should not fall back to the database itself when not present
-    const optionalKeys = ['ytdlpService', 'soulseekService', 'torrentService', 'gdriveService'];
-    if (optionalKeys.includes(key as string)) {
-        return undefined as any;
-    }
-    
-    return (container.database || container) as any;
+	const val = (container as any)[key] ?? (container.database as any)?.[key];
+	if (val !== undefined && val !== null) {
+		return val as ServiceContainer[K];
+	}
+
+	// Optional services should not fall back to the database itself when not present
+	const optionalKeys = ["ytdlpService", "torrentService", "gdriveService"];
+	if (optionalKeys.includes(key as string)) {
+		return undefined as any;
+	}
+
+	return (container.database || container) as any;
 }

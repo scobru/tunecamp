@@ -4,7 +4,13 @@ import path from "path";
 import { TrackRepository } from "../repositories/track.repository.js";
 import { AlbumRepository } from "../repositories/album.repository.js";
 import { ArtistRepository } from "../repositories/artist.repository.js";
-import { VisibilityProfile, ViewerContext, UserRole, getContextFromProfile, VisibilityGuardian } from "../common/visibility.js";
+import {
+	VisibilityProfile,
+	ViewerContext,
+	UserRole,
+	getContextFromProfile,
+	VisibilityGuardian,
+} from "../common/visibility.js";
 import { ReleaseTrackRepository } from "../repositories/release-track.repository.js";
 import { SocialRepository } from "../repositories/social.repository.js";
 import { RemoteActorRepository } from "../repositories/remote-actor.repository.js";
@@ -18,79 +24,102 @@ import { createPeerManager } from "./managers/peer.js";
 
 // Re-export all types so consumers can continue to import from here
 export type {
-    Album, Artist, Track, Release, Post,
-    DatabaseService,
-    TrackDTO, AlbumDTO
+	Album,
+	Artist,
+	Track,
+	Release,
+	Post,
+	DatabaseService,
+	TrackDTO,
+	AlbumDTO,
 } from "./database.types.js";
 
 import type {
-    Album, Artist, Track, Release, Post, Playlist,
-    DatabaseService,
-    IdentityManager, LibraryManager, SocialManager, IntegrationManager
+	Album,
+	Artist,
+	Track,
+	Release,
+	Post,
+	Playlist,
+	DatabaseService,
+	IdentityManager,
+	LibraryManager,
+	SocialManager,
+	IntegrationManager,
 } from "./database.types.js";
 
 export function createDatabase(dbPath: string): DatabaseService {
-    const db = new Database(dbPath);
-    
-    db.pragma("journal_mode = WAL");
-    db.pragma("busy_timeout = 5000");
-    db.pragma("foreign_keys = ON");
-    // WAL + NORMAL is the SQLite-recommended pairing: commits append to the WAL
-    // without an fsync each (the checkpoint still syncs), which makes bulk scans
-    // with thousands of small writes behave like batched transactions. Safe in
-    // WAL mode: a power cut can lose the last commits but cannot corrupt the DB.
-    db.pragma("synchronous = NORMAL");
+	const db = new Database(dbPath);
 
-    // Rescue Phase: Recover from interrupted migrations
-    const tablesToRescue = ['albums', 'tracks', 'admin', 'artists'];
-    db.transaction(() => {
-        const tableNames = new Set(
-            db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((row: any) => row.name)
-        );
+	db.pragma("journal_mode = WAL");
+	db.pragma("busy_timeout = 5000");
+	db.pragma("foreign_keys = ON");
+	// WAL + NORMAL is the SQLite-recommended pairing: commits append to the WAL
+	// without an fsync each (the checkpoint still syncs), which makes bulk scans
+	// with thousands of small writes behave like batched transactions. Safe in
+	// WAL mode: a power cut can lose the last commits but cannot corrupt the DB.
+	db.pragma("synchronous = NORMAL");
 
-        for (const table of tablesToRescue) {
-            if (!/^[a-z0-9_]+$/i.test(table)) {
-                throw new Error(`Invalid table name for rescue: ${table}`);
-            }
-            const mainExists = tableNames.has(table);
-            const oldExists = tableNames.has(`${table}_old`);
-            const newExists = tableNames.has(`${table}_new`);
+	// Rescue Phase: Recover from interrupted migrations
+	const tablesToRescue = ["albums", "tracks", "admin", "artists"];
+	db.transaction(() => {
+		const tableNames = new Set(
+			db
+				.prepare("SELECT name FROM sqlite_master WHERE type='table'")
+				.all()
+				.map((row: any) => row.name),
+		);
 
-            if (!mainExists) {
-                if (oldExists) {
-                    console.log(`📦 [Database] Rescuing orphaned ${table}_old table...`);
-                    db.exec(`ALTER TABLE "${table}_old" RENAME TO "${table}"`);
-                } else if (newExists) {
-                    console.log(`📦 [Database] Rescuing orphaned ${table}_new table...`);
-                    db.exec(`ALTER TABLE "${table}_new" RENAME TO "${table}"`);
-                }
-            } else {
-                if (oldExists) {
-                    console.log(`🧹 [Database] Cleaning up legacy ${table}_old artifact...`);
-                    db.exec(`DROP TABLE "${table}_old"`);
-                }
-                if (newExists) {
-                    console.log(`🧹 [Database] Cleaning up legacy ${table}_new artifact...`);
-                    db.exec(`DROP TABLE "${table}_new"`);
-                }
-            }
-        }
-    })();
+		for (const table of tablesToRescue) {
+			if (!/^[a-z0-9_]+$/i.test(table)) {
+				throw new Error(`Invalid table name for rescue: ${table}`);
+			}
+			const mainExists = tableNames.has(table);
+			const oldExists = tableNames.has(`${table}_old`);
+			const newExists = tableNames.has(`${table}_new`);
 
-    // Legacy Gun.js naming: rename in place so existing FID identity data survives
-    // (a plain CREATE TABLE IF NOT EXISTS zen_users below would leave it as an empty table).
-    {
-        const tableNames = new Set(
-            db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((row: any) => row.name)
-        );
-        if (tableNames.has('gun_users') && !tableNames.has('zen_users')) {
-            console.log("📦 [Database] Renaming gun_users table to zen_users...");
-            db.exec("ALTER TABLE gun_users RENAME TO zen_users");
-        }
-    }
+			if (!mainExists) {
+				if (oldExists) {
+					console.log(`📦 [Database] Rescuing orphaned ${table}_old table...`);
+					db.exec(`ALTER TABLE "${table}_old" RENAME TO "${table}"`);
+				} else if (newExists) {
+					console.log(`📦 [Database] Rescuing orphaned ${table}_new table...`);
+					db.exec(`ALTER TABLE "${table}_new" RENAME TO "${table}"`);
+				}
+			} else {
+				if (oldExists) {
+					console.log(
+						`🧹 [Database] Cleaning up legacy ${table}_old artifact...`,
+					);
+					db.exec(`DROP TABLE "${table}_old"`);
+				}
+				if (newExists) {
+					console.log(
+						`🧹 [Database] Cleaning up legacy ${table}_new artifact...`,
+					);
+					db.exec(`DROP TABLE "${table}_new"`);
+				}
+			}
+		}
+	})();
 
-    // Initial Schema (Base Tables)
-    db.exec(`
+	// Legacy Gun.js naming: rename in place so existing FID identity data survives
+	// (a plain CREATE TABLE IF NOT EXISTS zen_users below would leave it as an empty table).
+	{
+		const tableNames = new Set(
+			db
+				.prepare("SELECT name FROM sqlite_master WHERE type='table'")
+				.all()
+				.map((row: any) => row.name),
+		);
+		if (tableNames.has("gun_users") && !tableNames.has("zen_users")) {
+			console.log("📦 [Database] Renaming gun_users table to zen_users...");
+			db.exec("ALTER TABLE gun_users RENAME TO zen_users");
+		}
+	}
+
+	// Initial Schema (Base Tables)
+	db.exec(`
         CREATE TABLE IF NOT EXISTS artists (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
@@ -132,8 +161,6 @@ export function createDatabase(dbPath: string): DatabaseService {
             subscription_expires_at TEXT DEFAULT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            slsk_username TEXT,
-            slsk_password TEXT,
             telegram_bot_token TEXT,
             telegram_allowed_channels TEXT,
             security_q1 TEXT,
@@ -497,16 +524,6 @@ export function createDatabase(dbPath: string): DatabaseService {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
-        CREATE TABLE IF NOT EXISTS soulseek_downloads (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            file_path TEXT NOT NULL,
-            filename TEXT NOT NULL,
-            status TEXT NOT NULL,
-            progress REAL DEFAULT 0,
-            added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES admin (id)
-        );
 
         CREATE TABLE IF NOT EXISTS torrents (
             info_hash TEXT PRIMARY KEY,
@@ -766,25 +783,33 @@ export function createDatabase(dbPath: string): DatabaseService {
         CREATE INDEX IF NOT EXISTS idx_collab_stems_project ON collab_stems(project_id);
     `);
 
-    // Runtime Migrations (robust column checks)
-    db.transaction(() => {
-        // --- Admin Security Questions Migration ---
-        const adminCols = db.prepare("PRAGMA table_info(admin)").all() as any[];
-        if (!adminCols.some(col => col.name === 'security_q1')) {
-            console.log("📦 [Database] Migrating admin table: adding security questions columns...");
-            db.exec("ALTER TABLE admin ADD COLUMN security_q1 TEXT");
-            db.exec("ALTER TABLE admin ADD COLUMN security_a1_hash TEXT");
-            db.exec("ALTER TABLE admin ADD COLUMN security_q2 TEXT");
-            db.exec("ALTER TABLE admin ADD COLUMN security_a2_hash TEXT");
-        }
+	// Runtime Migrations (robust column checks)
+	db.transaction(() => {
+		// --- Admin Security Questions Migration ---
+		const adminCols = db.prepare("PRAGMA table_info(admin)").all() as any[];
+		if (!adminCols.some((col) => col.name === "security_q1")) {
+			console.log(
+				"📦 [Database] Migrating admin table: adding security questions columns...",
+			);
+			db.exec("ALTER TABLE admin ADD COLUMN security_q1 TEXT");
+			db.exec("ALTER TABLE admin ADD COLUMN security_a1_hash TEXT");
+			db.exec("ALTER TABLE admin ADD COLUMN security_q2 TEXT");
+			db.exec("ALTER TABLE admin ADD COLUMN security_a2_hash TEXT");
+		}
 
-        // --- Consolidation Migration ---
-        const releasesTableInfo = db.prepare("SELECT type FROM sqlite_master WHERE type='table' AND name='releases'").get() as { type: string } | undefined;
-        if (releasesTableInfo) {
-            console.log("📦 [Database Consolidation] Physical releases table detected. Migrating data to albums...");
-            
-            // 1. Move unique releases to albums
-            db.exec(`
+		// --- Consolidation Migration ---
+		const releasesTableInfo = db
+			.prepare(
+				"SELECT type FROM sqlite_master WHERE type='table' AND name='releases'",
+			)
+			.get() as { type: string } | undefined;
+		if (releasesTableInfo) {
+			console.log(
+				"📦 [Database Consolidation] Physical releases table detected. Migrating data to albums...",
+			);
+
+			// 1. Move unique releases to albums
+			db.exec(`
                 INSERT OR IGNORE INTO albums (
                     id, title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, 
                     price, price_usdc, price_usdt, currency, external_links, external_id, visibility, published_at, 
@@ -797,19 +822,25 @@ export function createDatabase(dbPath: string): DatabaseService {
                 FROM releases;
             `);
 
-            // 2. Move unique release tracks to tracks, ensuring album_id is mapped correctly
-            const releaseTracksTableInfo = db.prepare("SELECT type FROM sqlite_master WHERE type='table' AND name='release_tracks'").get() as { type: string } | undefined;
-            if (releaseTracksTableInfo) {
-                console.log("📦 [Database Consolidation] Physical release_tracks table detected. Syncing to tracks...");
-                // Link existing tracks to their album if they aren't linked yet
-                db.exec(`
+			// 2. Move unique release tracks to tracks, ensuring album_id is mapped correctly
+			const releaseTracksTableInfo = db
+				.prepare(
+					"SELECT type FROM sqlite_master WHERE type='table' AND name='release_tracks'",
+				)
+				.get() as { type: string } | undefined;
+			if (releaseTracksTableInfo) {
+				console.log(
+					"📦 [Database Consolidation] Physical release_tracks table detected. Syncing to tracks...",
+				);
+				// Link existing tracks to their album if they aren't linked yet
+				db.exec(`
                     UPDATE tracks 
                     SET album_id = (SELECT release_id FROM release_tracks WHERE release_tracks.track_id = tracks.id LIMIT 1)
                     WHERE album_id IS NULL AND EXISTS (SELECT 1 FROM release_tracks WHERE release_tracks.track_id = tracks.id);
                 `);
-                
-                // If any release_tracks didn't have a track_id (ghost tracks), we can insert them into tracks
-                db.exec(`
+
+				// If any release_tracks didn't have a track_id (ghost tracks), we can insert them into tracks
+				db.exec(`
                     INSERT OR IGNORE INTO tracks (
                         title, album_id, artist_name, track_num, duration, file_path, price, price_usdc, price_usdt, currency, created_at
                     )
@@ -819,234 +850,380 @@ export function createDatabase(dbPath: string): DatabaseService {
                     WHERE track_id IS NULL;
                 `);
 
-                db.exec("DROP TABLE release_tracks");
-            }
-            
-            db.exec("DROP TABLE releases");
-            console.log("📦 [Database Consolidation] Physical tables dropped. Ready to create views.");
-        }
+				db.exec("DROP TABLE release_tracks");
+			}
 
-        const samplesExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='samples'").get();
-        if (samplesExists) {
-            const cols = db.prepare("PRAGMA table_info(samples)").all() as any[];
-            if (!cols.some(col => col.name === 'pack_id')) {
-                console.log("📦 [Database] Migrating samples table: adding pack_id column...");
-                db.exec("ALTER TABLE samples ADD COLUMN pack_id INTEGER REFERENCES sample_packs(id)");
-                db.exec("CREATE INDEX IF NOT EXISTS idx_samples_pack ON samples(pack_id)");
-            }
-        }
+			db.exec("DROP TABLE releases");
+			console.log(
+				"📦 [Database Consolidation] Physical tables dropped. Ready to create views.",
+			);
+		}
 
-        const artistsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='artists'").get();
-        if (artistsExists) {
-            const cols = db.prepare("PRAGMA table_info(artists)").all() as any[];
-            if (!cols.some(col => col.name === 'external_id')) {
-                console.log("📦 [Database] Migrating artists table: adding external_id column...");
-                db.exec("ALTER TABLE artists ADD COLUMN external_id TEXT");
-            }
-            if (!cols.some(col => col.name === 'visibility')) {
-                console.log("📦 [Database] Migrating artists table: adding visibility column...");
-                db.exec("ALTER TABLE artists ADD COLUMN visibility TEXT DEFAULT 'public'");
-            }
-            if (!cols.some(col => col.name === 'post_params')) {
-                console.log("📦 [Database] Migrating artists table: adding post_params column...");
-                db.exec("ALTER TABLE artists ADD COLUMN post_params TEXT");
-            }
-            if (!cols.some(col => col.name === 'wallet_address')) {
-                console.log("📦 [Database] Migrating artists table: adding wallet_address column...");
-                db.exec("ALTER TABLE artists ADD COLUMN wallet_address TEXT");
-            }
-            if (!cols.some(col => col.name === 'stripe_account_id')) {
-                console.log("📦 [Database] Migrating artists table: adding stripe_account_id column...");
-                // Stripe Connect (Express) account id for fiat direct charges. NULL
-                // means the artist has no connected account, so checkout falls back
-                // to the instance's own Stripe account (single-artist / self-host).
-                db.exec("ALTER TABLE artists ADD COLUMN stripe_account_id TEXT");
-            }
-            if (!cols.some(col => col.name === 'also_known_as')) {
-                console.log("📦 [Database] Migrating artists table: adding also_known_as column...");
-                db.exec("ALTER TABLE artists ADD COLUMN also_known_as TEXT");
-            }
-            if (!cols.some(col => col.name === 'moved_to')) {
-                console.log("📦 [Database] Migrating artists table: adding moved_to column...");
-                db.exec("ALTER TABLE artists ADD COLUMN moved_to TEXT");
-            }
-            if (!cols.some(col => col.name === 'can_sell')) {
-                console.log("📦 [Database] Migrating artists table: adding can_sell column...");
-                // Existing artists keep selling (default 1); community-mode
-                // auto-promoted artists are created with can_sell = 0.
-                db.exec("ALTER TABLE artists ADD COLUMN can_sell INTEGER DEFAULT 1");
-            }
-            if (!cols.some(col => col.name === 'banner_path')) {
-                console.log("📦 [Database] Migrating artists table: adding banner_path column...");
-                db.exec("ALTER TABLE artists ADD COLUMN banner_path TEXT");
-            }
-            if (!cols.some(col => col.name === 'manually_approves_followers')) {
-                console.log("📦 [Database] Migrating artists table: adding manually_approves_followers column...");
-                db.exec("ALTER TABLE artists ADD COLUMN manually_approves_followers INTEGER DEFAULT 0");
-            }
-            
-            // Migrate unlock_codes: add asset_id column if missing
-            const ucCols = db.prepare("PRAGMA table_info(unlock_codes)").all() as any[];
-            if (!ucCols.some(col => col.name === 'asset_id')) {
-                db.exec("ALTER TABLE unlock_codes ADD COLUMN asset_id INTEGER REFERENCES assets(id)");
-            }
-            if (!ucCols.some(col => col.name === 'user_id')) {
-                db.exec("ALTER TABLE unlock_codes ADD COLUMN user_id INTEGER REFERENCES admin(id)");
-            }
+		const samplesExists = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='samples'",
+			)
+			.get();
+		if (samplesExists) {
+			const cols = db.prepare("PRAGMA table_info(samples)").all() as any[];
+			if (!cols.some((col) => col.name === "pack_id")) {
+				console.log(
+					"📦 [Database] Migrating samples table: adding pack_id column...",
+				);
+				db.exec(
+					"ALTER TABLE samples ADD COLUMN pack_id INTEGER REFERENCES sample_packs(id)",
+				);
+				db.exec(
+					"CREATE INDEX IF NOT EXISTS idx_samples_pack ON samples(pack_id)",
+				);
+			}
+		}
 
-            // Site Actor Initialization (id = -1). The public handle defaults to
-            // 'site' but follows the configured `siteHandle` setting when present
-            // (kept in sync with the instance name on settings save).
-            const hasSiteActor = db.prepare("SELECT 1 FROM artists WHERE id = -1").get();
-            const siteHandleRow = db.prepare("SELECT value FROM settings WHERE key = 'siteHandle'").get() as { value: string } | undefined;
-            const siteNameRow = db.prepare("SELECT value FROM settings WHERE key = 'siteName'").get() as { value: string } | undefined;
-            const siteSlug = siteHandleRow?.value || 'site';
-            const siteActorName = siteNameRow?.value || 'Site';
-            // The site actor's slug and name (id -1) are reserved (both columns are
-            // UNIQUE). If a library artist already holds either, free it up so the
-            // reserved insert/update doesn't crash with SQLITE_CONSTRAINT_UNIQUE.
-            const collidingSlugArtist = db.prepare("SELECT id FROM artists WHERE slug = ? AND id != -1").get(siteSlug) as { id: number } | undefined;
-            if (collidingSlugArtist) {
-                let fallbackSlug = `${siteSlug}-artist`;
-                let n = 2;
-                while (db.prepare("SELECT 1 FROM artists WHERE slug = ?").get(fallbackSlug)) {
-                    fallbackSlug = `${siteSlug}-artist-${n++}`;
-                }
-                db.prepare("UPDATE artists SET slug = ? WHERE id = ?").run(fallbackSlug, collidingSlugArtist.id);
-            }
-            const collidingNameArtist = db.prepare("SELECT id FROM artists WHERE name = ? AND id != -1").get(siteActorName) as { id: number } | undefined;
-            if (collidingNameArtist) {
-                let fallbackName = `${siteActorName} (Artist)`;
-                let n = 2;
-                while (db.prepare("SELECT 1 FROM artists WHERE name = ?").get(fallbackName)) {
-                    fallbackName = `${siteActorName} (Artist ${n++})`;
-                }
-                db.prepare("UPDATE artists SET name = ? WHERE id = ?").run(fallbackName, collidingNameArtist.id);
-            }
-            if (!hasSiteActor) {
-                console.log(`📡 [Database] Creating virtual artist record for Site Actor (@${siteSlug})...`);
-                const pubKey = db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
-                const privKey = db.prepare("SELECT value FROM settings WHERE key = 'site_private_key'").get() as { value: string } | undefined;
-                db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, ?, ?, 'public', ?, ?)")
-                  .run(siteActorName, siteSlug, pubKey ? pubKey.value : null, privKey ? privKey.value : null);
-            } else {
-                db.prepare("UPDATE artists SET name = 'Site' WHERE id = -1 AND name = 'Instance Actor'").run();
-                // Reconcile the stored slug with the configured handle if they drifted.
-                db.prepare("UPDATE artists SET slug = ? WHERE id = -1 AND slug != ?").run(siteSlug, siteSlug);
-            }
-            // Give the site actor the site logo as its default photo so Fediverse
-            // clients (and the Social page) show the instance branding image.
-            // Only sets the default — a custom upload via the artist avatar form takes precedence.
-            db.prepare("UPDATE artists SET photo_path = '/api/settings/logo' WHERE id = -1 AND (photo_path IS NULL OR photo_path = '')").run();
-        }
+		const artistsExists = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='artists'",
+			)
+			.get();
+		if (artistsExists) {
+			const cols = db.prepare("PRAGMA table_info(artists)").all() as any[];
+			if (!cols.some((col) => col.name === "external_id")) {
+				console.log(
+					"📦 [Database] Migrating artists table: adding external_id column...",
+				);
+				db.exec("ALTER TABLE artists ADD COLUMN external_id TEXT");
+			}
+			if (!cols.some((col) => col.name === "visibility")) {
+				console.log(
+					"📦 [Database] Migrating artists table: adding visibility column...",
+				);
+				db.exec(
+					"ALTER TABLE artists ADD COLUMN visibility TEXT DEFAULT 'public'",
+				);
+			}
+			if (!cols.some((col) => col.name === "post_params")) {
+				console.log(
+					"📦 [Database] Migrating artists table: adding post_params column...",
+				);
+				db.exec("ALTER TABLE artists ADD COLUMN post_params TEXT");
+			}
+			if (!cols.some((col) => col.name === "wallet_address")) {
+				console.log(
+					"📦 [Database] Migrating artists table: adding wallet_address column...",
+				);
+				db.exec("ALTER TABLE artists ADD COLUMN wallet_address TEXT");
+			}
+			if (!cols.some((col) => col.name === "stripe_account_id")) {
+				console.log(
+					"📦 [Database] Migrating artists table: adding stripe_account_id column...",
+				);
+				// Stripe Connect (Express) account id for fiat direct charges. NULL
+				// means the artist has no connected account, so checkout falls back
+				// to the instance's own Stripe account (single-artist / self-host).
+				db.exec("ALTER TABLE artists ADD COLUMN stripe_account_id TEXT");
+			}
+			if (!cols.some((col) => col.name === "also_known_as")) {
+				console.log(
+					"📦 [Database] Migrating artists table: adding also_known_as column...",
+				);
+				db.exec("ALTER TABLE artists ADD COLUMN also_known_as TEXT");
+			}
+			if (!cols.some((col) => col.name === "moved_to")) {
+				console.log(
+					"📦 [Database] Migrating artists table: adding moved_to column...",
+				);
+				db.exec("ALTER TABLE artists ADD COLUMN moved_to TEXT");
+			}
+			if (!cols.some((col) => col.name === "can_sell")) {
+				console.log(
+					"📦 [Database] Migrating artists table: adding can_sell column...",
+				);
+				// Existing artists keep selling (default 1); community-mode
+				// auto-promoted artists are created with can_sell = 0.
+				db.exec("ALTER TABLE artists ADD COLUMN can_sell INTEGER DEFAULT 1");
+			}
+			if (!cols.some((col) => col.name === "banner_path")) {
+				console.log(
+					"📦 [Database] Migrating artists table: adding banner_path column...",
+				);
+				db.exec("ALTER TABLE artists ADD COLUMN banner_path TEXT");
+			}
+			if (!cols.some((col) => col.name === "manually_approves_followers")) {
+				console.log(
+					"📦 [Database] Migrating artists table: adding manually_approves_followers column...",
+				);
+				db.exec(
+					"ALTER TABLE artists ADD COLUMN manually_approves_followers INTEGER DEFAULT 0",
+				);
+			}
 
-        const albumsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='albums'").get();
-        if (albumsExists) {
-            const cols = db.prepare("PRAGMA table_info(albums)").all() as any[];
-            if (!cols.some(col => col.name === 'status')) {
-                console.log("📦 [Database] Migrating albums table: adding status column...");
-                db.exec("ALTER TABLE albums ADD COLUMN status TEXT DEFAULT 'draft'");
-            }
-            if (!cols.some(col => col.name === 'album_artist')) {
-                console.log("📦 [Database] Migrating albums table: adding album_artist column...");
-                db.exec("ALTER TABLE albums ADD COLUMN album_artist TEXT");
-            }
-            if (!cols.some(col => col.name === 'use_nft')) {
-                console.log("📦 [Database] Migrating albums table: adding use_nft column...");
-                db.exec("ALTER TABLE albums ADD COLUMN use_nft INTEGER DEFAULT 1");
-            }
-            if (!cols.some(col => col.name === 'product_type')) {
-                console.log("📦 [Database] Migrating albums table: adding product_type column...");
-                db.exec("ALTER TABLE albums ADD COLUMN product_type TEXT DEFAULT 'music'");
-            }
-            if (!cols.some(col => col.name === 'podcast_author')) {
-                console.log("📦 [Database] Migrating albums table: adding podcast_author column...");
-                db.exec("ALTER TABLE albums ADD COLUMN podcast_author TEXT");
-            }
-            if (!cols.some(col => col.name === 'podcast_email')) {
-                console.log("📦 [Database] Migrating albums table: adding podcast_email column...");
-                db.exec("ALTER TABLE albums ADD COLUMN podcast_email TEXT");
-            }
-            if (!cols.some(col => col.name === 'podcast_category')) {
-                console.log("📦 [Database] Migrating albums table: adding podcast_category column...");
-                db.exec("ALTER TABLE albums ADD COLUMN podcast_category TEXT");
-            }
-            if (!cols.some(col => col.name === 'podcast_explicit')) {
-                console.log("📦 [Database] Migrating albums table: adding podcast_explicit column...");
-                db.exec("ALTER TABLE albums ADD COLUMN podcast_explicit INTEGER DEFAULT 0");
-            }
-            if (!cols.some(col => col.name === 'curation_notes')) {
-                console.log("📦 [Database] Migrating albums table: adding curation_notes column...");
-                db.exec("ALTER TABLE albums ADD COLUMN curation_notes TEXT");
-            }
-            if (!cols.some(col => col.name === 'additional_artworks')) {
-                console.log("📦 [Database] Migrating albums table: adding additional_artworks column...");
-                db.exec("ALTER TABLE albums ADD COLUMN additional_artworks TEXT");
-            }
+			// Migrate unlock_codes: add asset_id column if missing
+			const ucCols = db
+				.prepare("PRAGMA table_info(unlock_codes)")
+				.all() as any[];
+			if (!ucCols.some((col) => col.name === "asset_id")) {
+				db.exec(
+					"ALTER TABLE unlock_codes ADD COLUMN asset_id INTEGER REFERENCES assets(id)",
+				);
+			}
+			if (!ucCols.some((col) => col.name === "user_id")) {
+				db.exec(
+					"ALTER TABLE unlock_codes ADD COLUMN user_id INTEGER REFERENCES admin(id)",
+				);
+			}
 
-            // Data migration: unify the release category onto the `type` column.
-            // Legacy podcasts were stored with type='album' + product_type='podcast'.
-            // Backfill type='podcast' so the category is readable from a single field.
-            const podcastTypeFix = db.prepare(
-                "UPDATE albums SET type = 'podcast' WHERE product_type = 'podcast' AND (type IS NULL OR type = 'album')"
-            ).run();
-            if (podcastTypeFix.changes > 0) {
-                console.log(`📦 [Database] Migrated ${podcastTypeFix.changes} podcast release(s) to type='podcast'.`);
-            }
+			// Site Actor Initialization (id = -1). The public handle defaults to
+			// 'site' but follows the configured `siteHandle` setting when present
+			// (kept in sync with the instance name on settings save).
+			const hasSiteActor = db
+				.prepare("SELECT 1 FROM artists WHERE id = -1")
+				.get();
+			const siteHandleRow = db
+				.prepare("SELECT value FROM settings WHERE key = 'siteHandle'")
+				.get() as { value: string } | undefined;
+			const siteNameRow = db
+				.prepare("SELECT value FROM settings WHERE key = 'siteName'")
+				.get() as { value: string } | undefined;
+			const siteSlug = siteHandleRow?.value || "site";
+			const siteActorName = siteNameRow?.value || "Site";
+			// The site actor's slug and name (id -1) are reserved (both columns are
+			// UNIQUE). If a library artist already holds either, free it up so the
+			// reserved insert/update doesn't crash with SQLITE_CONSTRAINT_UNIQUE.
+			const collidingSlugArtist = db
+				.prepare("SELECT id FROM artists WHERE slug = ? AND id != -1")
+				.get(siteSlug) as { id: number } | undefined;
+			if (collidingSlugArtist) {
+				let fallbackSlug = `${siteSlug}-artist`;
+				let n = 2;
+				while (
+					db.prepare("SELECT 1 FROM artists WHERE slug = ?").get(fallbackSlug)
+				) {
+					fallbackSlug = `${siteSlug}-artist-${n++}`;
+				}
+				db.prepare("UPDATE artists SET slug = ? WHERE id = ?").run(
+					fallbackSlug,
+					collidingSlugArtist.id,
+				);
+			}
+			const collidingNameArtist = db
+				.prepare("SELECT id FROM artists WHERE name = ? AND id != -1")
+				.get(siteActorName) as { id: number } | undefined;
+			if (collidingNameArtist) {
+				let fallbackName = `${siteActorName} (Artist)`;
+				let n = 2;
+				while (
+					db.prepare("SELECT 1 FROM artists WHERE name = ?").get(fallbackName)
+				) {
+					fallbackName = `${siteActorName} (Artist ${n++})`;
+				}
+				db.prepare("UPDATE artists SET name = ? WHERE id = ?").run(
+					fallbackName,
+					collidingNameArtist.id,
+				);
+			}
+			if (!hasSiteActor) {
+				console.log(
+					`📡 [Database] Creating virtual artist record for Site Actor (@${siteSlug})...`,
+				);
+				const pubKey = db
+					.prepare("SELECT value FROM settings WHERE key = 'site_public_key'")
+					.get() as { value: string } | undefined;
+				const privKey = db
+					.prepare("SELECT value FROM settings WHERE key = 'site_private_key'")
+					.get() as { value: string } | undefined;
+				db.prepare(
+					"INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, ?, ?, 'public', ?, ?)",
+				).run(
+					siteActorName,
+					siteSlug,
+					pubKey ? pubKey.value : null,
+					privKey ? privKey.value : null,
+				);
+			} else {
+				db.prepare(
+					"UPDATE artists SET name = 'Site' WHERE id = -1 AND name = 'Instance Actor'",
+				).run();
+				// Reconcile the stored slug with the configured handle if they drifted.
+				db.prepare(
+					"UPDATE artists SET slug = ? WHERE id = -1 AND slug != ?",
+				).run(siteSlug, siteSlug);
+			}
+			// Give the site actor the site logo as its default photo so Fediverse
+			// clients (and the Social page) show the instance branding image.
+			// Only sets the default — a custom upload via the artist avatar form takes precedence.
+			db.prepare(
+				"UPDATE artists SET photo_path = '/api/settings/logo' WHERE id = -1 AND (photo_path IS NULL OR photo_path = '')",
+			).run();
+		}
 
-            // The supported categories are album | single | liveset | podcast.
-            // Fold the deprecated 'ep' type into 'album'.
-            const epTypeFix = db.prepare(
-                "UPDATE albums SET type = 'album' WHERE type = 'ep'"
-            ).run();
-            if (epTypeFix.changes > 0) {
-                console.log(`📦 [Database] Migrated ${epTypeFix.changes} 'ep' release(s) to type='album'.`);
-            }
-        }
+		const albumsExists = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='albums'",
+			)
+			.get();
+		if (albumsExists) {
+			const cols = db.prepare("PRAGMA table_info(albums)").all() as any[];
+			if (!cols.some((col) => col.name === "status")) {
+				console.log(
+					"📦 [Database] Migrating albums table: adding status column...",
+				);
+				db.exec("ALTER TABLE albums ADD COLUMN status TEXT DEFAULT 'draft'");
+			}
+			if (!cols.some((col) => col.name === "album_artist")) {
+				console.log(
+					"📦 [Database] Migrating albums table: adding album_artist column...",
+				);
+				db.exec("ALTER TABLE albums ADD COLUMN album_artist TEXT");
+			}
+			if (!cols.some((col) => col.name === "use_nft")) {
+				console.log(
+					"📦 [Database] Migrating albums table: adding use_nft column...",
+				);
+				db.exec("ALTER TABLE albums ADD COLUMN use_nft INTEGER DEFAULT 1");
+			}
+			if (!cols.some((col) => col.name === "product_type")) {
+				console.log(
+					"📦 [Database] Migrating albums table: adding product_type column...",
+				);
+				db.exec(
+					"ALTER TABLE albums ADD COLUMN product_type TEXT DEFAULT 'music'",
+				);
+			}
+			if (!cols.some((col) => col.name === "podcast_author")) {
+				console.log(
+					"📦 [Database] Migrating albums table: adding podcast_author column...",
+				);
+				db.exec("ALTER TABLE albums ADD COLUMN podcast_author TEXT");
+			}
+			if (!cols.some((col) => col.name === "podcast_email")) {
+				console.log(
+					"📦 [Database] Migrating albums table: adding podcast_email column...",
+				);
+				db.exec("ALTER TABLE albums ADD COLUMN podcast_email TEXT");
+			}
+			if (!cols.some((col) => col.name === "podcast_category")) {
+				console.log(
+					"📦 [Database] Migrating albums table: adding podcast_category column...",
+				);
+				db.exec("ALTER TABLE albums ADD COLUMN podcast_category TEXT");
+			}
+			if (!cols.some((col) => col.name === "podcast_explicit")) {
+				console.log(
+					"📦 [Database] Migrating albums table: adding podcast_explicit column...",
+				);
+				db.exec(
+					"ALTER TABLE albums ADD COLUMN podcast_explicit INTEGER DEFAULT 0",
+				);
+			}
+			if (!cols.some((col) => col.name === "curation_notes")) {
+				console.log(
+					"📦 [Database] Migrating albums table: adding curation_notes column...",
+				);
+				db.exec("ALTER TABLE albums ADD COLUMN curation_notes TEXT");
+			}
+			if (!cols.some((col) => col.name === "additional_artworks")) {
+				console.log(
+					"📦 [Database] Migrating albums table: adding additional_artworks column...",
+				);
+				db.exec("ALTER TABLE albums ADD COLUMN additional_artworks TEXT");
+			}
 
-        const tracksExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='tracks'").get();
-        if (tracksExists) {
-            const cols = db.prepare("PRAGMA table_info(tracks)").all() as any[];
-            if (!cols.some(col => col.name === 'fingerprint')) {
-                console.log("📦 [Database] Migrating tracks table: adding fingerprint column...");
-                db.exec("ALTER TABLE tracks ADD COLUMN fingerprint TEXT");
-            }
-            if (!cols.some(col => col.name === 'mime_type')) {
-                console.log("📦 [Database] Migrating tracks table: adding mime_type column...");
-                db.exec("ALTER TABLE tracks ADD COLUMN mime_type TEXT DEFAULT 'audio/mpeg'");
-            }
-            if (!cols.some(col => col.name === 'file_size')) {
-                console.log("📦 [Database] Migrating tracks table: adding file_size column...");
-                db.exec("ALTER TABLE tracks ADD COLUMN file_size INTEGER DEFAULT 0");
-            }
-            if (!cols.some(col => col.name === 'file_hash')) {
-                console.log("📦 [Database] Migrating tracks table: adding file_hash column...");
-                db.exec("ALTER TABLE tracks ADD COLUMN file_hash TEXT");
-            }
-            if (!cols.some(col => col.name === 'version')) {
-                console.log("📦 [Database] Migrating tracks table: adding version column...");
-                db.exec("ALTER TABLE tracks ADD COLUMN version TEXT");
-            }
-            if (!cols.some(col => col.name === 'description')) {
-                console.log("📦 [Database] Migrating tracks table: adding description column...");
-                db.exec("ALTER TABLE tracks ADD COLUMN description TEXT");
-            }
-            if (!cols.some(col => col.name === 'podcast_episode_num')) {
-                console.log("📦 [Database] Migrating tracks table: adding podcast_episode_num column...");
-                db.exec("ALTER TABLE tracks ADD COLUMN podcast_episode_num INTEGER");
-            }
-            if (!cols.some(col => col.name === 'podcast_season_num')) {
-                console.log("📦 [Database] Migrating tracks table: adding podcast_season_num column...");
-                db.exec("ALTER TABLE tracks ADD COLUMN podcast_season_num INTEGER");
-            }
-            if (!cols.some(col => col.name === 'podcast_episode_type')) {
-                console.log("📦 [Database] Migrating tracks table: adding podcast_episode_type column...");
-                db.exec("ALTER TABLE tracks ADD COLUMN podcast_episode_type TEXT DEFAULT 'full'");
-            }
+			// Data migration: unify the release category onto the `type` column.
+			// Legacy podcasts were stored with type='album' + product_type='podcast'.
+			// Backfill type='podcast' so the category is readable from a single field.
+			const podcastTypeFix = db
+				.prepare(
+					"UPDATE albums SET type = 'podcast' WHERE product_type = 'podcast' AND (type IS NULL OR type = 'album')",
+				)
+				.run();
+			if (podcastTypeFix.changes > 0) {
+				console.log(
+					`📦 [Database] Migrated ${podcastTypeFix.changes} podcast release(s) to type='podcast'.`,
+				);
+			}
 
-            // Repair incorrect mime_type values for audio files
-            console.log("⚙️ [Database] Repairing incorrect/generic audio mime types...");
-            db.exec(`
+			// The supported categories are album | single | liveset | podcast.
+			// Fold the deprecated 'ep' type into 'album'.
+			const epTypeFix = db
+				.prepare("UPDATE albums SET type = 'album' WHERE type = 'ep'")
+				.run();
+			if (epTypeFix.changes > 0) {
+				console.log(
+					`📦 [Database] Migrated ${epTypeFix.changes} 'ep' release(s) to type='album'.`,
+				);
+			}
+		}
+
+		const tracksExists = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='tracks'",
+			)
+			.get();
+		if (tracksExists) {
+			const cols = db.prepare("PRAGMA table_info(tracks)").all() as any[];
+			if (!cols.some((col) => col.name === "fingerprint")) {
+				console.log(
+					"📦 [Database] Migrating tracks table: adding fingerprint column...",
+				);
+				db.exec("ALTER TABLE tracks ADD COLUMN fingerprint TEXT");
+			}
+			if (!cols.some((col) => col.name === "mime_type")) {
+				console.log(
+					"📦 [Database] Migrating tracks table: adding mime_type column...",
+				);
+				db.exec(
+					"ALTER TABLE tracks ADD COLUMN mime_type TEXT DEFAULT 'audio/mpeg'",
+				);
+			}
+			if (!cols.some((col) => col.name === "file_size")) {
+				console.log(
+					"📦 [Database] Migrating tracks table: adding file_size column...",
+				);
+				db.exec("ALTER TABLE tracks ADD COLUMN file_size INTEGER DEFAULT 0");
+			}
+			if (!cols.some((col) => col.name === "file_hash")) {
+				console.log(
+					"📦 [Database] Migrating tracks table: adding file_hash column...",
+				);
+				db.exec("ALTER TABLE tracks ADD COLUMN file_hash TEXT");
+			}
+			if (!cols.some((col) => col.name === "version")) {
+				console.log(
+					"📦 [Database] Migrating tracks table: adding version column...",
+				);
+				db.exec("ALTER TABLE tracks ADD COLUMN version TEXT");
+			}
+			if (!cols.some((col) => col.name === "description")) {
+				console.log(
+					"📦 [Database] Migrating tracks table: adding description column...",
+				);
+				db.exec("ALTER TABLE tracks ADD COLUMN description TEXT");
+			}
+			if (!cols.some((col) => col.name === "podcast_episode_num")) {
+				console.log(
+					"📦 [Database] Migrating tracks table: adding podcast_episode_num column...",
+				);
+				db.exec("ALTER TABLE tracks ADD COLUMN podcast_episode_num INTEGER");
+			}
+			if (!cols.some((col) => col.name === "podcast_season_num")) {
+				console.log(
+					"📦 [Database] Migrating tracks table: adding podcast_season_num column...",
+				);
+				db.exec("ALTER TABLE tracks ADD COLUMN podcast_season_num INTEGER");
+			}
+			if (!cols.some((col) => col.name === "podcast_episode_type")) {
+				console.log(
+					"📦 [Database] Migrating tracks table: adding podcast_episode_type column...",
+				);
+				db.exec(
+					"ALTER TABLE tracks ADD COLUMN podcast_episode_type TEXT DEFAULT 'full'",
+				);
+			}
+
+			// Repair incorrect mime_type values for audio files
+			console.log(
+				"⚙️ [Database] Repairing incorrect/generic audio mime types...",
+			);
+			db.exec(`
                 UPDATE tracks 
                 SET mime_type = CASE 
                     WHEN file_path LIKE '%.mp3' THEN 'audio/mpeg'
@@ -1065,128 +1242,227 @@ export function createDatabase(dbPath: string): DatabaseService {
                     file_path LIKE '%.aac'
                   );
             `);
-        }
+		}
 
-        const adminExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='admin'").get();
-        if (adminExists) {
-            const cols = db.prepare("PRAGMA table_info(admin)").all() as any[];
-            if (!cols.some(col => col.name === 'subscription_status')) {
-                console.log("📦 [Database] Migrating admin table: adding subscription_status column...");
-                db.exec("ALTER TABLE admin ADD COLUMN subscription_status TEXT DEFAULT 'none'");
-            }
-            if (!cols.some(col => col.name === 'subscription_expires_at')) {
-                console.log("📦 [Database] Migrating admin table: adding subscription_expires_at column...");
-                db.exec("ALTER TABLE admin ADD COLUMN subscription_expires_at TEXT DEFAULT NULL");
-            }
-            if (!cols.some(col => col.name === 'alias')) {
-                db.exec("ALTER TABLE admin ADD COLUMN alias TEXT");
-            }
-            if (!cols.some(col => col.name === 'avatar')) {
-                db.exec("ALTER TABLE admin ADD COLUMN avatar TEXT");
-            }
-            // Phase 4: ActivityPub keys for user actors
-            if (!cols.some(col => col.name === 'ap_public_key')) {
-                console.log("📦 [Database] Migrating admin table: adding ap_public_key/ap_private_key columns...");
-                db.exec("ALTER TABLE admin ADD COLUMN ap_public_key TEXT");
-                db.exec("ALTER TABLE admin ADD COLUMN ap_private_key TEXT");
-            }
-            if (!cols.some(col => col.name === 'artist_unlinked')) {
-                console.log("📦 [Database] Migrating admin table: adding artist_unlinked column...");
-                db.exec("ALTER TABLE admin ADD COLUMN artist_unlinked INTEGER DEFAULT 0");
-            }
-            if (!cols.some(col => col.name === 'artist_requested_at')) {
-                console.log("📦 [Database] Migrating admin table: adding artist_requested_at column...");
-                db.exec("ALTER TABLE admin ADD COLUMN artist_requested_at TEXT DEFAULT NULL");
-            }
-            // Opt-in "now listening" presence (off by default for privacy).
-            if (!cols.some(col => col.name === 'now_playing_enabled')) {
-                console.log("📦 [Database] Migrating admin table: adding now_playing_enabled column...");
-                db.exec("ALTER TABLE admin ADD COLUMN now_playing_enabled INTEGER DEFAULT 0");
-            }
-            if (!cols.some(col => col.name === 'can_peer')) {
-                console.log("📦 [Database] Migrating admin table: adding can_peer column...");
-                db.exec("ALTER TABLE admin ADD COLUMN can_peer INTEGER NOT NULL DEFAULT 0");
-            }
-            // Opt-in public listener profile at /u/:username (off by default for privacy).
-            if (!cols.some(col => col.name === 'public_profile_enabled')) {
-                console.log("[Database] Migrating admin table: adding public_profile_enabled column...");
-                db.exec("ALTER TABLE admin ADD COLUMN public_profile_enabled INTEGER DEFAULT 0");
-            }
-            // Password reset via email (Brevo)
-            if (!cols.some(col => col.name === 'email')) {
-                console.log("📦 [Database] Migrating admin table: adding email column...");
-                db.exec("ALTER TABLE admin ADD COLUMN email TEXT");
-                db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_email ON admin(email COLLATE NOCASE) WHERE email IS NOT NULL");
-            }
-            if (!cols.some(col => col.name === 'track_quota')) {
-                console.log("📦 [Database] Migrating admin table: adding track_quota column...");
-                db.exec("ALTER TABLE admin ADD COLUMN track_quota INTEGER DEFAULT NULL");
-            }
-            if (!cols.some(col => col.name === 'track_quota_floor')) {
-                console.log("📦 [Database] Migrating admin table: adding track_quota_floor column...");
-                db.exec("ALTER TABLE admin ADD COLUMN track_quota_floor INTEGER NOT NULL DEFAULT 0");
-            }
-            // Repair stale artist links: artist_id pointing to a deleted artist.
-            const artistsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='artists'").get();
-            if (artistsTableExists) {
-                const dangling = db.prepare("UPDATE admin SET artist_id = NULL WHERE artist_id IS NOT NULL AND artist_id NOT IN (SELECT id FROM artists)").run();
-                if (dangling.changes > 0) console.log(`🧹 [Database] Cleared ${dangling.changes} dangling artist link(s) on admin accounts`);
-            }
-        }
+		const adminExists = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='admin'",
+			)
+			.get();
+		if (adminExists) {
+			const cols = db.prepare("PRAGMA table_info(admin)").all() as any[];
+			if (!cols.some((col) => col.name === "subscription_status")) {
+				console.log(
+					"📦 [Database] Migrating admin table: adding subscription_status column...",
+				);
+				db.exec(
+					"ALTER TABLE admin ADD COLUMN subscription_status TEXT DEFAULT 'none'",
+				);
+			}
+			if (!cols.some((col) => col.name === "subscription_expires_at")) {
+				console.log(
+					"📦 [Database] Migrating admin table: adding subscription_expires_at column...",
+				);
+				db.exec(
+					"ALTER TABLE admin ADD COLUMN subscription_expires_at TEXT DEFAULT NULL",
+				);
+			}
+			if (!cols.some((col) => col.name === "alias")) {
+				db.exec("ALTER TABLE admin ADD COLUMN alias TEXT");
+			}
+			if (!cols.some((col) => col.name === "avatar")) {
+				db.exec("ALTER TABLE admin ADD COLUMN avatar TEXT");
+			}
+			// Phase 4: ActivityPub keys for user actors
+			if (!cols.some((col) => col.name === "ap_public_key")) {
+				console.log(
+					"📦 [Database] Migrating admin table: adding ap_public_key/ap_private_key columns...",
+				);
+				db.exec("ALTER TABLE admin ADD COLUMN ap_public_key TEXT");
+				db.exec("ALTER TABLE admin ADD COLUMN ap_private_key TEXT");
+			}
+			if (!cols.some((col) => col.name === "artist_unlinked")) {
+				console.log(
+					"📦 [Database] Migrating admin table: adding artist_unlinked column...",
+				);
+				db.exec(
+					"ALTER TABLE admin ADD COLUMN artist_unlinked INTEGER DEFAULT 0",
+				);
+			}
+			if (!cols.some((col) => col.name === "artist_requested_at")) {
+				console.log(
+					"📦 [Database] Migrating admin table: adding artist_requested_at column...",
+				);
+				db.exec(
+					"ALTER TABLE admin ADD COLUMN artist_requested_at TEXT DEFAULT NULL",
+				);
+			}
+			// Opt-in "now listening" presence (off by default for privacy).
+			if (!cols.some((col) => col.name === "now_playing_enabled")) {
+				console.log(
+					"📦 [Database] Migrating admin table: adding now_playing_enabled column...",
+				);
+				db.exec(
+					"ALTER TABLE admin ADD COLUMN now_playing_enabled INTEGER DEFAULT 0",
+				);
+			}
+			if (!cols.some((col) => col.name === "can_peer")) {
+				console.log(
+					"📦 [Database] Migrating admin table: adding can_peer column...",
+				);
+				db.exec(
+					"ALTER TABLE admin ADD COLUMN can_peer INTEGER NOT NULL DEFAULT 0",
+				);
+			}
+			// Opt-in public listener profile at /u/:username (off by default for privacy).
+			if (!cols.some((col) => col.name === "public_profile_enabled")) {
+				console.log(
+					"[Database] Migrating admin table: adding public_profile_enabled column...",
+				);
+				db.exec(
+					"ALTER TABLE admin ADD COLUMN public_profile_enabled INTEGER DEFAULT 0",
+				);
+			}
+			// Password reset via email (Brevo)
+			if (!cols.some((col) => col.name === "email")) {
+				console.log(
+					"📦 [Database] Migrating admin table: adding email column...",
+				);
+				db.exec("ALTER TABLE admin ADD COLUMN email TEXT");
+				db.exec(
+					"CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_email ON admin(email COLLATE NOCASE) WHERE email IS NOT NULL",
+				);
+			}
+			if (!cols.some((col) => col.name === "track_quota")) {
+				console.log(
+					"📦 [Database] Migrating admin table: adding track_quota column...",
+				);
+				db.exec(
+					"ALTER TABLE admin ADD COLUMN track_quota INTEGER DEFAULT NULL",
+				);
+			}
+			if (!cols.some((col) => col.name === "track_quota_floor")) {
+				console.log(
+					"📦 [Database] Migrating admin table: adding track_quota_floor column...",
+				);
+				db.exec(
+					"ALTER TABLE admin ADD COLUMN track_quota_floor INTEGER NOT NULL DEFAULT 0",
+				);
+			}
+			// Repair stale artist links: artist_id pointing to a deleted artist.
+			const artistsTableExists = db
+				.prepare(
+					"SELECT name FROM sqlite_master WHERE type='table' AND name='artists'",
+				)
+				.get();
+			if (artistsTableExists) {
+				const dangling = db
+					.prepare(
+						"UPDATE admin SET artist_id = NULL WHERE artist_id IS NOT NULL AND artist_id NOT IN (SELECT id FROM artists)",
+					)
+					.run();
+				if (dangling.changes > 0)
+					console.log(
+						`🧹 [Database] Cleared ${dangling.changes} dangling artist link(s) on admin accounts`,
+					);
+			}
+		}
 
-        const remoteActorsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='remote_actors'").get();
-        if (remoteActorsExists) {
-            const cols = db.prepare("PRAGMA table_info(remote_actors)").all() as any[];
-            if (!cols.some(col => col.name === 'public_key')) {
-                console.log("📦 [Database] Migrating remote_actors table: adding public_key column...");
-                db.exec("ALTER TABLE remote_actors ADD COLUMN public_key TEXT");
-            }
-        }
+		const remoteActorsExists = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='remote_actors'",
+			)
+			.get();
+		if (remoteActorsExists) {
+			const cols = db
+				.prepare("PRAGMA table_info(remote_actors)")
+				.all() as any[];
+			if (!cols.some((col) => col.name === "public_key")) {
+				console.log(
+					"📦 [Database] Migrating remote_actors table: adding public_key column...",
+				);
+				db.exec("ALTER TABLE remote_actors ADD COLUMN public_key TEXT");
+			}
+		}
 
-        const followersExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='followers'").get();
-        if (followersExists) {
-            const cols = db.prepare("PRAGMA table_info(followers)").all() as any[];
-            if (!cols.some(col => col.name === 'status')) {
-                console.log("📦 [Database] Migrating followers table: adding status column...");
-                db.exec("ALTER TABLE followers ADD COLUMN status TEXT DEFAULT 'pending'");
-            }
-            if (!cols.some(col => col.name === 'follow_id')) {
-                console.log("📦 [Database] Migrating followers table: adding follow_id column...");
-                db.exec("ALTER TABLE followers ADD COLUMN follow_id TEXT");
-            }
-        }
+		const followersExists = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='followers'",
+			)
+			.get();
+		if (followersExists) {
+			const cols = db.prepare("PRAGMA table_info(followers)").all() as any[];
+			if (!cols.some((col) => col.name === "status")) {
+				console.log(
+					"📦 [Database] Migrating followers table: adding status column...",
+				);
+				db.exec(
+					"ALTER TABLE followers ADD COLUMN status TEXT DEFAULT 'pending'",
+				);
+			}
+			if (!cols.some((col) => col.name === "follow_id")) {
+				console.log(
+					"📦 [Database] Migrating followers table: adding follow_id column...",
+				);
+				db.exec("ALTER TABLE followers ADD COLUMN follow_id TEXT");
+			}
+		}
 
-        const postsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='posts'").get();
-        if (postsExists) {
-            const cols = db.prepare("PRAGMA table_info(posts)").all() as any[];
-            if (!cols.some(col => col.name === 'title')) {
-                console.log("📦 [Database] Migrating posts table: adding title column...");
-                db.exec("ALTER TABLE posts ADD COLUMN title TEXT");
-            }
-            if (!cols.some(col => col.name === 'summary')) {
-                console.log("📦 [Database] Migrating posts table: adding summary column...");
-                db.exec("ALTER TABLE posts ADD COLUMN summary TEXT");
-            }
-        }
+		const postsExists = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='posts'",
+			)
+			.get();
+		if (postsExists) {
+			const cols = db.prepare("PRAGMA table_info(posts)").all() as any[];
+			if (!cols.some((col) => col.name === "title")) {
+				console.log(
+					"📦 [Database] Migrating posts table: adding title column...",
+				);
+				db.exec("ALTER TABLE posts ADD COLUMN title TEXT");
+			}
+			if (!cols.some((col) => col.name === "summary")) {
+				console.log(
+					"📦 [Database] Migrating posts table: adding summary column...",
+				);
+				db.exec("ALTER TABLE posts ADD COLUMN summary TEXT");
+			}
+		}
 
-        const apNotesExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='ap_notes'").get();
-        if (apNotesExists) {
-            const cols = db.prepare("PRAGMA table_info(ap_notes)").all() as any[];
-            if (!cols.some(col => col.name === 'likes_count')) {
-                console.log("📦 [Database] Migrating ap_notes table: adding likes_count column...");
-                db.exec("ALTER TABLE ap_notes ADD COLUMN likes_count INTEGER DEFAULT 0");
-            }
-            if (!cols.some(col => col.name === 'announces_count')) {
-                console.log("📦 [Database] Migrating ap_notes table: adding announces_count column...");
-                db.exec("ALTER TABLE ap_notes ADD COLUMN announces_count INTEGER DEFAULT 0");
-            }
-            if (!cols.some(col => col.name === 'replies_count')) {
-                console.log("📦 [Database] Migrating ap_notes table: adding replies_count column...");
-                db.exec("ALTER TABLE ap_notes ADD COLUMN replies_count INTEGER DEFAULT 0");
-            }
-        }
+		const apNotesExists = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='ap_notes'",
+			)
+			.get();
+		if (apNotesExists) {
+			const cols = db.prepare("PRAGMA table_info(ap_notes)").all() as any[];
+			if (!cols.some((col) => col.name === "likes_count")) {
+				console.log(
+					"📦 [Database] Migrating ap_notes table: adding likes_count column...",
+				);
+				db.exec(
+					"ALTER TABLE ap_notes ADD COLUMN likes_count INTEGER DEFAULT 0",
+				);
+			}
+			if (!cols.some((col) => col.name === "announces_count")) {
+				console.log(
+					"📦 [Database] Migrating ap_notes table: adding announces_count column...",
+				);
+				db.exec(
+					"ALTER TABLE ap_notes ADD COLUMN announces_count INTEGER DEFAULT 0",
+				);
+			}
+			if (!cols.some((col) => col.name === "replies_count")) {
+				console.log(
+					"📦 [Database] Migrating ap_notes table: adding replies_count column...",
+				);
+				db.exec(
+					"ALTER TABLE ap_notes ADD COLUMN replies_count INTEGER DEFAULT 0",
+				);
+			}
+		}
 
-        db.exec(`
+		db.exec(`
             CREATE TABLE IF NOT EXISTS ap_interactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 note_id TEXT NOT NULL,
@@ -1198,7 +1474,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             )
         `);
 
-        db.exec(`
+		db.exec(`
             CREATE TABLE IF NOT EXISTS ap_replies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 note_id TEXT NOT NULL,
@@ -1209,10 +1485,12 @@ export function createDatabase(dbPath: string): DatabaseService {
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        db.exec(`CREATE INDEX IF NOT EXISTS idx_ap_replies_note ON ap_replies(note_id)`);
+		db.exec(
+			`CREATE INDEX IF NOT EXISTS idx_ap_replies_note ON ap_replies(note_id)`,
+		);
 
-        // Durable outbound delivery queue (federation retry-on-failure).
-        db.exec(`
+		// Durable outbound delivery queue (federation retry-on-failure).
+		db.exec(`
             CREATE TABLE IF NOT EXISTS ap_delivery_queue (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 actor_slug TEXT NOT NULL,
@@ -1225,38 +1503,50 @@ export function createDatabase(dbPath: string): DatabaseService {
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        db.exec(`CREATE INDEX IF NOT EXISTS idx_ap_delivery_due ON ap_delivery_queue(status, next_attempt_at)`);
+		db.exec(
+			`CREATE INDEX IF NOT EXISTS idx_ap_delivery_due ON ap_delivery_queue(status, next_attempt_at)`,
+		);
 
-        // Phase 0: Zen → signaling only — local stats tables
-        // play_count = public counter (embedded player + webapp /stats/track/.../play)
-        // play_history stays separate (library plays via /stats/library/play + subsonic)
-        db.exec(`
+		// Phase 0: Zen → signaling only — local stats tables
+		// play_count = public counter (embedded player + webapp /stats/track/.../play)
+		// play_history stays separate (library plays via /stats/library/play + subsonic)
+		db.exec(`
             CREATE TABLE IF NOT EXISTS track_stats (
                 track_id       INTEGER PRIMARY KEY,
                 play_count     INTEGER NOT NULL DEFAULT 0,
                 download_count INTEGER NOT NULL DEFAULT 0
             )
         `);
-        db.exec(`
+		db.exec(`
             CREATE TABLE IF NOT EXISTS release_stats (
                 slug           TEXT PRIMARY KEY,
                 download_count INTEGER NOT NULL DEFAULT 0
             )
         `);
-        // Ensure play_history is indexed for COUNT(*) queries
-        db.exec(`CREATE INDEX IF NOT EXISTS idx_play_history_track ON play_history(track_id)`);
+		// Ensure play_history is indexed for COUNT(*) queries
+		db.exec(
+			`CREATE INDEX IF NOT EXISTS idx_play_history_track ON play_history(track_id)`,
+		);
 
-        // peer_tracks PK migration: old schema used id TEXT PRIMARY KEY (single-column).
-        // Two concurrent sessions sharing the same track ID (e.g. from the library) caused
-        // SQLITE_CONSTRAINT_PRIMARYKEY. Upgraded to composite PK (id, session_id).
-        const peerTracksExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='peer_tracks'").get();
-        if (peerTracksExists) {
-            const ptCols = db.prepare("PRAGMA table_info(peer_tracks)").all() as any[];
-            const sessionIdCol = ptCols.find((c: any) => c.name === 'session_id');
-            if (sessionIdCol && sessionIdCol.pk === 0) {
-                console.log("📦 [Database] Migrating peer_tracks: upgrading to composite PK (id, session_id)...");
-                db.transaction(() => {
-                    db.exec(`
+		// peer_tracks PK migration: old schema used id TEXT PRIMARY KEY (single-column).
+		// Two concurrent sessions sharing the same track ID (e.g. from the library) caused
+		// SQLITE_CONSTRAINT_PRIMARYKEY. Upgraded to composite PK (id, session_id).
+		const peerTracksExists = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='peer_tracks'",
+			)
+			.get();
+		if (peerTracksExists) {
+			const ptCols = db
+				.prepare("PRAGMA table_info(peer_tracks)")
+				.all() as any[];
+			const sessionIdCol = ptCols.find((c: any) => c.name === "session_id");
+			if (sessionIdCol && sessionIdCol.pk === 0) {
+				console.log(
+					"📦 [Database] Migrating peer_tracks: upgrading to composite PK (id, session_id)...",
+				);
+				db.transaction(() => {
+					db.exec(`
                         CREATE TABLE peer_tracks_new (
                             id TEXT NOT NULL,
                             session_id TEXT NOT NULL REFERENCES peer_sessions(id) ON DELETE CASCADE,
@@ -1271,49 +1561,84 @@ export function createDatabase(dbPath: string): DatabaseService {
                             PRIMARY KEY (id, session_id)
                         )
                     `);
-                    db.exec("INSERT OR IGNORE INTO peer_tracks_new SELECT * FROM peer_tracks");
-                    db.exec("DROP TABLE peer_tracks");
-                    db.exec("ALTER TABLE peer_tracks_new RENAME TO peer_tracks");
-                    db.exec("CREATE INDEX IF NOT EXISTS idx_peer_tracks_session ON peer_tracks(session_id)");
-                    db.exec("CREATE INDEX IF NOT EXISTS idx_peer_tracks_search ON peer_tracks(title, artist)");
-                })();
-            }
+					db.exec(
+						"INSERT OR IGNORE INTO peer_tracks_new SELECT * FROM peer_tracks",
+					);
+					db.exec("DROP TABLE peer_tracks");
+					db.exec("ALTER TABLE peer_tracks_new RENAME TO peer_tracks");
+					db.exec(
+						"CREATE INDEX IF NOT EXISTS idx_peer_tracks_session ON peer_tracks(session_id)",
+					);
+					db.exec(
+						"CREATE INDEX IF NOT EXISTS idx_peer_tracks_search ON peer_tracks(title, artist)",
+					);
+				})();
+			}
 
-            // Migration for magnet_uri column
-            const updatedPtCols = db.prepare("PRAGMA table_info(peer_tracks)").all() as any[];
-            if (!updatedPtCols.some((c: any) => c.name === 'magnet_uri')) {
-                console.log("📦 [Database] Migrating peer_tracks: adding magnet_uri column...");
-                db.exec("ALTER TABLE peer_tracks ADD COLUMN magnet_uri TEXT");
-            }
-        }
+			// Migration for magnet_uri column
+			const updatedPtCols = db
+				.prepare("PRAGMA table_info(peer_tracks)")
+				.all() as any[];
+			if (!updatedPtCols.some((c: any) => c.name === "magnet_uri")) {
+				console.log(
+					"📦 [Database] Migrating peer_tracks: adding magnet_uri column...",
+				);
+				db.exec("ALTER TABLE peer_tracks ADD COLUMN magnet_uri TEXT");
+			}
+		}
 
-        const torrentsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='torrents'").get();
-        if (torrentsExists) {
-            const torrentCols = db.prepare("PRAGMA table_info(torrents)").all() as any[];
-            if (!torrentCols.some(col => col.name === 'artist')) {
-                console.log("📦 [Database] Migrating torrents table: adding artist column...");
-                db.exec("ALTER TABLE torrents ADD COLUMN artist TEXT");
-            }
-        }
+		const torrentsExists = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='torrents'",
+			)
+			.get();
+		if (torrentsExists) {
+			const torrentCols = db
+				.prepare("PRAGMA table_info(torrents)")
+				.all() as any[];
+			if (!torrentCols.some((col) => col.name === "artist")) {
+				console.log(
+					"📦 [Database] Migrating torrents table: adding artist column...",
+				);
+				db.exec("ALTER TABLE torrents ADD COLUMN artist TEXT");
+			}
+		}
 
-        const chatMessagesExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='chat_messages'").get();
-        const boardMessagesExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='board_messages'").get();
-        if (chatMessagesExists && !boardMessagesExists) {
-            console.log("📦 [Database] Renaming chat_messages table to board_messages...");
-            db.exec("ALTER TABLE chat_messages RENAME TO board_messages");
-        }
-    })();
+		const chatMessagesExists = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='chat_messages'",
+			)
+			.get();
+		const boardMessagesExists = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='board_messages'",
+			)
+			.get();
+		if (chatMessagesExists && !boardMessagesExists) {
+			console.log(
+				"📦 [Database] Renaming chat_messages table to board_messages...",
+			);
+			db.exec("ALTER TABLE chat_messages RENAME TO board_messages");
+		}
+	})();
 
-    // View Refresh Phase: Ensure views are always up-to-date with current logic
-    db.transaction(() => {
-        const views = ['v_artists', 'v_albums', 'v_releases', 'v_tracks', 'releases', 'release_tracks'];
-        for (const view of views) {
-            db.exec(`DROP VIEW IF EXISTS ${view}`);
-        }
-    })();
+	// View Refresh Phase: Ensure views are always up-to-date with current logic
+	db.transaction(() => {
+		const views = [
+			"v_artists",
+			"v_albums",
+			"v_releases",
+			"v_tracks",
+			"releases",
+			"release_tracks",
+		];
+		for (const view of views) {
+			db.exec(`DROP VIEW IF EXISTS ${view}`);
+		}
+	})();
 
-    // Views & Backward Compatibility Views
-    db.exec(`
+	// Views & Backward Compatibility Views
+	db.exec(`
         CREATE VIEW v_artists AS
         SELECT * FROM artists;
 
@@ -1414,8 +1739,8 @@ export function createDatabase(dbPath: string): DatabaseService {
         LEFT JOIN admin own ON COALESCE(t.owner_id, a.owner_id) = own.id;
     `);
 
-    // Triggers
-    db.exec(`
+	// Triggers
+	db.exec(`
         CREATE TRIGGER IF NOT EXISTS tr_albums_status_sync
         AFTER UPDATE OF visibility ON albums
         FOR EACH ROW
@@ -1433,8 +1758,8 @@ export function createDatabase(dbPath: string): DatabaseService {
         END;
     `);
 
-    // Indices
-    db.exec(`
+	// Indices
+	db.exec(`
         CREATE INDEX IF NOT EXISTS idx_albums_date ON albums(date DESC);
         CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album_id);
         CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist_id);
@@ -1452,106 +1777,122 @@ export function createDatabase(dbPath: string): DatabaseService {
         -- Legacy indexes on releases removed (releases is now a view)
     `);
 
-    // Register Levenshtein
-    db.function("levenshtein", (a: string, b: string) => {
-        if (!a) return b ? b.length : 0;
-        if (!b) return a ? a.length : 0;
-        const matrix = [];
-        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-        for (let i = 1; i <= b.length; i++) {
-            for (let j = 1; j <= a.length; j++) {
-                if (b.charAt(i - 1) === a.charAt(j - 1)) matrix[i][j] = matrix[i - 1][j - 1];
-                else matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
-            }
-        }
-        return matrix[b.length][a.length];
-    });
+	// Register Levenshtein
+	db.function("levenshtein", (a: string, b: string) => {
+		if (!a) return b ? b.length : 0;
+		if (!b) return a ? a.length : 0;
+		const matrix = [];
+		for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+		for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+		for (let i = 1; i <= b.length; i++) {
+			for (let j = 1; j <= a.length; j++) {
+				if (b.charAt(i - 1) === a.charAt(j - 1))
+					matrix[i][j] = matrix[i - 1][j - 1];
+				else
+					matrix[i][j] = Math.min(
+						matrix[i - 1][j - 1] + 1,
+						Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1),
+					);
+			}
+		}
+		return matrix[b.length][a.length];
+	});
 
-    // Clean up any files that were incorrectly imported as tracks (e.g. artworks/avatars)
-    try {
-        const tracks = db.prepare("SELECT id, file_path FROM tracks WHERE file_path IS NOT NULL").all() as { id: number, file_path: string }[];
-        const toDelete: number[] = [];
-        for (const t of tracks) {
-            const ext = path.extname(t.file_path).toLowerCase();
-            if ([".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"].includes(ext)) {
-                const baseName = path.basename(t.file_path, ext).toLowerCase();
-                const normalized = t.file_path.replace(/\\/g, "/").toLowerCase();
-                const isArtwork = 
-                    ["cover", "folder", "artwork", "avatar"].includes(baseName) ||
-                    baseName.startsWith("cover-") || 
-                    baseName.startsWith("avatar-") ||
-                    baseName.startsWith("track-") ||
-                    baseName.startsWith("artwork-") ||
-                    baseName.startsWith("background") ||
-                    baseName.startsWith("site-cover") ||
-                    baseName.startsWith("site-logo") ||
-                    normalized.includes("/artwork/") || 
-                    normalized.includes("/assets/");
-                if (isArtwork) {
-                    toDelete.push(t.id);
-                }
-            }
-        }
-        if (toDelete.length > 0) {
-            console.log(`🧹 [Database Cleanup] Removing ${toDelete.length} incorrectly imported artwork track entries...`);
-            db.transaction(() => {
-                for (let i = 0; i < toDelete.length; i += 500) {
-                    const chunk = toDelete.slice(i, i + 500);
-                    const placeholders = chunk.map(() => '?').join(',');
-                    db.prepare(`DELETE FROM track_ownership WHERE track_id IN (${placeholders})`).run(chunk);
-                    db.prepare(`DELETE FROM tracks WHERE id IN (${placeholders})`).run(chunk);
-                }
-            })();
-        }
-    } catch (e) {
-        console.error("⚠️ [Database Cleanup] Failed to run artwork tracks cleanup:", e);
-    }
+	// Clean up any files that were incorrectly imported as tracks (e.g. artworks/avatars)
+	try {
+		const tracks = db
+			.prepare("SELECT id, file_path FROM tracks WHERE file_path IS NOT NULL")
+			.all() as { id: number; file_path: string }[];
+		const toDelete: number[] = [];
+		for (const t of tracks) {
+			const ext = path.extname(t.file_path).toLowerCase();
+			if ([".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"].includes(ext)) {
+				const baseName = path.basename(t.file_path, ext).toLowerCase();
+				const normalized = t.file_path.replace(/\\/g, "/").toLowerCase();
+				const isArtwork =
+					["cover", "folder", "artwork", "avatar"].includes(baseName) ||
+					baseName.startsWith("cover-") ||
+					baseName.startsWith("avatar-") ||
+					baseName.startsWith("track-") ||
+					baseName.startsWith("artwork-") ||
+					baseName.startsWith("background") ||
+					baseName.startsWith("site-cover") ||
+					baseName.startsWith("site-logo") ||
+					normalized.includes("/artwork/") ||
+					normalized.includes("/assets/");
+				if (isArtwork) {
+					toDelete.push(t.id);
+				}
+			}
+		}
+		if (toDelete.length > 0) {
+			console.log(
+				`🧹 [Database Cleanup] Removing ${toDelete.length} incorrectly imported artwork track entries...`,
+			);
+			db.transaction(() => {
+				for (let i = 0; i < toDelete.length; i += 500) {
+					const chunk = toDelete.slice(i, i + 500);
+					const placeholders = chunk.map(() => "?").join(",");
+					db.prepare(
+						`DELETE FROM track_ownership WHERE track_id IN (${placeholders})`,
+					).run(chunk);
+					db.prepare(`DELETE FROM tracks WHERE id IN (${placeholders})`).run(
+						chunk,
+					);
+				}
+			})();
+		}
+	} catch (e) {
+		console.error(
+			"⚠️ [Database Cleanup] Failed to run artwork tracks cleanup:",
+			e,
+		);
+	}
 
-    const trackRepository = new TrackRepository(db);
-    const albumRepository = new AlbumRepository(db);
-    const artistRepository = new ArtistRepository(db);
-    const releaseTrackRepository = new ReleaseTrackRepository(db);
-    const socialRepository = new SocialRepository(db);
-    const remoteActorRepository = new RemoteActorRepository(db);
-    const remoteContentRepository = new RemoteContentRepository(db);
-    const reportsRepository = new ReportsRepository(db);
+	const trackRepository = new TrackRepository(db);
+	const albumRepository = new AlbumRepository(db);
+	const artistRepository = new ArtistRepository(db);
+	const releaseTrackRepository = new ReleaseTrackRepository(db);
+	const socialRepository = new SocialRepository(db);
+	const remoteActorRepository = new RemoteActorRepository(db);
+	const remoteContentRepository = new RemoteContentRepository(db);
+	const reportsRepository = new ReportsRepository(db);
 
-    const identity = createIdentityManager(db);
-    const library = createLibraryManager(
-        db,
-        artistRepository,
-        albumRepository,
-        trackRepository,
-        releaseTrackRepository,
-        remoteContentRepository
-    );
-    const social = createSocialManager(
-        db,
-        socialRepository,
-        remoteActorRepository,
-        remoteContentRepository,
-        reportsRepository
-    );
-    const integration = createIntegrationManager(db);
-    const peer = createPeerManager(db);
+	const identity = createIdentityManager(db);
+	const library = createLibraryManager(
+		db,
+		artistRepository,
+		albumRepository,
+		trackRepository,
+		releaseTrackRepository,
+		remoteContentRepository,
+	);
+	const social = createSocialManager(
+		db,
+		socialRepository,
+		remoteActorRepository,
+		remoteContentRepository,
+		reportsRepository,
+	);
+	const integration = createIntegrationManager(db);
+	const peer = createPeerManager(db);
 
-    const service: DatabaseService = {
-        db,
-        identity,
-        library,
-        social,
-        integration,
-        peer,
-        transaction<T>(fn: () => T): T {
-            return db.transaction(fn)();
-        },
-        ...identity,
-        ...library,
-        ...social,
-        ...integration,
-        ...peer,
-    };
+	const service: DatabaseService = {
+		db,
+		identity,
+		library,
+		social,
+		integration,
+		peer,
+		transaction<T>(fn: () => T): T {
+			return db.transaction(fn)();
+		},
+		...identity,
+		...library,
+		...social,
+		...integration,
+		...peer,
+	};
 
-    return service;
+	return service;
 }

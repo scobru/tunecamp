@@ -1,7 +1,10 @@
 import path from "path";
 import type { ServerConfig } from "./core/config.js";
 import type { ServiceContainer } from "./core/container.js";
-import { createDatabase, type DatabaseService as Database } from "./core/database.js";
+import {
+	createDatabase,
+	type DatabaseService as Database,
+} from "./core/database.js";
 import { LocalDiskStorage } from "./modules/storage/storage.engine.js";
 import { OpenRouterService } from "./modules/ai/openrouter.service.js";
 import { initAIService } from "./modules/ai/ai.service.js";
@@ -46,260 +49,399 @@ import { taskManager } from "./modules/workers/task-manager.js";
 import { scheduleRecurring, type JobHandle } from "./core/scheduler.js";
 
 export interface BootstrappedServices {
-    container: ServiceContainer;
-    database: Database;
-    federation: any;
-    publishingService: ReturnType<typeof createPublishingService>;
-    peerService: ReturnType<typeof createPeerService>;
-    telegramBotService: TelegramBotService;
-    radioService: RadioService;
-    pluginCleanups: (() => void)[];
-    jobHandles: JobHandle[];
-    gdriveService?: GoogleDriveService;
+	container: ServiceContainer;
+	database: Database;
+	federation: any;
+	publishingService: ReturnType<typeof createPublishingService>;
+	peerService: ReturnType<typeof createPeerService>;
+	telegramBotService: TelegramBotService;
+	radioService: RadioService;
+	pluginCleanups: (() => void)[];
+	jobHandles: JobHandle[];
+	gdriveService?: GoogleDriveService;
 }
 
-export async function bootstrapServices(config: ServerConfig): Promise<BootstrappedServices> {
-    console.log(`📦 Initializing database: ${config.dbPath}`);
-    const database = createDatabase(config.dbPath);
+export async function bootstrapServices(
+	config: ServerConfig,
+): Promise<BootstrappedServices> {
+	console.log(`📦 Initializing database: ${config.dbPath}`);
+	const database = createDatabase(config.dbPath);
 
-    const storage = new LocalDiskStorage();
+	const storage = new LocalDiskStorage();
 
-    const openRouterService = new OpenRouterService(database, config);
-    initAIService(openRouterService, database);
-    console.log(`🔌 [Plugins] AIService initialized with OpenRouter provider`);
+	const openRouterService = new OpenRouterService(database, config);
+	initAIService(openRouterService, database);
+	console.log(`🔌 [Plugins] AIService initialized with OpenRouter provider`);
 
-    // Startup maintenance and scanner are now triggered manually via frontend
-    console.log(`📦 [Maintenance] Automatic startup maintenance disabled (trigger via UI)`);
+	// Startup maintenance and scanner are now triggered manually via frontend
+	console.log(
+		`📦 [Maintenance] Automatic startup maintenance disabled (trigger via UI)`,
+	);
 
-    const authService = createAuthService(database.db, config.jwtSecret, config.adminUser, config.adminPass);
-    await authService.init();
-    const authMiddleware = createAuthMiddleware(authService);
+	const authService = createAuthService(
+		database.db,
+		config.jwtSecret,
+		config.adminUser,
+		config.adminPass,
+	);
+	await authService.init();
+	const authMiddleware = createAuthMiddleware(authService);
 
-    // Production safety: surface insecure defaults loudly at startup so they
-    // aren't silently shipped when the instance is exposed publicly.
-    try {
-        const warnings: string[] = [];
-        const adminUser = config.adminUser || "admin";
-        if (await authService.isDefaultPassword(adminUser)) {
-            warnings.push(`Admin account '${adminUser}' is still using a default/weak password. Change it now (or set TUNECAMP_ADMIN_PASS).`);
-        }
-        if (!config.corsOrigins || config.corsOrigins.length === 0) {
-            warnings.push(`CORS is open to all origins. Set TUNECAMP_CORS_ORIGINS to your domain(s) before exposing this instance publicly.`);
-        }
-        if (!process.env.TUNECAMP_JWT_SECRET) {
-            warnings.push(`No TUNECAMP_JWT_SECRET set — using an auto-generated secret file. Set an explicit secret for stable sessions across deployments.`);
-        }
-        if (warnings.length > 0) {
-            console.warn("\n⚠️  SECURITY: insecure configuration detected — review before going public:");
-            for (const w of warnings) console.warn(`   • ${w}`);
-            console.warn("");
-        }
-    } catch (e) {
-        console.warn("⚠️  Could not run startup security checks:", e);
-    }
-    
-    const { initMetadataService } = await import("./modules/catalog/metadata.service.js");
-    const metadataService = await initMetadataService(database);
+	// Production safety: surface insecure defaults loudly at startup so they
+	// aren't silently shipped when the instance is exposed publicly.
+	try {
+		const warnings: string[] = [];
+		const adminUser = config.adminUser || "admin";
+		if (await authService.isDefaultPassword(adminUser)) {
+			warnings.push(
+				`Admin account '${adminUser}' is still using a default/weak password. Change it now (or set TUNECAMP_ADMIN_PASS).`,
+			);
+		}
+		if (!config.corsOrigins || config.corsOrigins.length === 0) {
+			warnings.push(
+				`CORS is open to all origins. Set TUNECAMP_CORS_ORIGINS to your domain(s) before exposing this instance publicly.`,
+			);
+		}
+		if (!process.env.TUNECAMP_JWT_SECRET) {
+			warnings.push(
+				`No TUNECAMP_JWT_SECRET set — using an auto-generated secret file. Set an explicit secret for stable sessions across deployments.`,
+			);
+		}
+		if (warnings.length > 0) {
+			console.warn(
+				"\n⚠️  SECURITY: insecure configuration detected — review before going public:",
+			);
+			for (const w of warnings) console.warn(`   • ${w}`);
+			console.warn("");
+		}
+	} catch (e) {
+		console.warn("⚠️  Could not run startup security checks:", e);
+	}
 
-    const { initStreamingService } = await import("./modules/streaming/streaming.service.js");
-    const streamingService = await initStreamingService(database);
+	const { initMetadataService } = await import(
+		"./modules/catalog/metadata.service.js"
+	);
+	const metadataService = await initMetadataService(database);
 
-    const { initPlaylistService } = await import("./modules/catalog/playlist.service.js");
-    const playlistService = await initPlaylistService(database);
+	const { initStreamingService } = await import(
+		"./modules/streaming/streaming.service.js"
+	);
+	const streamingService = await initStreamingService(database);
 
-    const scrobbleService = getScrobbleService();
-    scrobbleService.register(new LastFmProvider(database));
-    scrobbleService.register(new ListenBrainzProvider(database));
-    const { syncRegistryWithDatabase } = await import("./core/provider.js");
-    await syncRegistryWithDatabase(scrobbleService.getRegistry(), database);
+	const { initPlaylistService } = await import(
+		"./modules/catalog/playlist.service.js"
+	);
+	const playlistService = await initPlaylistService(database);
 
-    const waveformService = new WaveformService(path.dirname(config.dbPath));
+	const scrobbleService = getScrobbleService();
+	scrobbleService.register(new LastFmProvider(database));
+	scrobbleService.register(new ListenBrainzProvider(database));
+	const { syncRegistryWithDatabase } = await import("./core/provider.js");
+	await syncRegistryWithDatabase(scrobbleService.getRegistry(), database);
 
-    // Federated (HTTP/NodeInfo gossip) instance discovery. Bootstraps from
-    // ActivityPub-followed TuneCamp site actors plus TUNECAMP_FEDERATION_SEEDS —
-    // no central relay.
-    const federatedDiscoveryService = createFederatedDiscoveryService(database.db, {
-        seeds: config.federationSeeds,
-        getOwnOrigin: () => {
-            const u = database.getSetting("publicUrl") || config.publicUrl;
-            try { return u ? new URL(u).origin : undefined; } catch { return undefined; }
-        },
-        getApSeedOrigins: () =>
-            database.getFollowedActors()
-                .filter((a: any) =>
-                    a.type === "Service" ||
-                    a.username === "site" ||
-                    a.username === getSiteHandle(database)
-                )
-                .map((a: any) => { try { return new URL(a.uri).origin; } catch { return null; } })
-                .filter((o: any): o is string => !!o),
-    });
+	const waveformService = new WaveformService(path.dirname(config.dbPath));
 
-    // Shared stale-while-revalidate cache for remote peer catalogs (HTTP federation).
-    const catalogCache = createCatalogCacheService(database.db);
+	// Federated (HTTP/NodeInfo gossip) instance discovery. Bootstraps from
+	// ActivityPub-followed TuneCamp site actors plus TUNECAMP_FEDERATION_SEEDS —
+	// no central relay.
+	const federatedDiscoveryService = createFederatedDiscoveryService(
+		database.db,
+		{
+			seeds: config.federationSeeds,
+			getOwnOrigin: () => {
+				const u = database.getSetting("publicUrl") || config.publicUrl;
+				try {
+					return u ? new URL(u).origin : undefined;
+				} catch {
+					return undefined;
+				}
+			},
+			getApSeedOrigins: () =>
+				database
+					.getFollowedActors()
+					.filter(
+						(a: any) =>
+							a.type === "Service" ||
+							a.username === "site" ||
+							a.username === getSiteHandle(database),
+					)
+					.map((a: any) => {
+						try {
+							return new URL(a.uri).origin;
+						} catch {
+							return null;
+						}
+					})
+					.filter((o: any): o is string => !!o),
+		},
+	);
 
-    let gdriveService: GoogleDriveService | undefined;
+	// Shared stale-while-revalidate cache for remote peer catalogs (HTTP federation).
+	const catalogCache = createCatalogCacheService(database.db);
 
-    const jobHandles: JobHandle[] = [];
+	let gdriveService: GoogleDriveService | undefined;
 
-    // Federated discovery crawl: shortly after boot, then periodically.
-    jobHandles.push(scheduleRecurring(
-        () => taskManager.run('federated-discovery', () => federatedDiscoveryService.crawl()),
-        { initialDelayMs: 45000, intervalMs: 6 * 60 * 60 * 1000 },
-    ));
+	const jobHandles: JobHandle[] = [];
 
-    // Scheduled off-peak library scan
-    jobHandles.push(scheduleRecurring(() => {
-        try {
-            const hourSetting = (database.getSetting("scheduledScanHour") || "").trim();
-            if (hourSetting === "") return;
-            if (new Date().getHours() !== Number(hourSetting)) return;
+	// Federated discovery crawl: shortly after boot, then periodically.
+	jobHandles.push(
+		scheduleRecurring(
+			() =>
+				taskManager.run("federated-discovery", () =>
+					federatedDiscoveryService.crawl(),
+				),
+			{ initialDelayMs: 45000, intervalMs: 6 * 60 * 60 * 1000 },
+		),
+	);
 
-            const lastRun = database.getSetting("scheduledScanLastRun");
-            if (lastRun && Date.now() - new Date(lastRun).getTime() < 20 * 60 * 60 * 1000) return;
+	// Scheduled off-peak library scan
+	jobHandles.push(
+		scheduleRecurring(
+			() => {
+				try {
+					const hourSetting = (
+						database.getSetting("scheduledScanHour") || ""
+					).trim();
+					if (hourSetting === "") return;
+					if (new Date().getHours() !== Number(hourSetting)) return;
 
-            const started = taskManager.run('library-rescan', async () => {
-                console.log(`🌙 [Scheduler] Starting scheduled library scan (hour ${hourSetting})`);
-                const result = await scanner.scanDirectory(config.musicDir, (processed, total) => {
-                    taskManager.updateProgress('library-rescan', processed, total, `Scheduled scan: ${processed}/${total} files`);
-                });
-                console.log(`🌙 [Scheduler] Scheduled scan complete. Processed ${result.successful.length} files.`);
-                return { processed: result.successful.length, failed: result.failed.length };
-            });
-            if (started) database.setSetting("scheduledScanLastRun", new Date().toISOString());
-        } catch (e) {
-            console.error("❌ [Scheduler] Scheduled scan check failed:", e);
-        }
-    }, { intervalMs: 15 * 60 * 1000 }));
+					const lastRun = database.getSetting("scheduledScanLastRun");
+					if (
+						lastRun &&
+						Date.now() - new Date(lastRun).getTime() < 20 * 60 * 60 * 1000
+					)
+						return;
 
-    // Periodically refresh followed RSS/Atom sources
-    const rssService = createRssService(database);
-    jobHandles.push(scheduleRecurring(
-        () => taskManager.run('rss-refresh', () => rssService.refreshAll()),
-        { initialDelayMs: 90 * 1000, intervalMs: 30 * 60 * 1000 },
-    ));
+					const started = taskManager.run("library-rescan", async () => {
+						console.log(
+							`🌙 [Scheduler] Starting scheduled library scan (hour ${hourSetting})`,
+						);
+						const result = await scanner.scanDirectory(
+							config.musicDir,
+							(processed, total) => {
+								taskManager.updateProgress(
+									"library-rescan",
+									processed,
+									total,
+									`Scheduled scan: ${processed}/${total} files`,
+								);
+							},
+						);
+						console.log(
+							`🌙 [Scheduler] Scheduled scan complete. Processed ${result.successful.length} files.`,
+						);
+						return {
+							processed: result.successful.length,
+							failed: result.failed.length,
+						};
+					});
+					if (started)
+						database.setSetting(
+							"scheduledScanLastRun",
+							new Date().toISOString(),
+						);
+				} catch (e) {
+					console.error("❌ [Scheduler] Scheduled scan check failed:", e);
+				}
+			},
+			{ intervalMs: 15 * 60 * 1000 },
+		),
+	);
 
-    const federation = createFedify(database, config);
+	// Periodically refresh followed RSS/Atom sources
+	const rssService = createRssService(database);
+	jobHandles.push(
+		scheduleRecurring(
+			() => taskManager.run("rss-refresh", () => rssService.refreshAll()),
+			{ initialDelayMs: 90 * 1000, intervalMs: 30 * 60 * 1000 },
+		),
+	);
 
-    const apService = createActivityPubService(database as any, config, federation);
-    await apService.generateKeysForAllArtists();
-    apService.startDeliveryQueue();
+	const federation = createFedify(database, config);
 
-    const publishingService = createPublishingService(database, federatedDiscoveryService, apService, config, storage);
+	const apService = createActivityPubService(
+		database as any,
+		config,
+		federation,
+	);
+	await apService.generateKeysForAllArtists();
+	apService.startDeliveryQueue();
 
-    const lifecycleService = new LifecycleService(database, publishingService, apService);
+	const publishingService = createPublishingService(
+		database,
+		federatedDiscoveryService,
+		apService,
+		config,
+		storage,
+	);
 
-    const catalogService = new CatalogService(database, publishingService, storage, config.musicDir, openRouterService, metadataService, apService);
-    const discoveryService = new DiscoveryService(database, openRouterService, metadataService);
-    const digService = new DigService(database);
+	const lifecycleService = new LifecycleService(
+		database,
+		publishingService,
+		apService,
+	);
 
-    if (config.gdriveClientId && config.gdriveClientSecret) {
-        const dbPublicUrl = database.getSetting("publicUrl");
-        const publicUrl = (dbPublicUrl || config.publicUrl || `http://localhost:${config.port}`).trim().replace(/\/$/, "");
-        const redirectUri = `${publicUrl}/api/storage/gdrive/callback`;
-        gdriveService = new GoogleDriveService(database, {
-            clientId: config.gdriveClientId,
-            clientSecret: config.gdriveClientSecret,
-            redirectUri
-        });
-        const adminRow = database.db.prepare("SELECT id FROM admin ORDER BY id ASC LIMIT 1").get() as any;
-        initStorageService(gdriveService, adminRow?.id ?? 1);
-    }
+	const catalogService = new CatalogService(
+		database,
+		publishingService,
+		storage,
+		config.musicDir,
+		openRouterService,
+		metadataService,
+		apService,
+	);
+	const discoveryService = new DiscoveryService(
+		database,
+		openRouterService,
+		metadataService,
+	);
+	const digService = new DigService(database);
 
-    const autotaggerService = new AutoTaggerService(database, catalogService, openRouterService);
-    const maintenanceRepo = new MaintenanceRepository(database.db);
-    const maintenanceService = new MaintenanceService(maintenanceRepo, database, catalogService, openRouterService, autotaggerService, config.musicDir);
-    
-    const mediaEngine = new MediaEngine(database, config.musicDir, gdriveService, streamingService, {
-        transcodeCacheDir: config.transcodeCacheDir,
-        transcodeCacheMaxBytes: config.transcodeCacheMaxBytes,
-        xaccelRedirect: config.xaccelRedirect,
-        xaccelMediaPrefix: config.xaccelMediaPrefix,
-        xaccelCachePrefix: config.xaccelCachePrefix,
-    });
-    const subsonicService = new SubsonicService(database);
+	if (config.gdriveClientId && config.gdriveClientSecret) {
+		const dbPublicUrl = database.getSetting("publicUrl");
+		const publicUrl = (
+			dbPublicUrl ||
+			config.publicUrl ||
+			`http://localhost:${config.port}`
+		)
+			.trim()
+			.replace(/\/$/, "");
+		const redirectUri = `${publicUrl}/api/storage/gdrive/callback`;
+		gdriveService = new GoogleDriveService(database, {
+			clientId: config.gdriveClientId,
+			clientSecret: config.gdriveClientSecret,
+			redirectUri,
+		});
+		const adminRow = database.db
+			.prepare("SELECT id FROM admin ORDER BY id ASC LIMIT 1")
+			.get() as any;
+		initStorageService(gdriveService, adminRow?.id ?? 1);
+	}
 
-    const scanner = new Scanner(database, storage, autotaggerService, catalogService);
-    const scannerService = await initScannerService(database, scanner);
+	const autotaggerService = new AutoTaggerService(
+		database,
+		catalogService,
+		openRouterService,
+	);
+	const maintenanceRepo = new MaintenanceRepository(database.db);
+	const maintenanceService = new MaintenanceService(
+		maintenanceRepo,
+		database,
+		catalogService,
+		openRouterService,
+		autotaggerService,
+		config.musicDir,
+	);
 
-    const downloadService = initDownloadService(database);
-    
-    // Dynamically register optional P2P providers
-    const { cleanups: pluginCleanups, soulseekService, torrentService, ytdlpService } = await registerBuiltInDownloadProviders(downloadService, {
-        database,
-        scanner,
-        config,
-        defaultOwnerId: 1,
-        publishingService,
-        catalogService,
-        streamingService
-    });
+	const mediaEngine = new MediaEngine(
+		database,
+		config.musicDir,
+		gdriveService,
+		streamingService,
+		{
+			transcodeCacheDir: config.transcodeCacheDir,
+			transcodeCacheMaxBytes: config.transcodeCacheMaxBytes,
+			xaccelRedirect: config.xaccelRedirect,
+			xaccelMediaPrefix: config.xaccelMediaPrefix,
+			xaccelCachePrefix: config.xaccelCachePrefix,
+		},
+	);
+	const subsonicService = new SubsonicService(database);
 
-    const boardService = new BoardService(database);
-    const liveService = new LiveService();
-    const radioService = new RadioService(database, config.musicDir);
-    const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
-    const peerService = createPeerService(database, apService);
-    const chatService = createChatService(database);
-    const samplesRepository = new SampleRepository(database.db);
-    const samplePacksRepository = new SamplePackRepository(database.db);
-    const collabRepository = new CollabRepository(database.db);
+	const scanner = new Scanner(
+		database,
+		storage,
+		autotaggerService,
+		catalogService,
+	);
+	const scannerService = await initScannerService(database, scanner);
 
-    const container: ServiceContainer = {
-        database,
-        identity: database.identity,
-        library: database.library,
-        social: database.social,
-        integration: database.integration,
-        config,
-        musicDir: config.musicDir,
-        authService,
-        authMiddleware,
-        scanner,
-        scannerService,
-        catalogService,
-        discoveryService,
-        digService,
-        metadataService,
-        maintenanceService,
-        ytdlpService,
-        mediaEngine,
-        waveformService,
-        streamingService,
-        subsonicService,
-        scrobbleService,
-        playlistService,
-        publishingService,
-        apService,
-        federatedDiscoveryService,
-        catalogCache,
-        lifecycleService,
-        telegramBotService,
-        boardService,
-        liveService,
-        radioService,
-        peerService,
-        chatService,
-        samplesRepository,
-        samplePacksRepository,
-        collabRepository,
-        soulseekService,
-        torrentService,
-        gdriveService,
-        openRouterService,
-        storage
-    };
+	const downloadService = initDownloadService(database);
 
-    return {
-        container,
-        database,
-        federation,
-        publishingService,
-        peerService,
-        telegramBotService,
-        radioService,
-        pluginCleanups,
-        jobHandles,
-        gdriveService
-    };
+	// Dynamically register optional P2P providers
+	const {
+		cleanups: pluginCleanups,
+		torrentService,
+		ytdlpService,
+	} = await registerBuiltInDownloadProviders(downloadService, {
+		database,
+		scanner,
+		config,
+		defaultOwnerId: 1,
+		publishingService,
+		catalogService,
+		streamingService,
+	});
+
+	const boardService = new BoardService(database);
+	const liveService = new LiveService();
+	const radioService = new RadioService(database, config.musicDir);
+	const telegramBotService = new TelegramBotService(
+		database,
+		scanner,
+		config,
+		openRouterService,
+	);
+	const peerService = createPeerService(database, apService);
+	const chatService = createChatService(database);
+	const samplesRepository = new SampleRepository(database.db);
+	const samplePacksRepository = new SamplePackRepository(database.db);
+	const collabRepository = new CollabRepository(database.db);
+
+	const container: ServiceContainer = {
+		database,
+		identity: database.identity,
+		library: database.library,
+		social: database.social,
+		integration: database.integration,
+		config,
+		musicDir: config.musicDir,
+		authService,
+		authMiddleware,
+		scanner,
+		scannerService,
+		catalogService,
+		discoveryService,
+		digService,
+		metadataService,
+		maintenanceService,
+		ytdlpService,
+		mediaEngine,
+		waveformService,
+		streamingService,
+		subsonicService,
+		scrobbleService,
+		playlistService,
+		publishingService,
+		apService,
+		federatedDiscoveryService,
+		catalogCache,
+		lifecycleService,
+		telegramBotService,
+		boardService,
+		liveService,
+		radioService,
+		peerService,
+		chatService,
+		samplesRepository,
+		samplePacksRepository,
+		collabRepository,
+		torrentService,
+		gdriveService,
+		openRouterService,
+		storage,
+	};
+
+	return {
+		container,
+		database,
+		federation,
+		publishingService,
+		peerService,
+		telegramBotService,
+		radioService,
+		pluginCleanups,
+		jobHandles,
+		gdriveService,
+	};
 }

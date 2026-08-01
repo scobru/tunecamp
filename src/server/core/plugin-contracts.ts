@@ -1,40 +1,27 @@
 /**
- * Structural contracts for optional "grey" provider plugins (soulseek, torrent,
+ * Structural contracts for optional "grey" provider plugins (torrent,
  * ytdlp). Defined here — not imported from the plugin folders — so container.ts
  * has no compile-time dependency on plugins/*; deleting a plugin folder for a
  * white-label build never breaks the container's types.
  */
 import type { Track } from "./database.types.js";
 
-export interface SoulseekResultContract {
-    id: string;
-    user: string;
-    file: string;
-    size: number;
-    slots: boolean;
-    bitrate?: number;
-    speed?: number;
-}
-
-export interface SoulseekServiceContract {
-    connect(user?: string, pass?: string): Promise<boolean>;
-    search(query: string): Promise<SoulseekResultContract[]>;
-    download(result: SoulseekResultContract): Promise<string>;
-    disconnect(): void;
-    checkStatus(): Promise<{ connected: boolean; username: string | null }>;
-}
-
 export interface TorrentServiceContract {
-    shutdown(): void;
-    addTorrent(magnetUri: string, ownerId: number | null): Promise<string>;
-    removeTorrent(infoHash: string): Promise<void>;
-    seedFiles(filePaths: string[], name: string, ownerId: number | null, artist?: string): Promise<string>;
-    getTorrentsStatus(includeFiles?: boolean): any[];
-    purgeStuck(timeoutMs?: number): Promise<string[]>;
-    syncTorrentFiles(infoHash: string): Promise<{ message: string }>;
+	shutdown(): void;
+	addTorrent(magnetUri: string, ownerId: number | null): Promise<string>;
+	removeTorrent(infoHash: string): Promise<void>;
+	seedFiles(
+		filePaths: string[],
+		name: string,
+		ownerId: number | null,
+		artist?: string,
+	): Promise<string>;
+	getTorrentsStatus(includeFiles?: boolean): any[];
+	purgeStuck(timeoutMs?: number): Promise<string[]>;
+	syncTorrentFiles(infoHash: string): Promise<{ message: string }>;
 }
 
 export interface YtdlpServiceContract {
-    localizeTrack(trackId: number): Promise<Track>;
-    setCookiesPath(path: string): void;
+	localizeTrack(trackId: number): Promise<Track>;
+	setCookiesPath(path: string): void;
 }

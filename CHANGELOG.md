@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.4.1] - 2026-08-01
+
+### Added
+
+- Integrated shared `@tunecamp/chat` package ([github:scobru/tunecamp-chat](https://github.com/scobru/tunecamp-chat)) in `webapp`.
+- Display of instance domain labels next to peer nicknames in Chat UI (e.g. `admin (sudorecords)`).
+
 ## [4.4.0] - 2026-07-31
 
 ### Added

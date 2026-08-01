@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { usePeerChat } from "../hooks/usePeerChat";
+import { usePeerChat, type ChatMessage, type PeerInfo } from "../hooks/usePeerChat";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useSiteSettingsStore, truthy } from "../stores/useSiteSettingsStore";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -39,7 +39,7 @@ export default function Chat() {
 	}, [fetchFlags]);
 
 	const isChatEnabled = truthy(siteSettings?.peerChatEnabled);
-	const { messages, status, username, isAdmin, peers, unreadCounts, clearUnread, sendMessage, sendAdminAction } = usePeerChat(
+	const { messages, status, username, isAdmin, peers, unreadCounts, clearUnread, sendMessage, sendAdminAction, formatUser } = usePeerChat(
 		isChatEnabled,
 		to,
 	);
@@ -186,7 +186,7 @@ export default function Chat() {
 								</p>
 							</div>
 						)}
-						{messages.map((m, i) => {
+						{messages.map((m: ChatMessage, i: number) => {
 							if (m.system) {
 								return (
 									<div key={`${m.ts}-${i}`} className="flex flex-col items-center my-1.5">
@@ -199,7 +199,7 @@ export default function Chat() {
 								);
 							}
 							const isSelf = m.self;
-							const label = isSelf ? "You" : m.from;
+							const label = isSelf ? "You" : formatUser(m.from, m.instance);
 							const align = isSelf ? "items-end" : "items-start";
 							const bubble = isSelf
 								? "bg-primary text-primary-content"
@@ -325,7 +325,7 @@ export default function Chat() {
 						{peers.length === 0 && (
 							<p className="text-xs opacity-40 px-1 pt-2">No other peers connected.</p>
 						)}
-						{peers.map((peer) => {
+						{peers.map((peer: PeerInfo) => {
 							const isSelf = peer.username === username;
 							const unread = unreadCounts[peer.username] || 0;
 							return (
@@ -354,7 +354,7 @@ export default function Chat() {
 											aria-label="Online"
 										/>
 										<span className="truncate text-left font-medium">
-											{peer.username}
+											{formatUser(peer.username, peer.instance)}
 										</span>
 										{isSelf && <span className="opacity-40 text-[10px]">you</span>}
 										{peer.pubkey && (

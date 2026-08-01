@@ -48,14 +48,14 @@ export class ChatService {
 		ws: ChatSocket,
 		isAdmin = false,
 	): string {
-		// Disambiguate duplicate usernames by appending a short session hash tag
+		// Disambiguate duplicate usernames by appending an incremental suffix
 		const existingWithSameName = Array.from(this.clients.values()).filter(
 			(c) => c.rawUsername === rawUsername,
 		);
-		const shortId = clientId.slice(0, 4);
+		const collisionCount = existingWithSameName.length;
 		const username =
-			existingWithSameName.length > 0
-				? `${rawUsername} #${shortId}`
+			collisionCount > 0
+				? `${rawUsername} #${collisionCount + 1}`
 				: rawUsername;
 
 		this.clients.set(clientId, {
@@ -95,7 +95,9 @@ export class ChatService {
 			if (!row) return false;
 			if (Date.now() > row.expires_at) {
 				this.database.db
-					.prepare("DELETE FROM peer_chat_mutes WHERE LOWER(username) = LOWER(?)")
+					.prepare(
+						"DELETE FROM peer_chat_mutes WHERE LOWER(username) = LOWER(?)",
+					)
 					.run(username);
 				return false;
 			}
@@ -116,12 +118,16 @@ export class ChatService {
 							ts: Date.now(),
 						}),
 					);
-				} catch {}
+				} catch (err) { console.error("[ChatService] error:", err); }
 			}
 		}
 	}
 
-	kickUser(adminUsername: string, targetUsername: string, reason?: string): boolean {
+	kickUser(
+		adminUsername: string,
+		targetUsername: string,
+		reason?: string,
+	): boolean {
 		let kicked = false;
 		const targetLower = targetUsername.toLowerCase().trim();
 
@@ -138,7 +144,7 @@ export class ChatService {
 							reason: reason || "Kicked by admin",
 						}),
 					);
-				} catch {}
+				} catch (err) { console.error("[ChatService] error:", err); }
 				this.unregister(clientId);
 				kicked = true;
 			}
@@ -154,19 +160,32 @@ export class ChatService {
 		return kicked;
 	}
 
-	banUser(adminUsername: string, targetUsername: string, reason?: string): boolean {
+	banUser(
+		adminUsername: string,
+		targetUsername: string,
+		reason?: string,
+	): boolean {
 		const targetClean = targetUsername.trim();
 		try {
 			this.database.db
 				.prepare(
 					"INSERT OR REPLACE INTO peer_chat_bans (username, banned_by, reason, created_at) VALUES (?, ?, ?, ?)",
 				)
-				.run(targetClean.toLowerCase(), adminUsername, reason || null, Date.now());
+				.run(
+					targetClean.toLowerCase(),
+					adminUsername,
+					reason || null,
+					Date.now(),
+				);
 		} catch (err) {
 			console.error("[ChatService] Failed to record ban:", err);
 		}
 
-		this.kickUser(adminUsername, targetClean, reason ? `Banned: ${reason}` : "Banned by admin");
+		this.kickUser(
+			adminUsername,
+			targetClean,
+			reason ? `Banned: ${reason}` : "Banned by admin",
+		);
 		this.broadcastSystemMessage(
 			`[System] ${targetClean} was banned by ${adminUsername}${
 				reason ? ` (${reason})` : ""
@@ -184,7 +203,9 @@ export class ChatService {
 		} catch (err) {
 			console.error("[ChatService] Failed to remove ban:", err);
 		}
-		this.broadcastSystemMessage(`[System] ${targetClean} was unbanned by ${adminUsername}`);
+		this.broadcastSystemMessage(
+			`[System] ${targetClean} was unbanned by ${adminUsername}`,
+		);
 		return true;
 	}
 
@@ -201,7 +222,13 @@ export class ChatService {
 				.prepare(
 					"INSERT OR REPLACE INTO peer_chat_mutes (username, muted_by, expires_at, reason, created_at) VALUES (?, ?, ?, ?, ?)",
 				)
-				.run(targetClean.toLowerCase(), adminUsername, expiresAt, reason || null, Date.now());
+				.run(
+					targetClean.toLowerCase(),
+					adminUsername,
+					expiresAt,
+					reason || null,
+					Date.now(),
+				);
 		} catch (err) {
 			console.error("[ChatService] Failed to record mute:", err);
 		}
@@ -223,7 +250,9 @@ export class ChatService {
 		} catch (err) {
 			console.error("[ChatService] Failed to remove mute:", err);
 		}
-		this.broadcastSystemMessage(`[System] ${targetClean} was unmuted by ${adminUsername}`);
+		this.broadcastSystemMessage(
+			`[System] ${targetClean} was unmuted by ${adminUsername}`,
+		);
 		return true;
 	}
 
@@ -237,12 +266,16 @@ export class ChatService {
 		for (const client of this.clients.values()) {
 			if (client.ws.readyState === OPEN) {
 				try {
-					client.ws.send(JSON.stringify({ type: "clear_history", ts: Date.now() }));
-				} catch {}
+					client.ws.send(
+						JSON.stringify({ type: "clear_history", ts: Date.now() }),
+					);
+				} catch (err) { console.error("[ChatService] error:", err); }
 			}
 		}
 
-		this.broadcastSystemMessage(`[System] Chat history was cleared by ${adminUsername}`);
+		this.broadcastSystemMessage(
+			`[System] Chat history was cleared by ${adminUsername}`,
+		);
 	}
 
 	// Relay a chat message. An empty toUsername broadcasts to every other live
@@ -255,7 +288,10 @@ export class ChatService {
 		if (!clean.trim()) return false;
 		const isLobby = !toUsername;
 
-		if (isLobby && (this.isMuted(from.username) || this.isMuted(from.rawUsername))) {
+		if (
+			isLobby &&
+			(this.isMuted(from.username) || this.isMuted(from.rawUsername))
+		) {
 			try {
 				from.ws.send(
 					JSON.stringify({
@@ -264,7 +300,7 @@ export class ChatService {
 						ts: Date.now(),
 					}),
 				);
-			} catch {}
+			} catch (err) { console.error("[ChatService] error:", err); }
 			return false;
 		}
 
