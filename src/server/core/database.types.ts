@@ -90,7 +90,7 @@ export interface Album {
 	visibility: "public" | "private" | "unlisted";
 	is_release: boolean;
 	published_at: string | null;
-	published_to_gundb: boolean;
+	published_to_zen: boolean;
 	published_to_ap: boolean;
 	license?: string | null;
 	status:
@@ -616,7 +616,7 @@ export interface LibraryManager {
 	updateAlbum(id: number, album: Partial<Album>): void;
 	updateAlbumFederationSettings(
 		id: number,
-		publishedToGunDB: boolean,
+		publishedToZen: boolean,
 		publishedToAP: boolean,
 	): void;
 	updateAlbumArtist(id: number, artistId: number): void;

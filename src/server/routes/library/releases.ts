@@ -255,7 +255,7 @@ export function createReleaseRouter(container: ServiceContainer): Router {
                     cover_path: body.coverPath || null,
                     status: 'draft',
                     published_at: null,
-                    published_to_gundb: false,
+                    published_to_zen: false,
                     published_to_ap: false,
                     is_public: false,
                     is_release: true,

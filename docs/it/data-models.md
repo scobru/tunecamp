@@ -14,8 +14,8 @@ TuneCamp utilizza **SQLite** come motore di database relazionale per la gestione
 ### Utenti e Social
 
 - **`admin`**: Tabella contenente tutti gli account locali (tutti i ruoli, non solo l'amministratore: il nome ha ragioni storiche). Include `role`, `password_hash`, `artist_id`, quote di archiviazione.
-- **`zen_users`**: Cache del profilo identità FID/Zen (chiave pubblica, alias, avatar), sincronizzata con `admin.zen_pub` per il login SSO cross-istanza. In precedenza chiamata `gun_users`.
-- **`gun_cache`**: Tabella ereditata dal livello di sincronizzazione Gun.js rimosso — conservata per compatibilità di schema ma non più scritta. Vedi [FEDERATION.md](./FEDERATION.md) per la cronologia dettagliata.
+- **`zen_users`**: Cache del profilo identità FID/Zen (chiave pubblica, alias, avatar), sincronizzata con `admin.zen_pub` per il login SSO cross-istanza. In precedenza chiamata `zen_users`.
+- **`zen_cache`**: Tabella ereditata dal livello di sincronizzazione ZEN rimosso — conservata per compatibilità di schema ma non più scritta. Vedi [FEDERATION.md](./FEDERATION.md) per la cronologia dettagliata.
 - **`followers`**: Relazioni di tipo "follow" tra utenti locali e remoti.
 - **`posts`** / **`ap_notes`**: Messaggi e attività nel Fediverso.
 - **`starred_items`** / **`item_ratings`**: Preferiti e valutazioni degli utenti.

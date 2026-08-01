@@ -24,8 +24,8 @@
 - `sync-tags` (rewrites ID3 tags from DB) is kept as a manual on-demand action only.
 - Dedup by `file_path` via `mergeTracks` is fine; filesystem reorganization is not.
 
-### ZEN / Gun.js
-- **ZEN DB / Gun.js has been fully removed** (PR #370, 2026-06-15). Do not re-import `zen`, `zendb.service`, `zen.worker`, or `gun`.
+### ZEN / ZEN
+- **ZEN DB / ZEN has been fully removed** (PR #370, 2026-06-15). Do not re-import `zen`, `zendb.service`, `zen.worker`, or `gun`.
 - Instance discovery now uses **federated HTTP** (NodeInfo `/.well-known/nodeinfo`, `/peers` endpoint, gossip crawler).
 - **Zen SEA & FID SSO** signatures (`/api/auth/zen/*`) remain active for decentralized identity passports and cross-instance linking.
 

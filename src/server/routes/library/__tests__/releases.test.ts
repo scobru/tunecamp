@@ -41,7 +41,7 @@ const mockScanner = {
 const mockPublishingService = {
     syncRelease: jest.fn().mockImplementation(async () => {}),
     unpublishReleaseFromAP: jest.fn().mockImplementation(async () => {}),
-    unpublishReleaseFromGunDB: jest.fn().mockImplementation(async () => {}),
+    unpublishReleaseFromZen: jest.fn().mockImplementation(async () => {}),
 } as unknown as PublishingService;
 
 const mockAuthService = {
@@ -91,7 +91,7 @@ describe('Release Routes - Creation and Publishing', () => {
             title: 'Test Album',
             visibility: 'public',
             published_to_ap: true,
-            published_to_gundb: true
+            published_to_zen: true
         });
 
         // Act

@@ -4,7 +4,7 @@ import type { Database } from "better-sqlite3";
 import crypto from "crypto";
 import { UserRole, VisibilityGuardian } from "../../common/visibility.js";
 
-// Polyfill WebCrypto for Gun.SEA in Node.js ESM
+// Polyfill WebCrypto for ZEN.SEA in Node.js ESM
 if (typeof global !== "undefined" && !global.crypto) {
 	// Fallback to standard Node crypto if available (Node 18+)
 	global.crypto = crypto.webcrypto || crypto;
@@ -272,10 +272,10 @@ export function createAuthService(
                 )
             `);
 		} else {
-			// Legacy Gun.js naming: rename in place so existing FID identity links survive.
+			// Legacy ZEN naming: rename in place so existing FID identity links survive.
 			const legacyGunColumns: [string, string][] = [
-				["gun_pub", "zen_pub"],
-				["gun_priv", "zen_priv"],
+				["zen_pub", "zen_pub"],
+				["zen_priv", "zen_priv"],
 				["gun_auth_mode", "zen_auth_mode"],
 			];
 			const preRenameColumns = db

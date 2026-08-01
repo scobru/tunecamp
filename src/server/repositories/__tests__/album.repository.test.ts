@@ -27,7 +27,7 @@ function albumInput(overrides: Record<string, any> = {}) {
         visibility: 'private',
         is_release: false,
         published_at: null,
-        published_to_gundb: false,
+        published_to_zen: false,
         published_to_ap: false,
         use_nft: false,
         ...overrides

@@ -103,7 +103,7 @@ export function createDatabase(dbPath: string): DatabaseService {
 		}
 	})();
 
-	// Legacy Gun.js naming: rename in place so existing FID identity data survives
+	// Legacy ZEN naming: rename in place so existing FID identity data survives
 	// (a plain CREATE TABLE IF NOT EXISTS zen_users below would leave it as an empty table).
 	{
 		const tableNames = new Set(
@@ -112,9 +112,22 @@ export function createDatabase(dbPath: string): DatabaseService {
 				.all()
 				.map((row: any) => row.name),
 		);
-		if (tableNames.has("gun_users") && !tableNames.has("zen_users")) {
-			console.log("📦 [Database] Renaming gun_users table to zen_users...");
-			db.exec("ALTER TABLE gun_users RENAME TO zen_users");
+		if (tableNames.has("zen_users") && !tableNames.has("zen_users")) {
+			console.log("📦 [Database] Renaming zen_users table to zen_users...");
+			db.exec("ALTER TABLE zen_users RENAME TO zen_users");
+		}
+
+		if (tableNames.has("albums")) {
+			const albumColumns = new Set(
+				db
+					.prepare("PRAGMA table_info(albums)")
+					.all()
+					.map((col: any) => col.name),
+			);
+			if (albumColumns.has("published_to_zen") && !albumColumns.has("published_to_zen")) {
+				console.log("📦 [Database] Renaming albums.published_to_zen to published_to_zen...");
+				db.exec("ALTER TABLE albums RENAME COLUMN published_to_zen TO published_to_zen");
+			}
 		}
 	}
 
@@ -201,7 +214,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             visibility TEXT DEFAULT 'private',
             is_release INTEGER DEFAULT 0,
             published_at TEXT,
-            published_to_gundb INTEGER DEFAULT 0,
+            published_to_zen INTEGER DEFAULT 0,
             published_to_ap INTEGER DEFAULT 0,
             license TEXT,
             status TEXT DEFAULT 'draft',
@@ -813,12 +826,12 @@ export function createDatabase(dbPath: string): DatabaseService {
                 INSERT OR IGNORE INTO albums (
                     id, title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, 
                     price, price_usdc, price_usdt, currency, external_links, external_id, visibility, published_at, 
-                    published_to_gundb, published_to_ap, license, status, album_artist, use_nft, created_at
+                    published_to_zen, published_to_ap, license, status, album_artist, use_nft, created_at
                 )
                 SELECT 
                     id, title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, 
                     price, price_usdc, price_usdt, currency, external_links, external_id, visibility, published_at, 
-                    published_to_gundb, published_to_ap, license, 'released', album_artist, use_nft, created_at
+                    published_to_zen, published_to_ap, license, 'released', album_artist, use_nft, created_at
                 FROM releases;
             `);
 

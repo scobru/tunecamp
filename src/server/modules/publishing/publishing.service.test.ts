@@ -97,7 +97,7 @@ const albumId = db.createAlbum({
                 artist_id: 1,
                 date: '2023-01-01',
                 visibility: 'public',
-                published_to_gundb: true,
+                published_to_zen: true,
                 published_to_ap: true,
                 cover_path: null,
                 genre: null,

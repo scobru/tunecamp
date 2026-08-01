@@ -181,7 +181,7 @@ export const AddTrackToUserPlaylistModal = ({
       let coverUrl = track.coverUrl || track.coverImage;
 
       if (options?.source === "network" && options.siteUrl) {
-        // Network tracks are currently handled via GunDB or not supported in SQL backend yet
+        // Network tracks are currently handled via ZenDB or not supported in SQL backend yet
         const baseUrl = options.siteUrl.replace(/\/$/, "");
         if (!streamUrl) streamUrl = `${baseUrl}/api/tracks/${track.id}/stream`;
         if (!coverUrl && track.albumId)

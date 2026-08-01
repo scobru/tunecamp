@@ -22,7 +22,7 @@ Full session rules live in `.claude/CLAUDE.md` (git workflow, architecture decis
 - **Before every push**: update `CHANGELOG.md` and bump `package.json` version (semver: patch/minor/major).
 - **Database**: SQLite (`better-sqlite3`, WAL) only. No Postgres/Redis while single-machine.
 - **Filesystem**: files are never moved or renamed. `consolidateFiles()` was removed — do not reintroduce file-moving logic.
-- **ZEN/Gun.js**: fully removed. Never re-import `zen`, `zendb.service`, `zen.worker`, or `gun` outside a worker_thread RPC.
+- **ZEN/ZEN**: fully removed. Never re-import `zen`, `zendb.service`, `zen.worker`, or `gun` outside a worker_thread RPC.
 - **Auth**: username + password + JWT, per-instance. Cross-instance identity federation is provided by FID (Fediverse-ID); this is optional SSO, not the primary auth system.
 - **Publishing gate**: use `VisibilityGuardian.canPublishContent()`, never a raw `artistId` check.
 - **Playlists**: members-only, not restricted above `user` role.

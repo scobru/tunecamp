@@ -24,7 +24,7 @@ I/O sequenziale dove la concorrenza è banale (`await` per-file nei cicli `for`)
 - [ ] `src/server/modules/catalog/catalog.service.ts:217-230` `batchDeleteTracks()` — ogni `deleteTrack()` riattiva `syncRelease(albumId)`; N brani dello stesso album = N ri-sincronizzazioni. Fix: deduplicare gli `album_id`, sincronizzare una sola volta dopo il ciclo.
 - [ ] `src/server/modules/storage/storage-usage.service.ts:33-55,159` `dirSize()` — `await fs.stat` sequenziale per file, non memorizzato in cache, eseguito a ogni richiesta di panoramica admin. Fix: `Promise.all` + breve cache TTL.
 - [ ] `webapp/src/components/layout/MainLayout.tsx:6-11` — `CheckoutModal` (include `ethers`), `AuthModal`, `PlaylistModal`, `UnlockModal`, modali admin importati staticamente nella shell dell'app per ogni visitatore. Fix: `React.lazy()`.
-- [x] `webapp/vite.config.ts:18-19` — `vite-plugin-node-polyfills` include `dgram`/`child_process`/`os`/`zlib`/`stream`, residuo dello stack ZEN/Gun.js rimosso. Risolto: rimossi dall'`include`, restano solo `buffer`/`crypto`/`fs`/`path`/`process`/`util`/`url`/`events` (usati da `ethers`/altre lib). Rimosso anche l'alias morto `"zen" → src/zen.js` (file inesistente, mai importato).
+- [x] `webapp/vite.config.ts:18-19` — `vite-plugin-node-polyfills` include `dgram`/`child_process`/`os`/`zlib`/`stream`, residuo dello stack ZEN/ZEN rimosso. Risolto: rimossi dall'`include`, restano solo `buffer`/`crypto`/`fs`/`path`/`process`/`util`/`url`/`events` (usati da `ethers`/altre lib). Rimosso anche l'alias morto `"zen" → src/zen.js` (file inesistente, mai importato).
 
 ### Priorità Bassa
 - [ ] `src/server/repositories/album.repository.ts:99-115` `getWithStats()` — nessuna paginazione/LIMIT.
