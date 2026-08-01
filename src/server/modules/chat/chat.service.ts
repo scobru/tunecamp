@@ -14,6 +14,7 @@ import type { DatabaseService } from "../../core/database.types.js";
 export interface ChatSocket {
 	readyState: number;
 	send(data: string): void;
+	close?(): void;
 }
 
 interface ChatClient {
@@ -23,6 +24,7 @@ interface ChatClient {
 	ws: ChatSocket;
 	pubkey?: string;
 	isAdmin?: boolean;
+	userId?: number | string;
 }
 
 export interface LobbyMessage {
@@ -39,6 +41,7 @@ const LOBBY_HISTORY_CAP = 500;
 
 export class ChatService {
 	private clients = new Map<string, ChatClient>();
+	private userIdMap = new Map<number | string, string>();
 
 	constructor(private database: DatabaseService) {}
 
@@ -47,7 +50,27 @@ export class ChatService {
 		rawUsername: string,
 		ws: ChatSocket,
 		isAdmin = false,
+		userId?: number | string,
 	): string {
+		// If this user already has an active chat session, replace it to avoid duplicate lobby entries from browser + peer daemon.
+		if (userId !== undefined) {
+			const existingId = this.userIdMap.get(userId);
+			if (existingId !== undefined && existingId !== clientId) {
+				const existing = this.clients.get(existingId);
+				if (existing) {
+					try {
+						existing.ws.close?.();
+					} catch (err) {
+						console.error(
+							"[ChatService] Failed to close replaced session:",
+							err,
+						);
+					}
+				}
+				this.clients.delete(existingId);
+			}
+		}
+
 		// Disambiguate duplicate usernames by appending an incremental suffix
 		const existingWithSameName = Array.from(this.clients.values()).filter(
 			(c) => c.rawUsername === rawUsername,
@@ -64,11 +87,19 @@ export class ChatService {
 			username,
 			ws,
 			isAdmin,
+			userId,
 		});
+		if (userId !== undefined) {
+			this.userIdMap.set(userId, clientId);
+		}
 		return username;
 	}
 
 	unregister(clientId: string): void {
+		const client = this.clients.get(clientId);
+		if (client?.userId !== undefined) {
+			this.userIdMap.delete(client.userId);
+		}
 		this.clients.delete(clientId);
 	}
 
@@ -118,7 +149,9 @@ export class ChatService {
 							ts: Date.now(),
 						}),
 					);
-				} catch (err) { console.error("[ChatService] error:", err); }
+				} catch (err) {
+					console.error("[ChatService] error:", err);
+				}
 			}
 		}
 	}
@@ -144,7 +177,9 @@ export class ChatService {
 							reason: reason || "Kicked by admin",
 						}),
 					);
-				} catch (err) { console.error("[ChatService] error:", err); }
+				} catch (err) {
+					console.error("[ChatService] error:", err);
+				}
 				this.unregister(clientId);
 				kicked = true;
 			}
@@ -269,7 +304,9 @@ export class ChatService {
 					client.ws.send(
 						JSON.stringify({ type: "clear_history", ts: Date.now() }),
 					);
-				} catch (err) { console.error("[ChatService] error:", err); }
+				} catch (err) {
+					console.error("[ChatService] error:", err);
+				}
 			}
 		}
 
@@ -300,7 +337,9 @@ export class ChatService {
 						ts: Date.now(),
 					}),
 				);
-			} catch (err) { console.error("[ChatService] error:", err); }
+			} catch (err) {
+				console.error("[ChatService] error:", err);
+			}
 			return false;
 		}
 
@@ -374,6 +413,47 @@ export class ChatService {
 			result.push({ username: client.username, pubkey: !!client.pubkey });
 		}
 		return result;
+	}
+
+	relayRtcSignal(
+		fromClientId: string,
+		targetIdOrUsername: string,
+		signal: any,
+	): boolean {
+		const from = this.clients.get(fromClientId);
+		if (!from) return false;
+
+		let delivered = false;
+		const targetLower = String(targetIdOrUsername || "")
+			.toLowerCase()
+			.trim();
+
+		for (const client of this.clients.values()) {
+			if (client.id === fromClientId || client.ws.readyState !== OPEN) continue;
+
+			if (
+				client.id === targetIdOrUsername ||
+				client.username.toLowerCase() === targetLower ||
+				client.rawUsername.toLowerCase() === targetLower
+			) {
+				try {
+					client.ws.send(
+						JSON.stringify({
+							type: "rtc_signal",
+							from: from.username,
+							fromSessionId: fromClientId,
+							to: client.username,
+							toSessionId: client.id,
+							signal,
+						}),
+					);
+					delivered = true;
+				} catch (err) {
+					console.error("[ChatService] rtc_signal error:", err);
+				}
+			}
+		}
+		return delivered;
 	}
 
 	// Chat must keep flowing even if the write fails: a broken backlog is an
