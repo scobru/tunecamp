@@ -1,5 +1,7 @@
 // WebRTC P2P Service for TuneCamp Web Client
-// Connects to Sidecamp peers via WebSocket Signaling (/ws/chat) and transfers track data over RTCDataChannel.
+// Connects to Sidecamp peers via WebSocket Signaling (@tunecamp/chat) and transfers track data over RTCDataChannel.
+
+import { TuneCampChatClient, type RtcSignalMessage } from '@tunecamp/chat';
 
 export interface WebRTCStreamOptions {
   serverUrl: string;
@@ -8,15 +10,16 @@ export interface WebRTCStreamOptions {
   targetUsername?: string;
   trackId: string;
   timeoutMs?: number;
+  chatClient?: TuneCampChatClient;
 }
 
 export class WebRTCPeerService {
-  private ws: WebSocket | null = null;
   private pc: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
+  private unbindSignal: (() => void) | null = null;
 
   public async fetchTrackP2P(options: WebRTCStreamOptions): Promise<string> {
-    const { serverUrl, token, targetSessionId, targetUsername, trackId, timeoutMs = 4000 } = options;
+    const { serverUrl, token, targetSessionId, targetUsername, trackId, timeoutMs = 4000, chatClient } = options;
 
     return new Promise((resolve, reject) => {
       let isSettled = false;
@@ -49,18 +52,12 @@ export class WebRTCPeerService {
         }
       };
 
-      // 1. Setup WebSocket for Signaling
-      const wsUrl = new URL(serverUrl);
-      wsUrl.protocol = wsUrl.protocol === 'https:' ? 'wss:' : 'ws:';
-      wsUrl.pathname = '/ws/chat';
-      if (token) wsUrl.searchParams.set('token', token);
+      // Use active chat client or create temporary instance
+      const client = chatClient || new TuneCampChatClient(serverUrl, token);
 
-      const socket = new WebSocket(wsUrl.toString());
-      this.ws = socket;
-
-      socket.onopen = async () => {
+      const startHandshake = async () => {
         try {
-          // 2. Create RTCPeerConnection
+          // 1. Create RTCPeerConnection
           this.pc = new RTCPeerConnection({
             iceServers: [
               { urls: 'stun:stun.l.google.com:19302' },
@@ -68,18 +65,31 @@ export class WebRTCPeerService {
             ]
           });
 
+          // 2. Listen for incoming ICE candidates / SDP answers via @tunecamp/chat
+          this.unbindSignal = client.onRtcSignal(async (msg: RtcSignalMessage) => {
+            if (!this.pc) return;
+            try {
+              if (msg.signal?.type === 'answer') {
+                await this.pc.setRemoteDescription(new RTCSessionDescription(msg.signal.sdp || msg.signal));
+              } else if (msg.signal?.type === 'candidate' && msg.signal.candidate) {
+                await this.pc.addIceCandidate(new RTCIceCandidate(msg.signal.candidate));
+              }
+            } catch (err) {
+              console.error("WebRTC signal handling error:", err);
+            }
+          });
+
+          // 3. Send ICE candidates via @tunecamp/chat
           this.pc.onicecandidate = (event) => {
-            if (event.candidate && socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({
-                type: 'rtc_signal',
-                toSessionId: targetSessionId,
-                to: targetUsername,
-                signal: { type: 'candidate', candidate: event.candidate }
-              }));
+            if (event.candidate) {
+              client.sendRtcSignal(targetUsername || targetSessionId, {
+                type: 'candidate',
+                candidate: event.candidate
+              });
             }
           };
 
-          // 3. Create DataChannel
+          // 4. Create DataChannel
           this.dataChannel = this.pc.createDataChannel('file-transfer');
 
           this.dataChannel.onopen = () => {
@@ -112,46 +122,44 @@ export class WebRTCPeerService {
             }
           };
 
-          // 4. Create SDP Offer
+          // 5. Create SDP Offer & Send
           const offer = await this.pc.createOffer();
           await this.pc.setLocalDescription(offer);
 
-          if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-              type: 'rtc_signal',
-              toSessionId: targetSessionId,
-              to: targetUsername,
-              signal: { type: 'offer', sdp: offer }
-            }));
-          }
+          client.sendRtcSignal(targetUsername || targetSessionId, {
+            type: 'offer',
+            sdp: offer
+          });
 
         } catch (err: any) {
           finishError(err);
         }
       };
 
-      socket.onmessage = async (e) => {
-        try {
-          const msg = JSON.parse(e.data);
-          if (msg.type === 'rtc_signal' && msg.signal) {
-            if (msg.signal.type === 'answer' && this.pc) {
-              await this.pc.setRemoteDescription(new RTCSessionDescription(msg.signal.sdp || msg.signal));
-            } else if (msg.signal.type === 'candidate' && this.pc) {
-              await this.pc.addIceCandidate(new RTCIceCandidate(msg.signal.candidate));
-            }
+      if (client.getStatus() === 'online') {
+        startHandshake();
+      } else {
+        const unbindStatus = client.onStatus((status) => {
+          if (status === 'online') {
+            unbindStatus();
+            startHandshake();
+          } else if (status === 'offline') {
+            unbindStatus();
+            finishError(new Error("Signaling client offline"));
           }
-        } catch (err) {
-          console.error("Signaling message error:", err);
+        });
+        if (!chatClient) {
+          client.connect();
         }
-      };
-
-      socket.onerror = (_err) => {
-        finishError(new Error("WebSocket signaling connection error"));
-      };
+      }
     });
   }
 
   private cleanup() {
+    if (this.unbindSignal) {
+      this.unbindSignal();
+      this.unbindSignal = null;
+    }
     if (this.dataChannel) {
       try { this.dataChannel.close(); } catch {}
       this.dataChannel = null;
@@ -159,10 +167,6 @@ export class WebRTCPeerService {
     if (this.pc) {
       try { this.pc.close(); } catch {}
       this.pc = null;
-    }
-    if (this.ws) {
-      try { this.ws.close(); } catch {}
-      this.ws = null;
     }
   }
 }

@@ -274,7 +274,7 @@ describe("ChatService", () => {
 			]);
 		});
 
-		it("replaces previous session for the same userId to avoid duplicates", () => {
+		it("allows multiple sessions for the same userId (browser + daemon)", () => {
 			const ws1 = fakeWs();
 			const ws2 = fakeWs();
 
@@ -294,11 +294,10 @@ describe("ChatService", () => {
 			);
 
 			expect(first).toBe("homologo");
-			expect(second).toBe("homologo");
+			expect(second).toBe("homologo #2");
 
 			const clients = chatService.getClients();
-			expect(clients).toHaveLength(1);
-			expect(clients[0]).toEqual({ username: "homologo", pubkey: false });
+			expect(clients).toHaveLength(2);
 		});
 	});
 

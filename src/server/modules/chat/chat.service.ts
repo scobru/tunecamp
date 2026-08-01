@@ -52,24 +52,8 @@ export class ChatService {
 		isAdmin = false,
 		userId?: number | string,
 	): string {
-		// If this user already has an active chat session, replace it to avoid duplicate lobby entries from browser + peer daemon.
-		if (userId !== undefined) {
-			const existingId = this.userIdMap.get(userId);
-			if (existingId !== undefined && existingId !== clientId) {
-				const existing = this.clients.get(existingId);
-				if (existing) {
-					try {
-						existing.ws.close?.();
-					} catch (err) {
-						console.error(
-							"[ChatService] Failed to close replaced session:",
-							err,
-						);
-					}
-				}
-				this.clients.delete(existingId);
-			}
-		}
+		// Allow multiple active connections per user (e.g. browser tab + Sidecamp daemon)
+		// without forcibly closing the previous socket and causing a reconnection loop.
 
 		// Disambiguate duplicate usernames by appending an incremental suffix
 		const existingWithSameName = Array.from(this.clients.values()).filter(
