@@ -372,4 +372,33 @@ describe("ChatService", () => {
 			);
 		});
 	});
+
+	describe("relayRtcSignal", () => {
+		it("relays WebRTC signaling payload to the specified target session or username", () => {
+			const aliceWs = fakeWs();
+			const bobWs = fakeWs();
+			chatService.register("alice-session-id", "alice", aliceWs);
+			chatService.register("bob-session-id", "bob", bobWs);
+
+			const signal = { type: "offer", sdp: "v=0..." };
+			const delivered = chatService.relayRtcSignal(
+				"alice-session-id",
+				"bob-session-id",
+				signal,
+			);
+
+			expect(delivered).toBe(true);
+			expect(aliceWs.send).not.toHaveBeenCalled();
+			expect(bobWs.send).toHaveBeenCalledWith(
+				JSON.stringify({
+					type: "rtc_signal",
+					from: "alice",
+					fromSessionId: "alice-session-id",
+					to: "bob",
+					toSessionId: "bob-session-id",
+					signal,
+				}),
+			);
+		});
+	});
 });

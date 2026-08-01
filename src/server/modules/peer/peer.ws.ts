@@ -175,6 +175,13 @@ export function createPeerWsHandler(
 									}
 									break;
 								}
+								case "rtc_signal":
+									container.chatService.relayRtcSignal(
+										sessionId,
+										message.to || message.toSessionId,
+										message.signal,
+									);
+									break;
 								default:
 									console.warn(
 										`[PeerWS] Unknown message type: ${message.type}`,

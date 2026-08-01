@@ -152,6 +152,13 @@ export function createChatWsHandler(
 								}
 								break;
 							}
+							case "rtc_signal":
+								container.chatService.relayRtcSignal(
+									clientId,
+									message.to || message.toSessionId,
+									message.signal,
+								);
+								break;
 							case "admin_action": {
 								if (!isAdmin) {
 									ws.send(

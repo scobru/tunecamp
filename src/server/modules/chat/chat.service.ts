@@ -415,6 +415,47 @@ export class ChatService {
 		return result;
 	}
 
+	relayRtcSignal(
+		fromClientId: string,
+		targetIdOrUsername: string,
+		signal: any,
+	): boolean {
+		const from = this.clients.get(fromClientId);
+		if (!from) return false;
+
+		let delivered = false;
+		const targetLower = String(targetIdOrUsername || "")
+			.toLowerCase()
+			.trim();
+
+		for (const client of this.clients.values()) {
+			if (client.id === fromClientId || client.ws.readyState !== OPEN) continue;
+
+			if (
+				client.id === targetIdOrUsername ||
+				client.username.toLowerCase() === targetLower ||
+				client.rawUsername.toLowerCase() === targetLower
+			) {
+				try {
+					client.ws.send(
+						JSON.stringify({
+							type: "rtc_signal",
+							from: from.username,
+							fromSessionId: fromClientId,
+							to: client.username,
+							toSessionId: client.id,
+							signal,
+						}),
+					);
+					delivered = true;
+				} catch (err) {
+					console.error("[ChatService] rtc_signal error:", err);
+				}
+			}
+		}
+		return delivered;
+	}
+
 	// Chat must keep flowing even if the write fails: a broken backlog is an
 	// annoyance, a relay that throws mid-broadcast drops live messages.
 	private persistLobbyMessage(username: string, message: string): void {
