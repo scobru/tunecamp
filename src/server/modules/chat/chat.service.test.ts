@@ -294,10 +294,11 @@ describe("ChatService", () => {
 			);
 
 			expect(first).toBe("homologo");
-			expect(second).toBe("homologo #2");
+			expect(second).toBe("homologo");
 
 			const clients = chatService.getClients();
-			expect(clients).toHaveLength(2);
+			expect(clients).toHaveLength(1);
+			expect(clients[0].username).toBe("homologo");
 		});
 	});
 

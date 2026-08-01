@@ -52,12 +52,27 @@ export class ChatService {
 		isAdmin = false,
 		userId?: number | string,
 	): string {
-		// Allow multiple active connections per user (e.g. browser tab + Sidecamp daemon)
-		// without forcibly closing the previous socket and causing a reconnection loop.
+		let username = rawUsername;
+		let suffix = 2;
 
-		// Group multiple connections (e.g. browser tab + Sidecamp daemon) under
-		// the same username instead of appending a #2 suffix.
-		const username = rawUsername;
+		while (true) {
+			let collision = false;
+			for (const client of this.clients.values()) {
+				if (client.username === username) {
+					if (userId !== undefined && client.userId === userId) {
+						// Group multiple connections (e.g. browser tab + Sidecamp daemon) 
+						// under the same username instead of appending a #2 suffix.
+						collision = false;
+					} else {
+						collision = true;
+					}
+					break;
+				}
+			}
+			if (!collision) break;
+			username = `${rawUsername} #${suffix}`;
+			suffix++;
+		}
 
 		this.clients.set(clientId, {
 			id: clientId,
