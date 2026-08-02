@@ -138,11 +138,9 @@ export function createZenRoutes(container: ServiceContainer): Router {
 				!challenge.instanceDomain ||
 				!seaSignature
 			) {
-				return res
-					.status(400)
-					.json({
-						error: "Missing zenPubKey, challenge, nonce, or seaSignature",
-					});
+				return res.status(400).json({
+					error: "Missing zenPubKey, challenge, nonce, or seaSignature",
+				});
 			}
 
 			// Look up the user by zen_pub — the portal authenticates via the
@@ -171,11 +169,9 @@ export function createZenRoutes(container: ServiceContainer): Router {
 				zenPubKey,
 			);
 			if (!isValid) {
-				return res
-					.status(400)
-					.json({
-						error: "Invalid signature, or invalid/expired challenge nonce",
-					});
+				return res.status(400).json({
+					error: "Invalid signature, or invalid/expired challenge nonce",
+				});
 			}
 
 			const passport = passportIssuer.issuePassport(
@@ -228,11 +224,9 @@ export function createZenRoutes(container: ServiceContainer): Router {
 				zenPubKey,
 			);
 			if (!isValid) {
-				return res
-					.status(400)
-					.json({
-						error: "Invalid signature, or invalid/expired challenge nonce",
-					});
+				return res.status(400).json({
+					error: "Invalid signature, or invalid/expired challenge nonce",
+				});
 			}
 
 			const user = authService.getUserByUsername(username);
@@ -244,11 +238,9 @@ export function createZenRoutes(container: ServiceContainer): Router {
 				.prepare("SELECT id FROM admin WHERE zen_pub = ? AND id != ?")
 				.get(zenPubKey, user.id);
 			if (taken) {
-				return res
-					.status(409)
-					.json({
-						error: "This Zen identity is already linked to a different account",
-					});
+				return res.status(409).json({
+					error: "This Zen identity is already linked to a different account",
+				});
 			}
 
 			db.prepare("UPDATE admin SET zen_pub = ? WHERE id = ?").run(
@@ -369,7 +361,9 @@ export function createZenRoutes(container: ServiceContainer): Router {
 					for (const a of matchedArtists) {
 						if (a.id && !artistIds.includes(a.id)) artistIds.push(a.id);
 					}
-				} catch (e) {}
+				} catch (e) {
+					console.warn("[ZEN-PUBLIC] Warning querying artists by name:", e);
+				}
 			}
 
 			const placeholders =
@@ -410,7 +404,9 @@ export function createZenRoutes(container: ServiceContainer): Router {
 								`SELECT id, title, date as release_date, type FROM albums WHERE artist_id IN (${placeholders})`,
 							)
 							.all(...artistIds) || [];
-				} catch (e) {}
+				} catch (e) {
+					console.warn("[ZEN-PUBLIC] Warning querying fallback albums:", e);
+				}
 			}
 			// cover_path is a server-local filesystem path, not a URL — point at the
 			// dedicated cover route instead so cross-instance clients get a real image.
@@ -489,31 +485,10 @@ export function createZenRoutes(container: ServiceContainer): Router {
 	});
 
 	/**
-	 * GET /api/auth/zen/instances
-	 * Returns the FID registry entries for the authenticated user.
-	 * Used by the global portal to discover which instances a user has artists on.
+	 * POST /api/auth/zen/verify
+	 * Verifies an Instance Passport JSON to cryptographically prove it was issued by this instance.
+	 * Accessible via public CORS so the global portal can call it.
 	 */
-	router.get(
-		"/instances",
-		authMiddleware.requireUser,
-		async (req: AuthenticatedRequest, res) => {
-			const username = req.username;
-			if (!username) {
-				return res.status(401).json({ error: "Authentication required" });
-			}
-
-			const user = authService.getUserByUsername(username);
-			if (!user) {
-				return res.status(404).json({ error: "User not found" });
-			}
-
-			const entries = database.getFidRegistry(user.id);
-			return res.json({
-				success: true,
-				instances: entries,
-			});
-		},
-	);
 
 	/**
 	 * POST /api/auth/zen/verify
