@@ -54,9 +54,9 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
-- Dead `gun_cache` table, `getGunCache`/`setGunCache`/`clearExpiredGunCache` DB helpers, and `GunCacheEntry` type (zero callers, leftover from removed ZEN P2P graph).
-- Dead `publishedToZen` admin API alias (never sent by any client, name collided with FID Zen SSO identity naming). `publishedToGunDB` alias and `published_to_gundb` federation-publish column are untouched.
-- Leftover `dgram`/`child_process`/`os`/`zlib`/`stream` entries from webapp's `vite-plugin-node-polyfills` config and the dead `"zen"` alias (pointed at a non-existent `src/zen.js`), both residue of the removed ZEN/Gun.js stack.
+- Dead `zen_cache` table, `getGunCache`/`setGunCache`/`clearExpiredGunCache` DB helpers, and `GunCacheEntry` type (zero callers, leftover from removed ZEN P2P graph).
+- Dead `publishedToZen` admin API alias (never sent by any client, name collided with FID Zen SSO identity naming). `publishedToZen` alias and `published_to_zen` federation-publish column are untouched.
+- Leftover `dgram`/`child_process`/`os`/`zlib`/`stream` entries from webapp's `vite-plugin-node-polyfills` config and the dead `"zen"` alias (pointed at a non-existent `src/zen.js`), both residue of the removed ZEN/ZEN stack.
 
 ## [4.3.0] - 2026-07-29
 
@@ -194,13 +194,13 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- **Renamed legacy `gun_*` DB columns/tables to `zen_*` for naming consistency.** `admin.gun_pub`/`gun_priv`/`gun_auth_mode` → `zen_pub`/`zen_priv`/`zen_auth_mode`, and the `gun_users` table → `zen_users`. This is the FID identity linkage introduced in 3.11.0-3.11.4; the `gun_*` naming was a leftover from the removed Gun.js layer and no longer reflected what the columns actually do. Existing databases are migrated in place (`ALTER TABLE ... RENAME COLUMN` / `RENAME TO`) so no data is lost. `gun_cache` (unrelated legacy Gun.js sync table) is untouched.
+- **Renamed legacy `gun_*` DB columns/tables to `zen_*` for naming consistency.** `admin.zen_pub`/`zen_priv`/`gun_auth_mode` → `zen_pub`/`zen_priv`/`zen_auth_mode`, and the `zen_users` table → `zen_users`. This is the FID identity linkage introduced in 3.11.0-3.11.4; the `gun_*` naming was a leftover from the removed ZEN layer and no longer reflected what the columns actually do. Existing databases are migrated in place (`ALTER TABLE ... RENAME COLUMN` / `RENAME TO`) so no data is lost. `zen_cache` (unrelated legacy ZEN sync table) is untouched.
 
 ## [3.11.4] - 2026-07-27
 
 ### Fixed
 
-- **FID SSO account hijack / everyone landing on the same curator account.** `POST /api/auth/zen/sso` looked up the local account by `username OR alias` and, if `gun_pub` was unset, silently linked that account to the incoming Zen pubkey — so a FID login whose derived username collided with an existing, unrelated local account (or its alias) took over that account's role, including curator/admin. New FID identities also failed outright if no local account already used that exact username. Now looks up strictly by `gun_pub` (the FID identity) first; a new identity always gets a fresh `NORMAL_USER` account, and if the desired handle is taken it's registered under a unique internal username with the requested handle kept as the public alias.
+- **FID SSO account hijack / everyone landing on the same curator account.** `POST /api/auth/zen/sso` looked up the local account by `username OR alias` and, if `zen_pub` was unset, silently linked that account to the incoming Zen pubkey — so a FID login whose derived username collided with an existing, unrelated local account (or its alias) took over that account's role, including curator/admin. New FID identities also failed outright if no local account already used that exact username. Now looks up strictly by `zen_pub` (the FID identity) first; a new identity always gets a fresh `NORMAL_USER` account, and if the desired handle is taken it's registered under a unique internal username with the requested handle kept as the public alias.
 
 ## [3.11.3] - 2026-07-27
 
@@ -759,7 +759,7 @@ See `docs/PERFORMANCE-AUDIT.md` for the full cross-repo (tunecamp/sidecamp/graph
 ### Removed (over-engineering audit)
 
 - Dead code: `configUtils.ts` (`validateCatalogConfig`, never called), `audioUtils` dead wrappers (`formatDuration`, `formatTimeAgo`, `formatAudioFilename`), webapp `usePurchases.getPurchase()` stub (always returned `undefined`), duplicate private `escapeHtml` in `activitypub.service.ts` (now uses `StringUtils.escapeHtml`).
-- Zen/GunDB leftovers: `isNonFatalError` no longer guards `GunDB`/`Zen` error strings; `gundb` keyword dropped from `package.json`.
+- Zen/ZenDB leftovers: `isNonFatalError` no longer guards `ZenDB`/`Zen` error strings; `gundb` keyword dropped from `package.json`.
 - Dead route mount: `/api/admin/lifecycle` (no caller anywhere; `/api/lifecycle` is the real endpoint).
 - The `postinstall` hook is now a plain `node scripts/patch-*.js` chain (the `existsSync`/`fork` wrapper was dead defensiveness — Docker copies `scripts/` before `npm ci`).
 
@@ -989,4 +989,4 @@ See `docs/PERFORMANCE-AUDIT.md` for the full cross-repo (tunecamp/sidecamp/graph
   - Configurable cache size (`TUNECAMP_TRANSCODE_CACHE_MAX_BYTES` up to 5GB) and timeout limits (`TUNECAMP_TRANSCODE_TIMEOUT_MS`).
   - Added support for Nginx `X-Accel-Redirect` to offload audio streaming from Node.js.
   - Added `env_file` integration in `docker-compose.yml` for seamless local configuration loading.
-  - Cleaned up obsolete build args and environment variables related to Zen/GunDB in `Dockerfile` and `docker-compose.yml` while preserving standard CapRover deployment arguments.
+  - Cleaned up obsolete build args and environment variables related to Zen/ZenDB in `Dockerfile` and `docker-compose.yml` while preserving standard CapRover deployment arguments.

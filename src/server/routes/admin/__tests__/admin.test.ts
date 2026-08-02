@@ -50,8 +50,8 @@ const mockAuthService = {
 } as unknown as AuthService;
 
 const mockPublishingService = {
-	publishReleaseToGunDB: jest.fn(),
-	unpublishReleaseFromGunDB: jest.fn(),
+	publishReleaseToZen: jest.fn(),
+	unpublishReleaseFromZen: jest.fn(),
 	publishReleaseToAP: jest.fn(),
 	unpublishReleaseFromAP: jest.fn(),
 	syncRelease: jest.fn(),

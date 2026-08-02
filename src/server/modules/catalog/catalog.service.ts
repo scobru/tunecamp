@@ -339,7 +339,7 @@ export class CatalogService {
                             type: 'album',
                             download: null, price: 0, price_usdc: 0, currency: 'ETH', external_links: null,
                             is_public: false, visibility: 'private', is_release: false, published_at: new Date().toISOString(),
-                            published_to_gundb: false, published_to_ap: false, license: null, status: 'draft',
+                            published_to_zen: false, published_to_ap: false, license: null, status: 'draft',
                         });
                     } else {
                         albumId = album.id;

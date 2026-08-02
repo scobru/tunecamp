@@ -337,7 +337,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 					library.updateRelease(id, {
 						visibility: newVisibility,
 						published_to_ap: isNowPublic,
-						published_to_gundb: isNowPublic,
+						published_to_zen: isNowPublic,
 					});
 				} else {
 					library.updateAlbumVisibility(id, newVisibility);
@@ -1320,7 +1320,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
 	/**
 	 * POST /api/admin/network/sync-community
-	 * Discover other Tunecamp instances via GunDB and follow them via ActivityPub (Any Admin)
+	 * Discover other Tunecamp instances via ZenDB and follow them via ActivityPub (Any Admin)
 	 */
 	router.post(
 		"/network/sync-community",
@@ -1512,13 +1512,13 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 						? body.additional_artworks
 						: JSON.stringify(body.additional_artworks);
 			}
-			if (body.publishedToGunDB !== undefined) {
-				updates.published_to_gundb = body.publishedToGunDB;
+			if (body.publishedToZen !== undefined) {
+				updates.published_to_zen = body.publishedToZen;
 			} else if (
 				updates.visibility === "public" ||
 				updates.visibility === "unlisted"
 			) {
-				updates.published_to_gundb = true;
+				updates.published_to_zen = true;
 			}
 
 			if (body.publishedToAP !== undefined) {
@@ -1580,12 +1580,12 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 								additional_artworks: updates.additional_artworks,
 							});
 						if (
-							updates.published_to_gundb !== undefined ||
+							updates.published_to_zen !== undefined ||
 							updates.published_to_ap !== undefined
 						) {
 							library.updateAlbumFederationSettings(
 								id,
-								!!updates.published_to_gundb,
+								!!updates.published_to_zen,
 								!!updates.published_to_ap,
 							);
 						}

@@ -103,7 +103,7 @@ export function createDatabase(dbPath: string): DatabaseService {
 		}
 	})();
 
-	// Legacy Gun.js naming: rename in place so existing FID identity data survives
+	// Legacy ZEN naming: rename in place so existing FID identity data survives
 	// (a plain CREATE TABLE IF NOT EXISTS zen_users below would leave it as an empty table).
 	{
 		const tableNames = new Set(
@@ -112,9 +112,29 @@ export function createDatabase(dbPath: string): DatabaseService {
 				.all()
 				.map((row: any) => row.name),
 		);
-		if (tableNames.has("gun_users") && !tableNames.has("zen_users")) {
-			console.log("📦 [Database] Renaming gun_users table to zen_users...");
-			db.exec("ALTER TABLE gun_users RENAME TO zen_users");
+		if (tableNames.has("zen_users") && !tableNames.has("zen_users")) {
+			console.log("📦 [Database] Renaming zen_users table to zen_users...");
+			db.exec("ALTER TABLE zen_users RENAME TO zen_users");
+		}
+
+		if (tableNames.has("albums")) {
+			const albumColumns = new Set(
+				db
+					.prepare("PRAGMA table_info(albums)")
+					.all()
+					.map((col: any) => col.name),
+			);
+			if (
+				albumColumns.has("published_to_zen") &&
+				!albumColumns.has("published_to_zen")
+			) {
+				console.log(
+					"📦 [Database] Renaming albums.published_to_zen to published_to_zen...",
+				);
+				db.exec(
+					"ALTER TABLE albums RENAME COLUMN published_to_zen TO published_to_zen",
+				);
+			}
 		}
 	}
 
@@ -201,7 +221,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             visibility TEXT DEFAULT 'private',
             is_release INTEGER DEFAULT 0,
             published_at TEXT,
-            published_to_gundb INTEGER DEFAULT 0,
+            published_to_zen INTEGER DEFAULT 0,
             published_to_ap INTEGER DEFAULT 0,
             license TEXT,
             status TEXT DEFAULT 'draft',
@@ -740,9 +760,59 @@ export function createDatabase(dbPath: string): DatabaseService {
             '["autoplay"]',
             1
         );
+
+        -- Seed TuneCamp Iris (Air-Gapped Optical Transfer) if not already present
+        INSERT OR IGNORE INTO lab_apps (id, name, description, src, category, author, source_url, permissions, sandbox, allow, enabled)
+        VALUES (
+            3,
+            'TuneCamp Iris',
+            'Air-Gapped Optical File Transfer via Fountain Codes & WASM. Transfer stems and keys via light without a network.',
+            'https://tunecamp-iris.vercel.app',
+            'other',
+            'TuneCamp Labs',
+            'https://github.com/scobru/tunecamp-iris',
+            '["camera"]',
+            '["allow-scripts","allow-same-origin","allow-forms","allow-modals"]',
+            '["camera *"]',
+            1
+        );
+
+        -- Seed TuneCamp Beam (Zero-Server WebRTC) if not already present
+        INSERT OR IGNORE INTO lab_apps (id, name, description, src, category, author, source_url, permissions, sandbox, allow, enabled)
+        VALUES (
+            4,
+            'TuneCamp Beam',
+            'Zero-Server WebRTC P2P Data Drops. Send massive DAW projects or high-res WAVs directly phone-to-phone via local network by scanning a QR Code.',
+            'https://tunecamp-beam.vercel.app',
+            'other',
+            'TuneCamp Labs',
+            'https://github.com/scobru/tunecamp-beam',
+            '["camera"]',
+            '["allow-scripts","allow-same-origin","allow-forms","allow-modals"]',
+            '["camera *"]',
+            1
+        );
+
+        INSERT OR IGNORE INTO lab_apps (id, name, description, src, category, author, source_url, permissions, sandbox, allow, enabled) VALUES (
+            5,
+            'Wormhole',
+            'Secure and private remote file transfer (IPFS/WebRTC).',
+            'https://wormhole.scobrudot.dev',
+            'other',
+            'scobru',
+            'https://github.com/scobru/wormhole',
+            '["LIBRARY_READ", "USER_READ"]',
+            '["allow-scripts", "allow-same-origin", "allow-downloads"]',
+            '["clipboard-write *", "clipboard-read *"]',
+            1
+        );
+
         -- Migrate existing rows to the deployed Vercel URLs
         UPDATE lab_apps SET src = 'https://tunecamp-4-track-recorder.vercel.app' WHERE id = 1 AND src != 'https://tunecamp-4-track-recorder.vercel.app';
         UPDATE lab_apps SET src = 'https://tunecamp-audiofabric.vercel.app' WHERE id = 2 AND src != 'https://tunecamp-audiofabric.vercel.app';
+        UPDATE lab_apps SET src = 'https://tunecamp-iris.vercel.app' WHERE id = 3 AND src != 'https://tunecamp-iris.vercel.app';
+        UPDATE lab_apps SET src = 'https://tunecamp-beam.vercel.app' WHERE id = 4 AND src != 'https://tunecamp-beam.vercel.app';
+        UPDATE lab_apps SET src = 'https://wormhole.scobrudot.dev' WHERE id = 5 AND src != 'https://wormhole.scobrudot.dev';
 
         -- Collab: multi-artist collaborative track projects (native feature, no ZEN/realtime)
         CREATE TABLE IF NOT EXISTS collab_projects (
@@ -813,12 +883,12 @@ export function createDatabase(dbPath: string): DatabaseService {
                 INSERT OR IGNORE INTO albums (
                     id, title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, 
                     price, price_usdc, price_usdt, currency, external_links, external_id, visibility, published_at, 
-                    published_to_gundb, published_to_ap, license, status, album_artist, use_nft, created_at
+                    published_to_zen, published_to_ap, license, status, album_artist, use_nft, created_at
                 )
                 SELECT 
                     id, title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, 
                     price, price_usdc, price_usdt, currency, external_links, external_id, visibility, published_at, 
-                    published_to_gundb, published_to_ap, license, 'released', album_artist, use_nft, created_at
+                    published_to_zen, published_to_ap, license, 'released', album_artist, use_nft, created_at
                 FROM releases;
             `);
 
@@ -1125,6 +1195,22 @@ export function createDatabase(dbPath: string): DatabaseService {
 					"📦 [Database] Migrating albums table: adding additional_artworks column...",
 				);
 				db.exec("ALTER TABLE albums ADD COLUMN additional_artworks TEXT");
+			}
+			if (!cols.some((col) => col.name === "published_to_zen")) {
+				console.log(
+					"📦 [Database] Migrating albums table: adding published_to_zen column...",
+				);
+				db.exec(
+					"ALTER TABLE albums ADD COLUMN published_to_zen INTEGER DEFAULT 0",
+				);
+			}
+			if (!cols.some((col) => col.name === "published_to_ap")) {
+				console.log(
+					"📦 [Database] Migrating albums table: adding published_to_ap column...",
+				);
+				db.exec(
+					"ALTER TABLE albums ADD COLUMN published_to_ap INTEGER DEFAULT 0",
+				);
 			}
 
 			// Data migration: unify the release category onto the `type` column.

@@ -42,6 +42,7 @@ import { RadioService } from "./modules/radio/radio.service.js";
 import { TelegramBotService } from "./modules/integrations/telegram-bot.js";
 import { createPeerService } from "./modules/peer/peer.service.js";
 import { createChatService } from "./modules/chat/chat.service.js";
+import { createChatFederationService } from "./modules/chat/chat-federation.service.js";
 import { SampleRepository } from "./repositories/sample.repository.js";
 import { SamplePackRepository } from "./repositories/sample-pack.repository.js";
 import { CollabRepository } from "./repositories/collab.repository.js";
@@ -384,6 +385,10 @@ export async function bootstrapServices(
 	);
 	const peerService = createPeerService(database, apService);
 	const chatService = createChatService(database);
+	const chatFederationService = createChatFederationService(
+		chatService,
+		config.chatFederationSecret || "",
+	);
 	const samplesRepository = new SampleRepository(database.db);
 	const samplePacksRepository = new SamplePackRepository(database.db);
 	const collabRepository = new CollabRepository(database.db);
@@ -423,6 +428,7 @@ export async function bootstrapServices(
 		radioService,
 		peerService,
 		chatService,
+		chatFederationService,
 		samplesRepository,
 		samplePacksRepository,
 		collabRepository,

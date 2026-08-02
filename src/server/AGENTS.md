@@ -19,7 +19,7 @@ Inherits root [../../AGENTS.md](../../AGENTS.md). Backend-specific:
 - SQLite only (`core/database.ts`), WAL mode, no other DB engine.
 - Never move or rename files on disk; DB stores metadata pointing at existing paths.
 - `GET /health` must stay registered before federation middleware — a blocked integration must not shadow it (Docker `HEALTHCHECK` depends on it).
-- ZEN/Gun.js removed — do not import from the main thread; any future re-add goes through worker_thread RPC.
+- ZEN/ZEN removed — do not import from the main thread; any future re-add goes through worker_thread RPC.
 - New publish/sell endpoints must gate on `VisibilityGuardian.canPublishContent()`.
 
 ## Work Guidance

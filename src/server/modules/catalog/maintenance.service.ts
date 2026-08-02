@@ -142,7 +142,7 @@ export class MaintenanceService {
                         visibility: 'private',
                         is_release: false,
                         status: 'draft',
-                        published_to_gundb: false,
+                        published_to_zen: false,
                         published_to_ap: false,
                         published_at: null
                     });

@@ -102,7 +102,7 @@ async function main() {
         INSERT INTO albums (
             title, slug, artist_id, album_artist, owner_id, date, year,
             genre, description, type, price, price_usdc, currency,
-            is_public, visibility, is_release, published_to_gundb, published_to_ap, status
+            is_public, visibility, is_release, published_to_zen, published_to_ap, status
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,

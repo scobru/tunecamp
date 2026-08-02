@@ -103,6 +103,10 @@ export function createChatWsHandler(
 				return;
 			}
 
+			const localInstanceName = String(
+				request.headers.host || "localhost",
+			).split(":")[0];
+
 			wss.handleUpgrade(request, socket, head, (ws) => {
 				const clientId = crypto.randomUUID();
 				alive.set(ws, true);
@@ -129,13 +133,33 @@ export function createChatWsHandler(
 					try {
 						const message = JSON.parse(data.toString());
 						switch (message.type) {
-							case "chat":
-								container.chatService.relayChat(
-									clientId,
-									message.to,
-									message.text,
-								);
+							case "chat": {
+								const to = String(message.to || "");
+								const federation = container.chatFederationService;
+								if (to.includes("@")) {
+									const [toUsername] = to.split("@");
+									federation?.fanout({
+										username: username,
+										instance: localInstanceName,
+										text: message.text,
+										ts: Date.now(),
+										lobby: false,
+										toUsername: toUsername,
+									});
+								} else {
+									container.chatService.relayChat(clientId, to, message.text);
+									if (!to) {
+										federation?.fanout({
+											username: username,
+											instance: localInstanceName,
+											text: message.text,
+											ts: Date.now(),
+											lobby: true,
+										});
+									}
+								}
 								break;
+							}
 							case "pubkey": {
 								const roster = container.chatService.setPubkey(
 									clientId,

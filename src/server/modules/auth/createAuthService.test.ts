@@ -91,7 +91,7 @@ describe('createAuthService', () => {
         expect(columnNames).toContain('artist_unlinked');
     });
 
-    test('should rename legacy gun_pub/gun_priv/gun_auth_mode columns to zen_* and preserve data', () => {
+    test('should rename legacy zen_pub/zen_priv/gun_auth_mode columns to zen_* and preserve data', () => {
         db.exec(`
             CREATE TABLE admin (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,8 +104,8 @@ describe('createAuthService', () => {
                 storage_used INTEGER NOT NULL DEFAULT 0,
                 subsonic_token TEXT,
                 subsonic_password TEXT,
-                gun_pub TEXT,
-                gun_priv TEXT,
+                zen_pub TEXT,
+                zen_priv TEXT,
                 gun_auth_mode TEXT NOT NULL DEFAULT 'local',
                 is_active INTEGER DEFAULT 1,
                 token_version INTEGER DEFAULT 0,
@@ -113,7 +113,7 @@ describe('createAuthService', () => {
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        db.exec(`INSERT INTO admin (username, password_hash, gun_pub, gun_priv) VALUES ('zenuser', 'testhash', 'pubkey123', 'privkey456')`);
+        db.exec(`INSERT INTO admin (username, password_hash, zen_pub, zen_priv) VALUES ('zenuser', 'testhash', 'pubkey123', 'privkey456')`);
 
         createAuthService(db, 'secret');
 

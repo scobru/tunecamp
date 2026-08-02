@@ -6,7 +6,7 @@ export interface CatalogConfig {
   title: string;
   description?: string;
   url?: string;
-  publicUrl?: string; // Official public URL for GunDB registration (prevents preview deploys from polluting registry)
+  publicUrl?: string; // Official public URL for ZenDB registration (prevents preview deploys from polluting registry)
   basePath?: string; // Base path for deployment (e.g., "" for root, "/repo-name" for subdirectory)
   theme?: string;
   language?: string;
@@ -58,8 +58,8 @@ type LicenseType = 'copyright' | 'cc-by' | 'cc-by-sa' | 'cc-by-nc' | 'cc-by-nc-s
 
 interface UnlockCodesConfig {
   enabled: boolean;
-  namespace?: string; // GunDB namespace (default: 'tunecamp')
-  peers?: string[]; // Custom GunDB peers (optional)
+  namespace?: string; // ZenDB namespace (default: 'tunecamp')
+  peers?: string[]; // Custom ZenDB peers (optional)
 }
 
 export interface ReleaseConfig {

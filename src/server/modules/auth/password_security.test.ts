@@ -27,7 +27,7 @@ const mockDatabase: any = {
 };
 
 const mockScanner: any = {};
-const mockGunDB: any = {};
+const mockZenDB: any = {};
 const mockConfig: any = {};
 const mockApService: any = {};
 

@@ -1,354 +1,531 @@
 import { Router, json } from "express";
-import type { AuthService } from "../../modules/auth/auth.service.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { validatePassword, validateEmail } from "../../common/validators.js";
 import { UserRole } from "../../common/visibility.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
 import { sendBrevoEmail } from "../../utils/mailer.js";
+import { FidChallengeManager } from "fid";
+
+const authChallengeManager = new FidChallengeManager(10, 5);
 
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createAuthRoutes(container: ServiceContainer): Router {
-    const authService = container.authService;
-    const authMiddleware = container.authMiddleware;
-    const config = container.config;
-    const identity = container.identity;
-    const database = container.database;
-    const apService: ServiceContainer['apService'] = (container as any).apService || null;
-    const router = Router();
-    router.use(json({ limit: "10mb" }));
+	const authService = container.authService;
+	const authMiddleware = container.authMiddleware;
+	const config = container.config;
+	const identity = container.identity;
+	const database = container.database;
+	const apService: ServiceContainer["apService"] =
+		(container as any).apService || null;
+	const router = Router();
+	router.use(json({ limit: "10mb" }));
 
-    /**
-     * POST /api/auth/login
-     * Login with admin password, returns JWT token
-     */
-    router.post("/login", rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }), async (req, res) => {
-        try {
-            const { username, password } = req.body;
+	/**
+	 * GET /api/auth/challenge
+	 * Generates a cryptographic challenge for Zero-Knowledge login
+	 */
+	router.get(
+		"/challenge",
+		rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }),
+		(req, res) => {
+			const username = req.query.username as string;
+			if (!username) {
+				return res.status(400).json({ error: "username required" });
+			}
 
-            if (!password) {
-                return res.status(400).json({ error: "Password required" });
-            }
+			const challenge = authChallengeManager.createChallenge(
+				username,
+				req.hostname || (config as any).host || "localhost",
+			);
 
-            // Check if first run
-            if (authService.isFirstRun()) {
-                return res.status(400).json({
-                    error: "No admin account set up",
-                    firstRun: true,
-                });
-            }
+			return res.json({ success: true, challenge });
+		},
+	);
 
-            // Default to 'admin' if no username provided (legacy/default support)
-            const userToAuth = username || 'admin';
+	/**
+	 * POST /api/auth/login
+	 * Login with admin password or ZK signature, returns JWT token
+	 */
+	router.post(
+		"/login",
+		rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }),
+		async (req, res) => {
+			try {
+				const { username, password, zenPubKey, challenge, signature } =
+					req.body;
 
-            const result = await authService.authenticateUser(userToAuth, password);
-            if (!result || !result.success) {
-                return res.status(401).json({ error: "Invalid username or password" });
-            }
+				// Check if first run
+				if (authService.isFirstRun()) {
+					return res.status(400).json({
+						error: "No admin account set up",
+						firstRun: true,
+					});
+				}
 
-            // Phase 4: lazily generate AP keys for this user (fire-and-forget)
-            apService?.ensureUserKeys(result.id).catch((e: any) =>
-                console.error('[AP] User key gen failed:', e)
-            );
+				// Default to 'admin' if no username provided (legacy/default support)
+				const userToAuth = username || "admin";
+				let result: any;
 
-            const token = authService.generateToken({
-                isAdmin: result.isAdmin || false,
-                username: userToAuth,
-                artistId: result.artistId || null,
-                role: result.role || UserRole.NORMAL_USER,
-                isActive: result.isActive ?? true,
-                userId: result.id,
-                tokenVersion: result.tokenVersion || 0
-            });
+				if (zenPubKey && challenge && signature) {
+					// Zero-Knowledge Authentication Flow
 
-            res.json({
-                token,
-                expiresIn: "7d",
-                username: userToAuth,
-                isRootAdmin: authService.isRootAdmin(userToAuth),
-                artistId: result.artistId || null,
-                userId: result.id,
-                role: result.role || UserRole.NORMAL_USER,
-                mustChangePassword: await authService.isDefaultPassword(userToAuth)
-            });
-        } catch (error) {
-            console.error("Login error:", error);
-            res.status(500).json({ error: "Login failed" });
-        }
-    });
+					// Verify the signature against the nonce
+					const isValid = await authChallengeManager.consumeChallenge(
+						userToAuth,
+						challenge.nonce,
+						signature,
+						zenPubKey,
+					);
 
-    /**
-     * POST /api/auth/setup
-     * Set initial admin password (first run only)
-     */
-    router.post("/setup", rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }), async (req, res) => {
-        try {
-            if (!authService.isFirstRun()) {
-                return res.status(400).json({ error: "Admin account already set up" });
-            }
+					if (!isValid) {
+						return res
+							.status(401)
+							.json({ error: "Invalid ZK signature or expired challenge" });
+					}
 
-            const { username, password } = req.body;
+					// Check if user exists and zenPubKey matches
+					result = await authService.authenticateByFid(zenPubKey);
 
-            const passwordValidation = validatePassword(password);
-            if (!passwordValidation.valid) {
-                return res.status(400).json({ error: passwordValidation.error });
-            }
+					if (result && result.success) {
+						const dbUser = authService.getUserByZenPubKey(zenPubKey);
+						if (
+							!dbUser ||
+							dbUser.username.toLowerCase() !== userToAuth.toLowerCase()
+						) {
+							result = false;
+						} else {
+							// populate zenPub and zenPriv for response payload
+							const fullUser = authService.getUserByUsername(userToAuth) as any;
+							if (fullUser) {
+								result.zenPub = zenPubKey;
+								result.zenPriv = fullUser.zen_priv;
+								result.zenAuthMode = fullUser.zen_auth_mode;
+							}
+						}
+					}
+				} else if (password) {
+					// Legacy Password Flow
+					result = await authService.authenticateUser(userToAuth, password);
+					if (result && result.success) {
+						const dbUser = authService.getUserByUsername(userToAuth);
+						result.zenAuthMode = dbUser?.zen_auth_mode || "local";
+					}
+				} else {
+					return res
+						.status(400)
+						.json({ error: "Password or ZK signature required" });
+				}
 
-            const userToCreate = username || 'admin';
+				if (!result || !result.success) {
+					return res.status(401).json({ error: "Invalid credentials" });
+				}
 
-            const result = await authService.createAdmin(userToCreate, password);
-            // New root admin has no artist link
-            const token = authService.generateToken({
-                isAdmin: true,
-                username: userToCreate,
-                artistId: null,
-                role: UserRole.ROOT_ADMIN,
-                isActive: true,
-                userId: result.id,
-                tokenVersion: 0
-            });
+				// Phase 4: lazily generate AP keys for this user (fire-and-forget)
+				apService
+					?.ensureUserKeys(result.id)
+					.catch((e: any) => console.error("[AP] User key gen failed:", e));
 
-            res.json({
-                message: "Admin account created successfully",
-                token,
-                expiresIn: "7d",
-                username: userToCreate,
-                userId: result.id,
-                isRootAdmin: true
-            });
-        } catch (error) {
-            console.error("Setup error:", error);
-            res.status(500).json({ error: "Setup failed" });
-        }
-    });
+				const token = authService.generateToken({
+					isAdmin: result.isAdmin || false,
+					username: userToAuth,
+					artistId: result.artistId || null,
+					role: result.role || UserRole.NORMAL_USER,
+					isActive: result.isActive ?? true,
+					userId: result.id,
+					tokenVersion: result.tokenVersion || 0,
+				});
 
-    /**
-     * POST /api/auth/password
-     * Change own password (any authenticated user)
-     */
-    router.post("/password", rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }), authMiddleware.requireUser, async (req: AuthenticatedRequest, res) => {
-        try {
-            const { currentPassword, newPassword } = req.body;
-            // Get username from the token (injected by middleware)
-            const username = req.username;
-            // We should also preserve the artistId in the new token
-            const artistId = req.artistId || null;
+				res.json({
+					token,
+					expiresIn: "7d",
+					username: userToAuth,
+					isRootAdmin: authService.isRootAdmin(userToAuth),
+					artistId: result.artistId || null,
+					userId: result.id,
+					role: result.role || UserRole.NORMAL_USER,
+					mustChangePassword: await authService.isDefaultPassword(userToAuth),
+					isActive: result.isActive,
+					zenPub: result.zenPub,
+					zenPriv: result.zenPriv,
+					zenAuthMode: result.zenAuthMode,
+				});
+			} catch (error) {
+				console.error("Login error:", error);
+				res.status(500).json({ error: "Login failed" });
+			}
+		},
+	);
 
-            if (!username) {
-                return res.status(401).json({ error: "User context not found" });
-            }
+	/**
+	 * POST /api/auth/setup
+	 * Set initial admin password (first run only)
+	 */
+	router.post(
+		"/setup",
+		rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }),
+		async (req, res) => {
+			try {
+				if (!authService.isFirstRun()) {
+					return res
+						.status(400)
+						.json({ error: "Admin account already set up" });
+				}
 
-            if (!currentPassword || !newPassword) {
-                return res.status(400).json({
-                    error: "Current and new password required",
-                });
-            }
+				const { username, password, zenPubKey } = req.body;
 
-            const passwordValidation = validatePassword(newPassword);
-            if (!passwordValidation.valid) {
-                return res.status(400).json({ error: passwordValidation.error });
-            }
+				if (!password && !zenPubKey) {
+					return res
+						.status(400)
+						.json({ error: "Password or zenPubKey required" });
+				}
 
-            const valid = await authService.authenticateUser(username, currentPassword);
-            if (!valid || !valid.success) {
-                return res.status(401).json({ error: "Current password is incorrect" });
-            }
+				if (password) {
+					const passwordValidation = validatePassword(password);
+					if (!passwordValidation.valid) {
+						return res.status(400).json({ error: passwordValidation.error });
+					}
+				}
 
-            await authService.changePassword(username, newPassword);
+				const userToCreate = username || "admin";
 
-            const authResult = await authService.authenticateUser(username, newPassword);
-            const tokenVersion = (authResult && authResult.success) ? authResult.tokenVersion : 0;
+				const result = await authService.createAdmin(
+					userToCreate,
+					password || null,
+					null,
+					UserRole.ROOT_ADMIN,
+					zenPubKey,
+				);
+				// New root admin has no artist link
+				const token = authService.generateToken({
+					isAdmin: true,
+					username: userToCreate,
+					artistId: null,
+					role: UserRole.ROOT_ADMIN,
+					isActive: true,
+					userId: result.id,
+					tokenVersion: 0,
+				});
 
-            const token = authService.generateToken({
-                isAdmin: req.isAdmin ?? false,
-                username,
-                artistId,
-                role: req.role || UserRole.NORMAL_USER,
-                isActive: req.isActive ?? true,
-                userId: req.userId || 0,
-                tokenVersion: tokenVersion
-            });
+				res.json({
+					message: "Admin account created successfully",
+					token,
+					expiresIn: "7d",
+					username: userToCreate,
+					userId: result.id,
+					isRootAdmin: true,
+				});
+			} catch (error) {
+				console.error("Setup error:", error);
+				res.status(500).json({ error: "Setup failed" });
+			}
+		},
+	);
 
-            res.json({
-                message: "Password changed successfully",
-                token,
-                expiresIn: "7d",
-                pair: authService.getUserPair(username) // Return the newly generated or existing pair
-            });
-        } catch (error) {
-            console.error("Password change error:", error);
-            res.status(500).json({ error: "Password change failed" });
-        }
-    });
+	/**
+	 * POST /api/auth/password
+	 * Change own password (any authenticated user)
+	 */
+	router.post(
+		"/password",
+		rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }),
+		authMiddleware.requireUser,
+		async (req: AuthenticatedRequest, res) => {
+			try {
+				const { currentPassword, newPassword } = req.body;
+				// Get username from the token (injected by middleware)
+				const username = req.username;
+				// We should also preserve the artistId in the new token
+				const artistId = req.artistId || null;
 
-    /**
-     * POST /api/auth/forgot-password
-     * Request a password reset email via Brevo. Always responds with a generic
-     * message regardless of whether the email is registered, to avoid leaking
-     * which accounts exist.
-     */
-    router.post("/forgot-password", rateLimit({ windowMs: 15 * 60 * 1000, max: 5 }), async (req, res) => {
-        const { email } = req.body;
-        if (!email || typeof email !== "string") {
-            return res.status(400).json({ error: "Email required" });
-        }
+				if (!username) {
+					return res.status(401).json({ error: "User context not found" });
+				}
 
-        try {
-            const result = authService.createPasswordResetToken(email);
-            if (result) {
-                const base = config.publicUrl || `${req.protocol}://${req.get("host")}`;
-                const resetUrl = `${base}/reset-password?token=${result.token}`;
-                await sendBrevoEmail(
-                    config,
-                    email,
-                    "Reset your password",
-                    `<p>Hi ${result.username},</p><p>Click the link below to reset your password. This link expires in 30 minutes.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, you can ignore this email.</p>`,
-                    identity || database
-                );
-            }
-        } catch (error) {
-            console.error("Forgot-password error:", error);
-            // Don't leak success/failure — fall through to the generic response.
-        }
+				if (!currentPassword || !newPassword) {
+					return res.status(400).json({
+						error: "Current and new password required",
+					});
+				}
 
-        res.json({ message: "If that email is registered, a reset link has been sent." });
-    });
+				const passwordValidation = validatePassword(newPassword);
+				if (!passwordValidation.valid) {
+					return res.status(400).json({ error: passwordValidation.error });
+				}
 
-    /**
-     * POST /api/auth/reset-password
-     * Complete a password reset using the token emailed by /forgot-password.
-     */
-    router.post("/reset-password", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req, res) => {
-        const { token, newPassword } = req.body;
-        if (!token || !newPassword) {
-            return res.status(400).json({ error: "Token and new password required" });
-        }
+				const valid = await authService.authenticateUser(
+					username,
+					currentPassword,
+				);
+				if (!valid || !valid.success) {
+					return res
+						.status(401)
+						.json({ error: "Current password is incorrect" });
+				}
 
-        const passwordValidation = validatePassword(newPassword);
-        if (!passwordValidation.valid) {
-            return res.status(400).json({ error: passwordValidation.error });
-        }
+				await authService.changePassword(username, newPassword);
 
-        const success = await authService.resetPasswordWithToken(token, newPassword);
-        if (!success) {
-            return res.status(400).json({ error: "Invalid or expired reset link" });
-        }
+				const authResult = await authService.authenticateUser(
+					username,
+					newPassword,
+				);
+				const tokenVersion =
+					authResult && authResult.success ? authResult.tokenVersion : 0;
 
-        res.json({ message: "Password reset successfully. You can now log in." });
-    });
+				const token = authService.generateToken({
+					isAdmin: req.isAdmin ?? false,
+					username,
+					artistId,
+					role: req.role || UserRole.NORMAL_USER,
+					isActive: req.isActive ?? true,
+					userId: req.userId || 0,
+					tokenVersion: tokenVersion,
+				});
 
-    /**
-     * GET /api/auth/security-questions
-     */
-    router.get("/security-questions", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), (req, res) => {
-        const username = req.query.username as string;
-        if (!username) return res.status(400).json({ error: "Username required" });
-        const qs = authService.getSecurityQuestions(username);
-        if (!qs) return res.status(404).json({ error: "No security questions set for this user" });
-        res.json(qs);
-    });
+				res.json({
+					message: "Password changed successfully",
+					token,
+					expiresIn: "7d",
+					pair: authService.getUserPair(username), // Return the newly generated or existing pair
+				});
+			} catch (error) {
+				console.error("Password change error:", error);
+				res.status(500).json({ error: "Password change failed" });
+			}
+		},
+	);
 
-    /**
-     * POST /api/auth/security-questions
-     */
-    router.post("/security-questions", rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }), authMiddleware.requireUser, async (req: AuthenticatedRequest, res) => {
-        try {
-            const { q1, a1, q2, a2 } = req.body;
-            if (!q1 || !a1 || !q2 || !a2) return res.status(400).json({ error: "Both questions and answers required" });
-            await authService.setSecurityQuestions(req.userId!, q1, a1, q2, a2);
-            res.json({ success: true });
-        } catch (error) {
-            console.error("Set security questions error:", error);
-            res.status(500).json({ error: "Failed to set security questions" });
-        }
-    });
+	/**
+	 * POST /api/auth/forgot-password
+	 * Request a password reset email via Brevo. Always responds with a generic
+	 * message regardless of whether the email is registered, to avoid leaking
+	 * which accounts exist.
+	 */
+	router.post(
+		"/forgot-password",
+		rateLimit({ windowMs: 15 * 60 * 1000, max: 5 }),
+		async (req, res) => {
+			const { email } = req.body;
+			if (!email || typeof email !== "string") {
+				return res.status(400).json({ error: "Email required" });
+			}
 
-    /**
-     * POST /api/auth/reset-password-security
-     */
-    router.post("/reset-password-security", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req, res) => {
-        try {
-            const { username, a1, a2, newPassword } = req.body;
-            if (!username || !a1 || !a2 || !newPassword) return res.status(400).json({ error: "All fields required" });
+			try {
+				const result = authService.createPasswordResetToken(email);
+				if (result) {
+					const base =
+						config.publicUrl || `${req.protocol}://${req.get("host")}`;
+					const resetUrl = `${base}/reset-password?token=${result.token}`;
+					await sendBrevoEmail(
+						config,
+						email,
+						"Reset your password",
+						`<p>Hi ${result.username},</p><p>Click the link below to reset your password. This link expires in 30 minutes.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, you can ignore this email.</p>`,
+						identity || database,
+					);
+				}
+			} catch (error) {
+				console.error("Forgot-password error:", error);
+				// Don't leak success/failure — fall through to the generic response.
+			}
 
-            const passwordValidation = validatePassword(newPassword);
-            if (!passwordValidation.valid) {
-                return res.status(400).json({ error: passwordValidation.error });
-            }
+			res.json({
+				message: "If that email is registered, a reset link has been sent.",
+			});
+		},
+	);
 
-            const success = await authService.resetPasswordWithSecurityQuestions(username, a1, a2, newPassword);
-            if (!success) {
-                return res.status(400).json({ error: "Incorrect answers" });
-            }
-            res.json({ message: "Password reset successfully. You can now log in." });
-        } catch (error) {
-            console.error("Reset password security error:", error);
-            res.status(500).json({ error: "Reset failed" });
-        }
-    });
+	/**
+	 * POST /api/auth/reset-password
+	 * Complete a password reset using the token emailed by /forgot-password.
+	 */
+	router.post(
+		"/reset-password",
+		rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }),
+		async (req, res) => {
+			const { token, newPassword } = req.body;
+			if (!token || !newPassword) {
+				return res
+					.status(400)
+					.json({ error: "Token and new password required" });
+			}
 
-    /**
-     * GET /api/auth/status
-     * Check authentication status
-     */
-    router.get("/status", async (req: AuthenticatedRequest, res) => {
-        const username = req.username || "";
-        const dbUser = username ? authService.getUserByUsername(username) : null;
-        const profile = username ? authService.getUserProfile(username) : null;
-        const brevoApiKey = (identity || database)?.getSetting("brevo_api_key") || config?.brevoApiKey;
-        const brevoSenderEmail = (identity || database)?.getSetting("brevo_sender_email") || config?.brevoSenderEmail;
-        const brevoConfigured = !!(brevoApiKey && brevoSenderEmail);
+			const passwordValidation = validatePassword(newPassword);
+			if (!passwordValidation.valid) {
+				return res.status(400).json({ error: passwordValidation.error });
+			}
 
-        res.json({
-            authenticated: req.role !== UserRole.GUEST,
-            username: username,
-            isRootAdmin: username ? authService.isRootAdmin(username) : false,
-            artistId: dbUser ? dbUser.artist_id : (req.artistId || null),
-            userId: dbUser ? dbUser.id : (req.userId || null),
-            role: dbUser ? dbUser.role : (req.role || null),
-            isActive: dbUser ? dbUser.is_active === 1 : (req.isActive !== false),
-            pair: username ? authService.getUserPair(username) : null,
-            alias: profile?.alias || null,
-            avatar: profile?.avatar || (username ? authService.getZenAvatar(username) : null),
-            email: profile?.email || null,
-            firstRun: authService.isFirstRun(),
-            mustChangePassword: username ? await authService.isDefaultPassword(username) : false,
-            brevoConfigured
-        });
-    });
+			const success = await authService.resetPasswordWithToken(
+				token,
+				newPassword,
+			);
+			if (!success) {
+				return res.status(400).json({ error: "Invalid or expired reset link" });
+			}
 
-    /**
-     * PATCH /api/auth/profile
-     * Update alias and/or avatar for the authenticated user.
-     */
-    router.patch("/profile", authMiddleware.requireUser, async (req: AuthenticatedRequest, res) => {
-        try {
-            const { alias, avatar, email } = req.body;
-            if (alias === undefined && avatar === undefined && email === undefined) {
-                return res.status(400).json({ error: "alias, avatar or email required" });
-            }
+			res.json({ message: "Password reset successfully. You can now log in." });
+		},
+	);
 
-            if (email !== undefined && email !== null) {
-                const emailValidation = validateEmail(email);
-                if (!emailValidation.valid) {
-                    return res.status(400).json({ error: emailValidation.error });
-                }
-            }
-            if (email !== undefined) {
-                authService.setEmail(req.username!, email || null);
-            }
+	/**
+	 * GET /api/auth/security-questions
+	 */
+	router.get(
+		"/security-questions",
+		rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }),
+		(req, res) => {
+			const username = req.query.username as string;
+			if (!username)
+				return res.status(400).json({ error: "Username required" });
+			const qs = authService.getSecurityQuestions(username);
+			if (!qs)
+				return res
+					.status(404)
+					.json({ error: "No security questions set for this user" });
+			res.json(qs);
+		},
+	);
 
-            authService.updateUserProfile(req.username!, { alias, avatar });
-            res.json({ success: true });
-        } catch (err: any) {
-            if (String(err?.message).includes("UNIQUE")) {
-                return res.status(409).json({ error: "Email already in use" });
-            }
-            console.error("Profile update error:", err);
-            res.status(500).json({ error: "Failed to update profile" });
-        }
-    });
+	/**
+	 * POST /api/auth/security-questions
+	 */
+	router.post(
+		"/security-questions",
+		rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }),
+		authMiddleware.requireUser,
+		async (req: AuthenticatedRequest, res) => {
+			try {
+				const { q1, a1, q2, a2 } = req.body;
+				// a1 and a2 can now be encrypted payloads instead of answers
+				if (!q1 || !a1 || !q2 || !a2)
+					return res
+						.status(400)
+						.json({ error: "Both questions and answers/payloads required" });
+				await authService.setSecurityQuestions(req.userId!, q1, a1, q2, a2);
+				res.json({ success: true });
+			} catch (error) {
+				console.error("Set security questions error:", error);
+				res.status(500).json({ error: "Failed to set security questions" });
+			}
+		},
+	);
 
-    return router;
+	/**
+	 * POST /api/auth/reset-password-security
+	 */
+	router.post(
+		"/reset-password-security",
+		rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }),
+		async (req, res) => {
+			try {
+				const { username, a1, a2, newPassword } = req.body;
+				if (!username || !a1 || !a2 || !newPassword)
+					return res.status(400).json({ error: "All fields required" });
+
+				const passwordValidation = validatePassword(newPassword);
+				if (!passwordValidation.valid) {
+					return res.status(400).json({ error: passwordValidation.error });
+				}
+
+				const success = await authService.resetPasswordWithSecurityQuestions(
+					username,
+					a1,
+					a2,
+					newPassword,
+				);
+				if (!success) {
+					return res.status(400).json({ error: "Incorrect answers" });
+				}
+				res.json({
+					message: "Password reset successfully. You can now log in.",
+				});
+			} catch (error) {
+				console.error("Reset password security error:", error);
+				res.status(500).json({ error: "Reset failed" });
+			}
+		},
+	);
+
+	/**
+	 * GET /api/auth/status
+	 * Check authentication status
+	 */
+	router.get("/status", async (req: AuthenticatedRequest, res) => {
+		const username = req.username || "";
+		const dbUser = username ? authService.getUserByUsername(username) : null;
+		const profile = username ? authService.getUserProfile(username) : null;
+		const brevoApiKey =
+			(identity || database)?.getSetting("brevo_api_key") ||
+			config?.brevoApiKey;
+		const brevoSenderEmail =
+			(identity || database)?.getSetting("brevo_sender_email") ||
+			config?.brevoSenderEmail;
+		const brevoConfigured = !!(brevoApiKey && brevoSenderEmail);
+
+		res.json({
+			authenticated: req.role !== UserRole.GUEST,
+			username: username,
+			isRootAdmin: username ? authService.isRootAdmin(username) : false,
+			artistId: dbUser ? dbUser.artist_id : req.artistId || null,
+			userId: dbUser ? dbUser.id : req.userId || null,
+			role: dbUser ? dbUser.role : req.role || null,
+			isActive: dbUser ? dbUser.is_active === 1 : req.isActive !== false,
+			pair: username ? authService.getUserPair(username) : null,
+			alias: profile?.alias || null,
+			avatar:
+				profile?.avatar ||
+				(username ? authService.getZenAvatar(username) : null),
+			email: profile?.email || null,
+			firstRun: authService.isFirstRun(),
+			mustChangePassword: username
+				? await authService.isDefaultPassword(username)
+				: false,
+			brevoConfigured,
+			zenAuthMode: dbUser?.zen_auth_mode || null,
+		});
+	});
+
+	/**
+	 * PATCH /api/auth/profile
+	 * Update alias and/or avatar for the authenticated user.
+	 */
+	router.patch(
+		"/profile",
+		authMiddleware.requireUser,
+		async (req: AuthenticatedRequest, res) => {
+			try {
+				const { alias, avatar, email } = req.body;
+				if (
+					alias === undefined &&
+					avatar === undefined &&
+					email === undefined
+				) {
+					return res
+						.status(400)
+						.json({ error: "alias, avatar or email required" });
+				}
+
+				if (email !== undefined && email !== null) {
+					const emailValidation = validateEmail(email);
+					if (!emailValidation.valid) {
+						return res.status(400).json({ error: emailValidation.error });
+					}
+				}
+				if (email !== undefined) {
+					authService.setEmail(req.username!, email || null);
+				}
+
+				authService.updateUserProfile(req.username!, { alias, avatar });
+				res.json({ success: true });
+			} catch (err: any) {
+				if (String(err?.message).includes("UNIQUE")) {
+					return res.status(409).json({ error: "Email already in use" });
+				}
+				console.error("Profile update error:", err);
+				res.status(500).json({ error: "Failed to update profile" });
+			}
+		},
+	);
+
+	return router;
 }
-

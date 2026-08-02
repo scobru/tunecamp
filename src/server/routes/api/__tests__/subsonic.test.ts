@@ -57,7 +57,7 @@ describe('Subsonic Scrobbling', () => {
         if (fs.existsSync(dbPath + '-wal')) fs.unlinkSync(dbPath + '-wal');
     });
 
-    it('should record a scrobble in the database and GunDB', async () => {
+    it('should record a scrobble in the database and ZenDB', async () => {
         const artistId = database.library.createArtist('Test Artist');
         const albumId = database.library.createAlbum({
             title: 'Test Album',

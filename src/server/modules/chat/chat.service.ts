@@ -52,18 +52,27 @@ export class ChatService {
 		isAdmin = false,
 		userId?: number | string,
 	): string {
-		// Allow multiple active connections per user (e.g. browser tab + Sidecamp daemon)
-		// without forcibly closing the previous socket and causing a reconnection loop.
+		let username = rawUsername;
+		let suffix = 2;
 
-		// Disambiguate duplicate usernames by appending an incremental suffix
-		const existingWithSameName = Array.from(this.clients.values()).filter(
-			(c) => c.rawUsername === rawUsername,
-		);
-		const collisionCount = existingWithSameName.length;
-		const username =
-			collisionCount > 0
-				? `${rawUsername} #${collisionCount + 1}`
-				: rawUsername;
+		while (true) {
+			let collision = false;
+			for (const client of this.clients.values()) {
+				if (client.username === username) {
+					if (userId !== undefined && client.userId === userId) {
+						// Group multiple connections (e.g. browser tab + Sidecamp daemon)
+						// under the same username instead of appending a #2 suffix.
+						collision = false;
+					} else {
+						collision = true;
+					}
+					break;
+				}
+			}
+			if (!collision) break;
+			username = `${rawUsername} #${suffix}`;
+			suffix++;
+		}
 
 		this.clients.set(clientId, {
 			id: clientId,
@@ -362,7 +371,7 @@ export class ChatService {
 		const client = this.clients.get(clientId);
 		if (!client) return [];
 		client.pubkey = pubkey;
-		const roster: { username: string; pubkey: string }[] = [];
+		const pubkeyMap = new Map<string, string>();
 		for (const other of this.clients.values()) {
 			if (other.id === clientId) continue;
 			if (other.ws.readyState === OPEN) {
@@ -370,10 +379,23 @@ export class ChatService {
 					JSON.stringify({ type: "pubkey", from: client.username, pubkey }),
 				);
 			}
-			if (other.pubkey)
-				roster.push({ username: other.username, pubkey: other.pubkey });
+			if (other.pubkey) pubkeyMap.set(other.username, other.pubkey);
+		}
+
+		const roster: { username: string; pubkey: string }[] = [];
+		for (const [uname, pk] of pubkeyMap.entries()) {
+			roster.push({ username: uname, pubkey: pk });
 		}
 		return roster;
+	}
+
+	getPubkey(username: string): string | undefined {
+		for (const client of this.clients.values()) {
+			if (client.rawUsername === username && client.pubkey) {
+				return client.pubkey;
+			}
+		}
+		return undefined;
 	}
 
 	// Lobby backlog, oldest first — the order a client renders it in.
@@ -392,9 +414,15 @@ export class ChatService {
 	}
 
 	getClients(): { username: string; pubkey: boolean }[] {
-		const result: { username: string; pubkey: boolean }[] = [];
+		const map = new Map<string, boolean>();
 		for (const client of this.clients.values()) {
-			result.push({ username: client.username, pubkey: !!client.pubkey });
+			if (!map.has(client.username) || client.pubkey) {
+				map.set(client.username, !!client.pubkey);
+			}
+		}
+		const result: { username: string; pubkey: boolean }[] = [];
+		for (const [username, pubkey] of map.entries()) {
+			result.push({ username, pubkey });
 		}
 		return result;
 	}
@@ -457,6 +485,55 @@ export class ChatService {
 		} catch (err) {
 			console.error("[ChatService] Failed to persist lobby message:", err);
 		}
+	}
+	/**
+	 * Relay a message that arrived from a federated peer. The display
+	 * username is already qualified (`user@instance`) so local clients can
+	 * tell it did not originate on this instance. Lobby messages are persisted
+	 * like any other; DMs are delivered verbatim — the ciphertext is
+	 * end-to-end, so the server never sees plaintext.
+	 */
+	relayFederatedMessage(
+		qualifiedFrom: string,
+		text: string,
+		ts: number,
+		isLobby: boolean,
+		toUsername?: string,
+	): boolean {
+		const clean = String(text ?? "").slice(0, MAX_TEXT_LENGTH);
+		if (!clean.trim()) return false;
+
+		if (isLobby) {
+			this.persistLobbyMessage(qualifiedFrom, clean);
+		}
+
+		let delivered = false;
+		for (const client of this.clients.values()) {
+			if (client.ws.readyState !== OPEN) continue;
+
+			const matchesTarget =
+				!toUsername ||
+				client.username === toUsername ||
+				client.rawUsername === toUsername;
+
+			if (!isLobby && !matchesTarget) continue;
+
+			try {
+				client.ws.send(
+					JSON.stringify({
+						type: "chat",
+						from: qualifiedFrom,
+						text: clean,
+						ts: ts || Date.now(),
+						lobby: isLobby,
+					}),
+				);
+				delivered = true;
+			} catch (err) {
+				console.error("[ChatService] federated relay error:", err);
+			}
+		}
+		return delivered;
 	}
 }
 

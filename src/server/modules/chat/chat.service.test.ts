@@ -164,6 +164,27 @@ describe("ChatService", () => {
 		});
 	});
 
+	describe("getPubkey", () => {
+		it("returns the pubkey for a connected client", () => {
+			const aliceWs = fakeWs();
+			chatService.register("alice-id", "alice", aliceWs);
+			chatService.setPubkey("alice-id", "alice-pub");
+
+			expect(chatService.getPubkey("alice")).toBe("alice-pub");
+		});
+
+		it("returns undefined when no client matches", () => {
+			expect(chatService.getPubkey("nobody")).toBeUndefined();
+		});
+
+		it("returns undefined for a client without a pubkey", () => {
+			const bobWs = fakeWs();
+			chatService.register("bob-id", "bob", bobWs);
+
+			expect(chatService.getPubkey("bob")).toBeUndefined();
+		});
+	});
+
 	describe("lobby history", () => {
 		it("persists lobby messages and returns them oldest first", () => {
 			chatService.register("alice-id", "alice", fakeWs());
@@ -294,10 +315,11 @@ describe("ChatService", () => {
 			);
 
 			expect(first).toBe("homologo");
-			expect(second).toBe("homologo #2");
+			expect(second).toBe("homologo");
 
 			const clients = chatService.getClients();
-			expect(clients).toHaveLength(2);
+			expect(clients).toHaveLength(1);
+			expect(clients[0].username).toBe("homologo");
 		});
 	});
 

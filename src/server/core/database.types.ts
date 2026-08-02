@@ -23,19 +23,6 @@ export interface User {
 	can_peer?: number;
 }
 
-export interface FidRegistry {
-	id: number;
-	user_id: number;
-	instance_domain: string;
-	artist_id: number | null;
-	artist_name: string | null;
-	artist_slug: string | null;
-	public_key: string | null;
-	passport_signature: string | null;
-	linked_at: string;
-	verified: number;
-}
-
 export interface Artist {
 	id: number;
 	name: string;
@@ -90,7 +77,7 @@ export interface Album {
 	visibility: "public" | "private" | "unlisted";
 	is_release: boolean;
 	published_at: string | null;
-	published_to_gundb: boolean;
+	published_to_zen: boolean;
 	published_to_ap: boolean;
 	license?: string | null;
 	status:
@@ -468,35 +455,6 @@ export interface IdentityManager {
 
 	// Phase 4: ActivityPub user keys
 	updateUserApKeys(userId: number, pubKey: string, privKey: string): void;
-
-	// FID Registry - Cross-instance artist linking
-	getFidRegistry(userId: number): FidRegistry[];
-	getFidRegistryByInstance(
-		userId: number,
-		instanceDomain: string,
-	): FidRegistry | undefined;
-	addFidRegistryEntry(entry: {
-		userId: number;
-		instanceDomain: string;
-		artistId?: number | null;
-		artistName?: string | null;
-		artistSlug?: string | null;
-		publicKey?: string | null;
-		passportSignature?: string | null;
-	}): number;
-	updateFidRegistryEntry(
-		id: number,
-		data: {
-			artistId?: number | null;
-			artistName?: string | null;
-			artistSlug?: string | null;
-			publicKey?: string | null;
-			passportSignature?: string | null;
-			verified?: number;
-		},
-	): void;
-	deleteFidRegistryEntry(id: number): void;
-	verifyFidRegistryEntry(id: number): void;
 }
 
 export interface LibraryManager {
@@ -616,7 +574,7 @@ export interface LibraryManager {
 	updateAlbum(id: number, album: Partial<Album>): void;
 	updateAlbumFederationSettings(
 		id: number,
-		publishedToGunDB: boolean,
+		publishedToZen: boolean,
 		publishedToAP: boolean,
 	): void;
 	updateAlbumArtist(id: number, artistId: number): void;
@@ -975,9 +933,7 @@ export interface SocialManager {
 		text: string;
 		created_at: string;
 	};
-	getComments(
-		trackId: number,
-	): {
+	getComments(trackId: number): {
 		id: number;
 		track_id: number;
 		username: string;

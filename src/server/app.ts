@@ -70,6 +70,9 @@ export function createApp(config: ServerConfig): AppSetupResult {
     app.use('/api/sample-packs', publicFederationCors);
     app.use('/api/auth/zen/user', publicFederationCors);
     app.use('/api/auth/zen/verify', publicFederationCors);
+    
+    // Subsonic API must be accessible to cross-origin web clients (like TuneCamp Audiofabric)
+    app.use('/rest', publicFederationCors);
 
     // POST /api/auth/zen/sso is called by the FID identity portal, which is by design a
     // different origin (and may be one the user self-hosts), so the origin cannot be the

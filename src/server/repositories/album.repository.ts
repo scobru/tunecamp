@@ -33,7 +33,7 @@ export class AlbumRepository {
             currency: row.currency || 'ETH',
             is_public: !!row.is_public,
             is_release: !!row.is_release,
-            published_to_gundb: !!row.published_to_gundb,
+            published_to_zen: !!row.published_to_zen,
             published_to_ap: !!row.published_to_ap,
             price_usdt: row.price_usdt || 0,
             external_links,
@@ -269,10 +269,10 @@ export class AlbumRepository {
         const linksJson = album.external_links ? (typeof album.external_links === 'object' ? JSON.stringify(album.external_links) : album.external_links) : null;
         while (attempt < 100) {
             try {
-                const result = this.db.prepare(`INSERT INTO albums (title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, price_usdt, currency, external_links, is_public, visibility, is_release, published_at, published_to_gundb, published_to_ap, use_nft, album_artist, product_type, podcast_author, podcast_email, podcast_category, podcast_explicit)
+                const result = this.db.prepare(`INSERT INTO albums (title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, price_usdt, currency, external_links, is_public, visibility, is_release, published_at, published_to_zen, published_to_ap, use_nft, album_artist, product_type, podcast_author, podcast_email, podcast_category, podcast_explicit)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
                     .run(album.title, finalSlug, album.artist_id, album.owner_id, album.date, album.cover_path, album.genre, album.description, album.type || null, album.year || null, album.download, album.price || 0, album.price_usdc || 0, album.price_usdt || 0, album.currency || 'ETH', linksJson,
-                        album.visibility === 'public' || album.visibility === 'unlisted' ? 1 : 0, album.visibility || 'private', album.is_release ? 1 : 0, album.published_at, album.published_to_gundb ? 1 : 0, album.published_to_ap ? 1 : 0, album.use_nft ? 1 : 0, album.album_artist || null, album.product_type || 'music', album.podcast_author || null, album.podcast_email || null, album.podcast_category || null, album.podcast_explicit ? 1 : 0);
+                        album.visibility === 'public' || album.visibility === 'unlisted' ? 1 : 0, album.visibility || 'private', album.is_release ? 1 : 0, album.published_at, album.published_to_zen ? 1 : 0, album.published_to_ap ? 1 : 0, album.use_nft ? 1 : 0, album.album_artist || null, album.product_type || 'music', album.podcast_author || null, album.podcast_email || null, album.podcast_category || null, album.podcast_explicit ? 1 : 0);
                 return result.lastInsertRowid as number;
             } catch (e: any) {
                 if (e.code === "SQLITE_CONSTRAINT_UNIQUE" && e.message.includes("slug")) { attempt++; finalSlug = `${slug}-${attempt}`; } else throw e;
@@ -289,14 +289,14 @@ export class AlbumRepository {
         while (attempt < 100) {
             try {
                 const result = this.db.prepare(`
-                    INSERT INTO albums (title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, price_usdt, currency, external_links, visibility, published_at, published_to_gundb, published_to_ap, license, album_artist, status, is_release, product_type, podcast_author, podcast_email, podcast_category, podcast_explicit)
+                    INSERT INTO albums (title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, price_usdt, currency, external_links, visibility, published_at, published_to_zen, published_to_ap, license, album_artist, status, is_release, product_type, podcast_author, podcast_email, podcast_category, podcast_explicit)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
                 `).run(
                     release.title, finalSlug, release.artist_id, release.owner_id,
                     release.date, release.cover_path, release.genre, release.description, release.type, release.year,
                     release.download, release.price || 0, release.price_usdc || 0, release.price_usdt || 0, release.currency || 'ETH', linksJson,
                     release.visibility || 'private', release.published_at, 
-                    release.published_to_gundb ? 1 : 0, release.published_to_ap ? 1 : 0,
+                    release.published_to_zen ? 1 : 0, release.published_to_ap ? 1 : 0,
                     release.license, release.album_artist || null, release.status || 'released',
                     release.product_type || 'music', release.podcast_author || null, release.podcast_email || null, release.podcast_category || null, release.podcast_explicit ? 1 : 0
                 );
@@ -325,7 +325,7 @@ export class AlbumRepository {
             isPublic: 'is_public',
             isRelease: 'is_release',
             publishedAt: 'published_at',
-            publishedToGunDB: 'published_to_gundb',
+            publishedToZen: 'published_to_zen',
             publishedToAP: 'published_to_ap',
             albumArtist: 'album_artist',
             useNft: 'use_nft',
@@ -376,7 +376,7 @@ export class AlbumRepository {
             fields.push(`${key} = ?`);
             if (key === 'external_links' && value && typeof value === 'object') {
                 values.push(JSON.stringify(value));
-            } else if (['published_to_gundb', 'published_to_ap', 'is_public', 'is_release'].includes(key)) {
+            } else if (['published_to_zen', 'published_to_ap', 'is_public', 'is_release'].includes(key)) {
                 values.push(value ? 1 : 0);
             } else {
                 values.push(value);
