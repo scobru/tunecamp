@@ -60,7 +60,7 @@ export class ChatService {
 			for (const client of this.clients.values()) {
 				if (client.username === username) {
 					if (userId !== undefined && client.userId === userId) {
-						// Group multiple connections (e.g. browser tab + Sidecamp daemon) 
+						// Group multiple connections (e.g. browser tab + Sidecamp daemon)
 						// under the same username instead of appending a #2 suffix.
 						collision = false;
 					} else {
@@ -381,12 +381,21 @@ export class ChatService {
 			}
 			if (other.pubkey) pubkeyMap.set(other.username, other.pubkey);
 		}
-		
+
 		const roster: { username: string; pubkey: string }[] = [];
 		for (const [uname, pk] of pubkeyMap.entries()) {
 			roster.push({ username: uname, pubkey: pk });
 		}
 		return roster;
+	}
+
+	getPubkey(username: string): string | undefined {
+		for (const client of this.clients.values()) {
+			if (client.rawUsername === username && client.pubkey) {
+				return client.pubkey;
+			}
+		}
+		return undefined;
 	}
 
 	// Lobby backlog, oldest first — the order a client renders it in.
@@ -502,7 +511,8 @@ export class ChatService {
 		for (const client of this.clients.values()) {
 			if (client.ws.readyState !== OPEN) continue;
 
-			const matchesTarget = !toUsername ||
+			const matchesTarget =
+				!toUsername ||
 				client.username === toUsername ||
 				client.rawUsername === toUsername;
 

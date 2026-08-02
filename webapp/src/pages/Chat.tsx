@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { usePeerChat, type ChatMessage, type PeerInfo } from "../hooks/usePeerChat";
+import {
+	usePeerChat,
+	type ChatMessage,
+	type PeerInfo,
+} from "../hooks/usePeerChat";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useSiteSettingsStore, truthy } from "../stores/useSiteSettingsStore";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -27,7 +31,10 @@ export default function Chat() {
 	const { role } = useAuthStore();
 	const roleStr = String(role || "");
 	const isSiteAdmin =
-		roleStr === "admin" || roleStr === "root_admin" || roleStr === "super_user" || roleStr === "manager";
+		roleStr === "admin" ||
+		roleStr === "root_admin" ||
+		roleStr === "super_user" ||
+		roleStr === "manager";
 	const [to, setTo] = useState("");
 	const [text, setText] = useState("");
 	const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -39,10 +46,30 @@ export default function Chat() {
 	}, [fetchFlags]);
 
 	const isChatEnabled = truthy(siteSettings?.peerChatEnabled);
-	const { messages, status, username, isAdmin, peers, unreadCounts, clearUnread, sendMessage, sendAdminAction, formatUser } = usePeerChat(
-		isChatEnabled,
-		to,
-	);
+	const {
+		messages,
+		status,
+		username,
+		isAdmin,
+		peers,
+		unreadCounts,
+		clearUnread,
+		sendMessage,
+		sendAdminAction,
+		formatUser,
+		client,
+	} = usePeerChat(isChatEnabled, to);
+
+	const peerTarget = (peer: PeerInfo) => {
+		if (!peer.instance || peer.instance === client?.getInstanceName()) {
+			return peer.username;
+		}
+		return `${peer.username}@${peer.instance}`;
+	};
+
+	const isActivePeer = (peer: PeerInfo) => {
+		return to === peer.username || to === peerTarget(peer);
+	};
 
 	const canModerate = isSiteAdmin || isAdmin;
 
@@ -73,10 +100,12 @@ export default function Chat() {
 	const handleAdminAction = (action: string, targetUser: string) => {
 		if (action === "kick") {
 			const reason = prompt(`Reason for kicking ${targetUser}?`);
-			if (reason !== null) sendAdminAction("kick", targetUser, reason || undefined);
+			if (reason !== null)
+				sendAdminAction("kick", targetUser, reason || undefined);
 		} else if (action === "ban") {
 			const reason = prompt(`Reason for banning ${targetUser}?`);
-			if (reason !== null) sendAdminAction("ban", targetUser, reason || undefined);
+			if (reason !== null)
+				sendAdminAction("ban", targetUser, reason || undefined);
 		} else if (action === "mute") {
 			const minutes = prompt(`Mute ${targetUser} for how many minutes?`, "15");
 			if (minutes !== null) {
@@ -145,7 +174,8 @@ export default function Chat() {
 					</span>
 					{username && (
 						<span className="opacity-60">
-							connected as <strong className="text-base-content">{username}</strong>
+							connected as{" "}
+							<strong className="text-base-content">{username}</strong>
 						</span>
 					)}
 					{canModerate && (
@@ -189,11 +219,19 @@ export default function Chat() {
 						{messages.map((m: ChatMessage, i: number) => {
 							if (m.system) {
 								return (
-									<div key={`${m.ts}-${i}`} className="flex flex-col items-center my-1.5">
+									<div
+										key={`${m.ts}-${i}`}
+										className="flex flex-col items-center my-1.5"
+									>
 										<div className="bg-base-300/80 border border-base-content/10 text-[11px] px-3 py-1 rounded-full text-base-content/70 font-mono shadow-xs flex items-center gap-1.5">
-											<ShieldAlert size={12} className="text-warning shrink-0" />
+											<ShieldAlert
+												size={12}
+												className="text-warning shrink-0"
+											/>
 											<span>{m.text}</span>
-											<span className="opacity-40 text-[9px] ml-1">{formatTime(m.ts)}</span>
+											<span className="opacity-40 text-[9px] ml-1">
+												{formatTime(m.ts)}
+											</span>
 										</div>
 									</div>
 								);
@@ -256,7 +294,10 @@ export default function Chat() {
 							<div className="bg-base-300/80 border border-base-content/10 rounded-xl px-3 py-2 text-xs text-base-content/70 font-mono flex items-center gap-2">
 								<HelpCircle size={14} className="text-info shrink-0" />
 								<span>
-									Commands: <code>/kick &lt;user&gt; [reason]</code> | <code>/ban &lt;user&gt; [reason]</code> | <code>/mute &lt;user&gt; [min]</code> | <code>/unban</code> | <code>/unmute</code> | <code>/clear</code>
+									Commands: <code>/kick &lt;user&gt; [reason]</code> |{" "}
+									<code>/ban &lt;user&gt; [reason]</code> |{" "}
+									<code>/mute &lt;user&gt; [min]</code> | <code>/unban</code> |{" "}
+									<code>/unmute</code> | <code>/clear</code>
 								</span>
 							</div>
 						)}
@@ -317,13 +358,18 @@ export default function Chat() {
 							onClick={() => setTo("")}
 						>
 							<div className="flex items-center gap-2 min-w-0 flex-1">
-								<Globe size={14} className={to === "" ? "text-primary" : "opacity-60"} />
+								<Globe
+									size={14}
+									className={to === "" ? "text-primary" : "opacity-60"}
+								/>
 								<span className="truncate">🌐 Public Lobby</span>
 							</div>
 						</div>
 
 						{peers.length === 0 && (
-							<p className="text-xs opacity-40 px-1 pt-2">No other peers connected.</p>
+							<p className="text-xs opacity-40 px-1 pt-2">
+								No other peers connected.
+							</p>
 						)}
 						{peers.map((peer: PeerInfo) => {
 							const isSelf = peer.username === username;
@@ -333,7 +379,7 @@ export default function Chat() {
 									key={peer.username}
 									className={clsx(
 										"group w-full flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors",
-										to === peer.username
+										isActivePeer(peer)
 											? "bg-primary/10 text-primary"
 											: "hover:bg-base-content/5",
 									)}
@@ -344,7 +390,7 @@ export default function Chat() {
 											if (isSelf) {
 												setTo("");
 											} else {
-												setTo(peer.username);
+												setTo(peerTarget(peer));
 												clearUnread(peer.username);
 											}
 										}}
@@ -356,7 +402,9 @@ export default function Chat() {
 										<span className="truncate text-left font-medium">
 											{formatUser(peer.username, peer.instance)}
 										</span>
-										{isSelf && <span className="opacity-40 text-[10px]">you</span>}
+										{isSelf && (
+											<span className="opacity-40 text-[10px]">you</span>
+										)}
 										{peer.pubkey && (
 											<Lock
 												size={10}
@@ -365,7 +413,7 @@ export default function Chat() {
 											/>
 										)}
 									</button>
-									{unread > 0 && to !== peer.username && (
+									{unread > 0 && !isActivePeer(peer) && (
 										<span className="badge badge-sm badge-error text-white font-bold shrink-0">
 											{unread}
 										</span>
