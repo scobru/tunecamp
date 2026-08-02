@@ -176,12 +176,10 @@ describe("Auth Routes", () => {
 			});
 			mockAuthService.getUserPair.mockReturnValue({ pub: "some-key" });
 
-			const res = await request(app)
-				.post("/api/auth/password")
-				.send({
-					currentPassword: "OldPassword123!",
-					newPassword: "NewPassword123!",
-				});
+			const res = await request(app).post("/api/auth/password").send({
+				currentPassword: "OldPassword123!",
+				newPassword: "NewPassword123!",
+			});
 
 			expect(res.status).toBe(200);
 			expect(res.body.message).toBe("Password changed successfully");
