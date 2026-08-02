@@ -43,6 +43,7 @@ import { createRadioRoutes } from "./routes/api/radio.js";
 import { createPeerWsHandler } from "./modules/peer/peer.ws.js";
 import { createChatWsHandler } from "./modules/chat/chat.ws.js";
 import { createChatRoutes } from "./routes/api/chat.js";
+import { createChatFederationRoutes } from "./routes/network/chat-federation.js";
 import { createPeersRoutes } from "./routes/api/peers.js";
 import { createLabAppsRoutes } from "./routes/admin/lab-apps.js";
 import { createLifecycleRoutes } from "./routes/api/lifecycle.js";
@@ -216,6 +217,7 @@ export function registerRoutes(
 		}),
 		createChatRoutes(container),
 	);
+	app.use("/api/chat/federated", createChatFederationRoutes(container));
 	app.use(
 		"/api/live",
 		requireModuleEnabled(container, "hideLive", { allowAdmin: true }),

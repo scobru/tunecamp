@@ -407,7 +407,7 @@ export class ChatService {
 	getClients(): { username: string; pubkey: boolean }[] {
 		const map = new Map<string, boolean>();
 		for (const client of this.clients.values()) {
-			if (!map.has(client.username) || !!client.pubkey) {
+			if (!map.has(client.username) || client.pubkey) {
 				map.set(client.username, !!client.pubkey);
 			}
 		}
@@ -476,6 +476,54 @@ export class ChatService {
 		} catch (err) {
 			console.error("[ChatService] Failed to persist lobby message:", err);
 		}
+	}
+	/**
+	 * Relay a message that arrived from a federated peer. The display
+	 * username is already qualified (`user@instance`) so local clients can
+	 * tell it did not originate on this instance. Lobby messages are persisted
+	 * like any other; DMs are delivered verbatim — the ciphertext is
+	 * end-to-end, so the server never sees plaintext.
+	 */
+	relayFederatedMessage(
+		qualifiedFrom: string,
+		text: string,
+		ts: number,
+		isLobby: boolean,
+		toUsername?: string,
+	): boolean {
+		const clean = String(text ?? "").slice(0, MAX_TEXT_LENGTH);
+		if (!clean.trim()) return false;
+
+		if (isLobby) {
+			this.persistLobbyMessage(qualifiedFrom, clean);
+		}
+
+		let delivered = false;
+		for (const client of this.clients.values()) {
+			if (client.ws.readyState !== OPEN) continue;
+
+			const matchesTarget = !toUsername ||
+				client.username === toUsername ||
+				client.rawUsername === toUsername;
+
+			if (!isLobby && !matchesTarget) continue;
+
+			try {
+				client.ws.send(
+					JSON.stringify({
+						type: "chat",
+						from: qualifiedFrom,
+						text: clean,
+						ts: ts || Date.now(),
+						lobby: isLobby,
+					}),
+				);
+				delivered = true;
+			} catch (err) {
+				console.error("[ChatService] federated relay error:", err);
+			}
+		}
+		return delivered;
 	}
 }
 
