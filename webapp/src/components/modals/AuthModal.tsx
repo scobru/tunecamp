@@ -24,8 +24,15 @@ export const AuthModal = () => {
 	const [forgotMessage, setForgotMessage] = useState("");
 	const [forgotLoading, setForgotLoading] = useState(false);
 	const [showSetupOffer, setShowSetupOffer] = useState(false);
-	const { login, register, checkAuth, error, clearError, isFirstRun, brevoConfigured } =
-		useAuthStore();
+	const {
+		login,
+		register,
+		checkAuth,
+		error,
+		clearError,
+		isFirstRun,
+		brevoConfigured,
+	} = useAuthStore();
 	const [localError, setLocalError] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [isFidLoading, setIsFidLoading] = useState(false);
@@ -410,6 +417,9 @@ export const AuthModal = () => {
 								{mode === "login" && (
 									<>
 										<div className="divider text-xs opacity-40 my-2">OR</div>
+										<p className="text-xs opacity-60 mb-2">
+											Sign in with ZEN Identity
+										</p>
 										<button
 											type="button"
 											className="btn btn-outline btn-secondary w-full gap-2 text-xs font-semibold"

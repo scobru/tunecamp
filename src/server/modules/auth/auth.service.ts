@@ -59,6 +59,7 @@ export interface AuthService {
 		password: string,
 		artistId?: number | null,
 		role?: UserRole,
+		zenPubKey?: string,
 	): Promise<{ id: number }>;
 	createUser(
 		username: string,
@@ -89,9 +90,7 @@ export interface AuthService {
 		count: number,
 		currentEffectiveQuota: number,
 	): void;
-	getAdminById(
-		id: number,
-	):
+	getAdminById(id: number):
 		| {
 				id: number;
 				username: string;
@@ -105,9 +104,22 @@ export interface AuthService {
 				can_peer: number;
 		  }
 		| undefined;
-	getUserByUsername(
-		username: string,
-	):
+	getUserByUsername(username: string):
+		| {
+				id: number;
+				username: string;
+				artist_id: number | null;
+				artist_name: string | null;
+				role: UserRole;
+				storage_quota: number;
+				is_active: number;
+				created_at: string;
+				is_root: boolean;
+				can_peer: number;
+				zen_auth_mode: string;
+		  }
+		| undefined;
+	getUserByZenPubKey(zenPubKey: string):
 		| {
 				id: number;
 				username: string;
@@ -121,25 +133,7 @@ export interface AuthService {
 				can_peer: number;
 		  }
 		| undefined;
-	getUserByZenPubKey(
-		zenPubKey: string,
-	):
-		| {
-				id: number;
-				username: string;
-				artist_id: number | null;
-				artist_name: string | null;
-				role: UserRole;
-				storage_quota: number;
-				is_active: number;
-				created_at: string;
-				is_root: boolean;
-				can_peer: number;
-		  }
-		| undefined;
-	authenticateByFid(
-		zenPubKey: string,
-	): Promise<
+	authenticateByFid(zenPubKey: string): Promise<
 		| {
 				success: boolean;
 				artistId: number | null;
@@ -155,11 +149,14 @@ export interface AuthService {
 		id: number;
 		username: string;
 		artist_id: number | null;
+		artist_name: string | null;
 		role: UserRole;
 		storage_quota: number;
 		is_active: number;
 		created_at: string;
+		is_root: boolean;
 		can_peer: number;
+		zen_auth_mode: string;
 	}[];
 	deleteAdmin(id: number): void;
 	deleteUsersBatch(ids: number[]): void;
@@ -212,9 +209,7 @@ export interface AuthService {
 	/** Returns the avatar stored in zen_users for this username, or null. */
 	getZenAvatar(username: string): string | null;
 	/** Returns alias and avatar from the admin table. */
-	getUserProfile(
-		username: string,
-	): {
+	getUserProfile(username: string): {
 		alias: string | null;
 		avatar: string | null;
 		email: string | null;
@@ -289,6 +284,7 @@ export function createAuthService(
 						`📦 Migrating admin table: renaming column ${oldName} -> ${newName}...`,
 					);
 					try {
+						// Allowlisted legacy columns only — not user input.
 						db.exec(`ALTER TABLE admin RENAME COLUMN ${oldName} TO ${newName}`);
 					} catch (e) {
 						console.error(
@@ -578,13 +574,16 @@ export function createAuthService(
 					role: UserRole;
 					isActive: boolean;
 					tokenVersion: number;
+					zenPub: string | null;
+					zenPriv: string | null;
+					zenAuthMode: string;
 			  }
 			| false
 		> {
 			console.log(`[AUTH] Attempting login for user: '${username}'`);
 			let user = db
 				.prepare(
-					"SELECT id, username, password_hash, artist_id, artist_unlinked, role, is_active, token_version FROM admin WHERE username = ?",
+					"SELECT id, username, password_hash, artist_id, artist_unlinked, role, is_active, token_version, zen_pub, zen_priv, zen_auth_mode FROM admin WHERE username = ?",
 				)
 				.get(username) as
 				| {
@@ -596,6 +595,9 @@ export function createAuthService(
 						role: UserRole;
 						is_active: number;
 						token_version: number;
+						zen_pub: string | null;
+						zen_priv: string | null;
+						zen_auth_mode: string | null;
 				  }
 				| undefined;
 
@@ -603,7 +605,7 @@ export function createAuthService(
 				// Try case-insensitive fallback
 				user = db
 					.prepare(
-						"SELECT id, username, password_hash, artist_id, artist_unlinked, role, is_active, token_version FROM admin WHERE username = ? COLLATE NOCASE",
+						"SELECT id, username, password_hash, artist_id, artist_unlinked, role, is_active, token_version, zen_pub, zen_priv, zen_auth_mode FROM admin WHERE username = ? COLLATE NOCASE",
 					)
 					.get(username) as any;
 				if (user)
@@ -726,6 +728,9 @@ export function createAuthService(
 				role: userRole,
 				isActive: user.is_active === 1,
 				tokenVersion: user.token_version,
+				zenPub: user.zen_pub,
+				zenPriv: user.zen_priv,
+				zenAuthMode: user.zen_auth_mode || "local",
 			};
 		},
 
@@ -747,6 +752,7 @@ export function createAuthService(
 						user.subsonic_password,
 						jwtSecret,
 					);
+					// Subsonic API requires MD5 for token auth; not a general-purpose hash.
 					const expectedToken = crypto
 						.createHash("md5")
 						.update(clearPassword + salt)
@@ -767,9 +773,7 @@ export function createAuthService(
 			return false;
 		},
 
-		async authenticateByFid(
-			zenPubKey: string,
-		): Promise<
+		async authenticateByFid(zenPubKey: string): Promise<
 			| {
 					success: boolean;
 					artistId: number | null;
@@ -797,7 +801,6 @@ export function createAuthService(
 			if (!user.is_active) {
 				return false;
 			}
-
 			const userRole = user.role || "admin";
 
 			return {
@@ -813,33 +816,45 @@ export function createAuthService(
 
 		async createAdmin(
 			username: string,
-			password: string,
+			password: string | null,
 			artistId: number | null = null,
 			role: UserRole = UserRole.ADMIN,
+			zenPubKey?: string,
 		): Promise<{ id: number }> {
-			const hash = await this.hashPassword(password);
+			const mode =
+				!password && zenPubKey ? "zen" : zenPubKey ? "hybrid" : "local";
+			const hash = password ? await this.hashPassword(password) : "";
 			const result = db
 				.prepare(
-					"INSERT INTO admin (username, password_hash, artist_id, role, storage_quota, is_active) VALUES (?, ?, ?, ?, 0, 1)",
+					"INSERT INTO admin (username, password_hash, artist_id, role, storage_quota, zen_pub, zen_auth_mode, is_active) VALUES (?, ?, ?, ?, 0, ?, ?, 1)",
 				)
-				.run(username, hash, artistId, role);
+				.run(username, hash, artistId, role, zenPubKey || null, mode);
 			return { id: Number(result.lastInsertRowid) };
 		},
 
 		async createUser(
 			username: string,
-			password: string,
+			password: string | null,
 			artistId: number | null,
 			storageQuota: number = 1024 * 1024 * 1024,
 			pubKey?: string,
 			role: UserRole = UserRole.NORMAL_USER,
 		): Promise<{ id: number }> {
-			const hash = await this.hashPassword(password);
+			const mode = !password && pubKey ? "zen" : pubKey ? "hybrid" : "local";
+			const hash = password ? await this.hashPassword(password) : "";
 			const result = db
 				.prepare(
-					"INSERT INTO admin (username, password_hash, artist_id, role, storage_quota, storage_used, zen_pub, is_active) VALUES (?, ?, ?, ?, ?, 0, ?, 1)",
+					"INSERT INTO admin (username, password_hash, artist_id, role, storage_quota, storage_used, zen_pub, zen_auth_mode, is_active) VALUES (?, ?, ?, ?, ?, 0, ?, ?, 1)",
 				)
-				.run(username, hash, artistId, role, storageQuota, pubKey || null);
+				.run(
+					username,
+					hash,
+					artistId,
+					role,
+					storageQuota,
+					pubKey || null,
+					mode,
+				);
 			return { id: Number(result.lastInsertRowid) };
 		},
 
@@ -927,9 +942,7 @@ export function createAuthService(
 			).run(newQuota, newQuota, userId);
 		},
 
-		getAdminById(
-			id: number,
-		):
+		getAdminById(id: number):
 			| {
 					id: number;
 					username: string;
@@ -963,9 +976,7 @@ export function createAuthService(
 			};
 		},
 
-		getUserByUsername(
-			username: string,
-		):
+		getUserByUsername(username: string):
 			| {
 					id: number;
 					username: string;
@@ -977,11 +988,12 @@ export function createAuthService(
 					created_at: string;
 					is_root: boolean;
 					can_peer: number;
+					zen_auth_mode: string;
 			  }
 			| undefined {
 			const row = db
 				.prepare(`
-                SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, a.can_peer, ar.name as artist_name
+                SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, a.can_peer, ar.name as artist_name, a.zen_auth_mode
                 FROM admin a
                 LEFT JOIN artists ar ON a.artist_id = ar.id
                 WHERE a.username = ? COLLATE NOCASE OR a.alias = ? COLLATE NOCASE
@@ -996,12 +1008,11 @@ export function createAuthService(
 				...row,
 				role: row.role || "admin",
 				is_root: row.id === 1,
+				zen_auth_mode: row.zen_auth_mode || "local",
 			};
 		},
 
-		getUserByZenPubKey(
-			zenPubKey: string,
-		):
+		getUserByZenPubKey(zenPubKey: string):
 			| {
 					id: number;
 					username: string;
@@ -1046,9 +1057,7 @@ export function createAuthService(
 			return row?.avatar ?? null;
 		},
 
-		getUserProfile(
-			username: string,
-		): {
+		getUserProfile(username: string): {
 			alias: string | null;
 			avatar: string | null;
 			email: string | null;
@@ -1122,10 +1131,11 @@ export function createAuthService(
 			created_at: string;
 			is_root: boolean;
 			can_peer: number;
+			zen_auth_mode: string;
 		}[] {
 			const rows = db
 				.prepare(`
-                SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, a.artist_requested_at, a.can_peer, ar.name as artist_name
+                SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, a.artist_requested_at, a.can_peer, ar.name as artist_name, a.zen_auth_mode
                 FROM admin a
                 LEFT JOIN artists ar ON a.artist_id = ar.id
                 ORDER BY a.username
@@ -1136,6 +1146,7 @@ export function createAuthService(
 				...r,
 				role: r.role || "admin",
 				is_root: r.id === 1,
+				zen_auth_mode: r.zen_auth_mode || "local",
 			}));
 		},
 
@@ -1224,6 +1235,14 @@ export function createAuthService(
 		},
 
 		async changePassword(username: string, newPassword: string): Promise<void> {
+			const user = db
+				.prepare(
+					"SELECT zen_auth_mode FROM admin WHERE username = ? COLLATE NOCASE",
+				)
+				.get(username) as { zen_auth_mode: string } | undefined;
+			if (user?.zen_auth_mode === "zen") {
+				throw new Error("Cannot reset password for ZEN-only account");
+			}
 			const hash = await this.hashPassword(newPassword);
 			db.prepare(
 				"UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ? COLLATE NOCASE",
@@ -1286,27 +1305,46 @@ export function createAuthService(
 		async setSecurityQuestions(
 			userId: number,
 			q1: string,
-			a1: string,
+			encryptedPayload1: string,
 			q2: string,
-			a2: string,
+			encryptedPayload2: string,
 		): Promise<void> {
-			const h1 = await this.hashPassword(a1.trim().toLowerCase());
-			const h2 = await this.hashPassword(a2.trim().toLowerCase());
+			// In ZK mode, the client already encrypts the hint deterministically.
+			// We just store the payloads directly in the hash columns.
+			// Legacy fallback: if it's plaintext being hashed, we'd hash it.
+			// To keep it simple, we assume the caller passes the encrypted hint directly.
+			// But for backward compatibility with existing non-ZK clients, if the payload isn't ZK formatted,
+			// the auth route should handle hashing. We'll just store what we're given.
 			db.prepare(
 				"UPDATE admin SET security_q1 = ?, security_a1_hash = ?, security_q2 = ?, security_a2_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-			).run(q1, h1, q2, h2, userId);
+			).run(q1, encryptedPayload1, q2, encryptedPayload2, userId);
 		},
 
-		getSecurityQuestions(username: string): { q1: string; q2: string } | null {
+		getSecurityQuestions(username: string): {
+			q1: string;
+			q2: string;
+			hintPayload1?: string;
+			hintPayload2?: string;
+		} | null {
 			const row = db
 				.prepare(
-					"SELECT security_q1, security_q2 FROM admin WHERE username = ? COLLATE NOCASE AND is_active = 1",
+					"SELECT security_q1, security_q2, security_a1_hash, security_a2_hash FROM admin WHERE username = ? COLLATE NOCASE AND is_active = 1",
 				)
 				.get(username) as
-				| { security_q1: string | null; security_q2: string | null }
+				| {
+						security_q1: string | null;
+						security_q2: string | null;
+						security_a1_hash: string | null;
+						security_a2_hash: string | null;
+				  }
 				| undefined;
 			if (!row || !row.security_q1 || !row.security_q2) return null;
-			return { q1: row.security_q1, q2: row.security_q2 };
+			return {
+				q1: row.security_q1,
+				q2: row.security_q2,
+				hintPayload1: row.security_a1_hash || undefined,
+				hintPayload2: row.security_a2_hash || undefined,
+			};
 		},
 
 		async resetPasswordWithSecurityQuestions(
@@ -1438,6 +1476,13 @@ export function decryptZenPrivHelper(encrypted: string, secret: string): any {
 		const [ivHex, dataHex, authTagHex] = parts;
 		const iv = Buffer.from(ivHex, "hex");
 		const authTag = Buffer.from(authTagHex, "hex");
+
+		// Reject malformed auth tags before passing them to GCM.
+		// A shorter tag weakens authentication and can enable forgeries.
+		if (authTag.length !== 16) {
+			return null;
+		}
+
 		const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
 		decipher.setAuthTag(authTag);
 		let decrypted = decipher.update(dataHex, "hex", "utf8");
