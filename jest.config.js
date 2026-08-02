@@ -9,7 +9,7 @@ export default {
 	// @fedify/fedify's transitive ESM-only deps, and d3-* packages which ship
 	// "type": "module" with no CJS build).
 	transformIgnorePatterns: [
-		"/node_modules/(?!(fid|node-fetch|webtorrent|@fedify|structured-field-values|url-template|uri-template-router|urlpattern-polyfill|es-toolkit|byte-encodings|multicodec|@multiformats|json-canon|p-limit|yocto-queue|d3-array|d3-scale|d3-shape|d3-path|d3-color|d3-interpolate|d3-format|d3-time|d3-time-format)/)",
+		"/node_modules/(?!(fid|node-fetch|webtorrent|@fedify|structured-field-values|url-template|uri-template-router|urlpattern-polyfill|es-toolkit|byte-encodings|multicodec|@multiformats|json-canon|p-limit|yocto-queue|d3-array|d3-scale|d3-shape|d3-path|d3-color|d3-interpolate|d3-format|d3-time|d3-time-format|@akaoio)/)",
 	],
 	// Resolve `./foo.js` -> `./foo.ts` at the resolver level (see jest.resolver.cjs)
 	// so jest.unstable_mockModule and real imports agree on the same absolute path.

@@ -252,16 +252,14 @@ describe("Zen SEA Integration Routes", () => {
         expect(res.body.username).toBe("newlistener");
     });
 
-    test("POST /api/auth/zen/sso registers under a unique username when the desired handle is taken, keeping it as alias", async () => {
+    test("POST /api/auth/zen/sso rejects registration when desired username is taken", async () => {
         const token = await buildSsoToken({ username: "scobru" }, altKeys2);
         const res = await request(app)
             .post("/api/auth/zen/sso")
             .send({ ssoToken: token, apSeed: validApSeed() });
-        const expectedUsername = `scobru-${altKeys2.pub.slice(0, 6)}`;
-        expect(res.status).toBe(200);
-        expect(res.body.isNewUser).toBe(true);
-        expect(res.body.username).toBe(expectedUsername);
-        expect(mockContainer.authService.updateUserProfile).toHaveBeenCalledWith(expectedUsername, { alias: "scobru" });
+        expect(res.status).toBe(409);
+        expect(res.body.code).toBe("USERNAME_TAKEN");
+        expect(res.body.error).toContain("Username already exists");
     });
 
     test("POST /api/auth/zen/sso logs in existing user on valid request", async () => {

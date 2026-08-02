@@ -58,7 +58,7 @@ describe("Auth Routes", () => {
 			const res = await request(app).post("/api/auth/login").send({});
 
 			expect(res.status).toBe(400);
-			expect(res.body.error).toBe("Password required");
+			expect(res.body.error).toBe("Password or ZK signature required");
 		});
 
 		test("returns 400 if it is first run and no accounts are set up", async () => {
@@ -79,7 +79,7 @@ describe("Auth Routes", () => {
 				.send({ username: "admin", password: "wrongpassword" });
 
 			expect(res.status).toBe(401);
-			expect(res.body.error).toBe("Invalid username or password");
+			expect(res.body.error).toBe("Invalid credentials");
 		});
 
 		test("returns JWT token and credentials on success", async () => {
