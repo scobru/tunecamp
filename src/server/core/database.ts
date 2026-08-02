@@ -124,9 +124,16 @@ export function createDatabase(dbPath: string): DatabaseService {
 					.all()
 					.map((col: any) => col.name),
 			);
-			if (albumColumns.has("published_to_zen") && !albumColumns.has("published_to_zen")) {
-				console.log("📦 [Database] Renaming albums.published_to_zen to published_to_zen...");
-				db.exec("ALTER TABLE albums RENAME COLUMN published_to_zen TO published_to_zen");
+			if (
+				albumColumns.has("published_to_zen") &&
+				!albumColumns.has("published_to_zen")
+			) {
+				console.log(
+					"📦 [Database] Renaming albums.published_to_zen to published_to_zen...",
+				);
+				db.exec(
+					"ALTER TABLE albums RENAME COLUMN published_to_zen TO published_to_zen",
+				);
 			}
 		}
 	}
@@ -1188,6 +1195,22 @@ export function createDatabase(dbPath: string): DatabaseService {
 					"📦 [Database] Migrating albums table: adding additional_artworks column...",
 				);
 				db.exec("ALTER TABLE albums ADD COLUMN additional_artworks TEXT");
+			}
+			if (!cols.some((col) => col.name === "published_to_zen")) {
+				console.log(
+					"📦 [Database] Migrating albums table: adding published_to_zen column...",
+				);
+				db.exec(
+					"ALTER TABLE albums ADD COLUMN published_to_zen INTEGER DEFAULT 0",
+				);
+			}
+			if (!cols.some((col) => col.name === "published_to_ap")) {
+				console.log(
+					"📦 [Database] Migrating albums table: adding published_to_ap column...",
+				);
+				db.exec(
+					"ALTER TABLE albums ADD COLUMN published_to_ap INTEGER DEFAULT 0",
+				);
 			}
 
 			// Data migration: unify the release category onto the `type` column.
