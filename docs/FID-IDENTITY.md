@@ -15,7 +15,7 @@ The official central SSO and identity portal is deployed at:
 
 ## 📡 Help the Network: Host a Zen Relay Node
 
-The decentralized graph sync and P2P communication in FID rely on open Zen P2P Relays. 
+The decentralized graph sync and P2P communication in FID rely on open Zen P2P Relays.
 
 You can help strengthen the network's resilience, speed, and decentralization by running your own Zen P2P Relay node!
 
@@ -64,9 +64,11 @@ You can help strengthen the network's resilience, speed, and decentralization by
 ## 🔑 Endpoints
 
 ### 1. Generate Zen Challenge
+
 - **Endpoint**: `GET /api/auth/zen/challenge`
 - **Auth Required**: Yes (`requireUser`)
 - **Response**:
+
 ```json
 {
   "success": true,
@@ -80,9 +82,11 @@ You can help strengthen the network's resilience, speed, and decentralization by
 ```
 
 ### 2. Verify Challenge & Issue Passport Badge
+
 - **Endpoint**: `POST /api/auth/zen/link`
 - **Auth Required**: Yes (`requireUser`)
 - **Body**:
+
 ```json
 {
   "zenPubKey": "QmZenPubKey...",
@@ -90,7 +94,9 @@ You can help strengthen the network's resilience, speed, and decentralization by
   "seaSignature": "SEA.sign_signature_data"
 }
 ```
+
 - **Response**:
+
 ```json
 {
   "success": true,
@@ -106,9 +112,11 @@ You can help strengthen the network's resilience, speed, and decentralization by
 ```
 
 ### 3. Login with FID SSO
+
 - **Endpoint**: `POST /api/auth/zen/sso`
 - **Auth Required**: No (Public Rate-Limited)
 - **Body**:
+
 ```json
 {
   "ssoToken": {
@@ -121,6 +129,7 @@ You can help strengthen the network's resilience, speed, and decentralization by
   "apSeed": "32_byte_hex_seed..."
 }
 ```
+
 - **Behavior**:
   - Validates `ssoToken` via `FidSsoHandler.validateSsoToken()`.
   - Derives deterministic Ed25519 ActivityPub keys server-side from `apSeed`.
@@ -128,34 +137,33 @@ You can help strengthen the network's resilience, speed, and decentralization by
   - If promoted internally by instance admins, their instance-assigned role/artist link is respected.
 
 ### 4. Public User Profile Export
+
 - **Endpoint**: `GET /api/auth/zen/user/:username/public`
 - **Auth Required**: No (Public)
 - **Response**: Returns **only** public profile info, public releases, and public playlists for cross-instance aggregation on `fid-portal.vercel.app`.
 
 ### 5. Instance Discovery for Portal
+
 - **Endpoint**: `GET /api/auth/zen/instances`
 - **Auth Required**: Yes (`requireUser`)
 - **Response**: Returns the user's `fid_registry` entries (linked instances with artist info, passport signatures, verification status).
 - **Purpose**: Allows the global portal to discover which instances a user has linked without querying every instance.
 
 ### 6. Cross-Instance Artist Linking (FID Registry)
+
 - **Table**: `fid_registry` (per-instance, tracks linked instances per user)
-- **Endpoints** (`/api/fid-registry`, auth required):
-  - `GET /` — list all linked instances for current user
-  - `GET /:instanceDomain` — get specific instance entry
-  - `POST /` — add new link `{ instanceDomain, artistId?, artistName?, artistSlug?, publicKey?, passportSignature? }`
-  - `PATCH /:id` — update entry (artist info, passport, verified flag)
-  - `POST /:id/verify` — mark as verified
-  - `DELETE /:id` — unlink instance
-- **Flow**: User authenticates on Instance A, gets passport from Instance B via fid-portal, posts passport to Instance A's `/api/fid-registry` to link the artist on Instance B.
+- **Endpoints**: Removed - cross-instance linking now handled externally at `tunecamp.org/profile.html`
+- **Flow**: User authenticates on Instance A, gets passport from `tunecamp.org/profile.html` via FID portal, then links via external profile page.
 
 ### 7. MCP Server FID Authentication
+
 - **Auth Header**: `Authorization: FID <zen_pub_key>`
 - **Middleware**: `requireFidAuth` in `auth.ts`
 - **Behavior**: Looks up user by `zen_pub` key, derives context, grants access to MCP tools (search_music, list_recent_albums, scan_library, get_system_stats) without JWT.
 - **Use Case**: AI assistants (Claude Desktop, etc.) authenticate via user's FID identity to inspect/manage catalog across instances.
 
 ### 8. Unified Profile Aggregation (tunecamp-website/profile.html)
+
 - **Data Source**: Aggregates `publicReleases`, `publicLikes`, `publicPlaylists` from all linked instances via their `/api/auth/zen/user/:username/public` endpoints.
 - **Storage**: Caches per-instance data in `localStorage` (`tunecamp_instance_data`).
 - **Tabs**: Releases, Favorites (starred), Playlists — each shows instance badge.
