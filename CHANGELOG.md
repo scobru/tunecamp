@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.5.3] - 2026-08-03
+
+### Fixed
+
+- Webapp `tsc -b` build was broken: `@tunecamp/chat`'s dependency `zen` ships no type declarations (`TS7016`), and `useAuthStore.ts`'s local `ChatKeyPair`/`chatKeyPair` type still required `epub`/`epriv` from the old nacl.box scheme, which `deriveKeyPairFromPassword`'s Zen SEA `KeyPair` (`{pub, priv}` only) no longer returns (`TS2739`/`TS2345`). Added `webapp/src/types/zen.d.ts` ambient declaration and dropped `epub`/`epriv` from the local type.
+
 ## [4.5.2] - 2026-08-03
 
 ### Fixed

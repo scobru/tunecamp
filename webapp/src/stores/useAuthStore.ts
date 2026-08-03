@@ -9,7 +9,7 @@ import { deriveKeyPairFromPassword } from "@tunecamp/chat";
 
 type UserRole = "admin" | "user" | "super_user" | "root_admin" | null;
 
-type ChatKeyPair = { pub: string; priv: string; epub: string; epriv: string };
+type ChatKeyPair = { pub: string; priv: string };
 
 const CHAT_KEY_STORAGE_PREFIX = "tunecamp_chatkey_";
 
@@ -47,8 +47,6 @@ interface AuthState {
 	chatKeyPair: {
 		pub: string;
 		priv: string;
-		epub: string;
-		epriv: string;
 	} | null;
 
 	// Actions
