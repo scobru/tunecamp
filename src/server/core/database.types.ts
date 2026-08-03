@@ -406,8 +406,6 @@ export interface Torrent {
 	files?: any[];
 }
 
-export type TorrentStatus = Torrent["status"];
-
 export interface StorageAccount {
 	id: number;
 	user_id: number;

@@ -1,7 +1,7 @@
 import { useTuneCampChat, formatUsernameWithInstance } from "@tunecamp/chat";
 import { useAuthStore } from "../stores/useAuthStore";
 
-export type { ChatMessage, ChatStatus, PeerInfo } from "@tunecamp/chat";
+export type { ChatMessage, PeerInfo } from "@tunecamp/chat";
 
 export function usePeerChat(enabled: boolean, activePeer: string) {
 	const token =

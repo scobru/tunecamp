@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.5.4] - 2026-08-03
+
+### Security
+
+- `POST /api/auth/zen/keys` let any authenticated user overwrite `admin.zen_pub`/`zen_priv` with an arbitrary `zenPubKey`, with no proof of key possession and no collision check — enough to hijack another account's portable Zen SEA identity. The endpoint now rejects a `zenPubKey` that doesn't match the account's existing one, and blocks first-time binding to a `zen_pub` already claimed by a different account.
+
+### Removed
+
+- Dead code cleanup (knip/fallow): unused files (`src/types/index.ts`, `webapp/src/pages/Favorites.tsx`, `webapp/src/pages/Playlists.tsx`, `webapp/src/services/e2eCrypto.ts`), unused `tweetnacl`/`tweetnacl-util` webapp dependencies and their now-orphaned `@types/extract-zip`, `@types/tar`, `@types/webtorrent`, `@types/dompurify` devDependencies, several unused exported types/re-exports across server and webapp, and two stale `knip.json` ignore entries.
+
 ## [4.5.3] - 2026-08-03
 
 ### Fixed

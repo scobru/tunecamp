@@ -3,8 +3,6 @@ import type { DatabaseService } from "../../core/database.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import type { ScannerService } from "../../modules/catalog/scanner.service.js";
 import path from "path";
-import { metadataService as defaultMetadataService } from "../../modules/catalog/metadata.service.js";
-import { streamingService as defaultStreamingService } from "../../modules/streaming/streaming.service.js";
 import type { MetadataService } from "../../modules/catalog/metadata.service.js";
 import type { StreamingService } from "../../modules/streaming/streaming.service.js";
 import { VisibilityGuardian, UserRole, Capability, VisibilityProfile } from "../../common/visibility.js";

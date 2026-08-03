@@ -16,7 +16,7 @@ export const ARCHIVE_VERSION = 1;
 const MAX_PLAYLISTS = 500;
 const MAX_TRACKS_PER_PLAYLIST = 2000;
 
-export interface ArchiveTrack {
+interface ArchiveTrack {
     title: string;
     artist?: string;
     duration?: number;

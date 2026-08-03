@@ -6,7 +6,7 @@ export const USER_AGENT = "TuneCamp/1.0.0 ( contact@tunecamp.app )";
  * Base interface for all TuneCamp providers (Metadata, Scanner, Storage, etc.)
  */
 /** Context passed to a plugin's init() hook with scoped settings access. */
-export interface PluginContext {
+interface PluginContext {
     /** Read a plugin-scoped setting (key is auto-prefixed with plugin_<id>_) */
     getSetting(key: string): string | undefined;
     /** Write a plugin-scoped setting */
