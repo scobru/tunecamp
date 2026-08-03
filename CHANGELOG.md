@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.4.2] - 2026-08-03
+
 ### Removed
 
 - Deprecated `tunecamp-design-system` dependency. Design tokens are now inlined directly in app styles (`tokens.css`).
@@ -13,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 - Chat username deduplication: `ChatService.register` now accepts optional `userId` and replaces previous sessions for the same user, preventing duplicate lobby entries when browser chat and peer daemon connect simultaneously.
 - `npm ci` failures caused by out-of-sync `package-lock.json`. Regenerated lockfile with npm 10.9.2 to match CI's Node 22/npm 10.9 and restore nested `@types/react@18.3.31` / `@types/prop-types` entries.
+- Chat E2E keypair (`chatKeyPair`, derived via Zen SEA in `@tunecamp/chat`) is now cached in `localStorage` per username and rehydrated on `checkAuth`, so it survives a page reload instead of being lost (the password isn't kept, so it couldn't be re-derived) and forcing peers back to plaintext until the next login. Cleared on logout.
 
 ## [4.4.1] - 2026-08-01
 
