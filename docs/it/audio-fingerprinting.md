@@ -13,7 +13,7 @@ L'unico utilizzo attuale è la **deduplicazione**: quando diversi file candidati
 ## Come funziona
 
 1. **Generazione**: Durante la scansione, la pipeline della forma d'onda (`WaveformService`, in `src/server/modules/waveform/waveform.generator.ts`) calcola un hash dell'inviluppo della forma d'onda.
-2. **Persistenza**: Il valore viene salvato nella colonna `fingerprint` della tabella `tracks` (vedi [data-models.md](./data-models.md)). La colonna viene aggiunta automaticamente dalle migrazioni in `src/server/core/database.ts` se non presente.
+2. **Persistenza**: Il valore viene salvato nella colonna `fingerprint` della tabella `tracks` (vedi [architecture-backend.md](./architecture-backend.md#modello-dei-dati)). La colonna viene aggiunta automaticamente dalle migrazioni in `src/server/core/database.ts` se non presente.
 3. **Deduplicazione**: Lo scansionatore (`src/server/modules/catalog/scanner.ts`) utilizza l'impronta digitale, insieme ad altri campi, per scegliere quale candidato conservare. La normalizzazione all'avvio è gestita in `maintenance.startup.ts`.
 
 ## Evoluzioni Future

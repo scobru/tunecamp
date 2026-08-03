@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.5.3] - 2026-08-03
+
+### Fixed
+
+- Webapp `tsc -b` build was broken: `@tunecamp/chat`'s dependency `zen` ships no type declarations (`TS7016`), and `useAuthStore.ts`'s local `ChatKeyPair`/`chatKeyPair` type still required `epub`/`epriv` from the old nacl.box scheme, which `deriveKeyPairFromPassword`'s Zen SEA `KeyPair` (`{pub, priv}` only) no longer returns (`TS2739`/`TS2345`). Added `webapp/src/types/zen.d.ts` ambient declaration and dropped `epub`/`epriv` from the local type.
+
+## [4.5.2] - 2026-08-03
+
+### Fixed
+
+- `catalogService.getSettings()` (public `GET /api/catalog/settings`, consumed by the storefront) was missing `adminTreasuryAddress`, `walletAddress`, `adminFeePercentage`, and `web3Enabled` from its allowlist, so `SubscriptionModal` always showed "Treasury address not configured" even when an admin had set one.
+- `CheckoutModal.tsx`'s direct-purchase crypto fee-split (`adminFeePct`/`adminTreasuryAddress`/`checkoutAddr`/`ownerAddress`) read from `window.TUNECAMP_CONFIG`, which was never assigned anywhere in the app — the fee-split branch was permanently dead code. `GET /api/payments/onramp-config` now also returns these fields, and `CheckoutModal` consumes them from there instead.
+
+## [4.5.1] - 2026-08-03
+
+### Fixed
+
+- `@tunecamp/chat` dependency was pinned (via lockfile) to commit `79dc33e`, predating `ensurePeerKey` cross-instance pubkey fetch (`8f9e021`) and the ZEN crypto API fix (`1289624`). The deployed client could never resolve a remote peer's key, so cross-instance/DM messages showed `[Encrypted message — key exchange pending]` forever. Reinstalled to pick up latest `main`.
+- `chat.ws.ts` now silently accepts the client's redundant `type: "auth"` handshake message (sent on `ws.onopen`, before the real HTTP-upgrade auth result) instead of logging `Unknown message type: auth` on every connect/reconnect.
+
+## [4.5.0] - 2026-08-03
+
+### Added
+
+- Cross-instance DM routing now actually delivers: `chat.ws.ts` resolves the target instance via a real peer origin (`federatedDiscoveryService.resolvePeerByInstance`) and fans out to that single peer, instead of discarding the instance name and never sending. `ChatFederationService.fanout` takes an optional `targetPeer` for this; lobby broadcast (no target) is unchanged.
+
+### Fixed
+
+- `ChatFederationService`'s peer list was never populated in production (`setPeers` was never called), so cross-instance lobby fanout silently had zero peers. Now wired from `federatedDiscoveryService.getPeers()` before each lobby broadcast.
+- `POST /api/chat/federated/inbound` now fails closed (503) when `TUNECAMP_CHAT_FEDERATION_SECRET` is unset, instead of accepting/verifying HMAC signatures with an empty key.
+
+## [4.4.3] - 2026-08-03
+
+### Fixed
+
+- `GET /api/chat/history`, `/api/chat/peers`, and `/api/chat/pubkey` now allow cross-origin requests (`sidecamp` desktop app and other P2P clients were blocked by `strictCors` since these routes carry no cookies — auth is Bearer-only, so wildcard CORS on these GET routes carries no CSRF risk).
+
+## [4.4.2] - 2026-08-03
+
 ### Removed
 
 - Deprecated `tunecamp-design-system` dependency. Design tokens are now inlined directly in app styles (`tokens.css`).
@@ -13,6 +52,7 @@ All notable changes to this project will be documented in this file.
 
 - Chat username deduplication: `ChatService.register` now accepts optional `userId` and replaces previous sessions for the same user, preventing duplicate lobby entries when browser chat and peer daemon connect simultaneously.
 - `npm ci` failures caused by out-of-sync `package-lock.json`. Regenerated lockfile with npm 10.9.2 to match CI's Node 22/npm 10.9 and restore nested `@types/react@18.3.31` / `@types/prop-types` entries.
+- Chat E2E keypair (`chatKeyPair`, derived via Zen SEA in `@tunecamp/chat`) is now cached in `localStorage` per username and rehydrated on `checkAuth`, so it survives a page reload instead of being lost (the password isn't kept, so it couldn't be re-derived) and forcing peers back to plaintext until the next login. Cleared on logout.
 
 ## [4.4.1] - 2026-08-01
 

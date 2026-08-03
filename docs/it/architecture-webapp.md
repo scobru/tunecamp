@@ -16,7 +16,9 @@ La webapp di TuneCamp è una single-page application (SPA) costruita con React e
 ## Organizzazione del Codice (`webapp/src/`)
 
 ### 1. Componenti (`components/`)
+
 Organizzati per dominio funzionale:
+
 - **`player/`**: Player globale — `PlayerBar`, `PlayerCanvas`, `QueuePanel`, `LyricsPanel`, `Waveform`.
 - **`admin/`**: Pannelli di amministrazione e liste di gestione libreria (utenti, release, tracce, federazione, storage, backup, radio, app Lab, segnalazioni, salute del sistema, …).
 - **`artist/`**: Strumenti per gli artisti — pannello Fediverse, gestione eventi, card Stripe Connect.
@@ -26,20 +28,25 @@ Organizzati per dominio funzionale:
 - **`ui/`**: Elementi riutilizzabili di piccole dimensioni (card, header, switcher, pill, card di form). Non esiste una cartella `auth/` separata — le finestre di autenticazione vivono in `modals/`.
 - Alcuni componenti risiedono direttamente in `components/` (senza sottocartella): `Comments.tsx`, `RelatedTracks.tsx`, `GenreTags.tsx`, `MetadataMatchModal.tsx`, `AccountMigrationCard.tsx`, `UpdateBanner.tsx`.
 
-Per il catalogo completo, file per file, vedi [component-inventory.md](./component-inventory.md).
+Per il catalogo completo, file per file, vedi [project-overview.md](./project-overview.md#catalogo-dei-componenti-webapp).
 
 ### 2. Pagine (`pages/`)
+
 Ogni file è generalmente collegato a una rotta in `App.tsx`. Alcuni percorsi legacy (`/tracks`, `/favorites`, `/playlists`, `/my-playlists`) ora reindirizzano alla pagina unificata `Library` invece di renderizzare un componente dedicato — la vecchia pagina separata `ContentSearch` è stata rimossa e assorbita in `Search.tsx`. Le rotte sono avvolte da componenti guard (`AdminGuard`, `EditorGuard`, `RootAdminGuard`, `ManagerOrRootGuard`, `ModuleGuard`) che limitano l'accesso in base al ruolo o a un feature flag dell'istanza (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideSamples`, `hideCollab`, `hideLab`).
 
 ### 3. Sistema di Plugin Frontend (`core/plugins/`, `plugins/`)
+
 Le integrazioni opzionali (Telegram, OpenRouter/AI, provider di metadati, YouTube/yt-dlp, …) si registrano come oggetti `FrontendPlugin` presso un piccolo `PluginRegistry` (`core/plugins/registry.tsx`) invece di essere cablate a mano nell'UI di amministrazione:
+
 - `core/plugins/index.ts` inizializza il registry, poi usa `import.meta.glob` per caricare eagerly ogni cartella `plugins/*/index.{ts,tsx}`. Una build white-label può rimuovere un provider semplicemente eliminando la sua cartella — nessun altro file va modificato.
 - Ogni plugin può dichiarare un'icona, una descrizione, uno `statusCheck` (mappa lo stato/salute del backend su online/offline), un `configPanel` (renderizzato dentro `AdminSettingsPanel`/`IntegrationsPanel`) e una `customAction` (es. "Upload Cookies" per YouTube).
 - Cartelle plugin attuali: `plugins/builtins/` (Telegram, OpenRouter), `plugins/metadata/` (iTunes, MusicBrainz, Deezer, Bandcamp, Spotify, SoundCloud), `plugins/youtube/`.
 - Questo registry è solo di presentazione (badge di stato, form di configurazione nell'UI admin); non esegue esso stesso le ricerche/i download — quella logica vive nel backend.
 
 ### 4. State Store (`stores/`)
+
 Store Zustand, uno per ciascuna area:
+
 - `useAuthStore`: utente connesso, stato sessione/JWT, ruolo.
 - `useConfigStore`: salute delle integrazioni backend (Soulseek, iTunes, MusicBrainz, Discogs, Telegram, OpenRouter, Stripe, MoonPay, Google Drive, YouTube, Spotify, …) usata per i badge di stato dei plugin.
 - `useSiteSettingsStore`: impostazioni pubbliche dell'istanza e flag di visibilità per modulo (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideSamples`, `hideCollab`, `hideLab`) consumati da `ModuleGuard`.
@@ -51,14 +58,17 @@ Store Zustand, uno per ciascuna area:
 - `useDigStore`: stato del flusso "Dig" di crate digging / scoperta musicale (ricerca, strategia, risultati, sessione).
 
 ### 5. Data fetching (`hooks/`, `lib/`)
+
 - `lib/queryClient.ts` + `hooks/queries.ts`: client TanStack Query condiviso e costanti per le chiavi di query delle liste di catalogo, in modo che letture e invalidazioni della cache dopo le mutazioni restino allineate.
 - `hooks/useBoard.ts`, `hooks/useNowPlayingHeartbeat.ts`, `hooks/useOwnedNFTs.ts`, `hooks/usePurchases.ts`, `hooks/useVersionCheck.ts`: hook di dati specifici per feature.
 
 ### 6. Servizi (`services/`)
+
 - `api.ts`: singolo oggetto `API` che avvolge tutte le chiamate REST al backend di TuneCamp (auth, catalogo, upload, pagamenti, admin, radio, dig, …).
 - `wallet.ts`: gestione del wallet nel browser (connessione, firma dei messaggi, transazioni on-chain tramite ethers).
 
 ### 7. Utility (`utils/`)
+
 Formattazione, sanitizzazione, rendering markdown, controlli sui permessi (`permissions.ts`, `roles.ts`), helper per URL, tema/font e fallback immagini usati in tutti i componenti.
 
 ## Flusso di Navigazione e Riproduzione

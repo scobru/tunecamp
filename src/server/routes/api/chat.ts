@@ -40,20 +40,8 @@ export function createChatRoutes(container: ServiceContainer): Router {
 				return res.status(404).json({ error: "Pubkey not found" });
 			}
 
-			const peers = container.federatedDiscoveryService.getPeers();
-			let peerOrigin: string | undefined;
-			for (const p of peers) {
-				try {
-					const url = new URL(p);
-					const name = url.hostname.split(".")[0];
-					if (name === instance) {
-						peerOrigin = p;
-						break;
-					}
-				} catch {
-					// skip invalid peer URL
-				}
-			}
+			const peerOrigin =
+				container.federatedDiscoveryService.resolvePeerByInstance(instance);
 			if (!peerOrigin) {
 				return res.status(404).json({ error: "Instance not found" });
 			}

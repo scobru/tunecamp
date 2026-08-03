@@ -322,7 +322,11 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
         res.json({
             configured: false,
             stripeCheckout: hasStripeCheckout,
-            web3Enabled
+            web3Enabled,
+            checkoutAddress: identity.getSetting("web3_checkout_address") || null,
+            adminFeePercentage: Number(identity.getSetting("adminFeePercentage") || 0),
+            adminTreasuryAddress: identity.getSetting("adminTreasuryAddress") || process.env.TUNECAMP_OWNER_ADDRESS || null,
+            ownerAddress: process.env.TUNECAMP_OWNER_ADDRESS || null
         });
     });
 

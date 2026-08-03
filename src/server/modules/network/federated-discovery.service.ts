@@ -62,6 +62,8 @@ export interface FederatedDiscoveryService {
     getCommunitySites(): FederatedInstance[];
     /** Known instance origins, for the public `/api/community/peers` gossip endpoint. */
     getPeers(): string[];
+    /** Resolve a bare instance name (e.g. "sudorecords") to a known peer origin, for cross-instance routing. */
+    resolvePeerByInstance(instance: string): string | undefined;
     /**
      * Flags entries not refreshed within the hard expiry as offline (kept, not deleted,
      * so admins can see they've gone dark); garbage-collects gossip-discovered entries
@@ -344,6 +346,19 @@ export function createFederatedDiscoveryService(
         return [...out];
     };
 
+    /** First DNS label of a known peer's hostname, matched against `instance`. */
+    const resolvePeerByInstance = (instance: string): string | undefined => {
+        if (!instance) return undefined;
+        for (const p of getPeers()) {
+            try {
+                if (new URL(p).hostname.split(".")[0] === instance) return p;
+            } catch {
+                // skip invalid peer URL
+            }
+        }
+        return undefined;
+    };
+
     const prune = () => {
         const now = Date.now();
         try {
@@ -398,5 +413,5 @@ export function createFederatedDiscoveryService(
 
     prune();
 
-    return { crawl, probeOrigin, getCommunitySites, getPeers, prune, deleteInstance, getInstanceStatus };
+    return { crawl, probeOrigin, getCommunitySites, getPeers, resolvePeerByInstance, prune, deleteInstance, getInstanceStatus };
 }

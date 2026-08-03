@@ -9,6 +9,31 @@ import { deriveKeyPairFromPassword } from "@tunecamp/chat";
 
 type UserRole = "admin" | "user" | "super_user" | "root_admin" | null;
 
+type ChatKeyPair = { pub: string; priv: string };
+
+const CHAT_KEY_STORAGE_PREFIX = "tunecamp_chatkey_";
+
+// Chat E2E identity survives page reload via localStorage — same trust model
+// as the JWT already stored there. Password isn't kept, so it can't be re-derived
+// after a refresh; without this the chat client falls back to a fresh random
+// keypair every reload and peers can't decrypt messages sent to the old one.
+function loadChatKeyPair(username: string): ChatKeyPair | null {
+	try {
+		const raw = localStorage.getItem(CHAT_KEY_STORAGE_PREFIX + username);
+		return raw ? (JSON.parse(raw) as ChatKeyPair) : null;
+	} catch {
+		return null;
+	}
+}
+
+function saveChatKeyPair(username: string, pair: ChatKeyPair): void {
+	try {
+		localStorage.setItem(CHAT_KEY_STORAGE_PREFIX + username, JSON.stringify(pair));
+	} catch {
+		/* private browsing / quota exceeded — chat falls back to ephemeral keys */
+	}
+}
+
 interface AuthState {
 	user: User | null;
 	isAuthenticated: boolean;
@@ -22,8 +47,6 @@ interface AuthState {
 	chatKeyPair: {
 		pub: string;
 		priv: string;
-		epub: string;
-		epriv: string;
 	} | null;
 
 	// Actions
@@ -115,6 +138,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 				isAdminLoading: false,
 				isInitializing: false,
 			});
+
+			if (status.authenticated && status.username && !get().chatKeyPair) {
+				const cached = loadChatKeyPair(status.username);
+				if (cached) set({ chatKeyPair: cached });
+			}
 		} catch (e: any) {
 			console.error("Auth check failed:", e);
 
@@ -165,9 +193,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 						password,
 					);
 					set({ chatKeyPair });
+					saveChatKeyPair(username, chatKeyPair);
 				} catch {
 					set({ chatKeyPair: null });
 				}
+			} else {
+				const cached = loadChatKeyPair(username);
+				if (cached) set({ chatKeyPair: cached });
 			}
 		} catch (e: any) {
 			set({ error: e.message, isLoading: false, isAuthenticating: false });
@@ -207,6 +239,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 			try {
 				const chatKeyPair = await deriveKeyPairFromPassword(username, password);
 				set({ chatKeyPair });
+				saveChatKeyPair(username, chatKeyPair);
 			} catch {
 				set({ chatKeyPair: null });
 			}
@@ -221,6 +254,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 	},
 
 	logout: () => {
+		const username = get().user?.username;
+		if (username) {
+			try {
+				localStorage.removeItem(CHAT_KEY_STORAGE_PREFIX + username);
+			} catch {
+				/* ignore */
+			}
+		}
 		useWalletStore.getState().clearWallet();
 		useNowPlayingStore.getState().reset();
 		API.setToken(null);
@@ -237,6 +278,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 			isAdminLoading: false,
 			isInitializing: false,
 			role: null,
+			chatKeyPair: null,
 		});
 	},
 }));

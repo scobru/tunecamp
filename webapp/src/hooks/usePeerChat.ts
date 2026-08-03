@@ -1,4 +1,5 @@
 import { useTuneCampChat, formatUsernameWithInstance } from "@tunecamp/chat";
+import { useAuthStore } from "../stores/useAuthStore";
 
 export type { ChatMessage, ChatStatus, PeerInfo } from "@tunecamp/chat";
 
@@ -8,12 +9,14 @@ export function usePeerChat(enabled: boolean, activePeer: string) {
 		localStorage.getItem("token") ||
 		undefined;
 	const serverUrl = window.location.origin;
+	const chatKeyPair = useAuthStore((s) => s.chatKeyPair);
 
 	const chat = useTuneCampChat(
 		{
 			serverUrl,
 			token,
 			autoConnect: enabled,
+			keyPair: chatKeyPair ?? undefined,
 		},
 		activePeer,
 	);

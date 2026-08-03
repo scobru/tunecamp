@@ -43,7 +43,7 @@ features:
 Once you're up and running, the guides below go deeper.
 
 | Doc | Description |
-|-----|-------------|
+| ----- | ------------- |
 | [Getting Started](./getting-started.md) | **Install → first login → add music → listen** (start here) |
 | [Deploy on Railway](./railway.md) | One-click deploy on Railway — no VPS required, HTTPS included |
 | [API & Services Setup](./api-setup-guide.md) | Step-by-step configuration for Stripe, Google Drive, AI, and other integrations |
@@ -57,7 +57,7 @@ Once you're up and running, the guides below go deeper.
 For listeners and artists using a TuneCamp instance.
 
 | Doc | Description |
-|-----|-------------|
+| ----- | ------------- |
 | [Roles & Permissions](./ROLES.md) | What each role (Owner, Manager, Curator, Listener) can do |
 | [Radio](./radio.md) | Broadcasting an always-on station from your library (playlists + genre mixes) |
 | [Subsonic Protocol](./subsonic.md) | Connecting external clients (DSub, Symfonium, Tempo, Substreamer) |
@@ -72,7 +72,7 @@ For listeners and artists using a TuneCamp instance.
 For people running a TuneCamp instance.
 
 | Doc | Description |
-|-----|-------------|
+| ----- | ------------- |
 | [Federation](./FEDERATION.md) | ActivityPub and HTTP gossip discovery — how instances find each other |
 | [Sidecamp Desktop](./sidecamp.md) | Desktop application for Sidecamp, Soulseek, and Torrents |
 | [Monitoring](./monitoring.md) | `/health` endpoint, the admin System Resources panel, Sentry crash reporting, and uptime checks |
@@ -86,15 +86,12 @@ For people running a TuneCamp instance.
 For contributors and people building on TuneCamp.
 
 | Doc | Description |
-|-----|-------------|
+| ----- | ------------- |
 | [Contributing](./CONTRIBUTING.md) | Code contribution guidelines and pull request process |
 | [Development Guide](./development-guide.md) | Local dev environment setup, running, and testing |
-| [Backend Architecture](./architecture-backend.md) | Express server, SQLite, ActivityPub, and federated discovery |
+| [Backend Architecture](./architecture-backend.md) | Express server, SQLite, ActivityPub, federated discovery, and the full data model / database schema |
 | [Webapp Architecture](./architecture-webapp.md) | React, Vite, Zustand, and instance discovery in the frontend |
-| [UI Component Inventory](./component-inventory.md) | Catalog of the webapp's React components by directory |
-| [Data Models](./data-models.md) | Database schema and entity relationships |
 | [API Contracts](./api-contracts.md) | REST endpoints, authentication, and supported protocols |
-| [Source Tree](./source-tree-analysis.md) | Directory layout and entry points |
 | [Lab Apps](./LAB.md) | Creating and submitting experimental audio tools |
 | [Lab App: Audiofabric](./audiofabric.md) | Real-time 3D WebGL music visualizer built-in Lab app |
 | [Lab App: 4-Track Recorder](./4-track-recorder.md) | Browser-based 4-track cassette recorder companion package |
@@ -106,7 +103,7 @@ For contributors and people building on TuneCamp.
 Optional third-party services you can connect to your instance.
 
 | Doc | Description |
-|-----|-------------|
+| ----- | ------------- |
 | [AI Integrations](./ai-integrations.md) | Metadata automation and recommendations via OpenRouter |
 | [Smart Contracts](./smart-contracts.md) | Solidity contracts (Factory, NFT, Checkout) on Base |
 | [Google Drive](./google-drive.md) | Cloud storage backend for media files |
@@ -118,8 +115,8 @@ Optional third-party services you can connect to your instance.
 ### Reference
 
 | Doc | Description |
-|-----|-------------|
-| [Project Overview](./project-overview.md) | Goals, tech stack, and repository structure |
+| ----- | ------------- |
+| [Project Overview](./project-overview.md) | Goals, tech stack, repository structure, source tree, and webapp component catalog |
 | [Status & Maturity](./STATUS.md) | Honest maturity level of each area and known limitations |
 | [Comparison with Funkwhale](./comparison-funkwhale.md) | Differences in models and features |
 | [Audio Fingerprinting](./audio-fingerprinting.md) | How TuneCamp deduplicates tracks in the library |

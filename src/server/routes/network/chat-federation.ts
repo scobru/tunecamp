@@ -13,10 +13,8 @@ export function createChatFederationRoutes(
 	container: ServiceContainer,
 ): Router {
 	const router = Router();
-	const federation = createChatFederationService(
-		container.chatService,
-		container.config.chatFederationSecret || "",
-	);
+	const secret = container.config.chatFederationSecret || "";
+	const federation = createChatFederationService(container.chatService, secret);
 
 	// Expose known peers so instances can crawl each other's chat networks.
 	router.get("/peers", (_req, res) => {
@@ -28,6 +26,12 @@ export function createChatFederationRoutes(
 	// username, instance, text, ts, lobby, and toUsername — tampering any
 	// field invalidates the MAC.
 	router.post("/inbound", expressJson(), (req, res) => {
+		// HMAC with an empty key isn't a secret — fail closed rather than accept
+		// forgeable signatures if the env var was never set.
+		if (!secret) {
+			return res.status(503).json({ error: "Chat federation not configured" });
+		}
+
 		const signature = String(req.headers["x-chat-signature"] || "");
 		if (!signature) {
 			return res.status(401).json({ error: "Missing signature" });

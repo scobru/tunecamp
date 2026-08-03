@@ -420,7 +420,8 @@ export class CatalogService {
             "hideLive", "hideStore", "hideSocial", "hideNetwork", "hideDig", "hideSamples", "hideCollab", "hideLab",
             "membershipMonthlyPrice", "peerEnabled", "peerAllowDownloads", "peerFederation",
             "peerChatEnabled", "peerChatGuestEnabled",
-            "brandPrimary", "brandAccent", "instanceProfile"
+            "brandPrimary", "brandAccent", "instanceProfile",
+            "adminTreasuryAddress", "walletAddress", "adminFeePercentage", "web3Enabled"
         ];
         const res: any = {};
         settings.forEach(k => {

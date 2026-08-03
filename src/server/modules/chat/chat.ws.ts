@@ -137,19 +137,32 @@ export function createChatWsHandler(
 								const to = String(message.to || "");
 								const federation = container.chatFederationService;
 								if (to.includes("@")) {
-									const [toUsername] = to.split("@");
-									federation?.fanout({
-										username: username,
-										instance: localInstanceName,
-										text: message.text,
-										ts: Date.now(),
-										lobby: false,
-										toUsername: toUsername,
-									});
+									const [toUsername, toInstance] = to.split("@");
+									const peerOrigin =
+										toInstance &&
+										container.federatedDiscoveryService.resolvePeerByInstance(
+											toInstance,
+										);
+									if (federation && peerOrigin) {
+										federation.fanout(
+											{
+												username: username,
+												instance: localInstanceName,
+												text: message.text,
+												ts: Date.now(),
+												lobby: false,
+												toUsername: toUsername,
+											},
+											peerOrigin,
+										);
+									}
 								} else {
 									container.chatService.relayChat(clientId, to, message.text);
-									if (!to) {
-										federation?.fanout({
+									if (!to && federation) {
+										federation.setPeers(
+											container.federatedDiscoveryService.getPeers(),
+										);
+										federation.fanout({
 											username: username,
 											instance: localInstanceName,
 											text: message.text,
@@ -214,6 +227,10 @@ export function createChatWsHandler(
 								}
 								break;
 							}
+							case "auth":
+								// Client sends this on ws.onopen out of habit; auth already
+								// happened during the HTTP upgrade (token/guest check above).
+								break;
 							default:
 								console.warn(`[ChatWS] Unknown message type: ${message.type}`);
 						}
