@@ -227,6 +227,10 @@ export function createChatWsHandler(
 								}
 								break;
 							}
+							case "auth":
+								// Client sends this on ws.onopen out of habit; auth already
+								// happened during the HTTP upgrade (token/guest check above).
+								break;
 							default:
 								console.warn(`[ChatWS] Unknown message type: ${message.type}`);
 						}

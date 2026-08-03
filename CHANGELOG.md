@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.5.1] - 2026-08-03
+
+### Fixed
+
+- `@tunecamp/chat` dependency was pinned (via lockfile) to commit `79dc33e`, predating `ensurePeerKey` cross-instance pubkey fetch (`8f9e021`) and the ZEN crypto API fix (`1289624`). The deployed client could never resolve a remote peer's key, so cross-instance/DM messages showed `[Encrypted message — key exchange pending]` forever. Reinstalled to pick up latest `main`.
+- `chat.ws.ts` now silently accepts the client's redundant `type: "auth"` handshake message (sent on `ws.onopen`, before the real HTTP-upgrade auth result) instead of logging `Unknown message type: auth` on every connect/reconnect.
+
 ## [4.5.0] - 2026-08-03
 
 ### Added
