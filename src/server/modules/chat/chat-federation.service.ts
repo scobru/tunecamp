@@ -78,16 +78,21 @@ export class ChatFederationService {
 		return true;
 	}
 
-	/** Fan out a local lobby message to known federated peers. */
-	async fanout(payload: FederatedChatMessage): Promise<void> {
+	/**
+	 * Fan out a message to federated peers. With `targetPeer`, delivers to that
+	 * one origin only (cross-instance DM); otherwise broadcasts to every known
+	 * peer (lobby message).
+	 */
+	async fanout(payload: FederatedChatMessage, targetPeer?: string): Promise<void> {
 		const signature = this.sign(payload);
 		const body = JSON.stringify({
 			...payload,
 			id: payload.id || this.computeId(payload),
 		});
 
+		const targets = targetPeer ? [targetPeer] : this.peers;
 		await Promise.allSettled(
-			this.peers.map((peer) =>
+			targets.map((peer) =>
 				fetch(`${peer}/api/chat/federated/inbound`, {
 					method: "POST",
 					headers: {

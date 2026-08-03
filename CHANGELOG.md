@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.5.0] - 2026-08-03
+
+### Added
+
+- Cross-instance DM routing now actually delivers: `chat.ws.ts` resolves the target instance via a real peer origin (`federatedDiscoveryService.resolvePeerByInstance`) and fans out to that single peer, instead of discarding the instance name and never sending. `ChatFederationService.fanout` takes an optional `targetPeer` for this; lobby broadcast (no target) is unchanged.
+
+### Fixed
+
+- `ChatFederationService`'s peer list was never populated in production (`setPeers` was never called), so cross-instance lobby fanout silently had zero peers. Now wired from `federatedDiscoveryService.getPeers()` before each lobby broadcast.
+- `POST /api/chat/federated/inbound` now fails closed (503) when `TUNECAMP_CHAT_FEDERATION_SECRET` is unset, instead of accepting/verifying HMAC signatures with an empty key.
+
 ## [4.4.3] - 2026-08-03
 
 ### Fixed
