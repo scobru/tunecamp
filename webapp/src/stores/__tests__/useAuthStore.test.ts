@@ -192,9 +192,12 @@ describe('useAuthStore', () => {
 
     test('register derives a chatKeyPair and persists it to localStorage under the username', async () => {
         const mockRegisterResponse = {
+            success: true,
             token: 'test-jwt-token',
+            username: 'newuser',
+            artistId: 0,
             role: 'user',
-            user: { username: 'newuser', id: '3', isAdmin: false },
+            storageQuota: 0,
         };
         const mockAuthStatus = {
             authenticated: true,
