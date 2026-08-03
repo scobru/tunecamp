@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.5.2] - 2026-08-03
+
+### Fixed
+
+- `catalogService.getSettings()` (public `GET /api/catalog/settings`, consumed by the storefront) was missing `adminTreasuryAddress`, `walletAddress`, `adminFeePercentage`, and `web3Enabled` from its allowlist, so `SubscriptionModal` always showed "Treasury address not configured" even when an admin had set one.
+- `CheckoutModal.tsx`'s direct-purchase crypto fee-split (`adminFeePct`/`adminTreasuryAddress`/`checkoutAddr`/`ownerAddress`) read from `window.TUNECAMP_CONFIG`, which was never assigned anywhere in the app — the fee-split branch was permanently dead code. `GET /api/payments/onramp-config` now also returns these fields, and `CheckoutModal` consumes them from there instead.
+
 ## [4.5.1] - 2026-08-03
 
 ### Fixed

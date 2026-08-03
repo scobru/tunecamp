@@ -48,6 +48,10 @@ export const CheckoutModal = () => {
 
   const [hasStripe, setHasStripe] = useState(false);
   const [web3Available, setWeb3Available] = useState(false);
+  const [checkoutAddr, setCheckoutAddr] = useState<string | null>(null);
+  const [adminFeePct, setAdminFeePct] = useState(0);
+  const [adminTreasury, setAdminTreasury] = useState<string | null>(null);
+  const [ownerAddress, setOwnerAddress] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/payments/onramp-config")
@@ -57,6 +61,10 @@ export const CheckoutModal = () => {
         const web3 = !!data.web3Enabled;
         setHasStripe(stripe);
         setWeb3Available(web3);
+        setCheckoutAddr(data.checkoutAddress || null);
+        setAdminFeePct(Number(data.adminFeePercentage || 0));
+        setAdminTreasury(data.adminTreasuryAddress || null);
+        setOwnerAddress(data.ownerAddress || null);
         // Crypto becomes the active path only when it's the only one available.
         // (No Stripe and no web3: keep the legacy crypto view rather than a dead end.)
         if (!stripe) setPaymentType("crypto");
@@ -183,16 +191,14 @@ export const CheckoutModal = () => {
     setIsProcessing(true);
     setError(null);
 
-    const checkoutAddr = (window as any).TUNECAMP_CONFIG?.web3_checkout_address;
-    
     try {
       let receipt: any;
       let feeReceipt: any;
       let finalPriceEth = track.priceEth;
-      
+
       const useNft = track.use_nft !== undefined ? track.use_nft : (track.useNft !== undefined ? track.useNft : true);
       const isDirectPayment = useNft === false;
-      const artistWallet = track.walletAddress || (window as any).TUNECAMP_CONFIG?.ownerAddress;
+      const artistWallet = track.walletAddress || ownerAddress;
 
       if (paymentMethod === "USDC") {
         const tokenSymbol = "USDC";
@@ -223,9 +229,6 @@ export const CheckoutModal = () => {
 
         if (isDirectPayment) {
           if (!artistWallet) throw new Error(`Artist wallet address is not configured for direct ${tokenSymbol} payments.`);
-          
-          const adminFeePct = Number((window as any).TUNECAMP_CONFIG?.adminFeePercentage || 0);
-          const adminTreasury = (window as any).TUNECAMP_CONFIG?.adminTreasuryAddress;
           
           if (adminFeePct > 0 && adminTreasury) {
             const adminAmount = (stableAmount * BigInt(Math.floor(adminFeePct * 10))) / 1000n;
