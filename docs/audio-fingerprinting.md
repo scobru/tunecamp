@@ -13,7 +13,7 @@ The only current use is **deduplication**: when multiple candidates match the sa
 ## How it works
 
 1. **Generation**: During scanning, the waveform pipeline (`WaveformService`, `src/server/modules/waveform/waveform.generator.ts`) calculates a hash of the waveform envelope.
-2. **Persistence**: The value is saved in the `fingerprint` column of the `tracks` table (see [data-models.md](data-models.md)). The column is automatically added by migrations in `src/server/core/database.ts` if missing.
+2. **Persistence**: The value is saved in the `fingerprint` column of the `tracks` table (see [architecture-backend.md](architecture-backend.md#data-model)). The column is automatically added by migrations in `src/server/core/database.ts` if missing.
 3. **Deduplication**: The scanner (`src/server/modules/catalog/scanner.ts`) uses the fingerprint, along with other fields, to choose which candidate to keep. The startup normalization is in `maintenance.startup.ts`.
 
 ## Future Evolutions

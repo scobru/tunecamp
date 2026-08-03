@@ -12,7 +12,7 @@ Collab necessita di ricchi dati relazionali (progetti, versioni, permessi) e pag
 - **`collab_versions`** — append-only, mai sovrascritti (`UNIQUE(project_id, version)`). Ogni riga è uno snapshot (`state`, JSON opaco), firmato da chi lo ha salvato.
 - **`collab_stems`** — livelli audio grezzi in lavorazione, deliberatamente separati da `tracks`/`samples` (senza semantica di pubblicazione/curatela).
 
-Vedi [data-models.md](data-models.md) per l'elenco completo dello schema.
+Vedi [architecture-backend.md](architecture-backend.md#modello-dei-dati) per l'elenco completo dello schema.
 
 ## Permessi
 
@@ -26,7 +26,7 @@ Riusa il gate di pubblicazione esistente — nessun nuovo sistema di permessi:
 ## API
 
 | Metodo | Rotta | Note |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/api/collab` | Elenca i progetti condivisi (`?mine=true` per i propri progetti). |
 | `POST` | `/api/collab` | Crea un progetto. |
 | `GET` | `/api/collab/:id` | Progetto + versioni + stem. |

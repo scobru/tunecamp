@@ -43,7 +43,7 @@ features:
 Una volta avviato, le guide qui sotto ti permetteranno di approfondire.
 
 | Documento | Descrizione |
-|-----|-------------|
+| ----- | ------------- |
 | [Inizia](./getting-started.md) | **Installazione → primo accesso → aggiunta musica → ascolto** (inizia da qui) |
 | [Deploy su Railway](./railway.md) | Deploy con un solo click su Railway — nessuna VPS richiesta, HTTPS incluso |
 | [Configurazione API e Servizi](./api-setup-guide.md) | Configurazione passo-passo per Stripe, Google Drive, IA e altre integrazioni |
@@ -57,7 +57,7 @@ Una volta avviato, le guide qui sotto ti permetteranno di approfondire.
 Per ascoltatori e artisti che utilizzano un'istanza TuneCamp.
 
 | Documento | Descrizione |
-|-----|-------------|
+| ----- | ------------- |
 | [Ruoli e Permessi](./ROLES.md) | Cosa può fare ciascun ruolo (Proprietario, Manager, Curatore, Ascoltatore) |
 | [Radio](./radio.md) | Trasmissione di una stazione sempre attiva dalla tua libreria (playlist + mix di genere) |
 | [Protocollo Subsonic](./subsonic.md) | Collegamento di client esterni (DSub, Symfonium, Tempo, Substreamer) |
@@ -72,7 +72,7 @@ Per ascoltatori e artisti che utilizzano un'istanza TuneCamp.
 Per chi gestisce un'istanza TuneCamp.
 
 | Documento | Descrizione |
-|-----|-------------|
+| ----- | ------------- |
 | [Federazione](./FEDERATION.md) | Scoperta ActivityPub e HTTP gossip — come le istanze si trovano a vicenda |
 | [Sidecamp Desktop](./sidecamp.md) | App Desktop per la Condivisione Peer, Soulseek e Torrents |
 | [Monitoraggio](./monitoring.md) | Endpoint `/health`, pannello delle risorse di sistema dell'amministratore, report sui crash Sentry e controlli di uptime |
@@ -86,15 +86,12 @@ Per chi gestisce un'istanza TuneCamp.
 Per contributori e sviluppatori su TuneCamp.
 
 | Documento | Descrizione |
-|-----|-------------|
+| ----- | ------------- |
 | [Guida allo Sviluppo](./development-guide.md) | Configurazione dell'ambiente di sviluppo locale, esecuzione e test |
 | [Contribuire](./CONTRIBUTING.md) | Linee guida per la contribuzione del codice e processo di pull request |
-| [Architettura Backend](./architecture-backend.md) | Server Express, SQLite, ActivityPub e scoperta federata |
+| [Architettura Backend](./architecture-backend.md) | Server Express, SQLite, ActivityPub, scoperta federata e modello dati completo / schema del database |
 | [Architettura Webapp](./architecture-webapp.md) | React, Vite, Zustand e scoperta dell'istanza nel frontend |
-| [Inventario dei Componenti UI](./component-inventory.md) | Catalogo dei componenti React della webapp per directory |
-| [Modelli Dati](./data-models.md) | Schema del database e relazioni tra entità |
 | [Contratti API](./api-contracts.md) | Endpoint REST, autenticazione e protocolli supportati |
-| [Albero dei Sorgenti](./source-tree-analysis.md) | Struttura delle directory e punti di ingresso |
 | [Applicazioni Lab](./LAB.md) | Creazione e invio di strumenti audio sperimentali |
 | [App Lab: Audiofabric](./audiofabric.md) | Visualizzatore musicale 3D WebGL in tempo reale integrato in Lab |
 | [App Lab: Registratore a 4 Tracce](./4-track-recorder.md) | Pacchetto companion registratore a cassette a 4 tracce basato su browser |
@@ -106,7 +103,7 @@ Per contributori e sviluppatori su TuneCamp.
 Servizi di terze parti opzionali che puoi collegare alla tua istanza.
 
 | Documento | Descrizione |
-|-----|-------------|
+| ----- | ------------- |
 | [Integrazioni IA](./ai-integrations.md) | Automazione dei metadati e raccomandazioni tramite OpenRouter |
 | [Smart Contracts](./smart-contracts.md) | Contratti Solidity (Factory, NFT, Checkout) su Base |
 | [Google Drive](./google-drive.md) | Backend di archiviazione cloud per file multimediali |
@@ -118,8 +115,8 @@ Servizi di terze parti opzionali che puoi collegare alla tua istanza.
 ### Riferimento
 
 | Documento | Descrizione |
-|-----|-------------|
-| [Panoramica del Progetto](./project-overview.md) | Obiettivi, stack tecnologico e struttura del repository |
+| ----- | ------------- |
+| [Panoramica del Progetto](./project-overview.md) | Obiettivi, stack tecnologico, struttura del repository, albero sorgenti e catalogo componenti webapp |
 | [Stato e Maturità](./STATUS.md) | Stato di maturità reale di ciascuna area e limitazioni note |
 | [Confronto con Funkwhale](./comparison-funkwhale.md) | Differenze nei modelli e nelle funzionalità |
 | [Impronte Digitali Audio](./audio-fingerprinting.md) | Come TuneCamp rileva i duplicati dei brani nella libreria |
