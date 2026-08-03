@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.4.3] - 2026-08-03
+
+### Fixed
+
+- `GET /api/chat/history`, `/api/chat/peers`, and `/api/chat/pubkey` now allow cross-origin requests (`sidecamp` desktop app and other P2P clients were blocked by `strictCors` since these routes carry no cookies — auth is Bearer-only, so wildcard CORS on these GET routes carries no CSRF risk).
+
 ## [4.4.2] - 2026-08-03
 
 ### Removed
