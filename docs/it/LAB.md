@@ -359,5 +359,5 @@ Ciò salverebbe la traccia direttamente nella libreria TuneCamp dell'utente senz
 | **Stack tecnologico** | Qualsiasi (basate su iFrame) | Node.js / ESM |
 | **Dove sono collocate** | Tabella DB `lab_apps` (via pannello Admin / API) | `plugins/<nome>.js` |
 | **Come vengono caricate** | Dal frontend React a runtime, da `GET /api/lab-apps` | Dal caricatore dei plugin del server all'avvio |
-| **Esempi** | 4-Track Recorder, Patchcab, ComposeYogi | Provider di metadati personalizzato, Soulseek, storage S3 |
+| **Esempi** | 4-Track Recorder, Patchcab, ComposeYogi | Provider di metadati personalizzato, storage S3 |
 

@@ -280,8 +280,6 @@ export interface SiteSettings {
 	scheduledScanHour?: string;
 	adminFeePercentage?: string | number;
 	adminTreasuryAddress?: string;
-	soulseek_username?: string;
-	soulseek_password?: string;
 	openrouter_api_key?: string;
 	openrouter_model?: string;
 	stripe_secret_key?: string;

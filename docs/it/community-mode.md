@@ -33,7 +33,7 @@ Il blocco viene applicato **lato server**, non solo sull'interfaccia utente:
 2. **Creazione/modifica delle release** (`POST/PUT /api/releases`, `PUT /api/admin/releases/:id`): i campi del prezzo vengono azzerati se l'artista non è abilitato a vendere, così che il catalogo non mostri mai un pulsante "Acquista" che verrebbe poi rifiutato in fase di pagamento.
 3. L'opzione può essere **modificata solo da un Manager/Root Admin** (casella "Vendite abilitate" nell'editor dell'artista) — un artista non può auto-abilitarsi.
 
-Razionale: su una piattaforma che consente la vendita di musica, i caricamenti aperti senza verifica rappresentano un rischio legale (vendita di contenuti per i quali chi effettua il caricamento non detiene i diritti, chargeback, segnalazioni DMCA). Il gate di verifica sposta la responsabilità a una decisione esplicita dell'amministratore, similmente a quanto già fatto per i plugin di acquisizione "grigi" (Soulseek/Torrent, disabilitati per impostazione predefinita).
+Razionale: su una piattaforma che consente la vendita di musica, i caricamenti aperti senza verifica rappresentano un rischio legale (vendita di contenuti per i quali chi effettua il caricamento non detiene i diritti, chargeback, segnalazioni DMCA). Il gate di verifica sposta la responsabilità a una decisione esplicita dell'amministratore, similmente a quanto già fatto per l'acquisizione P2P "grigia", interamente delegata all'app desktop opt-in [Sidecamp](./sidecamp.md) anziché essere inclusa nell'istanza stessa.
 
 ## Note sulla Migrazione
 

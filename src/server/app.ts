@@ -74,6 +74,13 @@ export function createApp(config: ServerConfig): AppSetupResult {
     // Subsonic API must be accessible to cross-origin web clients (like TuneCamp Audiofabric)
     app.use('/rest', publicFederationCors);
 
+    // GET /api/tracks/:id/stream (and other track reads) must also be reachable
+    // cross-origin — this is what the Lab SDK's getLibrary bridge hands to iframed
+    // apps like Audiofabric. Already per-request authorized via the ?token= query
+    // param (canConsumeTrack), same model as /rest above, so opening GET CORS here
+    // grants nothing a token holder couldn't already fetch directly.
+    app.use('/api/tracks', publicFederationCors);
+
     // POST /api/auth/zen/sso is called by the FID identity portal, which is by design a
     // different origin (and may be one the user self-hosts), so the origin cannot be the
     // security boundary here — the signed SSO token is. The request carries no cookies and,

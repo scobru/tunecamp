@@ -359,12 +359,18 @@ export function createAuthService(
 				console.log(
 					"📦 Migrating admin table to multi-user support (with roles, quotas, keys, and status)...",
 				);
-				// We need to recreate the table
-				// 1. Rename existing table
-				db.exec("ALTER TABLE admin RENAME TO admin_old");
+				// We need to recreate the table.
+				// The rename below makes SQLite rewrite every referencing table's FK
+				// (tracks.owner_id, albums.owner_id, ...) to point at admin_old, so the
+				// final DROP fails with SQLITE_CONSTRAINT_FOREIGNKEY once those tables
+				// hold rows. Foreign keys stay off for the whole sequence.
+				db.pragma("foreign_keys = OFF");
+				try {
+					// 1. Rename existing table
+					db.exec("ALTER TABLE admin RENAME TO admin_old");
 
-				// 2. Create new table with role + storage + gun keys
-				db.exec(`
+					// 2. Create new table with role + storage + gun keys
+					db.exec(`
                     CREATE TABLE admin (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         username TEXT NOT NULL UNIQUE,
@@ -386,11 +392,11 @@ export function createAuthService(
                     )
                 `);
 
-				// 3. Migrate data - existing users keep role='admin' and unlimited quota (0)
-				const hasCreatedAt = columns.some((c) => c.name === "created_at");
-				const hasUpdatedAt = columns.some((c) => c.name === "updated_at");
+					// 3. Migrate data - existing users keep role='admin' and unlimited quota (0)
+					const hasCreatedAt = columns.some((c) => c.name === "created_at");
+					const hasUpdatedAt = columns.some((c) => c.name === "updated_at");
 
-				const insertQuery = `
+					const insertQuery = `
                     INSERT INTO admin (
                         id, username, password_hash, created_at, updated_at,
                         artist_id, role, storage_quota, storage_used,
@@ -416,10 +422,13 @@ export function createAuthService(
                         ${!hasTokenVersion ? "0" : "IFNULL(token_version, 0)"}
                     FROM admin_old
                 `;
-				db.exec(insertQuery);
+					db.exec(insertQuery);
 
-				// 4. Drop old table
-				db.exec("DROP TABLE admin_old");
+					// 4. Drop old table
+					db.exec("DROP TABLE admin_old");
+				} finally {
+					db.pragma("foreign_keys = ON");
+				}
 			} else {
 				// Migration: Existing users with 10MB quota (likely early test users) get upgraded to 1GB
 				const TEN_MB = 10 * 1024 * 1024;

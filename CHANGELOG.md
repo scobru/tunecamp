@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.5.8] - 2026-08-04
+
+### Fixed
+
+- **Instances with a leftover `admin_old` table crash-looped on startup with `SqliteError: FOREIGN KEY constraint failed`.** The startup "Rescue Phase" (`database.ts`) drops orphaned `<table>_old`/`<table>_new` artifacts left by an interrupted migration, but ran with `foreign_keys = ON`. When the legacy multi-user migration in `auth.service.ts` did `ALTER TABLE admin RENAME TO admin_old`, SQLite rewrote every referencing table's foreign key (`tracks.owner_id`, `albums.owner_id`, `api_tokens.user_id`, …) to point at `admin_old` — so once those tables had rows, the cleanup `DROP TABLE admin_old` could never succeed and the server failed to boot on every restart. Both the Rescue Phase and the original rename/recreate/drop sequence now run with foreign keys disabled (the latter wrapped in `try`/`finally` so they are always re-enabled). Existing broken installs are repaired automatically on the next start; no data is affected, as `admin_old` was already a dead duplicate.
+
+## [4.5.7] - 2026-08-04
+
+### Removed
+
+- **Dead Soulseek integration surface removed from the instance and docs.** Soulseek/BitTorrent acquisition was moved entirely to the companion [Sidecamp](docs/sidecamp.md) desktop app; the instance itself never re-registers a Soulseek provider (`registerBuiltInDownloadProviders()` registers nothing) and had no `search/content/soulseek/*` backend route. Removed the now-dead `SLSK_USER`/`SLSK_PASS` env vars (`.env.example`, docs), the `soulseek` field from `useConfigStore`'s `HealthStatus`, the 7 `admin.ts` API functions calling the nonexistent `search/content/soulseek/*` endpoints, and the `soulseek_username`/`soulseek_password` config type fields. Corrected doc claims that described Soulseek as an in-instance admin-toggle plugin (`comparison-funkwhale.md`, `community-mode.md`, `LAB.md`) and a nonexistent `soulseek_downloads` DB table (`architecture-backend.md`), in both EN and IT docs.
+
+## [4.5.6] - 2026-08-04
+
+### Fixed
+
+- **Audiofabric (and other Lab apps) rendered a black screen when embedded via iFrame, despite working fine when opened directly on Vercel.** The Lab SDK's `getLibrary` bridge (`LabApp.tsx`) hands iframed apps stream URLs built from `/api/tracks/:id/stream`, which was gated by `strictCors` (restricted to `TUNECAMP_CORS_ORIGINS`) — the cross-origin `<audio>` fetch was silently blocked by the browser, and Audiofabric has no error handling on load failure, so it hung forever. `/rest` (Subsonic) was already carved out as public cross-origin CORS for exactly this reason but `/api/tracks` was missed. Added `/api/tracks` (GET only; mutations still go through `strictCors`) to the public federation CORS list — safe since the route is already per-request authorized via the `?token=` query param, same model as `/rest`.
+
+### Changed
+
+- **TuneCamp Beam lab app disabled by default**, superseded by Wormhole (id 5) which covers the same P2P file-transfer use case. Existing installs are migrated to `enabled = 0` on next startup; the row is kept (not deleted) for id stability.
+
 ## [4.5.5] - 2026-08-04
 
 ### Fixed
