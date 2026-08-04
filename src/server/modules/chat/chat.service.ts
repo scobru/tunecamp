@@ -7,6 +7,7 @@
 // produced client-side (Curve25519/XSalsa20-Poly1305) and is relayed verbatim.
 // Only the lobby carries plaintext.
 
+import { randomUUID } from "crypto";
 import type { DatabaseService } from "../../core/database.types.js";
 
 // Structural socket type: keeps this module independent of `ws` and of the
@@ -25,6 +26,7 @@ interface ChatClient {
 	pubkey?: string;
 	isAdmin?: boolean;
 	userId?: number | string;
+	rooms: Set<number>;
 }
 
 export interface LobbyMessage {
@@ -33,11 +35,20 @@ export interface LobbyMessage {
 	created_at: number;
 }
 
+export interface ChatRoom {
+	id: number;
+	global_id: string;
+	name: string;
+	description: string | null;
+	is_private: number;
+}
+
 const OPEN = 1;
 const MAX_TEXT_LENGTH = 2000;
 // Backlog handed to a client that just joined. Older rows are dropped on insert:
 // this is a chat lobby, not an archive.
 const LOBBY_HISTORY_CAP = 500;
+const ROOM_HISTORY_CAP = 500;
 
 export class ChatService {
 	private clients = new Map<string, ChatClient>();
@@ -81,6 +92,7 @@ export class ChatService {
 			ws,
 			isAdmin,
 			userId,
+			rooms: new Set(),
 		});
 		if (userId !== undefined) {
 			this.userIdMap.set(userId, clientId);
@@ -382,11 +394,10 @@ export class ChatService {
 			if (other.pubkey) pubkeyMap.set(other.username, other.pubkey);
 		}
 
-		const roster: { username: string; pubkey: string }[] = [];
-		for (const [uname, pk] of pubkeyMap.entries()) {
-			roster.push({ username: uname, pubkey: pk });
-		}
-		return roster;
+		return Array.from(pubkeyMap, ([username, pubkey]) => ({
+			username,
+			pubkey,
+		}));
 	}
 
 	getPubkey(username: string): string | undefined {
@@ -499,9 +510,19 @@ export class ChatService {
 		ts: number,
 		isLobby: boolean,
 		toUsername?: string,
+		roomGlobalId?: string,
 	): boolean {
 		const clean = String(text ?? "").slice(0, MAX_TEXT_LENGTH);
 		if (!clean.trim()) return false;
+
+		if (roomGlobalId) {
+			return this.relayFederatedRoomMessage(
+				qualifiedFrom,
+				roomGlobalId,
+				clean,
+				ts,
+			);
+		}
 
 		if (isLobby) {
 			this.persistLobbyMessage(qualifiedFrom, clean);
@@ -534,6 +555,280 @@ export class ChatService {
 			}
 		}
 		return delivered;
+	}
+
+	/**
+	 * A federated room message addresses a room by its `global_id`, never by the
+	 * sender's local row id — those are per-instance AUTOINCREMENT and would
+	 * deliver a remote room's traffic into an unrelated local room.
+	 * A room this instance has never heard of is dropped: room discovery and
+	 * federated membership do not exist yet, so there is nothing to join.
+	 */
+	private relayFederatedRoomMessage(
+		qualifiedFrom: string,
+		roomGlobalId: string,
+		text: string,
+		ts: number,
+	): boolean {
+		const room = this.getRoom(roomGlobalId);
+		if (!room) return false;
+
+		this.persistRoomMessage(room.id, qualifiedFrom, text, ts);
+
+		let delivered = false;
+		for (const client of this.clients.values()) {
+			if (client.ws.readyState !== OPEN || !client.rooms.has(room.id)) continue;
+			try {
+				client.ws.send(
+					JSON.stringify({
+						type: "room_chat",
+						roomId: room.id,
+						roomGlobalId,
+						from: qualifiedFrom,
+						text,
+						ts: ts || Date.now(),
+					}),
+				);
+				delivered = true;
+			} catch (err) {
+				console.error("[ChatService] federated room relay error:", err);
+			}
+		}
+		return delivered;
+	}
+	/**
+	 * Rooms: first-class chat spaces beyond the global lobby.
+	 * Each client tracks joined rooms; messages are delivered only to
+	 * subscribers of that room.
+	 */
+
+	createRoom(
+		name: string,
+		description: string,
+		isPrivate: boolean,
+		createdBy: string,
+	): { id: number; globalId: string; name: string } {
+		const safeName = String(name).trim().slice(0, 100);
+		if (!safeName) throw new Error("Room name required");
+		const globalId = randomUUID();
+		const result = this.database.db
+			.prepare(
+				"INSERT INTO chat_rooms (global_id, name, description, is_private, created_by) VALUES (?, ?, ?, ?, ?)",
+			)
+			.run(
+				globalId,
+				safeName,
+				description || null,
+				isPrivate ? 1 : 0,
+				createdBy,
+			);
+		return { id: Number(result.lastInsertRowid), globalId, name: safeName };
+	}
+
+	/** Single room row, by local id or by federation-wide global_id. */
+	getRoom(idOrGlobalId: number | string): ChatRoom | undefined {
+		const column = typeof idOrGlobalId === "number" ? "id" : "global_id";
+		return this.database.db
+			.prepare(
+				`SELECT id, global_id, name, description, is_private FROM chat_rooms WHERE ${column} = ?`,
+			)
+			.get(idOrGlobalId) as ChatRoom | undefined;
+	}
+
+	deleteRoom(roomId: number, requester: string): boolean {
+		const room = this.database.db
+			.prepare("SELECT id, created_by FROM chat_rooms WHERE id = ?")
+			.get(roomId) as { id: number; created_by: string } | undefined;
+		if (!room) return false;
+		if (room.created_by !== requester) return false;
+		this.database.db.prepare("DELETE FROM chat_rooms WHERE id = ?").run(roomId);
+		return true;
+	}
+
+	joinRoom(clientId: string, roomId: number): boolean {
+		const client = this.clients.get(clientId);
+		if (!client) return false;
+		return this.joinRoomByUser(client.username, roomId);
+	}
+
+	leaveRoom(clientId: string, roomId: number): boolean {
+		const client = this.clients.get(clientId);
+		if (!client) return false;
+		return this.leaveRoomByUser(client.username, roomId);
+	}
+
+	/** Membership is keyed by username, not by socket: a user joined from the
+	 * webapp stays a member for their Sidecamp daemon, and across reconnects.
+	 * Every live socket of that user is subscribed too, so delivery is immediate. */
+	joinRoomByUser(username: string, roomId: number): boolean {
+		if (!this.getRoom(roomId)) return false;
+		try {
+			this.database.db
+				.prepare(
+					"INSERT OR IGNORE INTO chat_room_members (room_id, username) VALUES (?, ?)",
+				)
+				.run(roomId, username);
+			for (const client of this.clientsOf(username)) client.rooms.add(roomId);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	leaveRoomByUser(username: string, roomId: number): boolean {
+		this.database.db
+			.prepare(
+				"DELETE FROM chat_room_members WHERE room_id = ? AND username = ?",
+			)
+			.run(roomId, username);
+		for (const client of this.clientsOf(username)) client.rooms.delete(roomId);
+		return true;
+	}
+
+	private *clientsOf(username: string): Iterable<ChatClient> {
+		for (const client of this.clients.values()) {
+			if (client.username === username || client.rawUsername === username) {
+				yield client;
+			}
+		}
+	}
+
+	listRooms(): {
+		id: number;
+		globalId: string;
+		name: string;
+		description: string | null;
+		is_private: boolean;
+		member_count: number;
+	}[] {
+		try {
+			const rooms = this.database.db
+				.prepare(
+					`SELECT r.id, r.global_id, r.name, r.description, r.is_private,
+					 COUNT(m.username) AS member_count
+					 FROM chat_rooms r
+					 LEFT JOIN chat_room_members m ON m.room_id = r.id
+					 GROUP BY r.id
+					 ORDER BY r.id ASC`,
+				)
+				.all() as any[];
+			return rooms.map((r) => ({
+				id: r.id,
+				globalId: r.global_id,
+				name: r.name,
+				description: r.description,
+				is_private: !!r.is_private,
+				member_count: r.member_count,
+			}));
+		} catch (err) {
+			console.error("[ChatService] Failed to list rooms:", err);
+			return [];
+		}
+	}
+
+	getMembers(roomId: number): string[] {
+		try {
+			const rows = this.database.db
+				.prepare(
+					"SELECT username FROM chat_room_members WHERE room_id = ? ORDER BY joined_at ASC",
+				)
+				.all(roomId) as { username: string }[];
+			return rows.map((r) => r.username);
+		} catch {
+			return [];
+		}
+	}
+
+	getRoomHistory(
+		roomId: number,
+		limit = 100,
+	): { username: string; message: string; created_at: number }[] {
+		try {
+			return this.database.db
+				.prepare(
+					"SELECT username, message, created_at FROM chat_room_messages WHERE room_id = ? ORDER BY id DESC LIMIT ?",
+				)
+				.all(roomId, Math.min(limit, ROOM_HISTORY_CAP)) as any[];
+		} catch {
+			return [];
+		}
+	}
+
+	/** Relay a message to every client subscribed to roomId. */
+	relayRoomMessage(
+		roomId: number,
+		fromClientId: string,
+		text: string,
+	): boolean {
+		const from = this.clients.get(fromClientId);
+		if (!from) return false;
+		const clean = String(text ?? "").slice(0, MAX_TEXT_LENGTH);
+		if (!clean.trim()) return false;
+		if (!this.isMember(roomId, from.username)) return false;
+
+		const ts = Date.now();
+		this.persistRoomMessage(roomId, from.username, clean, ts);
+
+		let delivered = false;
+		for (const client of this.clients.values()) {
+			if (
+				client.ws.readyState !== OPEN ||
+				!client.rooms.has(roomId) ||
+				client.id === fromClientId
+			)
+				continue;
+			try {
+				client.ws.send(
+					JSON.stringify({
+						type: "room_chat",
+						roomId,
+						from: from.username,
+						text: clean,
+						ts,
+					}),
+				);
+				delivered = true;
+			} catch (err) {
+				console.error("[ChatService] room relay error:", err);
+			}
+		}
+		return delivered;
+	}
+
+	isMember(roomId: number, username: string): boolean {
+		try {
+			return !!this.database.db
+				.prepare(
+					"SELECT 1 FROM chat_room_members WHERE room_id = ? AND LOWER(username) = LOWER(?)",
+				)
+				.get(roomId, username);
+		} catch {
+			return false;
+		}
+	}
+
+	// Timestamps are milliseconds everywhere on the wire, so room history must
+	// not fall back to the table's strftime('%s') default (seconds).
+	private persistRoomMessage(
+		roomId: number,
+		username: string,
+		message: string,
+		ts: number,
+	): void {
+		try {
+			this.database.db
+				.prepare(
+					"INSERT INTO chat_room_messages (room_id, username, message, created_at) VALUES (?, ?, ?, ?)",
+				)
+				.run(roomId, username, message, ts || Date.now());
+			this.database.db
+				.prepare(
+					"DELETE FROM chat_room_messages WHERE room_id = ? AND id <= (SELECT MAX(id) FROM chat_room_messages WHERE room_id = ?) - ?",
+				)
+				.run(roomId, roomId, ROOM_HISTORY_CAP);
+		} catch (err) {
+			console.error("[ChatService] Failed to persist room message:", err);
+		}
 	}
 }
 

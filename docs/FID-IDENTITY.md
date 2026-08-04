@@ -133,6 +133,7 @@ You can help strengthen the network's resilience, speed, and decentralization by
 - **Behavior**:
   - Validates `ssoToken` via `FidSsoHandler.validateSsoToken()`.
   - Derives deterministic Ed25519 ActivityPub keys server-side from `apSeed`.
+  - Persists those keys on the account (`admin.ap_public_key` / `ap_private_key`) when not already set, and on the linked artist when there is one. Without this the account would have no Fediverse actor at all: SSO never goes through `POST /api/auth/login`, which is where key generation is otherwise triggered.
   - New SSO users start as standard **Listeners** (`UserRole.NORMAL_USER`) without auto-created artist profiles.
   - If promoted internally by instance admins, their instance-assigned role/artist link is respected.
 

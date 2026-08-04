@@ -45,6 +45,26 @@ describe("ChatFederationService", () => {
 			expect(service.verify({ ...payload, text: "bye" }, sig)).toBe(false);
 			expect(service.verify(payload, "bad")).toBe(false);
 		});
+
+		it("does not let separator characters in text forge another payload", () => {
+			const honest: FederatedChatMessage = {
+				username: "alice",
+				instance: "a.example.com",
+				text: "hi",
+				ts: 1000,
+				lobby: false,
+				toUsername: "bob",
+			};
+			// Same characters, different field boundaries: must not sign alike.
+			const forged: FederatedChatMessage = {
+				username: "alice",
+				instance: "a.example.com",
+				text: 'hi","1000","false","bob',
+				ts: 1000,
+				lobby: false,
+			};
+			expect(service.sign(forged)).not.toBe(service.sign(honest));
+		});
 	});
 
 	describe("ingest", () => {
@@ -62,6 +82,7 @@ describe("ChatFederationService", () => {
 				"federated hello",
 				2000,
 				true,
+				undefined,
 				undefined,
 			);
 		});
@@ -82,6 +103,28 @@ describe("ChatFederationService", () => {
 				2001,
 				false,
 				"bob",
+				undefined,
+			);
+		});
+
+		it("relays a room message by global id, not by local room id", () => {
+			const payload: FederatedChatMessage = {
+				username: "alice",
+				instance: "a.example.com",
+				text: "hello room",
+				ts: 2002,
+				lobby: false,
+				roomGlobalId: "11111111-2222-3333-4444-555555555555",
+				roomName: "general",
+			};
+			expect(service.ingest(payload)).toBe(true);
+			expect(fake.relayFederatedMessage).toHaveBeenCalledWith(
+				"alice@a.example.com",
+				"hello room",
+				2002,
+				false,
+				undefined,
+				"11111111-2222-3333-4444-555555555555",
 			);
 		});
 

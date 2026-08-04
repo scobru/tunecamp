@@ -17,7 +17,7 @@ services:
     volumes:
       # Map your music library (REQUIRED - change this path)
       - /path/to/your/music:/music
-      # Persistent data (database, uploads)
+      # Persistent data (database, uploads) 
       - tunecamp_data:/data
     env_file:
       - .env
@@ -49,5 +49,4 @@ services:
 
 volumes:
   tunecamp_data:
-    driver: local
     driver: local

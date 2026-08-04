@@ -63,13 +63,15 @@ ActivityPub consente a TuneCamp di comunicare con altre piattaforme quali Mastod
 ### Aspetti Chiave
 
 - **Profili Artista**: Ogni artista su TuneCamp è un attore di tipo "Person" in ActivityPub.
+- **Account Ascoltatore**: *Anche* ogni account è un attore "Person" su `/users/{username}`, con o senza profilo artista: l'essere seguibili dal Fediverso non dipende dai permessi di pubblicazione. L'attore di un ascoltatore è un profilo spoglio: gli ascoltatori non possono pubblicare (vedi `ROLES.md`), quindi da lì non viene mai trasmesso nulla.
 - **Follower e Preferiti**: Gli utenti di altre istanze del Fediverso possono seguire gli artisti di TuneCamp e mettere "mi piace" o aggiungere ai preferiti i loro post e pubblicazioni.
 - **Annunci (Broadcast)**: Quando un artista pubblica una nuova release o un post, TuneCamp invia un'attività "Create Note" a tutti i follower.
 - **Interoperabilità**: TuneCamp supporta WebFinger e i box di inbox/outbox standard di ActivityPub.
 
 ### Dettagli di Implementazione
 
-- **Chiavi**: Coppie di chiavi RSA a 4096 bit vengono generate automaticamente per ogni artista.
+- **Chiavi**: Coppie di chiavi RSA a 4096 bit vengono generate automaticamente per ogni artista. Anche gli account ascoltatore ricevono la propria coppia di chiavi, scritta alla registrazione, al login con password o FID (`ensureUserKeys`) oppure — nel caso dell'SSO FID — derivata in modo deterministico dall'`apSeed` (vedi `FID-IDENTITY.md`).
+- **L'attore esiste solo quando esistono le sue chiavi**: il dispatcher restituisce `null` per un account senza `ap_public_key`, quindi sia `/users/{handle}` sia il suo record WebFinger rispondono 404. Per questo la webapp interroga il server invece di indovinare l'handle: `GET /api/users/me/fediverse` restituisce `{ hasActor, handle, actorUri }` e la pagina Profilo nasconde il pannello Fediverse Identity quando `hasActor` è `false`.
 - **Allegati**: Gli annunci trasmessi includono allegati di tipo "Audio" (link diretti allo streaming) e "Image" (copertina).
 - **URL Pubblico**: La federazione richiede la corretta configurazione di `TUNECAMP_PUBLIC_URL` con protocollo `https`.
 

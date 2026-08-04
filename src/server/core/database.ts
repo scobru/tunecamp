@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import type { Database as DatabaseType } from "better-sqlite3";
 import path from "path";
+import { randomUUID } from "crypto";
 import { TrackRepository } from "../repositories/track.repository.js";
 import { AlbumRepository } from "../repositories/album.repository.js";
 import { ArtistRepository } from "../repositories/artist.repository.js";
@@ -651,6 +652,41 @@ export function createDatabase(dbPath: string): DatabaseService {
             reason TEXT,
             created_at INTEGER NOT NULL
         );
+
+        -- Chat rooms for multi-user conversations (first-class citizen of
+        -- TuneCamp chat protocol, not just lobby broadcast).
+        CREATE TABLE IF NOT EXISTS chat_rooms (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            -- Federation key. The id column is per-instance AUTOINCREMENT, so it
+            -- cannot address a room across instances: room 3 here is not room 3
+            -- there.
+            -- global_id is minted once by the creating instance and travels
+            -- with every federated room message.
+            global_id TEXT UNIQUE,
+            name TEXT NOT NULL,
+            description TEXT,
+            is_private INTEGER NOT NULL DEFAULT 0,
+            created_by TEXT NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS chat_room_members (
+            room_id INTEGER NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+            username TEXT NOT NULL,
+            joined_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+            PRIMARY KEY (room_id, username)
+        );
+
+        CREATE TABLE IF NOT EXISTS chat_room_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_id INTEGER NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+            username TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_chat_room_messages_room
+            ON chat_room_messages(room_id, id);
 
         -- Digging ("Dig") feature: external crate-digging sessions inspired by Badger.
         CREATE TABLE IF NOT EXISTS dig_sessions (
@@ -1699,6 +1735,35 @@ export function createDatabase(dbPath: string): DatabaseService {
 					"📦 [Database] Migrating torrents table: adding artist column...",
 				);
 				db.exec("ALTER TABLE torrents ADD COLUMN artist TEXT");
+			}
+		}
+
+		const chatRoomsExists = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='chat_rooms'",
+			)
+			.get();
+		if (chatRoomsExists) {
+			const roomCols = db
+				.prepare("PRAGMA table_info(chat_rooms)")
+				.all() as any[];
+			if (!roomCols.some((col: any) => col.name === "global_id")) {
+				console.log(
+					"📦 [Database] Migrating chat_rooms: adding global_id column...",
+				);
+				db.exec("ALTER TABLE chat_rooms ADD COLUMN global_id TEXT");
+				const rooms = db.prepare("SELECT id FROM chat_rooms").all() as {
+					id: number;
+				}[];
+				const setGlobalId = db.prepare(
+					"UPDATE chat_rooms SET global_id = ? WHERE id = ?",
+				);
+				for (const room of rooms) {
+					setGlobalId.run(randomUUID(), room.id);
+				}
+				db.exec(
+					"CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_rooms_global_id ON chat_rooms(global_id)",
+				);
 			}
 		}
 

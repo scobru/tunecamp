@@ -196,6 +196,45 @@ export function createChatWsHandler(
 									message.signal,
 								);
 								break;
+							case "room_join": {
+								const roomId = Number(message.roomId);
+								if (roomId) container.chatService.joinRoom(clientId, roomId);
+								break;
+							}
+							case "room_leave": {
+								const roomId = Number(message.roomId);
+								if (roomId) container.chatService.leaveRoom(clientId, roomId);
+								break;
+							}
+							case "room_chat": {
+								const roomId = Number(message.roomId);
+								if (roomId && message.text) {
+									container.chatService.relayRoomMessage(
+										roomId,
+										clientId,
+										message.text,
+									);
+									const federation = container.chatFederationService;
+									const room = container.chatService.getRoom(roomId);
+									// Private rooms stay local: membership is not federated
+									// yet, so a peer could not enforce who may read them.
+									if (federation && room && !room.is_private) {
+										federation.setPeers(
+											container.federatedDiscoveryService.getPeers(),
+										);
+										federation.fanout({
+											username,
+											instance: localInstanceName,
+											text: message.text,
+											ts: Date.now(),
+											lobby: false,
+											roomGlobalId: room.global_id,
+											roomName: room.name,
+										});
+									}
+								}
+								break;
+							}
 							case "admin_action": {
 								if (!isAdmin) {
 									ws.send(

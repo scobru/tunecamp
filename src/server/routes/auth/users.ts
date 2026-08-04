@@ -6,6 +6,7 @@ import type { AuthService } from "../../modules/auth/auth.service.js";
 import type { ActivityPubService } from "../../modules/activitypub/activitypub.service.js";
 import { validatePassword } from "../../common/validators.js";
 import { UserRole, VisibilityGuardian } from "../../common/visibility.js";
+import { getSiteHandle } from "../../core/site-actor.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../../middleware/auth.js";
 
@@ -24,7 +25,7 @@ export function createUsersRoutes(container: ServiceContainer): Router {
 
     /**
      * POST /api/users/register
-     * Full registration: Zen user + DB user + Artist profile + AP actor
+     * Registration: DB user (listener role, no artist link) + AP actor keys
      */
     router.post("/register", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req, res) => {
         try {
@@ -68,6 +69,13 @@ export function createUsersRoutes(container: ServiceContainer): Router {
             // them manually, or they ask via POST /api/users/me/artist-request
             // and approval promotes them to Curator.
             const { id: userId } = await authService.createUser(username, password, null, DEFAULT_QUOTA);
+
+            // Register auto-logs the user in, so the login route's lazy key
+            // generation never runs for them. Without this the Fediverse actor
+            // at /users/<username> 404s until their next explicit login.
+            apService
+                ?.ensureUserKeys(userId)
+                .catch((e: any) => console.error("[AP] User key gen failed:", e));
 
             // 3. Generate JWT token for auto-login
             const token = authService.generateToken({
@@ -198,6 +206,49 @@ export function createUsersRoutes(container: ServiceContainer): Router {
         } catch (error) {
             console.error("Public-profile toggle error:", error);
             res.status(500).json({ error: "Failed to update public-profile preference" });
+        }
+    });
+
+    /**
+     * GET /api/users/me/fediverse
+     * Resolve the caller's ActivityPub identity as the actor dispatcher would.
+     * `hasActor` is false when no key material exists yet, in which case
+     * /users/<handle> would 404 and the handle must not be advertised.
+     */
+    router.get("/me/fediverse", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
+        try {
+            // identity.getUser() is a SELECT *, unlike authService.getUserByUsername(),
+            // which does not project ap_public_key.
+            const user = req.userId != null ? identity.getUser(req.userId) : undefined;
+            if (!user) return res.status(404).json({ error: "User not found" });
+
+            const artist = req.artistId ? library.getArtist(req.artistId) : null;
+            const isRoot = user.role === UserRole.ROOT_ADMIN;
+
+            let handle: string;
+            let hasActor: boolean;
+            if (artist) {
+                handle = artist.slug;
+                hasActor = !!artist.public_key;
+            } else if (isRoot) {
+                handle = getSiteHandle(identity);
+                hasActor = !!identity.getSetting("site_public_key");
+            } else {
+                handle = user.username;
+                hasActor = !!user.ap_public_key;
+            }
+
+            const baseUrl = (identity.getSetting("publicUrl") || config.publicUrl || `${req.protocol}://${req.get("host")}`).replace(/\/$/, "");
+            const domain = new URL(baseUrl).host;
+
+            res.json({
+                hasActor,
+                handle: `@${handle}@${domain}`,
+                actorUri: `${baseUrl}/users/${handle}`,
+            });
+        } catch (error) {
+            console.error("Fediverse identity error:", error);
+            res.status(500).json({ error: "Failed to resolve Fediverse identity" });
         }
     });
 

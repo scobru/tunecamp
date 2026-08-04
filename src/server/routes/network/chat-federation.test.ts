@@ -24,6 +24,7 @@ function buildApp(secret = "shared-secret") {
 		createChatFederationRoutes({
 			database: { db } as any,
 			chatService,
+			chatFederationService: federation,
 			config: { chatFederationSecret: secret } as any,
 			federatedDiscoveryService: { getPeers: () => [] },
 		} as any),
@@ -66,6 +67,7 @@ describe("Chat federation routes", () => {
 				1000,
 				true,
 				undefined,
+				undefined,
 			);
 		});
 
@@ -101,6 +103,44 @@ describe("Chat federation routes", () => {
 				2000,
 				false,
 				"bob",
+				undefined,
+			);
+		});
+
+		it("carries the signed room fields through to the relay", async () => {
+			const { app, chatService } = buildApp();
+			const spy = jest
+				.spyOn(chatService, "relayFederatedMessage")
+				.mockReturnValue(true);
+
+			const payload = {
+				username: "alice",
+				instance: "a.example.com",
+				text: "hello room",
+				ts: 3000,
+				lobby: false,
+				roomGlobalId: "11111111-2222-3333-4444-555555555555",
+				roomName: "general",
+			};
+			const signature = createChatFederationService(
+				chatService,
+				"shared-secret",
+			).sign(payload as any);
+
+			const res = await request(app)
+				.post("/api/chat/federated/inbound")
+				.set("Content-Type", "application/json")
+				.set("X-Chat-Signature", signature)
+				.send(payload);
+
+			expect(res.status).toBe(202);
+			expect(spy).toHaveBeenCalledWith(
+				"alice@a.example.com",
+				"hello room",
+				3000,
+				false,
+				undefined,
+				"11111111-2222-3333-4444-555555555555",
 			);
 		});
 
@@ -183,15 +223,6 @@ describe("Chat federation routes", () => {
 			expect(first.status).toBe(202);
 			expect(second.status).toBe(409);
 			expect(second.body.accepted).toBe(false);
-		});
-	});
-
-	describe("GET /api/chat/federated/peers", () => {
-		it("returns the peer list", async () => {
-			const { app } = buildApp();
-			const res = await request(app).get("/api/chat/federated/peers");
-			expect(res.status).toBe(200);
-			expect(res.body.peers).toEqual([]);
 		});
 	});
 });

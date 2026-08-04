@@ -43,6 +43,28 @@ describe("ChatService", () => {
             reason TEXT,
             created_at INTEGER NOT NULL
         )`);
+		db.exec(`CREATE TABLE chat_rooms (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            global_id TEXT UNIQUE,
+            name TEXT NOT NULL,
+            description TEXT,
+            is_private INTEGER NOT NULL DEFAULT 0,
+            created_by TEXT NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT 0
+        )`);
+		db.exec(`CREATE TABLE chat_room_members (
+            room_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            joined_at INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (room_id, username)
+        )`);
+		db.exec(`CREATE TABLE chat_room_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT 0
+        )`);
 		chatService = createChatService({ db } as unknown as DatabaseService);
 	});
 
@@ -420,6 +442,59 @@ describe("ChatService", () => {
 					signal,
 				}),
 			);
+		});
+	});
+
+	describe("rooms", () => {
+		it("createRoom returns id and persists row", () => {
+			const room = chatService.createRoom("general", "", false, "alice");
+			expect(room.id).toBeGreaterThan(0);
+			expect(room.name).toBe("general");
+			expect(chatService.listRooms()).toHaveLength(1);
+		});
+
+		it("deleteRoom is creator-only (non-creator returns false)", () => {
+			const room = chatService.createRoom("secret", "", true, "alice");
+			expect(chatService.deleteRoom(room.id, "bob")).toBe(false);
+			expect(chatService.listRooms()).toHaveLength(1);
+			expect(chatService.deleteRoom(room.id, "alice")).toBe(true);
+			expect(chatService.listRooms()).toHaveLength(0);
+		});
+
+		it("joinRoomByUser writes DB membership and subscribes live sockets", () => {
+			const room = chatService.createRoom("music", "", false, "alice");
+			const aliceWs = fakeWs();
+			chatService.register("alice-id", "alice", aliceWs);
+
+			expect(chatService.joinRoomByUser("alice", room.id)).toBe(true);
+			expect(chatService.getMembers(room.id)).toEqual(["alice"]);
+
+			const delivered = chatService.relayRoomMessage(
+				room.id,
+				"alice-id",
+				"hello room",
+			);
+			expect(delivered).toBe(false); // no other subscriber than sender
+			expect(aliceWs.send).not.toHaveBeenCalledWith(
+				expect.stringContaining('"room_chat"'),
+			);
+			expect(chatService.getRoomHistory(room.id)).toHaveLength(1);
+		});
+
+		it("relayRoomMessage trims only the target room, not others", () => {
+			const r1 = chatService.createRoom("r1", "", false, "alice");
+			const r2 = chatService.createRoom("r2", "", false, "alice");
+			const ws = fakeWs();
+			chatService.register("uid", "alice", ws);
+			chatService.joinRoomByUser("alice", r1.id);
+			chatService.joinRoomByUser("alice", r2.id);
+
+			for (let i = 0; i < 5; i++) {
+				chatService.relayRoomMessage(r1.id, "uid", `r1-${i}`);
+				chatService.relayRoomMessage(r2.id, "uid", `r2-${i}`);
+			}
+			expect(chatService.getRoomHistory(r1.id)).toHaveLength(5);
+			expect(chatService.getRoomHistory(r2.id)).toHaveLength(5);
 		});
 	});
 });

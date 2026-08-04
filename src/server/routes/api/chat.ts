@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { wrapAsync } from "../../middleware/error-handling.js";
 import type { ServiceContainer } from "../../core/container.js";
+import type { AuthenticatedRequest } from "../../middleware/auth.js";
 
 export function createChatRoutes(container: ServiceContainer): Router {
 	const router = Router();
@@ -58,6 +59,103 @@ export function createChatRoutes(container: ServiceContainer): Router {
 			} catch {
 				return res.status(502).json({ error: "Failed to fetch remote pubkey" });
 			}
+		}),
+	);
+
+	/**
+	 * Rooms
+	 *
+	 * `/api/chat` is mounted behind `authMiddleware.requireUser`, so the actor is
+	 * always `req.username`. Never take it from the query string: that would let
+	 * any member act as any other.
+	 */
+	router.post(
+		"/rooms",
+		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+			const { name, description, is_private } = req.body || {};
+			const username = req.username;
+			if (!name || !username) {
+				return res
+					.status(400)
+					.json({ error: "name and authenticated user required" });
+			}
+			const room = container.chatService.createRoom(
+				name,
+				description,
+				!!is_private,
+				username,
+			);
+			res.status(201).json(room);
+		}),
+	);
+
+	router.delete(
+		"/rooms/:id",
+		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+			const roomId = parseInt(req.params.id);
+			const username = req.username;
+			if (!roomId || !username) {
+				return res.status(400).json({ error: "room id and user required" });
+			}
+			const ok = container.chatService.deleteRoom(roomId, username);
+			if (!ok) return res.status(404).json({ error: "Room not found" });
+			res.json({ ok: true });
+		}),
+	);
+
+	router.post(
+		"/rooms/:id/join",
+		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+			const roomId = parseInt(req.params.id);
+			const username = req.username;
+			if (!roomId || !username) {
+				return res.status(400).json({ error: "room id and user required" });
+			}
+			const ok = container.chatService.joinRoomByUser(username, roomId);
+			if (!ok) return res.status(404).json({ error: "Room not found" });
+			res.json({ ok: true });
+		}),
+	);
+
+	router.post(
+		"/rooms/:id/leave",
+		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+			const roomId = parseInt(req.params.id);
+			const username = req.username;
+			if (!roomId || !username) {
+				return res.status(400).json({ error: "room id and user required" });
+			}
+			// leaveRoom() takes a socket id; over REST there is no socket.
+			container.chatService.leaveRoomByUser(username, roomId);
+			res.json({ ok: true });
+		}),
+	);
+
+	router.get(
+		"/rooms",
+		wrapAsync(async (_req: any, res: any) => {
+			res.json({ rooms: container.chatService.listRooms() });
+		}),
+	);
+
+	router.get(
+		"/rooms/:id/messages",
+		wrapAsync(async (req: any, res: any) => {
+			const roomId = parseInt(req.params.id);
+			const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+			if (!roomId) return res.status(400).json({ error: "room id required" });
+			res.json({
+				messages: container.chatService.getRoomHistory(roomId, limit),
+			});
+		}),
+	);
+
+	router.get(
+		"/rooms/:id/members",
+		wrapAsync(async (req: any, res: any) => {
+			const roomId = parseInt(req.params.id);
+			if (!roomId) return res.status(400).json({ error: "room id required" });
+			res.json({ members: container.chatService.getMembers(roomId) });
 		}),
 	);
 

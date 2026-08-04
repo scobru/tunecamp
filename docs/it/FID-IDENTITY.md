@@ -133,6 +133,7 @@ Puoi contribuire a rafforzare la resilienza, la velocità e la decentralizzazion
 - **Comportamento**:
   - Valida `ssoToken` tramite `FidSsoHandler.validateSsoToken()`.
   - Deriva le chiavi Ed25519 ActivityPub in modo deterministico sul server da `apSeed`.
+  - Salva quelle chiavi sull'account (`admin.ap_public_key` / `ap_private_key`) se non già presenti, e sull'artista collegato quando esiste. Senza questo passaggio l'account non avrebbe alcun attore Fediverse: l'SSO non passa mai da `POST /api/auth/login`, che è il punto in cui la generazione delle chiavi avviene altrimenti.
   - I nuovi utenti SSO iniziano come **Ascoltatori** standard (`UserRole.NORMAL_USER`) senza profili artista creati automaticamente.
   - Se promossi internamente dagli amministratori di istanza, il ruolo e il link artista assegnati vengono rispettati.
 
