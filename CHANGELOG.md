@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 
 - **"Change password" and "Security questions" no longer appear in Settings for FID-only accounts.** Both cards were dead ends — the API rejected every write — and `POST /api/auth/password` reported the misleading "Current password is incorrect" instead of explaining that the account has no password. The profile now shows why there is nothing to change, and the endpoint returns a clear 400.
 
+- **Zen SSO integration tests (`zen.integration.test.ts`) failed in CI with HTTP 500 on the valid-token paths.** The route's `db.prepare` mock returned `{ get, all }` for its default branch but no `run`, so any `UPDATE`/`INSERT` it issued threw `db.prepare(...).run is not a function`. The mock now returns a complete prepared-statement stub (`get`/`all`/`run`) for every query; the production route's `db.prepare(...).run()` is correct better-sqlite3 usage, and all 16 Zen tests pass again.
+
 ## [4.5.8] - 2026-08-04
 
 ### Fixed

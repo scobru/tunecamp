@@ -49,39 +49,25 @@ const Profile = () => {
 	const [artistData, setArtistData] = useState<any>(null);
 	const [artistLoading, setArtistLoading] = useState(false);
 	const { settings: siteSettings, fetchFlags } = useSiteSettingsStore();
-	const siteHandle = siteSettings?.siteHandle || "site";
 	const selfPublishEnabled = truthy(siteSettings?.listenerSelfPublish);
 
 	useEffect(() => {
 		fetchFlags();
 	}, [fetchFlags]);
 
-	const isRoot = role === "root_admin" || user?.isRootAdmin;
 	// A listener (role 'user') with an artistId is a Community Artist.
 	// They can publish their own music but don't have Curator privileges.
 	const hasArtistProfile = !!user?.artistId;
 	const isCuratorOrAbove =
 		role === "super_user" || role === "admin" || role === "root_admin";
 
-	const activeHandle = useMemo(() => {
-		if (hasArtistProfile && artistData) {
-			return `@${artistData.slug || artistData.name.toLowerCase().replace(/\s+/g, "")}@${window.location.host}`;
-		}
-		if (isRoot) {
-			return `@${siteHandle}@${window.location.host}`;
-		}
-		return `@${user?.username || "admin"}@${window.location.host}`;
-	}, [user, artistData, isRoot, siteHandle]);
-
-	const activeActorUri = useMemo(() => {
-		if (hasArtistProfile && artistData) {
-			return `${window.location.origin}/users/${artistData.slug || artistData.name.toLowerCase().replace(/\s+/g, "")}`;
-		}
-		if (isRoot) {
-			return `${window.location.origin}/users/${siteHandle}`;
-		}
-		return `${window.location.origin}/users/${user?.username || "admin"}`;
-	}, [user, artistData, isRoot, siteHandle]);
+	// Resolved server-side: guessing the handle here would advertise a
+	// /users/<handle> URL that 404s whenever the account has no actor keys yet.
+	const [fediverseIdentity, setFediverseIdentity] = useState<{
+		hasActor: boolean;
+		handle: string;
+		actorUri: string;
+	} | null>(null);
 
 	const [activeTab, setActiveTab] = useState<
 		"settings" | "collection" | "artist"
@@ -183,6 +169,9 @@ const Profile = () => {
 			API.getPublicProfilePref()
 				.then((p) => setPublicProfileEnabled(p.enabled))
 				.catch(() => {});
+			API.getMyFediverseIdentity()
+				.then(setFediverseIdentity)
+				.catch(() => setFediverseIdentity(null));
 		}
 	}, [isAuthenticated]);
 
@@ -823,82 +812,84 @@ const Profile = () => {
 						</div>
 
 						{/* Fediverse Identity — full-width panel below the 2-col grid */}
-						<div className="card bg-base-200 border border-base-content/10 p-6 space-y-4">
-							<h3 className="text-xl font-bold flex items-center gap-2">
-								<Globe size={20} className="text-secondary" /> Fediverse
-								Identity
-							</h3>
-							<p className="text-sm opacity-60">
-								Your account is available as an ActivityPub actor. Follow or
-								interact from Mastodon, Funkwhale, and other Fediverse apps.
-							</p>
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-								<div className="form-control w-full">
-									<label className="label">
-										<span className="label-text opacity-60">
-											Fediverse Handle
+						{fediverseIdentity?.hasActor && (
+							<div className="card bg-base-200 border border-base-content/10 p-6 space-y-4">
+								<h3 className="text-xl font-bold flex items-center gap-2">
+									<Globe size={20} className="text-secondary" /> Fediverse
+									Identity
+								</h3>
+								<p className="text-sm opacity-60">
+									Your account is available as an ActivityPub actor. Follow or
+									interact from Mastodon, Funkwhale, and other Fediverse apps.
+								</p>
+								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+									<div className="form-control w-full">
+										<label className="label">
+											<span className="label-text opacity-60">
+												Fediverse Handle
+											</span>
+										</label>
+										<div className="flex gap-2">
+											<input
+												type="text"
+												readOnly
+												value={fediverseIdentity.handle}
+												className="input input-bordered flex-1 font-mono text-sm"
+											/>
+											<button
+												className="btn btn-ghost btn-square tooltip tooltip-left"
+												onClick={() => {
+													navigator.clipboard.writeText(fediverseIdentity.handle);
+													notify.success("Handle copied!");
+												}}
+												data-tip="Copy handle"
+											>
+												<Copy size={18} />
+											</button>
+										</div>
+									</div>
+									<div className="form-control w-full">
+										<label className="label">
+											<span className="label-text opacity-60">Actor URI</span>
+										</label>
+										<div className="flex gap-2">
+											<input
+												type="text"
+												readOnly
+												value={fediverseIdentity.actorUri}
+												className="input input-bordered flex-1 font-mono text-sm"
+											/>
+											<button
+												className="btn btn-ghost btn-square tooltip tooltip-left"
+												onClick={() => {
+													navigator.clipboard.writeText(fediverseIdentity.actorUri);
+													notify.success("Actor URI copied!");
+												}}
+												data-tip="Copy actor URI"
+											>
+												<Copy size={18} />
+											</button>
+										</div>
+									</div>
+								</div>
+								{hasArtistProfile && (
+									<div className="text-xs opacity-75 mt-2 bg-base-300/40 p-3 rounded-lg border border-base-content/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+										<span>
+											🎨 You have a linked Artist Profile. Manage all identity
+											migration, verification aliases, and cross-posting in your
+											artist settings.
 										</span>
-									</label>
-									<div className="flex gap-2">
-										<input
-											type="text"
-											readOnly
-											value={activeHandle}
-											className="input input-bordered flex-1 font-mono text-sm"
-										/>
 										<button
-											className="btn btn-ghost btn-square tooltip tooltip-left"
-											onClick={() => {
-												navigator.clipboard.writeText(activeHandle);
-												notify.success("Handle copied!");
-											}}
-											data-tip="Copy handle"
+											type="button"
+											onClick={() => setActiveTab("artist")}
+											className="btn btn-xs btn-outline btn-primary flex-shrink-0"
 										>
-											<Copy size={18} />
+											Go to Artist Profile
 										</button>
 									</div>
-								</div>
-								<div className="form-control w-full">
-									<label className="label">
-										<span className="label-text opacity-60">Actor URI</span>
-									</label>
-									<div className="flex gap-2">
-										<input
-											type="text"
-											readOnly
-											value={activeActorUri}
-											className="input input-bordered flex-1 font-mono text-sm"
-										/>
-										<button
-											className="btn btn-ghost btn-square tooltip tooltip-left"
-											onClick={() => {
-												navigator.clipboard.writeText(activeActorUri);
-												notify.success("Actor URI copied!");
-											}}
-											data-tip="Copy actor URI"
-										>
-											<Copy size={18} />
-										</button>
-									</div>
-								</div>
+								)}
 							</div>
-							{hasArtistProfile && (
-								<div className="text-xs opacity-75 mt-2 bg-base-300/40 p-3 rounded-lg border border-base-content/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-									<span>
-										🎨 You have a linked Artist Profile. Manage all identity
-										migration, verification aliases, and cross-posting in your
-										artist settings.
-									</span>
-									<button
-										type="button"
-										onClick={() => setActiveTab("artist")}
-										className="btn btn-xs btn-outline btn-primary flex-shrink-0"
-									>
-										Go to Artist Profile
-									</button>
-								</div>
-							)}
-						</div>
+						)}
 
 						<div className="bg-surface-elevated/80 border border-surface-border rounded-xl p-6 backdrop-blur-md">
 							<div className="flex items-center gap-3 mb-4">

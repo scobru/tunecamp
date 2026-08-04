@@ -60,6 +60,8 @@ export const socialApi = {
     getPublicProfile: (username: string) => handleResponse(api.get<PublicProfile>(`users/${encodeURIComponent(username)}/public`)),
     getPublicProfilePref: () => handleResponse(api.get<{ enabled: boolean }>('users/me/public-profile')),
     setPublicProfilePref: (enabled: boolean) => handleResponse(api.put<{ enabled: boolean }>('users/me/public-profile', { enabled })),
+    // --- Fediverse identity (server-resolved; hasActor false means /users/<handle> 404s) ---
+    getMyFediverseIdentity: () => handleResponse(api.get<{ hasActor: boolean; handle: string; actorUri: string }>('users/me/fediverse')),
     // --- Now listening (opt-in presence) ---
     getNowListening: () => handleResponse(api.get<{ listeners: NowListeningEntry[] }>('now-playing')),
     getNowPlayingPref: () => handleResponse(api.get<{ enabled: boolean }>('now-playing/preference')),

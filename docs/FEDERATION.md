@@ -63,13 +63,15 @@ ActivityPub allows Tunecamp to communicate with other platforms like Mastodon, P
 ### Key Roles (Broadcaster Model)
 
 - **Artist Profiles**: Every artist on Tunecamp is an ActivityPub "Person" actor.
+- **Listener Accounts**: Every account is *also* a "Person" actor at `/users/{username}`, artist link or not — being followable from the Fediverse is not gated on publishing rights. A listener actor is a bare profile: listeners cannot publish (see `ROLES.md`), so nothing is ever broadcast from it.
 - **Outbound Broadcasting**: Tunecamp focuses on a "Broadcaster" model. When an artist publishes a new release or a post, Tunecamp broadcasts a "Create Note" activity to all followers across the Fediverse.
 - **Inbound Engagement**: Users on other Fediverse instances can follow Tunecamp artists and like/favorite/comment on their releases and posts. Replies and comments are federated back to Tunecamp.
 - **Interoperability**: Tunecamp supports WebFinger and standard ActivityPub inboxes/outboxes. Note: Tunecamp no longer maintains an internal, Mastodon-style consumption timeline or client-side following mechanics to prioritize lightweight performance.
 
 ### Implementation Details
 
-- **Keys**: RSA 4096-bit keypairs are automatically generated for every artist.
+- **Keys**: RSA 4096-bit keypairs are automatically generated for every artist. Listener accounts get their own keypair too, written at registration, at password/FID login (`ensureUserKeys`), or — for FID SSO — derived deterministically from the `apSeed` (see `FID-IDENTITY.md`).
+- **An actor only exists once its keys do**: the actor dispatcher returns `null` for an account with no `ap_public_key`, so `/users/{handle}` and its WebFinger record both 404. The webapp therefore asks the server rather than guessing the handle — `GET /api/users/me/fediverse` returns `{ hasActor, handle, actorUri }`, and the Profile page hides the Fediverse Identity panel when `hasActor` is false.
 - **Attachments**: Broadcasts include "Audio" attachments (direct stream links) and "Image" attachments (cover art).
 - **Public URL**: Federation requires `TUNECAMP_PUBLIC_URL` to be correctly configured with `https`.
 

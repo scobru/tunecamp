@@ -113,20 +113,20 @@ describe("Zen SEA Integration Routes", () => {
 		);
 		mockContainer.authService.generateToken.mockReturnValue("mock-jwt-token");
 		mockContainer.database.prepare.mockImplementation((query: string) => {
-			if (query.includes("SELECT public_key FROM artists")) {
-				return { get: () => null };
-			} else if (query.includes("FROM admin WHERE zen_pub")) {
+			// Complete prepared-statement stub: every query returns get/all/run so the
+			// route's reads and writes both work regardless of which statement it issues.
+			// ponytail: real DB is mocked; only shape matters, not row effects.
+			if (query.includes("FROM admin WHERE zen_pub")) {
 				return {
 					get: (pub: string) =>
 						Object.values(usersByUsername).find(
 							(u: any) => u.zen_pub === pub,
 						) ?? null,
+					all: () => [],
+					run: () => ({}),
 				};
-			} else if (query.includes("UPDATE artists SET")) {
-				return { run: () => ({}) };
-			} else {
-				return { get: () => null, all: () => [] };
 			}
+			return { get: () => null, all: () => [], run: () => ({}) };
 		});
 	});
 
