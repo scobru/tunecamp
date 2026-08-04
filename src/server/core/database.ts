@@ -777,7 +777,8 @@ export function createDatabase(dbPath: string): DatabaseService {
             1
         );
 
-        -- Seed TuneCamp Beam (Zero-Server WebRTC) if not already present
+        -- Seed TuneCamp Beam (Zero-Server WebRTC) if not already present — disabled by default,
+        -- superseded by Wormhole (id 5) which covers the same P2P file-transfer use case
         INSERT OR IGNORE INTO lab_apps (id, name, description, src, category, author, source_url, permissions, sandbox, allow, enabled)
         VALUES (
             4,
@@ -790,7 +791,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             '["camera"]',
             '["allow-scripts","allow-same-origin","allow-forms","allow-modals"]',
             '["camera *"]',
-            1
+            0
         );
 
         INSERT OR IGNORE INTO lab_apps (id, name, description, src, category, author, source_url, permissions, sandbox, allow, enabled) VALUES (
@@ -813,6 +814,9 @@ export function createDatabase(dbPath: string): DatabaseService {
         UPDATE lab_apps SET src = 'https://tunecamp-iris.vercel.app' WHERE id = 3 AND src != 'https://tunecamp-iris.vercel.app';
         UPDATE lab_apps SET src = 'https://tunecamp-beam.vercel.app' WHERE id = 4 AND src != 'https://tunecamp-beam.vercel.app';
         UPDATE lab_apps SET src = 'https://wormhole.scobrudot.dev' WHERE id = 5 AND src != 'https://wormhole.scobrudot.dev';
+
+        -- Beam superseded by Wormhole (same P2P transfer use case) — disable for existing installs
+        UPDATE lab_apps SET enabled = 0 WHERE id = 4 AND enabled = 1;
 
         -- Collab: multi-artist collaborative track projects (native feature, no ZEN/realtime)
         CREATE TABLE IF NOT EXISTS collab_projects (

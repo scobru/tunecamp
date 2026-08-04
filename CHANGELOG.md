@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.5.6] - 2026-08-04
+
+### Fixed
+
+- **Audiofabric (and other Lab apps) rendered a black screen when embedded via iFrame, despite working fine when opened directly on Vercel.** The Lab SDK's `getLibrary` bridge (`LabApp.tsx`) hands iframed apps stream URLs built from `/api/tracks/:id/stream`, which was gated by `strictCors` (restricted to `TUNECAMP_CORS_ORIGINS`) — the cross-origin `<audio>` fetch was silently blocked by the browser, and Audiofabric has no error handling on load failure, so it hung forever. `/rest` (Subsonic) was already carved out as public cross-origin CORS for exactly this reason but `/api/tracks` was missed. Added `/api/tracks` (GET only; mutations still go through `strictCors`) to the public federation CORS list — safe since the route is already per-request authorized via the `?token=` query param, same model as `/rest`.
+
+### Changed
+
+- **TuneCamp Beam lab app disabled by default**, superseded by Wormhole (id 5) which covers the same P2P file-transfer use case. Existing installs are migrated to `enabled = 0` on next startup; the row is kept (not deleted) for id stability.
+
 ## [4.5.5] - 2026-08-04
 
 ### Fixed

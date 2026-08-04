@@ -16,7 +16,7 @@ Apps are stored in the `lab_apps` SQLite table (`src/server/core/database.ts`), 
 
 - **Via UI:** Admin panel → Lab Apps → *Add App*, fill in the fields below.
 - **Via API:** `POST /api/admin/lab-apps` (root-admin only) with the same fields as JSON body.
-- **Built-in defaults:** seeded on first boot in `database.ts` (currently 4-Track Recorder, Audiofabric, TuneCamp Iris, and TuneCamp Beam) — edit those `INSERT OR IGNORE` blocks to change the shipped defaults.
+- **Built-in defaults:** seeded on first boot in `database.ts` (currently 4-Track Recorder, Audiofabric, TuneCamp Iris, and Wormhole; TuneCamp Beam is seeded but disabled by default, superseded by Wormhole) — edit those `INSERT OR IGNORE` blocks to change the shipped defaults.
 
 The public `/lab` page and `/lab/<id>` runner read from `GET /api/lab-apps` (enabled apps only) and pick up new rows automatically, no rebuild required.
 
