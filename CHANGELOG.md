@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.5.8] - 2026-08-04
+
+### Fixed
+
+- **Instances with a leftover `admin_old` table crash-looped on startup with `SqliteError: FOREIGN KEY constraint failed`.** The startup "Rescue Phase" (`database.ts`) drops orphaned `<table>_old`/`<table>_new` artifacts left by an interrupted migration, but ran with `foreign_keys = ON`. When the legacy multi-user migration in `auth.service.ts` did `ALTER TABLE admin RENAME TO admin_old`, SQLite rewrote every referencing table's foreign key (`tracks.owner_id`, `albums.owner_id`, `api_tokens.user_id`, …) to point at `admin_old` — so once those tables had rows, the cleanup `DROP TABLE admin_old` could never succeed and the server failed to boot on every restart. Both the Rescue Phase and the original rename/recreate/drop sequence now run with foreign keys disabled (the latter wrapped in `try`/`finally` so they are always re-enabled). Existing broken installs are repaired automatically on the next start; no data is affected, as `admin_old` was already a dead duplicate.
+
 ## [4.5.7] - 2026-08-04
 
 ### Removed

@@ -60,7 +60,14 @@ export function createDatabase(dbPath: string): DatabaseService {
 	// WAL mode: a power cut can lose the last commits but cannot corrupt the DB.
 	db.pragma("synchronous = NORMAL");
 
-	// Rescue Phase: Recover from interrupted migrations
+	// Rescue Phase: Recover from interrupted migrations.
+	// Foreign keys are off for this block: a legacy migration that did
+	// ALTER TABLE admin RENAME TO admin_old made SQLite rewrite every
+	// referencing table's FK (tracks.owner_id, albums.owner_id, ...) to point at
+	// admin_old, so dropping that orphan with FK checks on fails with
+	// SQLITE_CONSTRAINT_FOREIGNKEY and crash-loops the server. A pragma is a
+	// no-op inside a transaction, so it must be set before the one below starts.
+	db.pragma("foreign_keys = OFF");
 	const tablesToRescue = ["albums", "tracks", "admin", "artists"];
 	db.transaction(() => {
 		const tableNames = new Set(
@@ -102,6 +109,7 @@ export function createDatabase(dbPath: string): DatabaseService {
 			}
 		}
 	})();
+	db.pragma("foreign_keys = ON");
 
 	// Legacy ZEN naming: rename in place so existing FID identity data survives
 	// (a plain CREATE TABLE IF NOT EXISTS zen_users below would leave it as an empty table).
