@@ -31,6 +31,8 @@ export interface AuthService {
 	generateToken(payload: TokenPayload): string;
 	verifyToken(token: string): Promise<TokenPayload | null>;
 	revokeTokens(userId: number): void;
+	/** True when the account authenticates only through its Zen keypair and has no local password. */
+	isFidOnlyAccount(userId: number): boolean;
 	// ... rest of methods
 
 	// Multi-user management
@@ -457,6 +459,8 @@ export function createAuthService(
 		)?.zen_auth_mode === "zen";
 
 	return {
+		isFidOnlyAccount,
+
 		async init(): Promise<void> {
 			const user = db
 				.prepare("SELECT id, password_hash, role FROM admin WHERE username = ?")

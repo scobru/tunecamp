@@ -244,7 +244,8 @@ export function createAuthRoutes(container: ServiceContainer): Router {
 
 				// FID-only accounts have no local password, so authenticateUser below
 				// would reject them with a misleading "current password is incorrect".
-				if (authService.getUserByUsername(username)?.zen_auth_mode === "zen") {
+				// Checked by id, not username: the token's username may be an alias.
+				if (req.userId && authService.isFidOnlyAccount(req.userId)) {
 					return res.status(400).json({
 						error:
 							"This account signs in with its FID identity and has no password to change.",
