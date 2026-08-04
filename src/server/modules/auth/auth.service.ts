@@ -31,6 +31,8 @@ export interface AuthService {
 	generateToken(payload: TokenPayload): string;
 	verifyToken(token: string): Promise<TokenPayload | null>;
 	revokeTokens(userId: number): void;
+	/** True when the account authenticates only through its Zen keypair and has no local password. */
+	isFidOnlyAccount(userId: number): boolean;
 	// ... rest of methods
 
 	// Multi-user management
@@ -442,7 +444,23 @@ export function createAuthService(
 		console.error("Database migration error:", e);
 	}
 
+	/**
+	 * FID-only accounts (`zen_auth_mode = 'zen'`) authenticate solely through their
+	 * Zen keypair and are stored with an empty `password_hash`. Every path that
+	 * writes `password_hash` must refuse them: granting such an account a local
+	 * password silently converts a portable cryptographic identity into one that
+	 * can be taken over with a password, bypassing the FID auth model entirely.
+	 */
+	const isFidOnlyAccount = (userId: number): boolean =>
+		(
+			db.prepare("SELECT zen_auth_mode FROM admin WHERE id = ?").get(userId) as
+				| { zen_auth_mode: string }
+				| undefined
+		)?.zen_auth_mode === "zen";
+
 	return {
+		isFidOnlyAccount,
+
 		async init(): Promise<void> {
 			const user = db
 				.prepare("SELECT id, password_hash, role FROM admin WHERE username = ?")
@@ -1287,7 +1305,7 @@ export function createAuthService(
 		): { token: string; username: string } | null {
 			const user = db
 				.prepare(
-					"SELECT id, username FROM admin WHERE email = ? COLLATE NOCASE AND is_active = 1",
+					"SELECT id, username FROM admin WHERE email = ? COLLATE NOCASE AND is_active = 1 AND zen_auth_mode != 'zen'",
 				)
 				.get(email) as { id: number; username: string } | undefined;
 			if (!user) return null;
@@ -1317,6 +1335,9 @@ export function createAuthService(
 				)
 				.get(tokenHash) as { id: number; admin_id: number } | undefined;
 			if (!row) return false;
+			// Same generic failure as an invalid token: never reveal that the
+			// account exists but is FID-only.
+			if (isFidOnlyAccount(row.admin_id)) return false;
 
 			const hash = await this.hashPassword(newPassword);
 			db.prepare(
@@ -1342,6 +1363,11 @@ export function createAuthService(
 			// To keep it simple, we assume the caller passes the encrypted hint directly.
 			// But for backward compatibility with existing non-ZK clients, if the payload isn't ZK formatted,
 			// the auth route should handle hashing. We'll just store what we're given.
+			// Security questions exist only to recover a password, so a FID-only
+			// account must not be able to arm that recovery path at all.
+			if (isFidOnlyAccount(userId)) {
+				throw new Error("Cannot set security questions for a FID-only account");
+			}
 			db.prepare(
 				"UPDATE admin SET security_q1 = ?, security_a1_hash = ?, security_q2 = ?, security_a2_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
 			).run(q1, encryptedPayload1, q2, encryptedPayload2, userId);
@@ -1393,6 +1419,9 @@ export function createAuthService(
 				| undefined;
 			if (!user || !user.security_a1_hash || !user.security_a2_hash)
 				return false;
+			// Same generic failure as wrong answers: never reveal that the account
+			// exists but is FID-only.
+			if (isFidOnlyAccount(user.id)) return false;
 
 			const v1 = await this.verifyPassword(
 				a1.trim().toLowerCase(),

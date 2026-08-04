@@ -398,3 +398,118 @@ describe("AuthService - zen_auth_mode", () => {
 		expect(result.zenAuthMode).toBe("hybrid");
 	});
 });
+
+// A FID-only account carries an empty password_hash and is meant to be reachable
+// only through its Zen keypair. Any path that writes password_hash would hand it
+// a working local password, so each one must refuse.
+describe("AuthService - FID-only accounts reject every password write", () => {
+	// The full schema is needed here: `email`, the security-question columns and
+	// `password_reset_tokens` all come from createDatabase, not from the auth
+	// service's own migration.
+	let database: any;
+	let authService: any;
+
+	beforeEach(async () => {
+		database = createDatabase(":memory:").db;
+		authService = createAuthService(database, "secret", "admin", "tunecamp");
+		await authService.init();
+	});
+
+	afterEach(() => {
+		if (database) database.close();
+	});
+
+	const createFidOnlyUser = async (username: string) =>
+		authService.createAdmin(username, null, null, "admin", `zenPub-${username}`);
+
+	test("setSecurityQuestions throws, so the recovery path can never be armed", async () => {
+		const { id } = await createFidOnlyUser("heidi");
+		await expect(
+			authService.setSecurityQuestions(id, "q1", "a1", "q2", "a2"),
+		).rejects.toThrow("Cannot set security questions for a FID-only account");
+	});
+
+	test("resetPasswordWithSecurityQuestions refuses even with correct answers", async () => {
+		const { id } = await createFidOnlyUser("ivan");
+		// Arm the recovery path directly in the DB, bypassing the service guard, to
+		// prove the reset itself refuses rather than relying on setSecurityQuestions.
+		const a1 = await authService.hashPassword("blue");
+		const a2 = await authService.hashPassword("rome");
+		database
+			.prepare(
+				"UPDATE admin SET security_q1 = ?, security_a1_hash = ?, security_q2 = ?, security_a2_hash = ? WHERE id = ?",
+			)
+			.run("colour?", a1, "city?", a2, id);
+
+		await expect(
+			authService.resetPasswordWithSecurityQuestions(
+				"ivan",
+				"blue",
+				"rome",
+				"newpass",
+			),
+		).resolves.toBe(false);
+		const user = database
+			.prepare("SELECT password_hash FROM admin WHERE id = ?")
+			.get(id);
+		expect(user.password_hash).toBe("");
+	});
+
+	test("createPasswordResetToken issues nothing for a FID-only account", async () => {
+		const { id } = await createFidOnlyUser("judy");
+		database
+			.prepare("UPDATE admin SET email = ? WHERE id = ?")
+			.run("judy@example.com", id);
+		expect(authService.createPasswordResetToken("judy@example.com")).toBeNull();
+	});
+
+	test("resetPasswordWithToken refuses a token minted before the account became FID-only", async () => {
+		const { id } = await authService.createAdmin(
+			"karl",
+			"password123",
+			null,
+			"admin",
+		);
+		database
+			.prepare("UPDATE admin SET email = ? WHERE id = ?")
+			.run("karl@example.com", id);
+		const issued = authService.createPasswordResetToken("karl@example.com");
+		expect(issued).not.toBeNull();
+
+		database
+			.prepare(
+				"UPDATE admin SET zen_auth_mode = 'zen', password_hash = '' WHERE id = ?",
+			)
+			.run(id);
+
+		await expect(
+			authService.resetPasswordWithToken(issued.token, "newpass"),
+		).resolves.toBe(false);
+		const user = database
+			.prepare("SELECT password_hash FROM admin WHERE id = ?")
+			.get(id);
+		expect(user.password_hash).toBe("");
+	});
+
+	test("a local account keeps working through every recovery path", async () => {
+		const { id } = await authService.createAdmin(
+			"laura",
+			"password123",
+			null,
+			"admin",
+		);
+		database
+			.prepare("UPDATE admin SET email = ? WHERE id = ?")
+			.run("laura@example.com", id);
+
+		await expect(
+			authService.setSecurityQuestions(id, "q1", "a1", "q2", "a2"),
+		).resolves.toBeUndefined();
+
+		const issued = authService.createPasswordResetToken("laura@example.com");
+		expect(issued).not.toBeNull();
+		await expect(
+			authService.resetPasswordWithToken(issued.token, "newpass456"),
+		).resolves.toBe(true);
+	});
+});
