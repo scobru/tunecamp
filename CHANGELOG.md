@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.5.5] - 2026-08-04
+
+### Fixed
+
+- **Critical: admin login (password and FID) broken after upgrading from a pre-3.11.5 database.** The workspace-wide GunDB→Zen rename (`bf5794f9`) accidentally turned the legacy column migration `["gun_pub", "zen_pub"]` into a self-mapping `["zen_pub", "zen_pub"]`, so `gun_pub`/`gun_priv` were never renamed on databases that hadn't already been migrated. This forced those databases down the "recreate admin table" path, whose schema was missing the `zen_auth_mode` column entirely — every login query selecting it then failed outright, and `zen_pub`/`zen_priv` (needed for FID) were wiped to `NULL` in the process. Restored the correct legacy column mapping, added `zen_auth_mode` to the recreate schema, and added a self-healing `ALTER TABLE` for admin tables already missing the column. Accounts whose `zen_pub` was already nulled by the broken migration need to re-link FID via `/api/auth/zen/set`; password login is restored automatically on next startup.
+
 ## [4.5.4] - 2026-08-03
 
 ### Security

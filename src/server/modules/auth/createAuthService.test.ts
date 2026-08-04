@@ -91,7 +91,7 @@ describe('createAuthService', () => {
         expect(columnNames).toContain('artist_unlinked');
     });
 
-    test('should rename legacy zen_pub/zen_priv/gun_auth_mode columns to zen_* and preserve data', () => {
+    test('should rename legacy gun_pub/gun_priv/gun_auth_mode columns to zen_* and preserve data', () => {
         db.exec(`
             CREATE TABLE admin (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,8 +104,8 @@ describe('createAuthService', () => {
                 storage_used INTEGER NOT NULL DEFAULT 0,
                 subsonic_token TEXT,
                 subsonic_password TEXT,
-                zen_pub TEXT,
-                zen_priv TEXT,
+                gun_pub TEXT,
+                gun_priv TEXT,
                 gun_auth_mode TEXT NOT NULL DEFAULT 'local',
                 is_active INTEGER DEFAULT 1,
                 token_version INTEGER DEFAULT 0,
@@ -113,7 +113,7 @@ describe('createAuthService', () => {
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        db.exec(`INSERT INTO admin (username, password_hash, zen_pub, zen_priv) VALUES ('zenuser', 'testhash', 'pubkey123', 'privkey456')`);
+        db.exec(`INSERT INTO admin (username, password_hash, gun_pub, gun_priv) VALUES ('zenuser', 'testhash', 'pubkey123', 'privkey456')`);
 
         createAuthService(db, 'secret');
 
@@ -158,6 +158,41 @@ describe('createAuthService', () => {
         expect(row.password_hash).toBe('testhash');
         expect(row.role).toBe('admin');
         expect(row.storage_quota).toBe(0);
+    });
+
+    test('should recreate table without losing zen_auth_mode when legacy gun_pub triggers the multi-user migration', () => {
+        // Simulates a DB updated straight from a pre-3.11.5 install: gun_pub/gun_priv
+        // never got renamed, so hasZenPub is false and the recreate path fires.
+        db.exec(`
+            CREATE TABLE admin (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                artist_id INTEGER DEFAULT NULL,
+                role TEXT NOT NULL DEFAULT 'admin',
+                storage_quota INTEGER NOT NULL DEFAULT 0,
+                storage_used INTEGER NOT NULL DEFAULT 0,
+                subsonic_token TEXT,
+                subsonic_password TEXT,
+                gun_pub TEXT,
+                gun_priv TEXT,
+                is_active INTEGER DEFAULT 1
+            )
+        `);
+        db.exec(`INSERT INTO admin (username, password_hash, gun_pub, gun_priv) VALUES ('admin', 'testhash', 'pubkey123', 'privkey456')`);
+
+        createAuthService(db, 'secret');
+
+        const columns = db.prepare("PRAGMA table_info(admin)").all() as any[];
+        const columnNames = columns.map((c) => c.name);
+        expect(columnNames).toContain('zen_auth_mode');
+        expect(columnNames).toContain('zen_pub');
+
+        const row = db.prepare("SELECT password_hash, zen_pub, zen_priv, zen_auth_mode FROM admin WHERE username = 'admin'").get() as any;
+        expect(row.password_hash).toBe('testhash');
+        expect(row.zen_pub).toBe('pubkey123');
+        expect(row.zen_priv).toBe('privkey456');
+        expect(row.zen_auth_mode).toBe('local');
     });
 
     test('should upgrade storage_quota from 10MB to 1GB for existing users', () => {

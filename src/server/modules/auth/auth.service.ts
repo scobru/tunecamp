@@ -269,8 +269,8 @@ export function createAuthService(
 		} else {
 			// Legacy ZEN naming: rename in place so existing FID identity links survive.
 			const legacyGunColumns: [string, string][] = [
-				["zen_pub", "zen_pub"],
-				["zen_priv", "zen_priv"],
+				["gun_pub", "zen_pub"],
+				["gun_priv", "zen_priv"],
 				["gun_auth_mode", "zen_auth_mode"],
 			];
 			const preRenameColumns = db
@@ -332,6 +332,22 @@ export function createAuthService(
 				}
 			}
 
+			// Self-heal: older buggy migrations could recreate the table without
+			// this column, which then breaks every login query that selects it.
+			const hasZenAuthMode = columns.some((c) => c.name === "zen_auth_mode");
+			if (!hasZenAuthMode) {
+				console.log(
+					"📦 Migrating admin table: Adding zen_auth_mode column...",
+				);
+				try {
+					db.exec(
+						"ALTER TABLE admin ADD COLUMN zen_auth_mode TEXT NOT NULL DEFAULT 'local'",
+					);
+				} catch (e) {
+					console.error("Failed to add zen_auth_mode column:", e);
+				}
+			}
+
 			if (
 				!hasUsername ||
 				!hasArtistId ||
@@ -362,6 +378,7 @@ export function createAuthService(
                         subsonic_password TEXT,
                         zen_pub TEXT,
                         zen_priv TEXT,
+                        zen_auth_mode TEXT NOT NULL DEFAULT 'local',
                         is_active INTEGER DEFAULT 1,
                         token_version INTEGER DEFAULT 0,
                         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -377,7 +394,7 @@ export function createAuthService(
                     INSERT INTO admin (
                         id, username, password_hash, created_at, updated_at,
                         artist_id, role, storage_quota, storage_used,
-                        zen_pub, zen_priv, subsonic_token, subsonic_password,
+                        zen_pub, zen_priv, zen_auth_mode, subsonic_token, subsonic_password,
                         is_active, token_version
                     )
                     SELECT
@@ -392,6 +409,7 @@ export function createAuthService(
                         0,
                         ${!hasZenPub ? "NULL" : "NULLIF(zen_pub, '')"},
                         ${!hasZenPub ? "NULL" : "NULLIF(zen_priv, '')"},
+                        ${!hasZenAuthMode ? "'local'" : "IFNULL(zen_auth_mode, 'local')"},
                         ${!hasSubsonic ? "NULL" : "NULLIF(subsonic_token, '')"},
                         ${!hasSubsonic ? "NULL" : "NULLIF(subsonic_password, '')"},
                         ${!hasIsActive ? "1" : "IFNULL(is_active, 1)"},
