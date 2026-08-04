@@ -50,9 +50,13 @@ COPY package*.json ./
 COPY scripts ./scripts
 COPY webapp/package.json ./webapp/
 
-# Install all dependencies (including dev) for the entire workspace
-ARG TARGETARCH=amd64
-RUN if [ "$TARGETARCH" = "arm64" ]; then \
+# Install all dependencies (including dev) for the entire workspace.
+# rollup/lightningcss/oxide ship their musl binaries as per-arch packages that
+# are not all in the lockfile, so they are installed explicitly. The arch comes
+# from `uname -m` inside the build, not from TARGETARCH: a default on a
+# predefined ARG silently stays `amd64` under the classic builder, which then
+# installs x64 binaries on an Apple Silicon Mac and fails with EBADPLATFORM.
+RUN if [ "$(uname -m)" = "aarch64" ]; then \
       ROLLUP_PKG="@rollup/rollup-linux-arm64-musl" && \
       LIGHT_CSS_PKG="lightningcss-linux-arm64-musl" && \
       OXIDE_PKG="@tailwindcss/oxide-linux-arm64-musl"; \

@@ -12,6 +12,9 @@ Il sistema di chat si basa su un trasporto WebSocket leggero e sulla persistenza
 - **Servizio Backend**: Gestito da `ChatService` (`src/server/modules/chat/chat.service.ts`).
 - **Persistenza nel Database**:
   - `chat_messages`: Memorizza la cronologia dei messaggi della lobby pubblica.
+  - `chat_rooms`: Stanze multi-utente con nome. Oltre all'`id` locale (un `AUTOINCREMENT` per-istanza) ogni stanza ha un UUID `global_id` generato una sola volta dall'istanza che l'ha creata: è l'unico identificatore valido tra istanze diverse.
+  - `chat_room_members`: Iscrizioni alle stanze, chiave `(room_id, username)`.
+  - `chat_room_messages`: Cronologia delle stanze (in chiaro: le stanze non sono ancora E2EE).
   - `peer_chat_bans`: Ban persistenti per IP / utente per la moderazione.
   - `peer_chat_mutes`: Elenco persistente degli utenti silenziati.
 - **Libreria Client**: Pacchetto indipendente `@tunecamp/chat` (`tunecamp-chat`), che fornisce la classe `TuneCampChatClient` e l'hook React `useTuneCampChat`.
@@ -30,10 +33,17 @@ Il sistema di chat si basa su un trasporto WebSocket leggero e sulla persistenza
 - **Relay a Zero Fiducia**: Il server TuneCamp funge unicamente da relay opaco per le chiavi pubbliche e il testo cifrato. **Non vede mai il contenuto in chiaro dei DM**.
 - **Persistenza della coppia di chiavi**: La coppia derivata viene memorizzata in `localStorage` per utente (`useAuthStore.ts`), così sopravvive ai ricaricamenti di pagina senza doverla ri-derivare dalla password.
 
+### Stanze (Rooms)
+- **Conversazioni multi-utente con nome**, separate dall'unica lobby globale. L'iscrizione è legata allo *username*, non al socket: chi entra dalla webapp resta membro anche dal proprio daemon Sidecamp e dopo una riconnessione.
+- **Gestite via REST** (`/api/chat/rooms*`, tutte dietro `authMiddleware.requireUser`) e usate via WebSocket (`room_join`, `room_leave`, `room_chat`). L'utente che agisce viene sempre preso dalla sessione autenticata, mai da un parametro di query.
+- **La cancellazione è riservata al creatore**; le stanze private (`is_private`) sono visibili solo ai membri.
+- **Non sono E2EE**: i messaggi delle stanze vengono salvati e inoltrati in chiaro, a differenza dei DM. Non usare le stanze per contenuti che richiedono il modello di minaccia dei DM.
+
 ### Chat Federata (Cross-Instance)
 - **Relay della lobby**: I messaggi pubblici della lobby vengono trasmessi a ogni istanza peer federata conosciuta e iniettati nella loro lobby locale, taggati con l'istanza di origine del mittente.
 - **DM cross-instance**: Inviare a `utente@istanza` risolve l'istanza target tramite `federatedDiscoveryService.resolvePeerByInstance()` e consegna il messaggio a quel singolo peer (non in broadcast).
-- **Trasporto e autenticazione**: Le istanze federate si scambiano messaggi tramite `POST /api/chat/federated/inbound`, autenticato con un header `X-Chat-Signature` — HMAC-SHA256 su `username|instance|text|ts|lobby|toUsername` usando un segreto condiviso (`TUNECAMP_CHAT_FEDERATION_SECRET`). L'endpoint restituisce `503` se il segreto non è impostato (fail-closed) e `401` su firma non valida.
+- **Messaggi di stanza federati**: I messaggi di una stanza pubblica vengono diffusi a tutti i peer, indirizzati tramite il `global_id` della stanza (mai tramite l'`id` locale, che su ogni istanza indica una stanza diversa). Un peer che non conosce quel `global_id` scarta il messaggio invece di indovinare. Le stanze private non vengono mai federate: la membership non è ancora federata, quindi nessun peer potrebbe far rispettare chi ha diritto di leggerle.
+- **Trasporto e autenticazione**: Le istanze federate si scambiano messaggi tramite `POST /api/chat/federated/inbound`, autenticato con un header `X-Chat-Signature` — HMAC-SHA256 sulla codifica JSON di `[username, instance, text, ts, lobby, toUsername, roomGlobalId, roomName]` usando un segreto condiviso (`TUNECAMP_CHAT_FEDERATION_SECRET`). I campi sono codificati in JSON invece che uniti da un separatore, così un carattere separatore dentro il campo `text` (controllato dall'attaccante) non può produrre lo stesso input di firma di un messaggio diverso. L'endpoint restituisce `503` se il segreto non è impostato (fail-closed) e `401` su firma non valida.
 - **Deduplica**: I messaggi in entrata vengono deduplicati per hash del contenuto entro una finestra di 5 minuti in-process; nessuno storage di replay persistente.
 - **Il testo cifrato dei DM resta E2EE end-to-end**: la federazione inoltra solo il payload DM già cifrato tra i server — il testo in chiaro non tocca mai nessuna istanza.
 
@@ -72,14 +82,24 @@ Gli amministratori dell'istanza possono controllare il comportamento della chat 
 - **`GET /api/chat/peers`**: Restituisce l'elenco degli utenti attualmente attivi nella chat.
 - **`GET /api/chat/pubkey/:username?instance=`**: Restituisce la chiave pubblica Zen SEA di un utente. Se l'utente non è locale, risolve il peer remoto e inoltra la richiesta.
 
+### Endpoint delle Stanze
+Tutti richiedono una sessione (`/api/chat` è montato dietro `authMiddleware.requireUser`) e agiscono come l'utente autenticato.
+
+- **`GET /api/chat/rooms`**: Elenca le stanze, ognuna con `id` e `globalId`.
+- **`POST /api/chat/rooms`**: Crea una stanza (`name`, `description`, `is_private`); restituisce `{ id, globalId, name }`.
+- **`DELETE /api/chat/rooms/:id`**: Cancella una stanza. Solo il creatore.
+- **`POST /api/chat/rooms/:id/join`** / **`/leave`**: Aggiunge o rimuove l'iscrizione del chiamante.
+- **`GET /api/chat/rooms/:id/messages?limit=`**: Cronologia della stanza (massimo 500).
+- **`GET /api/chat/rooms/:id/members`**: Elenco dei membri della stanza.
+
 ### Endpoint di Federazione
-- **`GET /api/chat/federated/peers`**: Elenca le istanze peer federate conosciute.
-- **`POST /api/chat/federated/inbound`**: Accetta un relay di messaggio firmato da un peer federato (vedi [Chat Federata](#chat-federata-cross-instance) sopra).
+- **`POST /api/chat/federated/inbound`**: Accetta un relay di messaggio firmato da un peer federato (vedi [Chat Federata](#chat-federata-cross-instance) sopra). I peer conosciuti si ottengono da `GET /api/community/peers`.
 
 ### Eventi WebSocket `/ws/chat`
 - **`chat:message`**: Payload dei messaggi della lobby o dei DM in entrata/uscita.
 - **`chat:peers`**: Aggiornamenti dell'elenco peer all'ingresso/uscita degli utenti.
 - **`chat:ban` / `chat:mute`**: Segnali di moderazione inviati dagli amministratori.
+- **`room_join` / `room_leave` / `room_chat`**: Iscrizione alle stanze e messaggi di stanza, indirizzati dal `roomId` locale. Un `room_chat` arrivato da un peer federato porta anche `roomGlobalId`.
 
 ---
 
