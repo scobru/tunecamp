@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import API from '../services/api';
 
 interface HealthStatus {
-  soulseek: { connected: boolean; username: string | null; error?: string };
   itunes: { online: boolean };
   musicbrainz: { online: boolean };
   discogs: { configured: boolean };

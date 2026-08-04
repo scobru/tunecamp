@@ -359,5 +359,5 @@ This would save the mix directly into the user's TuneCamp library without leavin
 | **Tech stack** | Any (iFrame-based) | Node.js / ESM |
 | **Where they live** | `lab_apps` DB table (via Admin panel / API) | `plugins/<name>.js` |
 | **Loaded by** | React frontend at runtime, from `GET /api/lab-apps` | Server plugin loader at startup |
-| **Examples** | 4-Track Recorder, Patchcab, ComposeYogi | Custom metadata source, Soulseek, S3 storage |
+| **Examples** | 4-Track Recorder, Patchcab, ComposeYogi | Custom metadata source, S3 storage |
 

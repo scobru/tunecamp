@@ -28,7 +28,6 @@ describe('useConfigStore', () => {
 
     test('fetchStatus sets status on success', async () => {
         const mockHealth = {
-            soulseek: { connected: true, username: 'testuser' },
             itunes: { online: true },
             musicbrainz: { online: false },
             discogs: { configured: true },
@@ -77,7 +76,6 @@ describe('useConfigStore', () => {
         const mockHealth: any = {
             stripe: { configured: true },
             gdrive: { active: true },
-            soulseek: { connected: true },
             youtube: { online: true },
             telegram: { active: false },
         };
@@ -87,7 +85,6 @@ describe('useConfigStore', () => {
 
         expect(store.isConfigured('stripe')).toBe(true);
         expect(store.isConfigured('gdrive')).toBe(true);
-        expect(store.isConfigured('soulseek')).toBe(true);
         expect(store.isConfigured('youtube')).toBe(true);
         expect(store.isConfigured('telegram')).toBe(false);
         expect(store.isConfigured('discogs')).toBe(false); // not in mockHealth

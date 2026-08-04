@@ -33,7 +33,7 @@ Enforcement is **server-side**, not just UI:
 2. **Creating/editing releases** (`POST/PUT /api/releases`, `PUT /api/admin/releases/:id`): price fields are zeroed out if the artist cannot sell, so the catalog never shows a "Buy" button that checkout would reject.
 3. The toggle can **only be modified by a Manager/Root Admin** ("Sales enabled" in the artist editor) — an artist cannot self-enable.
 
-Rationale: on a platform that sells music, open uploads without verification is a legal risk (selling content for which the uploader does not own the rights, chargebacks, DMCA). The verification gate shifts responsibility to an explicit admin decision, as is already done for "grey" ingestion plugins (Soulseek/Torrent, disabled by default).
+Rationale: on a platform that sells music, open uploads without verification is a legal risk (selling content for which the uploader does not own the rights, chargebacks, DMCA). The verification gate shifts responsibility to an explicit admin decision, as is already done for the "grey" P2P ingestion path, which is delegated entirely to the opt-in [Sidecamp](./sidecamp.md) desktop app rather than shipped in the instance itself.
 
 ## Migration Notes
 

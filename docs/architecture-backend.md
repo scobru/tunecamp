@@ -82,7 +82,7 @@ TuneCamp uses **SQLite** as its relational database engine for managing music me
 - **`playlists`** / **`playlist_tracks`**: User playlist management.
 - **`play_history`**: Listens log for stats and recommendations.
 - **`unlock_codes`**: Access codes for protected or paid content.
-- **`torrents`** / **`soulseek_downloads`**: File sharing integrations for retrieving content.
+- **`torrents`**: File sharing integrations for retrieving content (P2P acquisition itself lives in the companion [Sidecamp](./sidecamp.md) app).
 - **`dig_sessions`** / **`dig_crate_items`** / **`dig_history`** / **`dig_cache`**: State and cache of "Dig" mode (crate digging / music discovery).
 - **`assets`** / **`storage_accounts`**: Store assets and connected cloud storage accounts (e.g., Google Drive).
 - **`track_stats`** / **`release_stats`**: Aggregated play counters.

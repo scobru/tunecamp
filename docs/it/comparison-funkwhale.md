@@ -14,7 +14,7 @@ Questo documento fornisce un confronto onesto e dettagliato tra **Funkwhale** e 
 | **Modello di Federazione** | ActivityPub nativo (replica parziale delle librerie tra pod) | **Ibrido**: ActivityPub (sociale) + Scoperta Gossip (nodi via HTTP/NodeInfo) + REST HTTP |
 | **Monetizzazione** | Nessuna | **Integrata**: NFT (ERC-1155 su rete Base) + Stripe (Valuta Fiat) |
 | **Compatibilità Mobile** | API Subsonic | API Subsonic / OpenSubsonic |
-| **Metodi di Acquisizione** | Caricamento web, importazione locale, YouTube | Caricamento web, Bot Telegram; Soulseek e BitTorrent disponibili ma disabilitati di default (opt-in admin) |
+| **Metodi di Acquisizione** | Caricamento web, importazione locale, YouTube | Caricamento web, Bot Telegram; Soulseek/BitTorrent tramite l'app desktop [Sidecamp](./sidecamp.md) |
 | **Funzionalità Social** | Commenti, preferiti, profili utente | Post nel Fediverso, commenti, live stream (HLS lato server) |
 | **Difficoltà di Gestione** | Medio/Alta (molteplici servizi in esecuzione) | Bassa (singolo processo Node o leggero Docker Compose) |
 

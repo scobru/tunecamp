@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.5.7] - 2026-08-04
+
+### Removed
+
+- **Dead Soulseek integration surface removed from the instance and docs.** Soulseek/BitTorrent acquisition was moved entirely to the companion [Sidecamp](docs/sidecamp.md) desktop app; the instance itself never re-registers a Soulseek provider (`registerBuiltInDownloadProviders()` registers nothing) and had no `search/content/soulseek/*` backend route. Removed the now-dead `SLSK_USER`/`SLSK_PASS` env vars (`.env.example`, docs), the `soulseek` field from `useConfigStore`'s `HealthStatus`, the 7 `admin.ts` API functions calling the nonexistent `search/content/soulseek/*` endpoints, and the `soulseek_username`/`soulseek_password` config type fields. Corrected doc claims that described Soulseek as an in-instance admin-toggle plugin (`comparison-funkwhale.md`, `community-mode.md`, `LAB.md`) and a nonexistent `soulseek_downloads` DB table (`architecture-backend.md`), in both EN and IT docs.
+
 ## [4.5.6] - 2026-08-04
 
 ### Fixed
