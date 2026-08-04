@@ -28,7 +28,9 @@ describe('Users Routes', () => {
             isRootAdmin: jest.fn().mockReturnValue(false)
         };
 
-        mockAPService = {};
+        mockAPService = {
+            ensureUserKeys: (jest.fn() as any).mockResolvedValue(undefined),
+        };
 
         app = express();
         app.use(express.json());
@@ -376,6 +378,61 @@ describe('Users Routes', () => {
             expect(res.body.stats).toEqual({ likes: 1, playlists: 1 });
             expect(res.body.playlists[0]).toEqual({ id: 7, name: 'Mix', description: null, trackCount: 3 });
             expect(JSON.stringify(res.body)).not.toMatch(/wallet|token|password|email/i);
+        });
+    });
+
+    describe('GET /api/users/me/fediverse', () => {
+        const buildApp = (userRow: any, artist: any = null) => {
+            const identity = {
+                getUser: () => userRow,
+                getSetting: (k: string) => (k === 'publicUrl' ? 'https://inst.example' : k === 'siteHandle' ? 'inst' : k === 'site_public_key' ? 'SITEKEY' : undefined),
+            };
+            const library = { getArtist: () => artist };
+            const a = express();
+            a.use(express.json());
+            a.use('/api/users', createUsersRoutes({
+                database: identity, identity, library,
+                authService: mockAuthService, apService: mockAPService,
+                config: { publicUrl: 'https://inst.example' },
+            } as any));
+            return a;
+        };
+
+        test('reports no actor while the account has no AP keys', async () => {
+            mockAuthService.verifyToken.mockResolvedValue({ username: 'bob', role: UserRole.NORMAL_USER, isActive: true, userId: 10 });
+            const res = await request(buildApp({ id: 10, username: 'bob', role: 'user', ap_public_key: null }))
+                .get('/api/users/me/fediverse').set('Authorization', 'Bearer t');
+            expect(res.status).toBe(200);
+            expect(res.body.hasActor).toBe(false);
+            expect(res.body.handle).toBe('@bob@inst.example');
+            expect(res.body.actorUri).toBe('https://inst.example/users/bob');
+        });
+
+        test('reports an actor once keys exist', async () => {
+            mockAuthService.verifyToken.mockResolvedValue({ username: 'bob', role: UserRole.NORMAL_USER, isActive: true, userId: 10 });
+            const res = await request(buildApp({ id: 10, username: 'bob', role: 'user', ap_public_key: 'PEM' }))
+                .get('/api/users/me/fediverse').set('Authorization', 'Bearer t');
+            expect(res.body.hasActor).toBe(true);
+        });
+
+        test('resolves to the artist slug when the account is linked to an artist', async () => {
+            mockAuthService.verifyToken.mockResolvedValue({ username: 'bob', role: UserRole.NORMAL_USER, isActive: true, userId: 10, artistId: 3 });
+            const res = await request(buildApp(
+                { id: 10, username: 'bob', role: 'user', ap_public_key: null },
+                { id: 3, slug: 'dj-bob', name: 'DJ Bob', public_key: 'PEM' },
+            )).get('/api/users/me/fediverse').set('Authorization', 'Bearer t');
+            expect(res.body).toMatchObject({
+                hasActor: true,
+                handle: '@dj-bob@inst.example',
+                actorUri: 'https://inst.example/users/dj-bob',
+            });
+        });
+
+        test('resolves root_admin to the site actor', async () => {
+            mockAuthService.verifyToken.mockResolvedValue({ username: 'root', role: UserRole.ROOT_ADMIN, isActive: true, userId: 1 });
+            const res = await request(buildApp({ id: 1, username: 'root', role: 'root_admin', ap_public_key: null }))
+                .get('/api/users/me/fediverse').set('Authorization', 'Bearer t');
+            expect(res.body).toMatchObject({ hasActor: true, handle: '@inst@inst.example' });
         });
     });
 });

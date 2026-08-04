@@ -691,6 +691,21 @@ export function createZenRoutes(container: ServiceContainer): Router {
 						.json({ error: "Failed to retrieve user after creation" });
 				}
 
+				// SSO never hits the login route, so ensureUserKeys() never runs for
+				// these accounts and their /users/<username> actor would 404 forever.
+				// The apSeed-derived key is the right one to store: it is deterministic
+				// per (identity, domain), so the actor survives a re-registration.
+				if (publicKeyPem && privateKeyPem) {
+					const apKeys = db
+						.prepare("SELECT ap_public_key FROM admin WHERE id = ?")
+						.get(userId) as { ap_public_key?: string | null } | undefined;
+					if (!apKeys?.ap_public_key) {
+						db.prepare(
+							"UPDATE admin SET ap_public_key = ?, ap_private_key = ? WHERE id = ?",
+						).run(publicKeyPem, privateKeyPem, userId);
+					}
+				}
+
 				// Generate JWT Token
 				const token = authService.generateToken({
 					userId,

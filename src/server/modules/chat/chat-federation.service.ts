@@ -14,15 +14,16 @@ export interface FederatedChatMessage {
 	ts: number;
 	lobby?: boolean;
 	toUsername?: string;
-}
-
-interface SeenKey {
-	key: string;
-	expiresAt: number;
+	/**
+	 * Federation-wide room id. Never the local `chat_rooms.id`: that is a
+	 * per-instance AUTOINCREMENT, so room 3 here is not room 3 there.
+	 */
+	roomGlobalId?: string;
+	roomName?: string;
 }
 
 export class ChatFederationService {
-	private dedup = new Map<string, SeenKey>();
+	private dedup = new Map<string, number>();
 	private secret: string;
 	private peers: string[] = [];
 
@@ -41,16 +42,22 @@ export class ChatFederationService {
 		this.peers = peers;
 	}
 
-	/** HMAC-SHA256 over `username|instance|text|ts|lobby|toUsername`. */
+	/**
+	 * HMAC-SHA256 over the signed fields. JSON-encoded rather than joined on a
+	 * separator: `text` is attacker-controlled, so a separator it can contain
+	 * would let two different messages produce the same signing input.
+	 */
 	sign(payload: FederatedChatMessage): string {
-		const signInput = [
+		const signInput = JSON.stringify([
 			payload.username,
 			payload.instance,
 			payload.text,
-			String(payload.ts),
-			String(payload.lobby ?? false),
+			payload.ts,
+			payload.lobby ?? false,
 			payload.toUsername || "",
-		].join("|");
+			payload.roomGlobalId || "",
+			payload.roomName || "",
+		]);
 		return crypto
 			.createHmac("sha256", this.secret)
 			.update(signInput)
@@ -58,8 +65,12 @@ export class ChatFederationService {
 	}
 
 	verify(payload: FederatedChatMessage, signature: string): boolean {
-		const expected = this.sign(payload);
-		return expected === signature;
+		const expected = Buffer.from(this.sign(payload));
+		const given = Buffer.from(String(signature || ""));
+		return (
+			expected.length === given.length &&
+			crypto.timingSafeEqual(expected, given)
+		);
 	}
 
 	/** Accept a federated message and relay it locally if not a duplicate. */
@@ -74,6 +85,7 @@ export class ChatFederationService {
 			payload.ts,
 			payload.lobby ?? true,
 			payload.toUsername,
+			payload.roomGlobalId,
 		);
 		return true;
 	}
@@ -83,7 +95,10 @@ export class ChatFederationService {
 	 * one origin only (cross-instance DM); otherwise broadcasts to every known
 	 * peer (lobby message).
 	 */
-	async fanout(payload: FederatedChatMessage, targetPeer?: string): Promise<void> {
+	async fanout(
+		payload: FederatedChatMessage,
+		targetPeer?: string,
+	): Promise<void> {
 		const signature = this.sign(payload);
 		const body = JSON.stringify({
 			...payload,
@@ -111,7 +126,13 @@ export class ChatFederationService {
 		return crypto
 			.createHash("sha256")
 			.update(
-				`${payload.username}|${payload.instance}|${payload.text}|${payload.ts}`,
+				JSON.stringify([
+					payload.username,
+					payload.instance,
+					payload.text,
+					payload.ts,
+					payload.roomGlobalId || "",
+				]),
 			)
 			.digest("hex");
 	}
@@ -123,12 +144,12 @@ export class ChatFederationService {
 	}
 
 	private markSeen(id: string): void {
-		this.dedup.set(id, { key: id, expiresAt: Date.now() + DEDUP_WINDOW_MS });
+		this.dedup.set(id, Date.now() + DEDUP_WINDOW_MS);
 	}
 
 	private purgeSeen(now: number): void {
-		for (const [key, entry] of this.dedup.entries()) {
-			if (entry.expiresAt < now) this.dedup.delete(key);
+		for (const [key, expiresAt] of this.dedup) {
+			if (expiresAt < now) this.dedup.delete(key);
 		}
 	}
 }
