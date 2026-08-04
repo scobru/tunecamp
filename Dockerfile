@@ -51,8 +51,18 @@ COPY scripts ./scripts
 COPY webapp/package.json ./webapp/
 
 # Install all dependencies (including dev) for the entire workspace
-RUN npm ci && \
-    npm install @rollup/rollup-linux-x64-musl lightningcss-linux-x64-musl @tailwindcss/oxide-linux-x64-musl && \
+ARG TARGETARCH=amd64
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+      ROLLUP_PKG="@rollup/rollup-linux-arm64-musl" && \
+      LIGHT_CSS_PKG="lightningcss-linux-arm64-musl" && \
+      OXIDE_PKG="@tailwindcss/oxide-linux-arm64-musl"; \
+    else \
+      ROLLUP_PKG="@rollup/rollup-linux-x64-musl" && \
+      LIGHT_CSS_PKG="lightningcss-linux-x64-musl" && \
+      OXIDE_PKG="@tailwindcss/oxide-linux-x64-musl"; \
+    fi && \
+    npm ci && \
+    npm install $ROLLUP_PKG $LIGHT_CSS_PKG $OXIDE_PKG && \
     npm cache clean --force && \
     rm -rf /root/.npm/_cacache
 
