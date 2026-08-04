@@ -27,10 +27,6 @@
         "src/**/*.{ts,tsx}",
         "!src/**/*.test.{ts,tsx}"
       ],
-      "ignore": [
-        "src/types/color-thief-react.d.ts",
-        "src/types/material-web.d.ts"
-      ],
       "ignoreDependencies": [
         "autoprefixer"
       ]

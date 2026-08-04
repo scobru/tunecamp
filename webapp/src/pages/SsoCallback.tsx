@@ -5,7 +5,7 @@ import API from '../services/api';
 import { ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
 import { notify } from '../utils/notify';
 
-export const SsoCallback = () => {
+const SsoCallback = () => {
     const navigate = useNavigate();
     const { checkAuth } = useAuthStore();
     const [error, setError] = useState<string | null>(null);

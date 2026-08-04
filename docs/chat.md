@@ -26,8 +26,16 @@ The chat system is built around a lightweight WebSocket transport and local SQLi
 - **Domain Labels**: Automatically appends instance origin labels to user nicknames across federated/multi-instance environments (e.g. `artist (sudorecords)`).
 
 ### End-to-End Encrypted (E2EE) Direct Messages
-- **1-on-1 Private DMs**: Direct messages between two users are encrypted on the client side using **Curve25519** key exchange and **XSalsa20-Poly1305** symmetric encryption (via `tweetnacl`).
+- **1-on-1 Private DMs**: Direct messages between two users are encrypted on the client side using **Zen SEA** — an elliptic-curve identity (secp256k1) whose keypair is derived from the user's login password via PBKDF2 (`deriveKeyPairFromPassword`, `@tunecamp/chat`). Messages are encrypted with an ECDH-derived shared secret (`Zen.secret` + `Zen.encrypt`/`Zen.decrypt`).
 - **Zero-Trust Server Relay**: The TuneCamp server only acts as a public key and opaque ciphertext relay. It **never sees plaintext DM content**.
+- **Keypair persistence**: The derived keypair is cached per-username in `localStorage` (`useAuthStore.ts`) so it survives page reloads without re-deriving from the password.
+
+### Federated Chat (Cross-Instance)
+- **Lobby relay**: Public lobby messages are broadcast to every known federated peer instance and injected into their local lobby, tagged with the sender's origin instance.
+- **Cross-instance DMs**: Sending to `username@instance` resolves the target instance via `federatedDiscoveryService.resolvePeerByInstance()` and delivers the message to that single peer only (not broadcast).
+- **Transport & auth**: Federated instances relay over `POST /api/chat/federated/inbound`, authenticated with an `X-Chat-Signature` header — HMAC-SHA256 over `username|instance|text|ts|lobby|toUsername` using a shared secret (`TUNECAMP_CHAT_FEDERATION_SECRET`). The endpoint returns `503` if the secret is unset (fail-closed) and `401` on a bad signature.
+- **Dedup**: Inbound messages are deduplicated by content hash for a 5-minute in-process window; no durable replay store.
+- **DM ciphertext stays E2EE end-to-end**: federation only relays the already-encrypted DM payload between servers — plaintext still never touches any instance.
 
 ---
 
@@ -53,6 +61,7 @@ Instance administrators can control chat behavior from the Admin Dashboard or en
 
 - **`peerChatEnabled`** (`boolean`): Master toggle to enable or disable the chat service across the instance.
 - **`peerChatGuestEnabled`** (`boolean`): Allows unauthenticated guests to view and participate in the public lobby with generated guest handles.
+- **`TUNECAMP_CHAT_FEDERATION_SECRET`** (env var): Shared HMAC secret for cross-instance chat federation. Unset disables federated relay (`/inbound` returns `503`).
 
 ---
 
@@ -61,6 +70,11 @@ Instance administrators can control chat behavior from the Admin Dashboard or en
 ### REST Endpoints
 - **`GET /api/chat/history`**: Retrieves recent lobby message history.
 - **`GET /api/chat/peers`**: Returns the roster of currently active chat participants.
+- **`GET /api/chat/pubkey/:username?instance=`**: Returns a user's Zen SEA public key. Falls back to resolving a remote instance's peer and proxying the request if the user isn't local.
+
+### Federation Endpoints
+- **`GET /api/chat/federated/peers`**: Lists known federated peer instances.
+- **`POST /api/chat/federated/inbound`**: Accepts a signed message relay from a federated peer (see [Federated Chat](#federated-chat-cross-instance) above).
 
 ### WebSocket `/ws/chat` Events
 - **`chat:message`**: Outgoing/incoming lobby or DM payloads.

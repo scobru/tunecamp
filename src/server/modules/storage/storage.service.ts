@@ -54,7 +54,7 @@ export class StorageService {
     }
 }
 
-export const storageService = new StorageService();
+const storageService = new StorageService();
 
 export function initStorageService(gdriveService: GoogleDriveService, adminUserId: number): StorageService {
     storageService.getRegistry().register(new GoogleDriveStorageProvider(gdriveService, adminUserId));

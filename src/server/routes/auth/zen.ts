@@ -280,9 +280,32 @@ export function createZenRoutes(container: ServiceContainer): Router {
 				return res.status(404).json({ error: "User not found" });
 			}
 
-			// If the user already has a zen_pub, they must provide a matching one (unless they are resetting their identity, which we might support later).
-			// For now, allow overwrite to support password changes (which re-encrypts the priv key, but pub stays same)
-			// or identity resets if they lost the password.
+			const existing = db
+				.prepare("SELECT zen_pub FROM admin WHERE id = ?")
+				.get(user.id) as { zen_pub: string | null } | undefined;
+
+			// If the user already has a zen_pub, this call may only re-encrypt the priv
+			// key under a new password — it must not change the pub key itself, since that
+			// would let anyone re-point their account onto someone else's federated identity
+			// with no proof of key possession (this endpoint is trustless by design).
+			if (existing?.zen_pub && existing.zen_pub !== zenPubKey) {
+				return res.status(409).json({
+					error: "zenPubKey does not match this account's existing Zen identity",
+				});
+			}
+
+			// First-time binding: block claiming a zen_pub another account already owns.
+			if (!existing?.zen_pub) {
+				const taken = db
+					.prepare("SELECT id FROM admin WHERE zen_pub = ? AND id != ?")
+					.get(zenPubKey, user.id);
+				if (taken) {
+					return res.status(409).json({
+						error: "This Zen identity is already linked to a different account",
+					});
+				}
+			}
+
 			db.prepare(
 				"UPDATE admin SET zen_pub = ?, zen_priv = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
 			).run(zenPubKey, encryptedZenPriv, user.id);

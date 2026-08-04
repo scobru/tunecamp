@@ -1,7 +1,7 @@
 import React from 'react';
 import type { SiteSettings } from '../../types';
 
-export interface PluginConfigProps {
+interface PluginConfigProps {
     settings: SiteSettings;
     setSettings: (settings: SiteSettings) => void;
 }

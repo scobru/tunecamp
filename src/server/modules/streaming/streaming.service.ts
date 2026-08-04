@@ -164,9 +164,6 @@ export class StreamingService {
     }
 }
 
-/** App-wide singleton (used before DB init) */
-export const streamingService = new StreamingService();
-
 let _streamingService: StreamingService;
 
 /**

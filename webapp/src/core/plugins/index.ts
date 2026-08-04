@@ -5,4 +5,4 @@ import './registry'; // Initialize registry
 // no edit needed here. Missing folders are simply absent from the glob.
 import.meta.glob('../../plugins/*/index.{ts,tsx}', { eager: true });
 
-export { pluginRegistry, type FrontendPlugin, type PluginConfigProps } from './registry';
+export { pluginRegistry } from './registry';
