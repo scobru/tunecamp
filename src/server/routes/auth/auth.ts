@@ -242,6 +242,16 @@ export function createAuthRoutes(container: ServiceContainer): Router {
 					return res.status(401).json({ error: "User context not found" });
 				}
 
+				// FID-only accounts have no local password, so authenticateUser below
+				// would reject them with a misleading "current password is incorrect".
+				// Checked by id, not username: the token's username may be an alias.
+				if (req.userId && authService.isFidOnlyAccount(req.userId)) {
+					return res.status(400).json({
+						error:
+							"This account signs in with its FID identity and has no password to change.",
+					});
+				}
+
 				if (!currentPassword || !newPassword) {
 					return res.status(400).json({
 						error: "Current and new password required",

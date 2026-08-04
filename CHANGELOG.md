@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.5.9] - 2026-08-04
+
+### Security
+
+- **FID-only accounts could be given a working local password through the recovery flows.** An account with `zen_auth_mode = 'zen'` authenticates solely through its Zen keypair and is stored with an empty `password_hash`; `changePassword` already refused such accounts, but `resetPasswordWithToken` and `resetPasswordWithSecurityQuestions` wrote `password_hash` with no check, and `setSecurityQuestions` let one arm the recovery path in the first place. That meant a portable cryptographic identity could be silently converted into one takeable with a password — via security questions, two guessable answers were equivalent to the Zen private key. All password-write paths now reject FID-only accounts, and `createPasswordResetToken` no longer issues tokens for them. The reset paths fail with the same generic response as a bad token or wrong answers, so they don't reveal that the account exists but is FID-only.
+
+### Fixed
+
+- **"Change password" and "Security questions" no longer appear in Settings for FID-only accounts.** Both cards were dead ends — the API rejected every write — and `POST /api/auth/password` reported the misleading "Current password is incorrect" instead of explaining that the account has no password. The profile now shows why there is nothing to change, and the endpoint returns a clear 400.
+
 ## [4.5.8] - 2026-08-04
 
 ### Fixed

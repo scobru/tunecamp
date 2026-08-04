@@ -558,9 +558,26 @@ const Profile = () => {
 								</div>
 							</div>
 
-							{/* Security: change password (works for every authenticated user) */}
-							<ChangePasswordCard />
-							<SecurityQuestionsCard />
+							{/* Security: password recovery. FID-only accounts have no local
+							    password, so both cards are dead ends for them — the server
+							    refuses every write to password_hash on such an account. */}
+							{user?.zenAuthMode === "zen" ? (
+								<div className="card bg-base-200 border border-base-content/10 p-6 space-y-2">
+									<h3 className="text-xl font-bold flex items-center gap-2">
+										<Key size={20} className="text-warning" /> Password
+									</h3>
+									<p className="text-sm opacity-60">
+										This account signs in with its FID identity, not a password.
+										Your keypair is derived from your passphrase and never leaves
+										your browser, so there is nothing to change or recover here.
+									</p>
+								</div>
+							) : (
+								<>
+									<ChangePasswordCard />
+									<SecurityQuestionsCard />
+								</>
+							)}
 
 							{/* Public profile opt-in (off by default for privacy) */}
 							<div className="card bg-base-200 border border-base-content/10 p-6 space-y-4">
