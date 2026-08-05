@@ -431,11 +431,7 @@ export class ChatService {
 				map.set(client.username, !!client.pubkey);
 			}
 		}
-		const result: { username: string; pubkey: boolean }[] = [];
-		for (const [username, pubkey] of map.entries()) {
-			result.push({ username, pubkey });
-		}
-		return result;
+		return Array.from(map, ([username, pubkey]) => ({ username, pubkey }));
 	}
 
 	relayRtcSignal(

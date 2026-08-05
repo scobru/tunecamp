@@ -12,6 +12,9 @@ The chat system is built around a lightweight WebSocket transport and local SQLi
 - **Backend Service**: Managed by `ChatService` (`src/server/modules/chat/chat.service.ts`).
 - **Database Storage**:
   - `chat_messages`: Stores public lobby messages with persistent history.
+  - `chat_rooms`: Named multi-user rooms. Besides the local `id` (a per-instance `AUTOINCREMENT`) each room carries a `global_id` UUID minted once by the instance that created it — that is the only identifier valid across instances.
+  - `chat_room_members`: Room membership, keyed by `(room_id, username)`.
+  - `chat_room_messages`: Room backlog (plaintext; rooms are not E2EE yet).
   - `peer_chat_bans`: Persistent IP / user bans for chat moderation.
   - `peer_chat_mutes`: Persistent user mute list.
 - **Client Library**: Packaged separately as `@tunecamp/chat` (`tunecamp-chat`), which provides the `TuneCampChatClient` class and the `useTuneCampChat` React hook.
@@ -30,10 +33,17 @@ The chat system is built around a lightweight WebSocket transport and local SQLi
 - **Zero-Trust Server Relay**: The TuneCamp server only acts as a public key and opaque ciphertext relay. It **never sees plaintext DM content**.
 - **Keypair persistence**: The derived keypair is cached per-username in `localStorage` (`useAuthStore.ts`) so it survives page reloads without re-deriving from the password.
 
+### Rooms
+- **Named multi-user conversations**, separate from the single global lobby. Membership is keyed by *username*, not by socket: a user who joins from the webapp is still a member from their Sidecamp daemon and across reconnects.
+- **Managed over REST** (`/api/chat/rooms*`, all behind `authMiddleware.requireUser`) and used over WebSocket (`room_join`, `room_leave`, `room_chat`). The acting user is always taken from the authenticated session — never from a query parameter.
+- **Deletion is creator-only**; private rooms (`is_private`) are visible to members only.
+- **Not E2EE**: room messages are stored and relayed in plaintext, unlike DMs. Do not use rooms for anything that needs the DM threat model.
+
 ### Federated Chat (Cross-Instance)
 - **Lobby relay**: Public lobby messages are broadcast to every known federated peer instance and injected into their local lobby, tagged with the sender's origin instance.
 - **Cross-instance DMs**: Sending to `username@instance` resolves the target instance via `federatedDiscoveryService.resolvePeerByInstance()` and delivers the message to that single peer only (not broadcast).
-- **Transport & auth**: Federated instances relay over `POST /api/chat/federated/inbound`, authenticated with an `X-Chat-Signature` header — HMAC-SHA256 over `username|instance|text|ts|lobby|toUsername` using a shared secret (`TUNECAMP_CHAT_FEDERATION_SECRET`). The endpoint returns `503` if the secret is unset (fail-closed) and `401` on a bad signature.
+- **Federated room messages**: A public room's messages fan out to every peer, addressed by the room's `global_id` (never by the local `id`, which means a different room on every instance). A peer that does not know that `global_id` drops the message instead of guessing. Private rooms are never federated: membership is not federated yet, so no peer could enforce who may read them.
+- **Transport & auth**: Federated instances relay over `POST /api/chat/federated/inbound`, authenticated with an `X-Chat-Signature` header — HMAC-SHA256 over the JSON encoding of `[username, instance, text, ts, lobby, toUsername, roomGlobalId, roomName]` using a shared secret (`TUNECAMP_CHAT_FEDERATION_SECRET`). The fields are JSON-encoded rather than joined on a separator so that a separator character inside the attacker-controlled `text` cannot produce the same signing input as a different message. The endpoint returns `503` if the secret is unset (fail-closed) and `401` on a bad signature.
 - **Dedup**: Inbound messages are deduplicated by content hash for a 5-minute in-process window; no durable replay store.
 - **DM ciphertext stays E2EE end-to-end**: federation only relays the already-encrypted DM payload between servers — plaintext still never touches any instance.
 
@@ -72,14 +82,24 @@ Instance administrators can control chat behavior from the Admin Dashboard or en
 - **`GET /api/chat/peers`**: Returns the roster of currently active chat participants.
 - **`GET /api/chat/pubkey/:username?instance=`**: Returns a user's Zen SEA public key. Falls back to resolving a remote instance's peer and proxying the request if the user isn't local.
 
+### Room Endpoints
+All of them require a session (`/api/chat` is mounted behind `authMiddleware.requireUser`) and act as the authenticated user.
+
+- **`GET /api/chat/rooms`**: Lists rooms, each with its `id` and `globalId`.
+- **`POST /api/chat/rooms`**: Creates a room (`name`, `description`, `is_private`); returns `{ id, globalId, name }`.
+- **`DELETE /api/chat/rooms/:id`**: Deletes a room. Creator only.
+- **`POST /api/chat/rooms/:id/join`** / **`/leave`**: Adds or removes the caller's membership.
+- **`GET /api/chat/rooms/:id/messages?limit=`**: Room backlog (capped at 500).
+- **`GET /api/chat/rooms/:id/members`**: Room member list.
+
 ### Federation Endpoints
-- **`GET /api/chat/federated/peers`**: Lists known federated peer instances.
-- **`POST /api/chat/federated/inbound`**: Accepts a signed message relay from a federated peer (see [Federated Chat](#federated-chat-cross-instance) above).
+- **`POST /api/chat/federated/inbound`**: Accepts a signed message relay from a federated peer (see [Federated Chat](#federated-chat-cross-instance) above). Known peers are listed by `GET /api/community/peers`.
 
 ### WebSocket `/ws/chat` Events
 - **`chat:message`**: Outgoing/incoming lobby or DM payloads.
 - **`chat:peers`**: Roster update events on peer join/leave.
 - **`chat:ban` / `chat:mute`**: Moderation signal events dispatched by admins.
+- **`room_join` / `room_leave` / `room_chat`**: Room subscription and room messages, addressed by the local `roomId`. A `room_chat` that arrived from a federated peer also carries `roomGlobalId`.
 
 ---
 

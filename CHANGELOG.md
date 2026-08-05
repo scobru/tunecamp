@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.6.0] - 2026-08-04
+
+### Security
+
+- **Chat room REST routes trusted `?username=`.** `POST /api/chat/rooms`, `DELETE /rooms/:id` and `/rooms/:id/join|leave` fell back to a query parameter for the acting user (`req.user?.username` is never set — the middleware exposes `req.username`), so any authenticated member could create, delete or join rooms as anybody else. They now take the identity from the authenticated session only.
+- **Federated chat signing input was ambiguous.** The HMAC was computed over the fields joined with `|`, and `text` is attacker-controlled, so two different messages could produce the same signing input. Fields are now JSON-encoded before signing. Signature comparison is constant-time.
+
+### Fixed
+
+- **Federated room messages could never be delivered.** The sender signed `roomId`/`roomName` but `/api/chat/federated/inbound` rebuilt the payload without them, so the MAC never matched (`401`). The inbound route now carries every signed field through.
+- **Rooms are addressed across instances by a new `global_id` UUID** instead of the local `AUTOINCREMENT` id, which means a different room on every instance. Existing rooms are backfilled on startup. A room message for an unknown `global_id` is dropped instead of being delivered into an unrelated local room; private rooms are no longer federated at all, since membership is not federated yet.
+- **`/api/chat/federated/*` built its own `ChatFederationService`**, so inbound traffic used a dedup window separate from outbound fanout, and `GET /api/chat/federated/peers` always returned `[]`. The routes now use the container's service; the dead `/peers` route is removed (`GET /api/community/peers` already exposes it).
+- **REST room leave was a silent no-op**: it called `leaveRoom()`, which expects a socket id, with a username.
+- **Docker build failed on Apple Silicon at the `npm ci` layer.** The arch is now read with `uname -m` instead of the `TARGETARCH` build-arg, whose `=amd64` default silently wins under the classic builder and installs x64 musl binaries of rollup/lightningcss/oxide on an arm64 host (`EBADPLATFORM`).
+- **Fediverse actors did not exist for accounts created by registration or FID SSO.** Actor keys were only generated in `POST /api/auth/login`, which neither path goes through, so `/users/<handle>` returned 404 while the profile page advertised the handle. Registration now generates them and SSO persists the `apSeed`-derived keypair.
+
+### Added
+
+- **`GET /api/users/me/fediverse`** returns the caller's real handle, actor URI and whether the actor exists. The profile panel is driven by it and hides itself when there is no actor, instead of guessing the handle client-side.
+
+### Changed
+
+- **Cross-instance chat federation requires both peers on ≥ 4.6.0.** The signing input changed, so a 4.5.x peer's messages fail verification and vice versa.
+
 ## [4.5.9] - 2026-08-04
 
 ### Security
