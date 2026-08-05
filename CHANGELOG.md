@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.7.0] - 2026-08-05
+
+### Changed
+
+- **Chat E2EE now uses the account's Zen identity instead of a chat-only, password-derived keypair.** DMs are encrypted to `admin.zen_pub` — the same key FID uses for cross-instance SSO — so a fetched public key can be checked against the account rather than trusted because the server said so. The pair is random and sealed under the user's password (`encryptPairVault`, stored opaquely as `zen_priv`), never derived from it: a derived pair silently became a different identity on every password change, and the old `deriveKeyPairFromPassword` is deprecated.
+- **Every password change re-seals the vault.** `ChangePasswordCard` and `SetupWizardModal` now call `resealChatIdentity(newPassword)`; without it the vault stays encrypted under the old password and the next login cannot open it, losing the identity and every DM addressed to it.
+- **`POST /api/auth/zen/set` clears `zen_priv` when it writes a new `zen_pub`.** A stale vault would otherwise pair a new public key with a private key that does not match it.
+- **Local password login now returns `zenPub`/`zenPriv`/`zenAuthMode`**, so the webapp can open the vault (or mint and upload one for an account that has no identity yet). This means webapp accounts acquire a Zen identity on signup rather than only via FID.
+
+### Security
+
+- **`GET /api/chat/pubkey/:username` prefers the account identity and labels what it returned** (`source: "identity" | "session"`). It also answers for offline users, since the key lives on the account. The chat client refuses to let a WebSocket-announced session key overwrite an already-resolved identity key, closing a downgrade path where a malicious relay could substitute a key it controls.
+- **A client whose account has a `zen_pub` but no vault does not mint a second pair** (identity bound from the FID portal, private half never uploaded). It degrades to no E2EE rather than forking one account into two identities.
+
+## [4.6.1] - 2026-08-05
+
+### Security
+
+- **Federated chat messages were replayable forever.** The HMAC covers `ts` but nothing checked it, so once a captured message aged out of the 5-minute dedup window it could be re-posted indefinitely and would be relayed again. `ts` must now be within 5 minutes in the past and 1 minute in the future (clock skew) — otherwise `401`. The dedup window was widened to 6 minutes so an entry can never expire while its message is still fresh enough to re-enter.
+- **The message `id` was taken from the request body but not covered by the signature.** A peer could therefore choose the dedup key and pre-seed it with the id of a message it wanted suppressed, silently censoring it. `id` is now always recomputed from the signed fields on ingest and ignored on the wire.
+- **`/api/chat/federated/inbound` accepted any `instance` the sender claimed.** The claimed origin must now resolve to a peer already known to federated discovery, else `403`; the peer list is refreshed from `federatedDiscoveryService` on every inbound request so a receiver that has never sent anything is not left with an empty list. Note the remaining limit, now documented in `docs/chat.md`: the HMAC secret is shared federation-wide, so a valid signature proves *some* peer, not *which* peer — per-peer secrets are still not implemented.
+
+### Changed
+
+- **An instance that has not yet discovered a peer now rejects that peer's chat messages** (`403`) instead of relaying them. Federation requires mutual discovery, not just the shared secret.
+
 ## [4.6.0] - 2026-08-04
 
 ### Security

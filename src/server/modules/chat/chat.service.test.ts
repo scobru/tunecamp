@@ -65,6 +65,12 @@ describe("ChatService", () => {
             message TEXT NOT NULL,
             created_at INTEGER NOT NULL DEFAULT 0
         )`);
+		db.exec(`CREATE TABLE admin (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            zen_pub TEXT,
+            zen_priv TEXT
+        )`);
 		chatService = createChatService({ db } as unknown as DatabaseService);
 	});
 
@@ -495,6 +501,40 @@ describe("ChatService", () => {
 			}
 			expect(chatService.getRoomHistory(r1.id)).toHaveLength(5);
 			expect(chatService.getRoomHistory(r2.id)).toHaveLength(5);
+		});
+	});
+
+	describe("getIdentityPubkey", () => {
+		it("returns the account's Zen identity key even while the user is offline", () => {
+			db.prepare(
+				"INSERT INTO admin (username, zen_pub) VALUES ('alice', 'zen-pub-alice')",
+			).run();
+
+			// No socket registered for alice at all.
+			expect(chatService.getPubkey("alice")).toBeUndefined();
+			expect(chatService.getIdentityPubkey("alice")).toBe("zen-pub-alice");
+		});
+
+		it("is undefined for an account that has not bound a Zen identity", () => {
+			db.prepare("INSERT INTO admin (username) VALUES ('bob')").run();
+			expect(chatService.getIdentityPubkey("bob")).toBeUndefined();
+		});
+
+		it("is undefined for an unknown user", () => {
+			expect(chatService.getIdentityPubkey("nobody")).toBeUndefined();
+		});
+
+		it("does not follow the socket-announced key", () => {
+			db.prepare(
+				"INSERT INTO admin (username, zen_pub) VALUES ('alice', 'zen-pub-alice')",
+			).run();
+			chatService.register("alice-id", "alice", fakeWs());
+			chatService.setPubkey("alice-id", "session-key-that-differs");
+
+			// The session key is still served by getPubkey, but the identity key is
+			// the account's own and is what the route prefers.
+			expect(chatService.getPubkey("alice")).toBe("session-key-that-differs");
+			expect(chatService.getIdentityPubkey("alice")).toBe("zen-pub-alice");
 		});
 	});
 });

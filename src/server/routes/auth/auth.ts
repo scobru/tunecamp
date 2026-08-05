@@ -108,8 +108,15 @@ export function createAuthRoutes(container: ServiceContainer): Router {
 					// Legacy Password Flow
 					result = await authService.authenticateUser(userToAuth, password);
 					if (result && result.success) {
-						const dbUser = authService.getUserByUsername(userToAuth);
+						const dbUser = authService.getUserByUsername(userToAuth) as any;
 						result.zenAuthMode = dbUser?.zen_auth_mode || "local";
+						// The Zen identity is what chat E2EE keys off, so a password
+						// login needs it too. `zen_priv` is a vault blob encrypted
+						// client-side under this same password: the server stores it
+						// opaquely and cannot open it, so returning it reveals nothing
+						// the caller did not already have to know.
+						result.zenPub = dbUser?.zen_pub || null;
+						result.zenPriv = dbUser?.zen_priv || null;
 					}
 				} else {
 					return res

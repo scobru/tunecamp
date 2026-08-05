@@ -29,9 +29,14 @@ The chat system is built around a lightweight WebSocket transport and local SQLi
 - **Domain Labels**: Automatically appends instance origin labels to user nicknames across federated/multi-instance environments (e.g. `artist (sudorecords)`).
 
 ### End-to-End Encrypted (E2EE) Direct Messages
-- **1-on-1 Private DMs**: Direct messages between two users are encrypted on the client side using **Zen SEA** — an elliptic-curve identity (secp256k1) whose keypair is derived from the user's login password via PBKDF2 (`deriveKeyPairFromPassword`, `@tunecamp/chat`). Messages are encrypted with an ECDH-derived shared secret (`Zen.secret` + `Zen.encrypt`/`Zen.decrypt`).
+- **1-on-1 Private DMs**: Direct messages between two users are encrypted on the client side using **Zen SEA** — an elliptic-curve identity (secp256k1). Messages are encrypted with an ECDH-derived shared secret (`Zen.secret` + `Zen.encrypt`/`Zen.decrypt`).
+- **The DM key is the account's Zen identity**, the same `zen_pub` FID uses for cross-instance SSO — not a chat-only keypair. That is what makes a fetched public key checkable: it belongs to the account, not to whichever socket happens to be connected.
+- **Random pair, password-sealed vault**: the pair is generated randomly and then encrypted client-side under the user's password (`encryptPairVault`) and uploaded to `POST /api/auth/zen/keys` as `zen_priv`. It is *not* derived from the password — a derived pair would silently become a different identity on every password change. The server stores the vault opaquely and cannot open it.
+- **Provisioning**: on register, and on password login for an account that has no identity yet, the webapp mints a pair and uploads the vault. If the account already has a `zen_pub` but no vault (identity bound from the FID portal, private half never uploaded), the client does *not* mint a second pair — it degrades to no E2EE rather than forking the account into two identities.
+- **Password changes must re-seal**: the vault is encrypted with the old password until re-wrapped, so every password-change path calls `resealChatIdentity(newPassword)` (`useAuthStore.ts`). Skipping it locks the user out of their own identity and of every DM addressed to it. `POST /api/auth/zen/set` (rebinding to a different identity) nulls `zen_priv` for the same reason: a stale vault would pair a new public key with a non-matching private key.
 - **Zero-Trust Server Relay**: The TuneCamp server only acts as a public key and opaque ciphertext relay. It **never sees plaintext DM content**.
-- **Keypair persistence**: The derived keypair is cached per-username in `localStorage` (`useAuthStore.ts`) so it survives page reloads without re-deriving from the password.
+- **Key source is reported and downgrade-resistant**: `GET /api/chat/pubkey/:username` returns `source: "identity"` when the key came from the account and `source: "session"` when it came only from a live socket announcement. The client (`@tunecamp/chat`) remembers which it got and will not let a later WebSocket-announced session key overwrite an already-resolved identity key.
+- **Keypair persistence**: The opened pair is cached per-username in `localStorage` (`useAuthStore.ts`) so it survives page reloads without the password, which is not kept in memory.
 
 ### Rooms
 - **Named multi-user conversations**, separate from the single global lobby. Membership is keyed by *username*, not by socket: a user who joins from the webapp is still a member from their Sidecamp daemon and across reconnects.
@@ -44,7 +49,10 @@ The chat system is built around a lightweight WebSocket transport and local SQLi
 - **Cross-instance DMs**: Sending to `username@instance` resolves the target instance via `federatedDiscoveryService.resolvePeerByInstance()` and delivers the message to that single peer only (not broadcast).
 - **Federated room messages**: A public room's messages fan out to every peer, addressed by the room's `global_id` (never by the local `id`, which means a different room on every instance). A peer that does not know that `global_id` drops the message instead of guessing. Private rooms are never federated: membership is not federated yet, so no peer could enforce who may read them.
 - **Transport & auth**: Federated instances relay over `POST /api/chat/federated/inbound`, authenticated with an `X-Chat-Signature` header — HMAC-SHA256 over the JSON encoding of `[username, instance, text, ts, lobby, toUsername, roomGlobalId, roomName]` using a shared secret (`TUNECAMP_CHAT_FEDERATION_SECRET`). The fields are JSON-encoded rather than joined on a separator so that a separator character inside the attacker-controlled `text` cannot produce the same signing input as a different message. The endpoint returns `503` if the secret is unset (fail-closed) and `401` on a bad signature.
-- **Dedup**: Inbound messages are deduplicated by content hash for a 5-minute in-process window; no durable replay store.
+- **Freshness window**: a signature never expires on its own, so `ts` must be within 5 minutes in the past and 1 minute in the future (clock skew) or the message is refused with `401`. Without it a captured message would stay replayable forever once it aged out of the dedup window.
+- **Known-peer check**: the claimed `instance` must resolve to a peer already in federated discovery, otherwise `403`. The peer list is refreshed from `federatedDiscoveryService` on every inbound request, so a receiver that has never sent anything still knows who it federates with — but an instance that has not yet discovered the sender will reject it.
+- **Trust model — read this before deploying**: the HMAC secret is shared by the whole federation, so a valid signature proves *some* peer sent the message, not *which* one. Any peer holding the secret can sign as any user of any other instance; the known-peer check only bounds that to instances you already federate with. Treat the secret as a federation-wide trust boundary, not a per-peer credential, and only share it with operators you trust. Per-peer secrets are the fix and are not implemented yet.
+- **Dedup**: Inbound messages are deduplicated by a content hash of the signed fields, held in process for 6 minutes (the freshness window plus the skew allowance, so an entry can never expire while the message is still fresh enough to re-enter). The `id` a sender puts in the body is ignored and recomputed locally — it is not covered by the MAC, so honouring it would let a peer choose the dedup key and pre-seed it to suppress a later message. No durable replay store: the map is lost on restart.
 - **DM ciphertext stays E2EE end-to-end**: federation only relays the already-encrypted DM payload between servers — plaintext still never touches any instance.
 
 ---
@@ -71,7 +79,7 @@ Instance administrators can control chat behavior from the Admin Dashboard or en
 
 - **`peerChatEnabled`** (`boolean`): Master toggle to enable or disable the chat service across the instance.
 - **`peerChatGuestEnabled`** (`boolean`): Allows unauthenticated guests to view and participate in the public lobby with generated guest handles.
-- **`TUNECAMP_CHAT_FEDERATION_SECRET`** (env var): Shared HMAC secret for cross-instance chat federation. Unset disables federated relay (`/inbound` returns `503`).
+- **`TUNECAMP_CHAT_FEDERATION_SECRET`** (env var): Shared HMAC secret for cross-instance chat federation. Unset disables federated relay (`/inbound` returns `503`). Shared by every peer, so it is a federation-wide trust boundary — see [Federated Chat](#federated-chat-cross-instance).
 
 ---
 
@@ -80,7 +88,7 @@ Instance administrators can control chat behavior from the Admin Dashboard or en
 ### REST Endpoints
 - **`GET /api/chat/history`**: Retrieves recent lobby message history.
 - **`GET /api/chat/peers`**: Returns the roster of currently active chat participants.
-- **`GET /api/chat/pubkey/:username?instance=`**: Returns a user's Zen SEA public key. Falls back to resolving a remote instance's peer and proxying the request if the user isn't local.
+- **`GET /api/chat/pubkey/:username?instance=`**: Returns `{ pubkey, source }` for a user's Zen SEA public key. Prefers the account's stored identity (`source: "identity"`, answers even while the user is offline), falls back to a live session's announced key (`source: "session"`), then to resolving a remote instance's peer and proxying the request. `404` when the user has neither.
 
 ### Room Endpoints
 All of them require a session (`/api/chat` is mounted behind `authMiddleware.requireUser`) and act as the authenticated user.
@@ -93,7 +101,7 @@ All of them require a session (`/api/chat` is mounted behind `authMiddleware.req
 - **`GET /api/chat/rooms/:id/members`**: Room member list.
 
 ### Federation Endpoints
-- **`POST /api/chat/federated/inbound`**: Accepts a signed message relay from a federated peer (see [Federated Chat](#federated-chat-cross-instance) above). Known peers are listed by `GET /api/community/peers`.
+- **`POST /api/chat/federated/inbound`**: Accepts a signed message relay from a federated peer (see [Federated Chat](#federated-chat-cross-instance) above). Known peers are listed by `GET /api/community/peers`. Responses: `202` accepted, `409` duplicate, `400` missing fields, `401` missing/bad signature or a stale/future-dated `ts`, `403` unknown peer instance, `415` non-JSON body, `503` federation secret unset.
 
 ### WebSocket `/ws/chat` Events
 - **`chat:message`**: Outgoing/incoming lobby or DM payloads.

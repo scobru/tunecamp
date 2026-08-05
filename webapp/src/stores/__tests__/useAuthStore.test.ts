@@ -9,6 +9,7 @@ vi.mock('../../services/api', () => ({
         login: vi.fn(),
         registerUser: vi.fn(),
         setToken: vi.fn(),
+        uploadZenKeys: vi.fn(),
     },
     ApiError: class ApiError extends Error {
         status: number;
@@ -28,16 +29,31 @@ vi.mock('../useWalletStore', () => ({
     }
 }));
 
-// Real SEA derivation needs a browser-conditioned resolution of the `zen`
-// package that vitest's Node module resolution doesn't provide; the crypto
-// itself is covered by tunecamp-chat's own tests, so mock it deterministically here.
+// Real SEA crypto needs a browser-conditioned resolution of the `zen` package
+// that vitest's Node module resolution doesn't provide; the crypto itself is
+// covered by tunecamp-chat's own tests, so mock it deterministically here.
+// The fake vault keeps the sealing password in the ciphertext so that opening
+// it with the wrong one fails, as the real one does.
+const MINTED_PAIR = {
+    pub: 'minted-pub',
+    priv: 'minted-priv',
+    epub: 'minted-epub',
+    epriv: 'minted-epriv',
+};
+
+function fakeVault(pair: unknown, password: string): string {
+    return `vault(${password}):${JSON.stringify(pair)}`;
+}
+
 vi.mock('@tunecamp/chat', () => ({
-    deriveKeyPairFromPassword: vi.fn(async (username: string) => ({
-        pub: `pub-${username}`,
-        priv: `priv-${username}`,
-        epub: `epub-${username}`,
-        epriv: `epriv-${username}`,
-    })),
+    generateKeyPair: vi.fn(async () => ({ ...MINTED_PAIR })),
+    encryptPairVault: vi.fn(async (pair: unknown, password: string) =>
+        `vault(${password}):${JSON.stringify(pair)}`,
+    ),
+    decryptPairVault: vi.fn(async (vault: string, password: string) => {
+        const prefix = `vault(${password}):`;
+        return vault.startsWith(prefix) ? JSON.parse(vault.slice(prefix.length)) : null;
+    }),
 }));
 
 describe('useAuthStore', () => {
@@ -157,73 +173,112 @@ describe('useAuthStore', () => {
         expect(API.setToken).toHaveBeenCalledWith(null);
     });
 
-    test('login derives a chatKeyPair and persists it to localStorage under the username', async () => {
-        const mockLoginResponse = {
+    // Zen identity resolution on login. The chat pair *is* the account's Zen
+    // identity now, so these cases decide whether a user can read their DMs.
+    function mockLoginFlow(username: string, loginExtras: Record<string, unknown> = {}) {
+        vi.mocked(API.login).mockResolvedValue({
             token: 'test-jwt-token',
             role: 'user',
-            user: { username: 'testuser', id: '2', isAdmin: false },
-        };
-        const mockAuthStatus = {
+            user: { username, id: '2', isAdmin: false },
+            ...loginExtras,
+        } as any);
+        vi.mocked(API.getAuthStatus).mockResolvedValue({
             authenticated: true,
             role: 'user',
-            user: { username: 'testuser', id: '2', isAdmin: false },
+            user: { username, id: '2', isAdmin: false },
             firstRun: false,
             mustChangePassword: false,
-        };
+        } as any);
+    }
 
-        vi.mocked(API.login).mockResolvedValue(mockLoginResponse);
-        vi.mocked(API.getAuthStatus).mockResolvedValue(mockAuthStatus);
-
-        const store = useAuthStore.getState();
-        await store.login('testuser', 'password123');
-
-        const state = useAuthStore.getState();
-        expect(state.chatKeyPair).toEqual({
-            pub: 'pub-testuser',
-            priv: 'priv-testuser',
-            epub: 'epub-testuser',
-            epriv: 'epriv-testuser',
+    test('login opens the account vault and uses the pair it holds', async () => {
+        const existing = { pub: 'zen-pub', priv: 'zen-priv', epub: 'ep', epriv: 'es' };
+        mockLoginFlow('testuser', {
+            zenPub: existing.pub,
+            zenPriv: fakeVault(existing, 'password123'),
         });
 
-        const stored = localStorage.getItem('tunecamp_chatkey_testuser');
-        expect(stored).not.toBeNull();
-        expect(JSON.parse(stored!)).toEqual(state.chatKeyPair);
+        await useAuthStore.getState().login('testuser', 'password123');
+
+        const state = useAuthStore.getState();
+        expect(state.chatKeyPair).toEqual(existing);
+        // Opening an existing vault must not re-upload anything.
+        expect(API.uploadZenKeys).not.toHaveBeenCalled();
+        expect(JSON.parse(localStorage.getItem('tunecamp_chatkey_testuser')!)).toEqual(existing);
     });
 
-    test('register derives a chatKeyPair and persists it to localStorage under the username', async () => {
-        const mockRegisterResponse = {
+    test('login mints and uploads an identity for an account that has none', async () => {
+        mockLoginFlow('testuser', { zenPub: null, zenPriv: null });
+
+        await useAuthStore.getState().login('testuser', 'password123');
+
+        expect(useAuthStore.getState().chatKeyPair).toEqual(MINTED_PAIR);
+        expect(API.uploadZenKeys).toHaveBeenCalledWith(
+            MINTED_PAIR.pub,
+            fakeVault(MINTED_PAIR, 'password123'),
+        );
+    });
+
+    // The private half lives in the FID portal and was never uploaded. Minting a
+    // pair here would fork one account into two identities.
+    test('login does not mint a second identity when the account has a zenPub but no vault', async () => {
+        mockLoginFlow('testuser', { zenPub: 'portal-bound-pub', zenPriv: null });
+
+        await useAuthStore.getState().login('testuser', 'password123');
+
+        expect(useAuthStore.getState().chatKeyPair).toBeNull();
+        expect(API.uploadZenKeys).not.toHaveBeenCalled();
+        expect(localStorage.getItem('tunecamp_chatkey_testuser')).toBeNull();
+    });
+
+    test('login yields no chat identity when the vault does not match the account key', async () => {
+        mockLoginFlow('testuser', {
+            zenPub: 'zen-pub',
+            zenPriv: fakeVault({ pub: 'some-other-pub', priv: 'x' }, 'password123'),
+        });
+
+        await useAuthStore.getState().login('testuser', 'password123');
+
+        expect(useAuthStore.getState().chatKeyPair).toBeNull();
+    });
+
+    test('register mints an identity and persists it to localStorage under the username', async () => {
+        vi.mocked(API.registerUser).mockResolvedValue({
             success: true,
             token: 'test-jwt-token',
             username: 'newuser',
             artistId: 0,
             role: 'user',
             storageQuota: 0,
-        };
-        const mockAuthStatus = {
+        } as any);
+        vi.mocked(API.getAuthStatus).mockResolvedValue({
             authenticated: true,
             role: 'user',
             user: { username: 'newuser', id: '3', isAdmin: false },
             firstRun: false,
             mustChangePassword: false,
-        };
+        } as any);
 
-        vi.mocked(API.registerUser).mockResolvedValue(mockRegisterResponse);
-        vi.mocked(API.getAuthStatus).mockResolvedValue(mockAuthStatus);
-
-        const store = useAuthStore.getState();
-        await store.register('newuser', 'password123');
+        await useAuthStore.getState().register('newuser', 'password123');
 
         const state = useAuthStore.getState();
-        expect(state.chatKeyPair).toEqual({
-            pub: 'pub-newuser',
-            priv: 'priv-newuser',
-            epub: 'epub-newuser',
-            epriv: 'epriv-newuser',
-        });
+        expect(state.chatKeyPair).toEqual(MINTED_PAIR);
+        expect(API.uploadZenKeys).toHaveBeenCalledWith(
+            MINTED_PAIR.pub,
+            fakeVault(MINTED_PAIR, 'password123'),
+        );
+        expect(JSON.parse(localStorage.getItem('tunecamp_chatkey_newuser')!)).toEqual(MINTED_PAIR);
+    });
 
-        const stored = localStorage.getItem('tunecamp_chatkey_newuser');
-        expect(stored).not.toBeNull();
-        expect(JSON.parse(stored!)).toEqual(state.chatKeyPair);
+    // The vault is sealed with the *old* password until this runs; skipping it
+    // locks the user out of their own identity on the next login.
+    test('resealChatIdentity re-uploads the same pub key under the new password', async () => {
+        const pair = { pub: 'zen-pub', priv: 'zen-priv', epub: 'ep', epriv: 'es' };
+        useAuthStore.setState({ chatKeyPair: pair });
+
+        await useAuthStore.getState().resealChatIdentity('new-password');
+
+        expect(API.uploadZenKeys).toHaveBeenCalledWith(pair.pub, fakeVault(pair, 'new-password'));
     });
 
     test('checkAuth rehydrates chatKeyPair from localStorage when the in-memory one is missing (e.g. after a page reload)', async () => {
