@@ -149,11 +149,63 @@ describe("ChatFederationService", () => {
 			};
 			expect(service.ingest(payload)).toBe(true);
 
-			// Advance time past the 5-minute window.
-			jest.spyOn(Date, "now").mockReturnValue(Date.now() + 6 * 60 * 1000);
+			// Advance time past the dedup window (message age + clock skew).
+			jest.spyOn(Date, "now").mockReturnValue(Date.now() + 7 * 60 * 1000);
 
 			expect(service.ingest(payload)).toBe(true);
 			expect(fake.relayFederatedMessage).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe("isFresh", () => {
+		it("accepts a message minted now and one within the age window", () => {
+			const now = 10 * 60 * 1000;
+			expect(service.isFresh(now, now)).toBe(true);
+			expect(service.isFresh(now - 4 * 60 * 1000, now)).toBe(true);
+		});
+
+		it("rejects a message older than the age window", () => {
+			const now = 10 * 60 * 1000;
+			expect(service.isFresh(now - 6 * 60 * 1000, now)).toBe(false);
+		});
+
+		it("tolerates a small clock skew but rejects a far-future timestamp", () => {
+			const now = 10 * 60 * 1000;
+			expect(service.isFresh(now + 30 * 1000, now)).toBe(true);
+			expect(service.isFresh(now + 5 * 60 * 1000, now)).toBe(false);
+		});
+
+		it("rejects a missing or non-numeric timestamp", () => {
+			expect(service.isFresh(Number.NaN)).toBe(false);
+			expect(service.isFresh(0)).toBe(false);
+		});
+	});
+
+	describe("isKnownInstance", () => {
+		it("matches a peer by full hostname and by bare first label", () => {
+			expect(service.isKnownInstance("a.example.com")).toBe(true);
+			expect(service.isKnownInstance("A.EXAMPLE.COM")).toBe(true);
+			expect(service.isKnownInstance("b")).toBe(true);
+		});
+
+		it("rejects an instance that is not among the known peers", () => {
+			expect(service.isKnownInstance("evil.example.com")).toBe(false);
+			expect(service.isKnownInstance("")).toBe(false);
+		});
+	});
+
+	describe("dedup id", () => {
+		it("ignores a sender-supplied id and recomputes it from the signed fields", () => {
+			const payload: FederatedChatMessage = {
+				id: "attacker-chosen-id",
+				username: "alice",
+				instance: "a.example.com",
+				text: "unsuppressable",
+				ts: 6000,
+			};
+			expect(service.ingest(payload)).toBe(true);
+			// Same signed fields under a different claimed id: still a duplicate.
+			expect(service.ingest({ ...payload, id: "another-id" })).toBe(false);
 		});
 	});
 

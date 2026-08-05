@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.6.1] - 2026-08-05
+
+### Security
+
+- **Federated chat messages were replayable forever.** The HMAC covers `ts` but nothing checked it, so once a captured message aged out of the 5-minute dedup window it could be re-posted indefinitely and would be relayed again. `ts` must now be within 5 minutes in the past and 1 minute in the future (clock skew) — otherwise `401`. The dedup window was widened to 6 minutes so an entry can never expire while its message is still fresh enough to re-enter.
+- **The message `id` was taken from the request body but not covered by the signature.** A peer could therefore choose the dedup key and pre-seed it with the id of a message it wanted suppressed, silently censoring it. `id` is now always recomputed from the signed fields on ingest and ignored on the wire.
+- **`/api/chat/federated/inbound` accepted any `instance` the sender claimed.** The claimed origin must now resolve to a peer already known to federated discovery, else `403`; the peer list is refreshed from `federatedDiscoveryService` on every inbound request so a receiver that has never sent anything is not left with an empty list. Note the remaining limit, now documented in `docs/chat.md`: the HMAC secret is shared federation-wide, so a valid signature proves *some* peer, not *which* peer — per-peer secrets are still not implemented.
+
+### Changed
+
+- **An instance that has not yet discovered a peer now rejects that peer's chat messages** (`403`) instead of relaying them. Federation requires mutual discovery, not just the shared secret.
+
 ## [4.6.0] - 2026-08-04
 
 ### Security
