@@ -29,7 +29,26 @@ export const authApi = {
 				mustChangePassword?: boolean;
 				pair?: any;
 				isActive?: boolean;
+				/** Zen identity public key, null for accounts that have none yet. */
+				zenPub?: string | null;
+				/** The pair sealed under the user's password. Opaque to the server. */
+				zenPriv?: string | null;
+				zenAuthMode?: string;
 			}>("auth/login", { username, password, pubKey, proof }),
+		),
+
+	/**
+	 * Publish the account's Zen identity: `encryptedZenPriv` must already be
+	 * sealed with the user's password client-side — the server stores it as an
+	 * opaque blob and can never open it. Rejected with 409 if it would change an
+	 * existing `zen_pub` (that needs proof of key possession via `auth/zen/set`).
+	 */
+	uploadZenKeys: (zenPubKey: string, encryptedZenPriv: string) =>
+		handleResponse(
+			api.post<{ success: boolean; zenPub: string }>("auth/zen/keys", {
+				zenPubKey,
+				encryptedZenPriv,
+			}),
 		),
 	registerUser: (
 		username: string,

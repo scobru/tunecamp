@@ -243,10 +243,15 @@ export function createZenRoutes(container: ServiceContainer): Router {
 				});
 			}
 
-			db.prepare("UPDATE admin SET zen_pub = ? WHERE id = ?").run(
-				zenPubKey,
-				user.id,
-			);
+			// Clear the vault along with the key it belonged to: `zen_priv` holds
+			// the *old* pair encrypted under the user's password, so leaving it in
+			// place would pair a new public key with a private key that does not
+			// match it — and chat E2EE now derives its shared secret from exactly
+			// this pair. The client re-uploads a vault for the new identity via
+			// POST /api/auth/zen/keys.
+			db.prepare(
+				"UPDATE admin SET zen_pub = ?, zen_priv = NULL WHERE id = ?",
+			).run(zenPubKey, user.id);
 
 			return res.json({ success: true, zenPub: zenPubKey });
 		},

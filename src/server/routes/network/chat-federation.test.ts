@@ -6,7 +6,11 @@ import { createChatFederationRoutes } from "./chat-federation.js";
 import { createChatService } from "../../modules/chat/chat.service.js";
 import { createChatFederationService } from "../../modules/chat/chat-federation.service.js";
 
-function buildApp(secret = "shared-secret") {
+// Inbound now requires a fresh timestamp, so payloads are dated at call time
+// instead of using fixed constants.
+const NOW = Date.now();
+
+function buildApp(secret = "shared-secret", peers = ["https://a.example.com"]) {
 	const db = new Database(":memory:");
 	db.exec(`CREATE TABLE peer_chat_messages (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,7 +30,7 @@ function buildApp(secret = "shared-secret") {
 			chatService,
 			chatFederationService: federation,
 			config: { chatFederationSecret: secret } as any,
-			federatedDiscoveryService: { getPeers: () => [] },
+			federatedDiscoveryService: { getPeers: () => peers },
 		} as any),
 	);
 
@@ -45,7 +49,7 @@ describe("Chat federation routes", () => {
 				username: "alice",
 				instance: "a.example.com",
 				text: "hello from federation",
-				ts: 1000,
+				ts: NOW,
 				lobby: true,
 			};
 			const signature = createChatFederationService(
@@ -64,7 +68,7 @@ describe("Chat federation routes", () => {
 			expect(spy).toHaveBeenCalledWith(
 				"alice@a.example.com",
 				"hello from federation",
-				1000,
+				NOW,
 				true,
 				undefined,
 				undefined,
@@ -81,7 +85,7 @@ describe("Chat federation routes", () => {
 				username: "alice",
 				instance: "a.example.com",
 				text: "ciphertext-blob",
-				ts: 2000,
+				ts: NOW,
 				lobby: false,
 				toUsername: "bob",
 			};
@@ -100,7 +104,7 @@ describe("Chat federation routes", () => {
 			expect(spy).toHaveBeenCalledWith(
 				"alice@a.example.com",
 				"ciphertext-blob",
-				2000,
+				NOW,
 				false,
 				"bob",
 				undefined,
@@ -117,7 +121,7 @@ describe("Chat federation routes", () => {
 				username: "alice",
 				instance: "a.example.com",
 				text: "hello room",
-				ts: 3000,
+				ts: NOW,
 				lobby: false,
 				roomGlobalId: "11111111-2222-3333-4444-555555555555",
 				roomName: "general",
@@ -137,7 +141,7 @@ describe("Chat federation routes", () => {
 			expect(spy).toHaveBeenCalledWith(
 				"alice@a.example.com",
 				"hello room",
-				3000,
+				NOW,
 				false,
 				undefined,
 				"11111111-2222-3333-4444-555555555555",
@@ -200,7 +204,7 @@ describe("Chat federation routes", () => {
 				username: "alice",
 				instance: "a.example.com",
 				text: "dup",
-				ts: 3000,
+				ts: NOW,
 				lobby: true,
 			};
 			const signature = createChatFederationService(
@@ -223,6 +227,127 @@ describe("Chat federation routes", () => {
 			expect(first.status).toBe(202);
 			expect(second.status).toBe(409);
 			expect(second.body.accepted).toBe(false);
+		});
+
+		it("rejects a correctly signed message that is too old to be live", async () => {
+			const { app, chatService } = buildApp();
+			const spy = jest
+				.spyOn(chatService, "relayFederatedMessage")
+				.mockReturnValue(true);
+
+			// Past the dedup window a captured message would otherwise be
+			// replayable forever, since its signature never expires.
+			const payload = {
+				username: "alice",
+				instance: "a.example.com",
+				text: "replayed",
+				ts: NOW - 10 * 60 * 1000,
+				lobby: true,
+			};
+			const signature = createChatFederationService(
+				chatService,
+				"shared-secret",
+			).sign(payload as any);
+
+			const res = await request(app)
+				.post("/api/chat/federated/inbound")
+				.set("Content-Type", "application/json")
+				.set("X-Chat-Signature", signature)
+				.send(payload);
+
+			expect(res.status).toBe(401);
+			expect(res.body.error).toBe("Stale or future-dated message");
+			expect(spy).not.toHaveBeenCalled();
+		});
+
+		it("rejects a message dated far in the future", async () => {
+			const { app, chatService } = buildApp();
+			const payload = {
+				username: "alice",
+				instance: "a.example.com",
+				text: "from tomorrow",
+				ts: NOW + 60 * 60 * 1000,
+				lobby: true,
+			};
+			const signature = createChatFederationService(
+				chatService,
+				"shared-secret",
+			).sign(payload as any);
+
+			const res = await request(app)
+				.post("/api/chat/federated/inbound")
+				.set("Content-Type", "application/json")
+				.set("X-Chat-Signature", signature)
+				.send(payload);
+
+			expect(res.status).toBe(401);
+		});
+
+		it("rejects a signed message claiming an instance that is not a known peer", async () => {
+			const { app, chatService } = buildApp("shared-secret", [
+				"https://a.example.com",
+			]);
+			const spy = jest
+				.spyOn(chatService, "relayFederatedMessage")
+				.mockReturnValue(true);
+
+			const payload = {
+				username: "alice",
+				instance: "evil.example.com",
+				text: "injected",
+				ts: NOW,
+				lobby: true,
+			};
+			const signature = createChatFederationService(
+				chatService,
+				"shared-secret",
+			).sign(payload as any);
+
+			const res = await request(app)
+				.post("/api/chat/federated/inbound")
+				.set("Content-Type", "application/json")
+				.set("X-Chat-Signature", signature)
+				.send(payload);
+
+			expect(res.status).toBe(403);
+			expect(res.body.error).toBe("Unknown peer instance");
+			expect(spy).not.toHaveBeenCalled();
+		});
+
+		it("ignores a sender-supplied id so the dedup key cannot be chosen", async () => {
+			const { app, chatService } = buildApp();
+			jest.spyOn(chatService, "relayFederatedMessage").mockReturnValue(true);
+
+			const payload = {
+				username: "alice",
+				instance: "a.example.com",
+				text: "id-not-signed",
+				ts: NOW,
+				lobby: true,
+			};
+			const signature = createChatFederationService(
+				chatService,
+				"shared-secret",
+			).sign(payload as any);
+
+			// A peer pre-seeding the dedup map with the id of a message it wants
+			// suppressed: honouring `id` would make the real message a duplicate.
+			const poison = await request(app)
+				.post("/api/chat/federated/inbound")
+				.set("Content-Type", "application/json")
+				.set("X-Chat-Signature", signature)
+				.send({ ...payload, id: "attacker-chosen-id" });
+
+			expect(poison.status).toBe(202);
+
+			const replay = await request(app)
+				.post("/api/chat/federated/inbound")
+				.set("Content-Type", "application/json")
+				.set("X-Chat-Signature", signature)
+				.send(payload);
+
+			// Same signed fields, so the recomputed id matches: still a duplicate.
+			expect(replay.status).toBe(409);
 		});
 	});
 });

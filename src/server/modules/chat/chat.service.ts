@@ -4,8 +4,8 @@
 // lobby instead of two invisible rooms.
 //
 // The server is deliberately opaque to direct messages: `text` is ciphertext
-// produced client-side (Curve25519/XSalsa20-Poly1305) and is relayed verbatim.
-// Only the lobby carries plaintext.
+// produced client-side (Zen SEA, secp256k1 ECDH shared secret) and is relayed
+// verbatim. Only the lobby carries plaintext.
 
 import { randomUUID } from "crypto";
 import type { DatabaseService } from "../../core/database.types.js";
@@ -400,6 +400,8 @@ export class ChatService {
 		}));
 	}
 
+	/** Live session key announced over the socket. Trust-on-first-use: it is
+	 * whatever the client said, and it only exists while that client is online. */
 	getPubkey(username: string): string | undefined {
 		for (const client of this.clients.values()) {
 			if (client.rawUsername === username && client.pubkey) {
@@ -407,6 +409,24 @@ export class ChatService {
 			}
 		}
 		return undefined;
+	}
+
+	/**
+	 * The account's Zen identity key. Preferred over `getPubkey`: it is bound to
+	 * the account rather than to a socket, so it also answers for a user who is
+	 * offline, and it is the same key on every instance — which is what lets a
+	 * user verify it out of band instead of trusting whatever we hand them.
+	 * Null for accounts that have not bound a Zen identity yet.
+	 */
+	getIdentityPubkey(username: string): string | undefined {
+		try {
+			const row = this.database.db
+				.prepare("SELECT zen_pub FROM admin WHERE username = ?")
+				.get(username) as { zen_pub: string | null } | undefined;
+			return row?.zen_pub || undefined;
+		} catch {
+			return undefined;
+		}
 	}
 
 	// Lobby backlog, oldest first — the order a client renders it in.

@@ -2,9 +2,12 @@ import { Router } from "express";
 import type { ServiceContainer } from "../../core/container.js";
 import type { FederatedChatMessage } from "../../modules/chat/chat-federation.service.js";
 
-// ponytail: one secret, one endpoint. No per-message nonce, no replay DB
-// beyond the in-memory dedup window. If you need durable replay protection,
-// add a SQLite table keyed by message id.
+// ponytail: one secret, one endpoint. No per-message nonce and no replay DB —
+// replay is bounded by a timestamp freshness window plus the in-memory dedup
+// map, which is enough for a single process. If you need durable replay
+// protection, add a SQLite table keyed by message id.
+// The shared secret still means any peer can sign as any other peer: the
+// known-instance check narrows that to the federation, not to one host.
 
 export function createChatFederationRoutes(
 	container: ServiceContainer,
@@ -34,11 +37,14 @@ export function createChatFederationRoutes(
 
 		const body = req.body as Partial<FederatedChatMessage>;
 		const payload: FederatedChatMessage = {
-			id: body.id,
+			// `body.id` is deliberately dropped: it is not covered by the MAC, so
+			// honouring it would let a sender pick the dedup key. The service
+			// recomputes it from the signed fields.
 			username: String(body.username || ""),
 			instance: String(body.instance || ""),
 			text: String(body.text || ""),
-			ts: Number(body.ts || Date.now()),
+			// 0, not Date.now(): a message with no timestamp is stale, not fresh.
+			ts: Number(body.ts || 0),
 			lobby: body.lobby ?? true,
 			toUsername: body.toUsername ? String(body.toUsername) : undefined,
 			// Signed fields must be rebuilt, not dropped: omitting them here
@@ -55,6 +61,19 @@ export function createChatFederationRoutes(
 
 		if (!federation.verify(payload, signature)) {
 			return res.status(401).json({ error: "Invalid signature" });
+		}
+
+		// Everything below runs only for an authenticated payload, so an unsigned
+		// caller can't use these answers to probe our peer list or our clock.
+		if (!federation.isFresh(payload.ts)) {
+			return res.status(401).json({ error: "Stale or future-dated message" });
+		}
+
+		// Peers are otherwise only loaded on outbound fanout, so an instance that
+		// has not sent anything yet would have an empty list and refuse everyone.
+		federation.setPeers(container.federatedDiscoveryService.getPeers());
+		if (!federation.isKnownInstance(payload.instance)) {
+			return res.status(403).json({ error: "Unknown peer instance" });
 		}
 
 		const accepted = federation.ingest(payload);

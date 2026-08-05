@@ -27,14 +27,34 @@ export function createChatRoutes(container: ServiceContainer): Router {
 		}),
 	);
 
+	/**
+	 * GET /api/chat/pubkey/:username
+	 *
+	 * Answers with the account's Zen identity key (`admin.zen_pub`) whenever it
+	 * has one. That key is the same on every instance and the user can check it
+	 * against their FID portal, so it is an identity claim a lying server can be
+	 * caught making — unlike the live session key below, which is whatever the
+	 * socket announced and is trust-on-first-use.
+	 *
+	 * `source` tells the caller which one it got:
+	 *   - `identity` — from the account's Zen identity, works while offline.
+	 *   - `session`  — legacy fallback for accounts with no Zen identity yet.
+	 *     Unauthenticated: treat the DM as opportunistically encrypted only.
+	 */
 	router.get(
 		"/pubkey/:username",
 		wrapAsync(async (req: any, res: any) => {
 			const username = String(req.params.username || "");
 			const instance = String(req.query.instance || "");
+
+			const identityPub = container.chatService.getIdentityPubkey(username);
+			if (identityPub) {
+				return res.json({ username, pubkey: identityPub, source: "identity" });
+			}
+
 			const local = container.chatService.getPubkey(username);
 			if (local) {
-				return res.json({ username, pubkey: local });
+				return res.json({ username, pubkey: local, source: "session" });
 			}
 
 			if (!instance) {

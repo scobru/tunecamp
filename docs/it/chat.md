@@ -29,9 +29,14 @@ Il sistema di chat si basa su un trasporto WebSocket leggero e sulla persistenza
 - **Etichette di Dominio**: Aggiunge automaticamente il tag di dominio dell'istanza ai nickname in ambienti federati o multi-istanza (es. `artista (sudorecords)`).
 
 ### Messaggi Diretti Cifrati (E2EE)
-- **DM Privati 1-a-1**: I messaggi privati tra due utenti vengono cifrati lato client con **Zen SEA** — identità a curva ellittica (secp256k1) la cui coppia di chiavi è derivata dalla password di login tramite PBKDF2 (`deriveKeyPairFromPassword`, `@tunecamp/chat`). I messaggi vengono cifrati con un segreto condiviso derivato via ECDH (`Zen.secret` + `Zen.encrypt`/`Zen.decrypt`).
+- **DM Privati 1-a-1**: I messaggi privati tra due utenti vengono cifrati lato client con **Zen SEA** — identità a curva ellittica (secp256k1). I messaggi vengono cifrati con un segreto condiviso derivato via ECDH (`Zen.secret` + `Zen.encrypt`/`Zen.decrypt`).
+- **La chiave dei DM è l'identità Zen dell'account**, lo stesso `zen_pub` usato da FID per l'SSO cross-instance — non una coppia dedicata alla chat. È questo che rende verificabile una chiave pubblica scaricata: appartiene all'account, non al socket collegato in quel momento.
+- **Coppia casuale, vault sigillato con la password**: la coppia viene generata a caso e poi cifrata lato client con la password dell'utente (`encryptPairVault`) e caricata su `POST /api/auth/zen/keys` come `zen_priv`. *Non* è derivata dalla password: una coppia derivata diventerebbe silenziosamente un'identità diversa a ogni cambio password. Il server conserva il vault in modo opaco e non può aprirlo.
+- **Provisioning**: alla registrazione, e al login con password per un account che non ha ancora un'identità, la webapp genera la coppia e carica il vault. Se l'account ha già un `zen_pub` ma nessun vault (identità collegata dal portale FID, metà privata mai caricata), il client *non* genera una seconda coppia: rinuncia all'E2EE invece di sdoppiare l'account in due identità.
+- **Il cambio password deve ri-sigillare**: il vault resta cifrato con la vecchia password finché non viene rincartato, quindi ogni percorso di cambio password chiama `resealChatIdentity(newPassword)` (`useAuthStore.ts`). Saltarlo chiude fuori l'utente dalla propria identità e da tutti i DM indirizzati a essa. `POST /api/auth/zen/set` (ricollegamento a un'identità diversa) azzera `zen_priv` per lo stesso motivo: un vault obsoleto accoppierebbe una nuova chiave pubblica a una chiave privata che non le corrisponde.
 - **Relay a Zero Fiducia**: Il server TuneCamp funge unicamente da relay opaco per le chiavi pubbliche e il testo cifrato. **Non vede mai il contenuto in chiaro dei DM**.
-- **Persistenza della coppia di chiavi**: La coppia derivata viene memorizzata in `localStorage` per utente (`useAuthStore.ts`), così sopravvive ai ricaricamenti di pagina senza doverla ri-derivare dalla password.
+- **Origine della chiave dichiarata e a prova di downgrade**: `GET /api/chat/pubkey/:username` restituisce `source: "identity"` quando la chiave viene dall'account e `source: "session"` quando viene solo da un annuncio su socket attivo. Il client (`@tunecamp/chat`) ricorda quale ha ricevuto e non permette a una chiave di sessione annunciata via WebSocket di sovrascrivere una chiave d'identità già risolta.
+- **Persistenza della coppia di chiavi**: La coppia aperta viene memorizzata in `localStorage` per utente (`useAuthStore.ts`), così sopravvive ai ricaricamenti di pagina senza la password, che non viene tenuta in memoria.
 
 ### Stanze (Rooms)
 - **Conversazioni multi-utente con nome**, separate dall'unica lobby globale. L'iscrizione è legata allo *username*, non al socket: chi entra dalla webapp resta membro anche dal proprio daemon Sidecamp e dopo una riconnessione.
@@ -44,7 +49,10 @@ Il sistema di chat si basa su un trasporto WebSocket leggero e sulla persistenza
 - **DM cross-instance**: Inviare a `utente@istanza` risolve l'istanza target tramite `federatedDiscoveryService.resolvePeerByInstance()` e consegna il messaggio a quel singolo peer (non in broadcast).
 - **Messaggi di stanza federati**: I messaggi di una stanza pubblica vengono diffusi a tutti i peer, indirizzati tramite il `global_id` della stanza (mai tramite l'`id` locale, che su ogni istanza indica una stanza diversa). Un peer che non conosce quel `global_id` scarta il messaggio invece di indovinare. Le stanze private non vengono mai federate: la membership non è ancora federata, quindi nessun peer potrebbe far rispettare chi ha diritto di leggerle.
 - **Trasporto e autenticazione**: Le istanze federate si scambiano messaggi tramite `POST /api/chat/federated/inbound`, autenticato con un header `X-Chat-Signature` — HMAC-SHA256 sulla codifica JSON di `[username, instance, text, ts, lobby, toUsername, roomGlobalId, roomName]` usando un segreto condiviso (`TUNECAMP_CHAT_FEDERATION_SECRET`). I campi sono codificati in JSON invece che uniti da un separatore, così un carattere separatore dentro il campo `text` (controllato dall'attaccante) non può produrre lo stesso input di firma di un messaggio diverso. L'endpoint restituisce `503` se il segreto non è impostato (fail-closed) e `401` su firma non valida.
-- **Deduplica**: I messaggi in entrata vengono deduplicati per hash del contenuto entro una finestra di 5 minuti in-process; nessuno storage di replay persistente.
+- **Finestra di freschezza**: una firma da sola non scade mai, quindi `ts` deve stare entro 5 minuti nel passato e 1 minuto nel futuro (tolleranza di clock skew), altrimenti il messaggio viene rifiutato con `401`. Senza questo controllo un messaggio catturato resterebbe riproducibile per sempre, una volta uscito dalla finestra di deduplica.
+- **Controllo peer conosciuto**: l'`instance` dichiarata deve corrispondere a un peer già presente nella discovery federata, altrimenti `403`. La lista peer viene aggiornata da `federatedDiscoveryService` a ogni richiesta in entrata, così anche un'istanza che non ha mai inviato nulla sa con chi federa — ma un'istanza che non ha ancora scoperto il mittente lo rifiuterà.
+- **Modello di fiducia — leggere prima di mettere in produzione**: il segreto HMAC è condiviso da tutta la federazione, quindi una firma valida dimostra che il messaggio arriva da *un* peer, non da *quale* peer. Qualsiasi peer in possesso del segreto può firmare a nome di qualsiasi utente di qualsiasi altra istanza; il controllo peer conosciuto limita questo alle istanze con cui federi già. Il segreto va trattato come confine di fiducia dell'intera federazione, non come credenziale per singolo peer, e va condiviso solo con operatori fidati. La soluzione corretta sono segreti per-peer, non ancora implementati.
+- **Deduplica**: I messaggi in entrata vengono deduplicati tramite hash dei campi firmati, tenuto in memoria per 6 minuti (finestra di freschezza più la tolleranza di skew, così una voce non può scadere mentre il messaggio è ancora abbastanza fresco da rientrare). L'`id` inviato nel body viene ignorato e ricalcolato localmente: non è coperto dal MAC, quindi accettarlo permetterebbe a un peer di scegliere la chiave di deduplica e pre-inserirla per sopprimere un messaggio successivo. Nessuno storage di replay persistente: la mappa si perde al riavvio.
 - **Il testo cifrato dei DM resta E2EE end-to-end**: la federazione inoltra solo il payload DM già cifrato tra i server — il testo in chiaro non tocca mai nessuna istanza.
 
 ---
@@ -71,7 +79,7 @@ Gli amministratori dell'istanza possono controllare il comportamento della chat 
 
 - **`peerChatEnabled`** (`boolean`): Interruttore generale per abilitare o disabilitare il servizio chat nell'istanza.
 - **`peerChatGuestEnabled`** (`boolean`): Consente agli ospiti non autenticati di partecipare alla lobby pubblica con nickname temporanei.
-- **`TUNECAMP_CHAT_FEDERATION_SECRET`** (variabile d'ambiente): Segreto HMAC condiviso per la federazione chat cross-instance. Se non impostato disabilita il relay federato (`/inbound` risponde `503`).
+- **`TUNECAMP_CHAT_FEDERATION_SECRET`** (variabile d'ambiente): Segreto HMAC condiviso per la federazione chat cross-instance. Se non impostato disabilita il relay federato (`/inbound` risponde `503`). È condiviso da tutti i peer, quindi è un confine di fiducia dell'intera federazione — vedi [Chat Federata](#chat-federata-cross-instance).
 
 ---
 
@@ -80,7 +88,7 @@ Gli amministratori dell'istanza possono controllare il comportamento della chat 
 ### Endpoint REST
 - **`GET /api/chat/history`**: Recupera la cronologia recente della lobby.
 - **`GET /api/chat/peers`**: Restituisce l'elenco degli utenti attualmente attivi nella chat.
-- **`GET /api/chat/pubkey/:username?instance=`**: Restituisce la chiave pubblica Zen SEA di un utente. Se l'utente non è locale, risolve il peer remoto e inoltra la richiesta.
+- **`GET /api/chat/pubkey/:username?instance=`**: Restituisce `{ pubkey, source }` per la chiave pubblica Zen SEA di un utente. Preferisce l'identità memorizzata sull'account (`source: "identity"`, risponde anche a utente offline), ripiega sulla chiave annunciata da una sessione attiva (`source: "session"`), poi risolve il peer remoto e inoltra la richiesta. `404` se l'utente non ha né l'una né l'altra.
 
 ### Endpoint delle Stanze
 Tutti richiedono una sessione (`/api/chat` è montato dietro `authMiddleware.requireUser`) e agiscono come l'utente autenticato.
@@ -93,7 +101,7 @@ Tutti richiedono una sessione (`/api/chat` è montato dietro `authMiddleware.req
 - **`GET /api/chat/rooms/:id/members`**: Elenco dei membri della stanza.
 
 ### Endpoint di Federazione
-- **`POST /api/chat/federated/inbound`**: Accetta un relay di messaggio firmato da un peer federato (vedi [Chat Federata](#chat-federata-cross-instance) sopra). I peer conosciuti si ottengono da `GET /api/community/peers`.
+- **`POST /api/chat/federated/inbound`**: Accetta un relay di messaggio firmato da un peer federato (vedi [Chat Federata](#chat-federata-cross-instance) sopra). I peer conosciuti si ottengono da `GET /api/community/peers`. Risposte: `202` accettato, `409` duplicato, `400` campi mancanti, `401` firma mancante/non valida oppure `ts` scaduto o troppo nel futuro, `403` istanza peer sconosciuta, `415` body non JSON, `503` segreto di federazione non impostato.
 
 ### Eventi WebSocket `/ws/chat`
 - **`chat:message`**: Payload dei messaggi della lobby o dei DM in entrata/uscita.
