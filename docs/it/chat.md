@@ -29,9 +29,14 @@ Il sistema di chat si basa su un trasporto WebSocket leggero e sulla persistenza
 - **Etichette di Dominio**: Aggiunge automaticamente il tag di dominio dell'istanza ai nickname in ambienti federati o multi-istanza (es. `artista (sudorecords)`).
 
 ### Messaggi Diretti Cifrati (E2EE)
-- **DM Privati 1-a-1**: I messaggi privati tra due utenti vengono cifrati lato client con **Zen SEA** — identità a curva ellittica (secp256k1) la cui coppia di chiavi è derivata dalla password di login tramite PBKDF2 (`deriveKeyPairFromPassword`, `@tunecamp/chat`). I messaggi vengono cifrati con un segreto condiviso derivato via ECDH (`Zen.secret` + `Zen.encrypt`/`Zen.decrypt`).
+- **DM Privati 1-a-1**: I messaggi privati tra due utenti vengono cifrati lato client con **Zen SEA** — identità a curva ellittica (secp256k1). I messaggi vengono cifrati con un segreto condiviso derivato via ECDH (`Zen.secret` + `Zen.encrypt`/`Zen.decrypt`).
+- **La chiave dei DM è l'identità Zen dell'account**, lo stesso `zen_pub` usato da FID per l'SSO cross-instance — non una coppia dedicata alla chat. È questo che rende verificabile una chiave pubblica scaricata: appartiene all'account, non al socket collegato in quel momento.
+- **Coppia casuale, vault sigillato con la password**: la coppia viene generata a caso e poi cifrata lato client con la password dell'utente (`encryptPairVault`) e caricata su `POST /api/auth/zen/keys` come `zen_priv`. *Non* è derivata dalla password: una coppia derivata diventerebbe silenziosamente un'identità diversa a ogni cambio password. Il server conserva il vault in modo opaco e non può aprirlo.
+- **Provisioning**: alla registrazione, e al login con password per un account che non ha ancora un'identità, la webapp genera la coppia e carica il vault. Se l'account ha già un `zen_pub` ma nessun vault (identità collegata dal portale FID, metà privata mai caricata), il client *non* genera una seconda coppia: rinuncia all'E2EE invece di sdoppiare l'account in due identità.
+- **Il cambio password deve ri-sigillare**: il vault resta cifrato con la vecchia password finché non viene rincartato, quindi ogni percorso di cambio password chiama `resealChatIdentity(newPassword)` (`useAuthStore.ts`). Saltarlo chiude fuori l'utente dalla propria identità e da tutti i DM indirizzati a essa. `POST /api/auth/zen/set` (ricollegamento a un'identità diversa) azzera `zen_priv` per lo stesso motivo: un vault obsoleto accoppierebbe una nuova chiave pubblica a una chiave privata che non le corrisponde.
 - **Relay a Zero Fiducia**: Il server TuneCamp funge unicamente da relay opaco per le chiavi pubbliche e il testo cifrato. **Non vede mai il contenuto in chiaro dei DM**.
-- **Persistenza della coppia di chiavi**: La coppia derivata viene memorizzata in `localStorage` per utente (`useAuthStore.ts`), così sopravvive ai ricaricamenti di pagina senza doverla ri-derivare dalla password.
+- **Origine della chiave dichiarata e a prova di downgrade**: `GET /api/chat/pubkey/:username` restituisce `source: "identity"` quando la chiave viene dall'account e `source: "session"` quando viene solo da un annuncio su socket attivo. Il client (`@tunecamp/chat`) ricorda quale ha ricevuto e non permette a una chiave di sessione annunciata via WebSocket di sovrascrivere una chiave d'identità già risolta.
+- **Persistenza della coppia di chiavi**: La coppia aperta viene memorizzata in `localStorage` per utente (`useAuthStore.ts`), così sopravvive ai ricaricamenti di pagina senza la password, che non viene tenuta in memoria.
 
 ### Stanze (Rooms)
 - **Conversazioni multi-utente con nome**, separate dall'unica lobby globale. L'iscrizione è legata allo *username*, non al socket: chi entra dalla webapp resta membro anche dal proprio daemon Sidecamp e dopo una riconnessione.
@@ -83,7 +88,7 @@ Gli amministratori dell'istanza possono controllare il comportamento della chat 
 ### Endpoint REST
 - **`GET /api/chat/history`**: Recupera la cronologia recente della lobby.
 - **`GET /api/chat/peers`**: Restituisce l'elenco degli utenti attualmente attivi nella chat.
-- **`GET /api/chat/pubkey/:username?instance=`**: Restituisce la chiave pubblica Zen SEA di un utente. Se l'utente non è locale, risolve il peer remoto e inoltra la richiesta.
+- **`GET /api/chat/pubkey/:username?instance=`**: Restituisce `{ pubkey, source }` per la chiave pubblica Zen SEA di un utente. Preferisce l'identità memorizzata sull'account (`source: "identity"`, risponde anche a utente offline), ripiega sulla chiave annunciata da una sessione attiva (`source: "session"`), poi risolve il peer remoto e inoltra la richiesta. `404` se l'utente non ha né l'una né l'altra.
 
 ### Endpoint delle Stanze
 Tutti richiedono una sessione (`/api/chat` è montato dietro `authMiddleware.requireUser`) e agiscono come l'utente autenticato.

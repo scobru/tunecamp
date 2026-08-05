@@ -217,6 +217,44 @@ describe("Zen SEA Integration Routes", () => {
 		expect(linkRes.body.passport.passportSignature).toBeDefined();
 	});
 
+	// Rebinding an account to a new Zen identity must not leave the old vault
+	// behind: `zen_priv` is the *previous* pair sealed under the user's password,
+	// and chat E2EE derives its shared secret from exactly that pair — a stale
+	// vault would pair the new public key with a private key that doesn't match it.
+	test("POST /api/auth/zen/set clears zen_priv when it writes the new zen_pub", async () => {
+		const writes: { query: string; args: any[] }[] = [];
+		const realPrepare = mockContainer.database.prepare.getMockImplementation();
+		mockContainer.database.prepare.mockImplementation((query: string) => {
+			const stmt = realPrepare(query);
+			return { ...stmt, run: (...args: any[]) => {
+				writes.push({ query, args });
+				return {};
+			} };
+		});
+
+		const challengeRes = await request(app)
+			.get("/api/auth/zen/challenge")
+			.set("Authorization", "Bearer test-token");
+		const challenge = challengeRes.body.challenge;
+		const seaSignature = await signPayload(
+			`scobru:${challenge.nonce}`,
+			altKeys1.priv,
+		);
+
+		const res = await request(app)
+			.post("/api/auth/zen/set")
+			.set("Authorization", "Bearer test-token")
+			.send({ zenPubKey: altKeys1.pub, challenge, seaSignature });
+
+		expect(res.status).toBe(200);
+		expect(res.body.zenPub).toBe(altKeys1.pub);
+
+		const update = writes.find((w) => w.query.startsWith("UPDATE admin"));
+		expect(update).toBeDefined();
+		expect(update!.query).toContain("zen_priv = NULL");
+		expect(update!.args).toEqual([altKeys1.pub, 1]);
+	});
+
 	// Helper to generate a valid apSeed (32 bytes = 64 hex chars)
 	function validApSeed(): string {
 		return crypto.randomBytes(32).toString("hex");

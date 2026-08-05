@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [4.7.0] - 2026-08-05
+
+### Changed
+
+- **Chat E2EE now uses the account's Zen identity instead of a chat-only, password-derived keypair.** DMs are encrypted to `admin.zen_pub` — the same key FID uses for cross-instance SSO — so a fetched public key can be checked against the account rather than trusted because the server said so. The pair is random and sealed under the user's password (`encryptPairVault`, stored opaquely as `zen_priv`), never derived from it: a derived pair silently became a different identity on every password change, and the old `deriveKeyPairFromPassword` is deprecated.
+- **Every password change re-seals the vault.** `ChangePasswordCard` and `SetupWizardModal` now call `resealChatIdentity(newPassword)`; without it the vault stays encrypted under the old password and the next login cannot open it, losing the identity and every DM addressed to it.
+- **`POST /api/auth/zen/set` clears `zen_priv` when it writes a new `zen_pub`.** A stale vault would otherwise pair a new public key with a private key that does not match it.
+- **Local password login now returns `zenPub`/`zenPriv`/`zenAuthMode`**, so the webapp can open the vault (or mint and upload one for an account that has no identity yet). This means webapp accounts acquire a Zen identity on signup rather than only via FID.
+
+### Security
+
+- **`GET /api/chat/pubkey/:username` prefers the account identity and labels what it returned** (`source: "identity" | "session"`). It also answers for offline users, since the key lives on the account. The chat client refuses to let a WebSocket-announced session key overwrite an already-resolved identity key, closing a downgrade path where a malicious relay could substitute a key it controls.
+- **A client whose account has a `zen_pub` but no vault does not mint a second pair** (identity bound from the FID portal, private half never uploaded). It degrades to no E2EE rather than forking one account into two identities.
+
 ## [4.6.1] - 2026-08-05
 
 ### Security
