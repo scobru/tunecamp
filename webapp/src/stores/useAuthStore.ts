@@ -9,6 +9,7 @@ import {
 	generateKeyPair,
 	encryptPairVault,
 	decryptPairVault,
+	isLegacyPairVault,
 } from "@tunecamp/chat";
 
 type UserRole = "admin" | "user" | "super_user" | "root_admin" | null;
@@ -61,6 +62,21 @@ async function resolveChatIdentity(
 		const pair = await decryptPairVault(zenPriv, password);
 		if (!pair?.pub) return null; // sealed under a different password
 		if (zenPub && pair.pub !== zenPub) return null; // vault/identity mismatch
+
+		// Vaults sealed before the PBKDF2 envelope stretch the password with a
+		// single SHA-256, so the copy the server holds is cheap to crack offline.
+		// Login is the only moment we have the password — re-seal here or the weak
+		// blob stays on the server forever. Same pub, so the upload is an update.
+		if (isLegacyPairVault(zenPriv)) {
+			try {
+				await API.uploadZenKeys(
+					pair.pub,
+					await encryptPairVault(pair as ChatKeyPair, password),
+				);
+			} catch {
+				/* keep the session; the next login retries the upgrade */
+			}
+		}
 		return pair as ChatKeyPair;
 	}
 

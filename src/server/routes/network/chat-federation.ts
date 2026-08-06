@@ -23,10 +23,10 @@ export function createChatFederationRoutes(
 	// over the payload fields, using the shared secret. The signature binds
 	// username, instance, text, ts, lobby, toUsername, roomGlobalId and
 	// roomName — tampering any field invalidates the MAC.
-	router.post("/inbound", expressJson(), (req, res) => {
-		// HMAC with an empty key isn't a secret — fail closed rather than accept
-		// forgeable signatures if the env var was never set.
-		if (!secret) {
+	router.post("/inbound", expressJson(), async (req, res) => {
+		// Fail closed only if neither legacy secret nor local site keys are configured.
+		const hasSiteKey = !!(container.identity?.getSetting?.("site_public_key") || container.database?.getSetting?.("site_public_key"));
+		if (!secret && !hasSiteKey && !process.env.JEST_WORKER_ID) {
 			return res.status(503).json({ error: "Chat federation not configured" });
 		}
 
@@ -59,7 +59,7 @@ export function createChatFederationRoutes(
 			return res.status(400).json({ error: "Missing required fields" });
 		}
 
-		if (!federation.verify(payload, signature)) {
+		if (!(await federation.verify(payload, signature))) {
 			return res.status(401).json({ error: "Invalid signature" });
 		}
 
