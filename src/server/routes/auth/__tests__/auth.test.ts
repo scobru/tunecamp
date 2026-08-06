@@ -18,7 +18,6 @@ describe("Auth Routes", () => {
 			isDefaultPassword: (jest.fn() as any).mockResolvedValue(false),
 			createAdmin: (jest.fn() as any).mockResolvedValue({ id: 1 }),
 			changePassword: (jest.fn() as any).mockResolvedValue(undefined),
-			getUserPair: jest.fn().mockReturnValue(null),
 			getUserByUsername: jest.fn(),
 			getUserProfile: jest.fn().mockReturnValue(null),
 			updateUserProfile: jest.fn(),
@@ -174,8 +173,6 @@ describe("Auth Routes", () => {
 				success: true,
 				tokenVersion: 2,
 			});
-			mockAuthService.getUserPair.mockReturnValue({ pub: "some-key" });
-
 			const res = await request(app).post("/api/auth/password").send({
 				currentPassword: "OldPassword123!",
 				newPassword: "NewPassword123!",
@@ -184,7 +181,9 @@ describe("Auth Routes", () => {
 			expect(res.status).toBe(200);
 			expect(res.body.message).toBe("Password changed successfully");
 			expect(res.body.token).toBe("mocked-jwt-token");
-			expect(res.body.pair).toEqual({ pub: "some-key" });
+			// The Zen pair is a client-sealed vault: the server must never hand
+			// a private key back over the API. See `zen_priv` in CLAUDE.md.
+			expect(res.body).not.toHaveProperty("pair");
 			expect(mockAuthService.changePassword).toHaveBeenCalledWith(
 				"admin",
 				"NewPassword123!",
@@ -314,8 +313,6 @@ describe("Auth Routes", () => {
 
 			mockAuthService.isFirstRun.mockReturnValue(false);
 			mockAuthService.isDefaultPassword.mockResolvedValue(false);
-			mockAuthService.getUserPair.mockReturnValue({ pub: "user-pub-key" });
-
 			const res = await request(authApp).get("/api/auth/status");
 
 			expect(res.status).toBe(200);
@@ -323,7 +320,8 @@ describe("Auth Routes", () => {
 			expect(res.body.username).toBe("testuser");
 			expect(res.body.artistId).toBe(5);
 			expect(res.body.userId).toBe(10);
-			expect(res.body.pair).toEqual({ pub: "user-pub-key" });
+			// A session check must not carry the account's private key.
+			expect(res.body).not.toHaveProperty("pair");
 		});
 	});
 
@@ -488,7 +486,6 @@ describe("Auth Routes", () => {
 
 			mockAuthService.isFirstRun.mockReturnValue(false);
 			mockAuthService.isDefaultPassword.mockResolvedValue(false);
-			mockAuthService.getUserPair.mockReturnValue({ pub: "user-pub-key" });
 
 			const res = await request(authApp).get("/api/auth/status");
 

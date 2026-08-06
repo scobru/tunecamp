@@ -155,6 +155,10 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         let authorized = false;
         let isAdmin = false;
         let artistId: number | null = null;
+        // Set by the credential paths that prove account ownership without
+        // carrying a role themselves (Subsonic app password / token+salt);
+        // both resolve the role from the account row below.
+        let authorizedBySubsonicSecret = false;
 
         if (p) {
             // Auth method 1: tc_ API tokens or JWT session tokens via p= parameter
@@ -179,25 +183,35 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
                     password = Buffer.from(hex, 'hex').toString('utf8');
                 }
 
-                const result = await auth.authenticateUser(u, password);
-                if (result && result.success) {
+                // The Subsonic app password is the preferred credential here, so
+                // a client configured with one never sends the account password.
+                if (auth.verifySubsonicPassword(u, password)) {
                     authorized = true;
-                    isAdmin = result.isAdmin;
-                    artistId = result.artistId;
+                    authorizedBySubsonicSecret = true;
+                } else {
+                    const result = await auth.authenticateUser(u, password);
+                    if (result && result.success) {
+                        authorized = true;
+                        isAdmin = result.isAdmin;
+                        artistId = result.artistId;
+                    }
                 }
             }
         }
 
         if (!authorized && t && s) {
-            const tokenValid = await auth.verifySubsonicToken(u, t, s);
-            if (tokenValid) {
+            if (await auth.verifySubsonicToken(u, t, s)) {
                 authorized = true;
-                const user = (db as any).db.prepare("SELECT id, role, artist_id FROM admin WHERE username = ?").get(u);
-                if (user) {
-                    const derivedRole = VisibilityGuardian.deriveRole(user.role, user.is_active !== 0);
-                    isAdmin = VisibilityGuardian.isAdminRole(derivedRole);
-                    artistId = user.artist_id;
-                }
+                authorizedBySubsonicSecret = true;
+            }
+        }
+
+        if (authorizedBySubsonicSecret) {
+            const user = (db as any).db.prepare("SELECT id, role, artist_id, is_active FROM admin WHERE username = ?").get(u);
+            if (user) {
+                const derivedRole = VisibilityGuardian.deriveRole(user.role, user.is_active !== 0);
+                isAdmin = VisibilityGuardian.isAdminRole(derivedRole);
+                artistId = user.artist_id;
             }
         }
 

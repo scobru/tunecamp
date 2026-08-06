@@ -17,10 +17,15 @@ Tunecamp exposes a full **Subsonic API** at `/rest`, compatible with Subsonic AP
 
 - **Server URL**: `https://your-server.com/rest`
 - **Username**: Your Tunecamp username (administrator or artist)
-- **Password**: Your account password
+- **Password**: Your **Subsonic password** — not your account password
+
+Generate the Subsonic password under **Profile → Settings → Subsonic Password**. It is shown once, at creation; if you lose it, generate a new one. Removing it signs out every Subsonic app using it, and leaves the rest of your account untouched.
 
 > [!NOTE]
-> **Roaming Users**: To use Subsonic on a new instance, you must first log in to that instance via the web interface at least once. This triggers the **Lazy Account Creation** (roaming) which sets up your local profile and credentials required for Subsonic authentication.
+> The Subsonic protocol authenticates as `md5(password + salt)`, so the server must be able to read the secret back — it cannot store a one-way hash. That is why Subsonic gets its own random password instead of your account password: a database leak exposes only revocable, streaming-scoped credentials.
+
+> [!NOTE]
+> **Roaming Users**: To use Subsonic on a new instance, log in to that instance via the web interface first. This triggers the **Lazy Account Creation** (roaming) which sets up your local profile; then generate a Subsonic password there.
 
 ## Supported Endpoints
 

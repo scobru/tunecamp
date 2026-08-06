@@ -303,7 +303,6 @@ export function createAuthRoutes(container: ServiceContainer): Router {
 					message: "Password changed successfully",
 					token,
 					expiresIn: "7d",
-					pair: authService.getUserPair(username), // Return the newly generated or existing pair
 				});
 			} catch (error) {
 				console.error("Password change error:", error);
@@ -428,6 +427,64 @@ export function createAuthRoutes(container: ServiceContainer): Router {
 	);
 
 	/**
+	 * GET /api/auth/subsonic-password
+	 * Reports whether an app password exists. The value itself is never
+	 * re-served: it is shown once, at creation.
+	 */
+	router.get(
+		"/subsonic-password",
+		authMiddleware.requireUser,
+		async (req: AuthenticatedRequest, res) => {
+			const username = req.username;
+			if (!username) return res.status(401).json({ error: "Unauthorized" });
+			res.json({ configured: authService.hasSubsonicAppPassword(username) });
+		},
+	);
+
+	/**
+	 * POST /api/auth/subsonic-password
+	 * Mints a Subsonic app password for the caller and returns it once.
+	 * Replaces any previous one, so existing clients must be reconfigured.
+	 */
+	router.post(
+		"/subsonic-password",
+		rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }),
+		authMiddleware.requireUser,
+		async (req: AuthenticatedRequest, res) => {
+			try {
+				const username = req.username;
+				if (!username) return res.status(401).json({ error: "Unauthorized" });
+				const appPassword = authService.createSubsonicAppPassword(username);
+				if (!appPassword)
+					return res.status(404).json({ error: "User not found" });
+				res.json({ appPassword });
+			} catch (error) {
+				console.error("Subsonic app password creation error:", error);
+				res.status(500).json({ error: "Failed to create app password" });
+			}
+		},
+	);
+
+	/**
+	 * DELETE /api/auth/subsonic-password
+	 */
+	router.delete(
+		"/subsonic-password",
+		authMiddleware.requireUser,
+		async (req: AuthenticatedRequest, res) => {
+			try {
+				const username = req.username;
+				if (!username) return res.status(401).json({ error: "Unauthorized" });
+				authService.revokeSubsonicAppPassword(username);
+				res.json({ success: true });
+			} catch (error) {
+				console.error("Subsonic app password revocation error:", error);
+				res.status(500).json({ error: "Failed to revoke app password" });
+			}
+		},
+	);
+
+	/**
 	 * POST /api/auth/reset-password-security
 	 */
 	router.post(
@@ -487,7 +544,6 @@ export function createAuthRoutes(container: ServiceContainer): Router {
 			userId: dbUser ? dbUser.id : req.userId || null,
 			role: dbUser ? dbUser.role : req.role || null,
 			isActive: dbUser ? dbUser.is_active === 1 : req.isActive !== false,
-			pair: username ? authService.getUserPair(username) : null,
 			alias: profile?.alias || null,
 			avatar:
 				profile?.avatar ||

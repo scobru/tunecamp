@@ -1,6 +1,7 @@
 import sqlite3 from 'better-sqlite3';
+import crypto from 'crypto';
 import { jest } from '@jest/globals';
-import { createAuthService } from './auth.service.js';
+import { createAuthService, encryptZenPrivHelper } from './auth.service.js';
 
 describe('createAuthService', () => {
     let db: any;
@@ -245,5 +246,87 @@ describe('createAuthService', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith("Database migration error:", expect.any(Error));
         consoleSpy.mockRestore();
+    });
+
+    describe('Subsonic app password', () => {
+        const md5 = (s: string) =>
+            crypto.createHash('md5').update(s).digest('hex');
+
+        const seedUser = async (auth: any) => {
+            // authenticateUser consults the artist registry on login.
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS artists (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT
+                )
+            `);
+            await auth.createAdmin('subuser', 'test-account-password');
+        };
+
+        test('login does not store the account password in cleartext', async () => {
+            const auth = createAuthService(db, 'secret') as any;
+            await seedUser(auth);
+
+            const result = await auth.authenticateUser('subuser', 'test-account-password');
+            expect(result).toBeTruthy();
+
+            const row = db
+                .prepare("SELECT subsonic_password FROM admin WHERE username = 'subuser'")
+                .get() as any;
+            expect(row.subsonic_password).toBeFalsy();
+        });
+
+        test('token auth accepts the app password and rejects the account password', async () => {
+            const auth = createAuthService(db, 'secret') as any;
+            await seedUser(auth);
+
+            const appPassword = auth.createSubsonicAppPassword('subuser');
+            expect(typeof appPassword).toBe('string');
+            expect(appPassword.length).toBeGreaterThan(20);
+
+            const salt = 'abc123';
+            await expect(
+                auth.verifySubsonicToken('subuser', md5(appPassword + salt), salt)
+            ).resolves.toBe(true);
+            await expect(
+                auth.verifySubsonicToken('subuser', md5('test-account-password' + salt), salt)
+            ).resolves.toBe(false);
+        });
+
+        test('p= auth accepts the app password', async () => {
+            const auth = createAuthService(db, 'secret') as any;
+            await seedUser(auth);
+            const appPassword = auth.createSubsonicAppPassword('subuser');
+
+            expect(auth.verifySubsonicPassword('subuser', appPassword)).toBe(true);
+            expect(auth.verifySubsonicPassword('subuser', 'wrong')).toBe(false);
+            // A multibyte guess must not throw on the timing-safe compare.
+            expect(auth.verifySubsonicPassword('subuser', 'pàsswòrd')).toBe(false);
+        });
+
+        test('revoking clears both the app password and any legacy copy', async () => {
+            const auth = createAuthService(db, 'secret') as any;
+            await seedUser(auth);
+            const appPassword = auth.createSubsonicAppPassword('subuser');
+            expect(auth.hasSubsonicAppPassword('subuser')).toBe(true);
+
+            auth.revokeSubsonicAppPassword('subuser');
+
+            expect(auth.hasSubsonicAppPassword('subuser')).toBe(false);
+            expect(auth.verifySubsonicPassword('subuser', appPassword)).toBe(false);
+        });
+
+        test('legacy stored password still authenticates during the deprecation window', async () => {
+            const auth = createAuthService(db, 'secret') as any;
+            await seedUser(auth);
+            // Simulate a row written by a pre-migration release.
+            db.prepare("UPDATE admin SET subsonic_password = ? WHERE username = 'subuser'")
+                .run(encryptZenPrivHelper('test-legacy-password', 'secret'));
+
+            const salt = 'zz99';
+            await expect(
+                auth.verifySubsonicToken('subuser', md5('test-legacy-password' + salt), salt)
+            ).resolves.toBe(true);
+        });
     });
 });

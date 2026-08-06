@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-08-06
+
+Major because API surface was removed and two authentication paths changed
+behaviour, not because of the size of the change.
+
+### Security
+
+- **The account password was stored in cleartext-recoverable form for every user who had ever logged in.** Subsonic's token auth is `md5(password + salt)`, so the server needs a secret it can read back, and `authenticateUser` satisfied that by writing the real password into `admin.subsonic_password` encrypted under `JWT_SECRET` — on every login, for every account, whether or not it ever touched Subsonic. A database dump plus `JWT_SECRET` therefore yielded the credential users reuse on other sites. Subsonic now authenticates against a random per-user **app password** (`admin.subsonic_token`), generated on demand and revocable, and the login path stores nothing.
+- **The Zen identity vault was sealed with an unstretched password.** `Zen.encrypt(pair, password)` derives its AES key with a single SHA-256, so an attacker holding `zen_priv` could test billions of candidate passwords per second offline. The vault is now `tcv1:<iterations>:<saltHex>:<zenBlob>` with PBKDF2-HMAC-SHA256 at 600 000 iterations over a 16-byte random salt. Iterations and salt travel with the blob so the cost can be raised later; a blob declaring fewer than 100 000 iterations is refused, since otherwise a hostile server could pick a cost it can brute-force. Pre-existing vaults still open and are re-sealed at the next login.
+- **Peer chat keys are pinned trust-on-first-use.** The server decides which key it hands out, so holding a key proved nothing about whose it was. The client now pins `SHA-256(pub)` truncated to 128 bits per peer and refuses any later key that hashes differently: the pinned key stays in force, the new one is quarantined, and the UI is told. Only an explicit user action (`acceptPeerKeyChange`) — meant to follow an out-of-band fingerprint comparison — re-pins.
+- **A DM with no usable recipient key was sent in plaintext.** The sender had no way to notice, and withholding a key is something the server can do at will, so this was a downgrade under its full control. Such a message is now refused with an explanation instead.
+- **The server no longer returns a private key.** `GET /api/auth/status` and the password-change response both included `pair`. `zen_priv` is a client-sealed vault by design, so the server had no business handing key material back at all; the vestigial server-custody helpers behind it (`getUserPair`, `updateZenPair`, `encryptZenPriv`, `decryptZenPriv`) had no callers and were removed.
+
+### Changed
+
+- **Subsonic clients must be reconfigured with an app password.** Generate one under Profile → Settings → Subsonic Password; it is shown once. Existing clients keep working during a deprecation window, because `getSubsonicSecrets` still accepts the `subsonic_password` row written by earlier releases — but new logins no longer create that row, so accounts registered or password-changed from this release on have only the app password. Once this release has been deployed long enough for users to mint one, clear the column (`UPDATE admin SET subsonic_password = NULL`) and drop it.
+- **`@tunecamp/chat` must be reinstalled** (`github:scobru/tunecamp-chat` ≥ 2.0.0). The vault format, the pinning gate and the plaintext-DM refusal all live in the shared library.
+
+### Added
+
+- **`SubsonicPasswordCard`** in Profile → Settings, with `GET`/`POST`/`DELETE /api/auth/subsonic-password` (`requireUser`, creation rate-limited to 10 per 15 minutes). Rendered for every account, including FID-only ones: those have no local password at all, so this is their first route onto Subsonic.
+
+### Fixed
+
+- **Subsonic secret-based auth ignored `is_active`.** The role lookup selected `id, role, artist_id` but tested `user.is_active !== 0`, which is always true on a row that lacks the column — so a deactivated account kept its role and `artist_id` over Subsonic.
+
 ## [4.7.0] - 2026-08-05
 
 ### Changed
