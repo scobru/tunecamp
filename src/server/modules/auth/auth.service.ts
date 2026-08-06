@@ -56,6 +56,14 @@ export interface AuthService {
 		token: string,
 		salt: string,
 	): Promise<boolean>;
+	/** Password-parameter (`p=`) auth for clients that don't do token auth. */
+	verifySubsonicPassword(username: string, password: string): boolean;
+	/** Mints a fresh Subsonic app password, replacing any previous one. Returns it once. */
+	createSubsonicAppPassword(username: string): string | null;
+	revokeSubsonicAppPassword(username: string): void;
+	hasSubsonicAppPassword(username: string): boolean;
+	/** Cleartext secrets a Subsonic client may present (app password + legacy copy). */
+	getSubsonicSecrets(username: string): string[];
 	createAdmin(
 		username: string,
 		password: string,
@@ -193,15 +201,6 @@ export interface AuthService {
 	isFirstRun(): boolean;
 	/** Returns true if the username belongs to the root admin (id=1, first created). */
 	isRootAdmin(username: string): boolean;
-	/** Returns the Zen pair for a user if they have one. */
-	getUserPair(username: string): any | null;
-	/** Updates or sets the ZEN pair for a user. */
-	updateZenPair(username: string, pair: any): void;
-
-	// ZEN Key Management
-	encryptZenPriv(priv: any): string;
-	decryptZenPriv(encrypted: string): any;
-
 	/** Derives an Ethereum-compatible private key from a ZEN pair. */
 	deriveZenWallet(pair: any, id?: string): Promise<string>;
 
@@ -675,16 +674,12 @@ export function createAuthService(
 			}
 			console.log(`✅ [AUTH] Password verified for ${username}`);
 
-			// Also store encrypted cleartext password for Subsonic token+salt auth
-			const encryptedPass = encryptZenPrivHelper(password, jwtSecret);
-			try {
-				db.prepare("UPDATE admin SET subsonic_password = ? WHERE id = ?").run(
-					encryptedPass,
-					user.id,
-				);
-			} catch (e) {
-				// Column might not exist yet
-			}
+			// The account password is deliberately NOT stored here. Subsonic's
+			// token auth (`md5(password + salt)`) needs a recoverable secret, but
+			// it does not need to be *this* one — see `createSubsonicAppPassword`.
+			// Storing the real password meant a DB + JWT_SECRET leak exposed the
+			// credential users reuse on other sites, for every account that had
+			// ever logged in, whether or not they used Subsonic at all.
 
 			let userRole: UserRole = user.role
 				? (user.role as UserRole)
@@ -779,43 +774,101 @@ export function createAuthService(
 			};
 		},
 
+		createSubsonicAppPassword(username: string): string | null {
+			const user = db
+				.prepare("SELECT id FROM admin WHERE username = ? COLLATE NOCASE")
+				.get(username) as { id: number } | undefined;
+			if (!user) return null;
+
+			// 24 bytes base64url — enough entropy that the stored copy being
+			// recoverable is not a meaningful risk, short enough to retype.
+			const appPassword = crypto.randomBytes(24).toString("base64url");
+			db.prepare(
+				"UPDATE admin SET subsonic_token = ?, subsonic_password = NULL WHERE id = ?",
+			).run(encryptZenPrivHelper(appPassword, jwtSecret), user.id);
+			return appPassword;
+		},
+
+		revokeSubsonicAppPassword(username: string): void {
+			db.prepare(
+				"UPDATE admin SET subsonic_token = NULL, subsonic_password = NULL WHERE username = ? COLLATE NOCASE",
+			).run(username);
+		},
+
+		hasSubsonicAppPassword(username: string): boolean {
+			const user = db
+				.prepare(
+					"SELECT subsonic_token FROM admin WHERE username = ? COLLATE NOCASE",
+				)
+				.get(username) as { subsonic_token: string | null } | undefined;
+			return !!user?.subsonic_token;
+		},
+
+		/**
+		 * Returns every cleartext secret a Subsonic client may legitimately
+		 * present for this account: the app password, plus — until the
+		 * deprecation window closes — the account password copy older releases
+		 * stored on login. New logins no longer create the latter.
+		 */
+		getSubsonicSecrets(username: string): string[] {
+			const user = db
+				.prepare(
+					"SELECT subsonic_token, subsonic_password FROM admin WHERE username = ? COLLATE NOCASE",
+				)
+				.get(username) as
+				| { subsonic_token: string | null; subsonic_password: string | null }
+				| undefined;
+			if (!user) return [];
+
+			const secrets: string[] = [];
+			for (const stored of [user.subsonic_token, user.subsonic_password]) {
+				if (!stored) continue;
+				try {
+					const clear = decryptZenPrivHelper(stored, jwtSecret);
+					if (typeof clear === "string" && clear) secrets.push(clear);
+				} catch (e) {
+					// Wrong JWT_SECRET or a value written in another format — skip it.
+				}
+			}
+			return secrets;
+		},
+
 		async verifySubsonicToken(
 			username: string,
 			token: string,
 			salt: string,
 		): Promise<boolean> {
-			const user = db
-				.prepare("SELECT subsonic_password FROM admin WHERE username = ?")
-				.get(username) as { subsonic_password: string } | undefined;
-			if (!user || !token) return false;
+			if (!token) return false;
 
-			// Method 1: Use stored encrypted password (preferred, standard Subsonic auth)
-			// Standard: token = md5(password + salt)
-			if (user.subsonic_password) {
-				try {
-					const clearPassword = decryptZenPrivHelper(
-						user.subsonic_password,
-						jwtSecret,
-					);
-					// Subsonic API requires MD5 for token auth; not a general-purpose hash.
-					const expectedToken = crypto
-						.createHash("md5")
-						.update(clearPassword + salt)
-						.digest("hex");
-					if (
-						token.length === expectedToken.length &&
-						crypto.timingSafeEqual(
-							Buffer.from(token),
-							Buffer.from(expectedToken),
-						)
-					)
-						return true;
-				} catch (e) {
-					// Decryption failed or lengths differ
-				}
+			// Subsonic API requires MD5 for token auth; not a general-purpose hash.
+			for (const secret of this.getSubsonicSecrets(username)) {
+				const expectedToken = crypto
+					.createHash("md5")
+					.update(secret + salt)
+					.digest("hex");
+				if (
+					token.length === expectedToken.length &&
+					crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedToken))
+				)
+					return true;
 			}
 
 			return false;
+		},
+
+		/** Password-parameter (`p=`) auth for clients that don't do token auth. */
+		verifySubsonicPassword(username: string, password: string): boolean {
+			if (!password) return false;
+			const given = Buffer.from(password, "utf8");
+			return this.getSubsonicSecrets(username).some((secret) => {
+				const expected = Buffer.from(secret, "utf8");
+				// timingSafeEqual throws on a length mismatch, so compare byte
+				// lengths — not string lengths, which differ under UTF-8.
+				return (
+					expected.length === given.length &&
+					crypto.timingSafeEqual(expected, given)
+				);
+			});
 		},
 
 		async authenticateByFid(zenPubKey: string): Promise<
@@ -1453,42 +1506,6 @@ export function createAuthService(
 				.prepare("SELECT id FROM admin WHERE username = ? COLLATE NOCASE")
 				.get(username) as { id: number } | undefined;
 			return row?.id === 1;
-		},
-
-		getUserPair(username: string): any | null {
-			const user = db
-				.prepare("SELECT zen_priv FROM admin WHERE username = ? COLLATE NOCASE")
-				.get(username) as { zen_priv: string | null } | undefined;
-			if (!user || !user.zen_priv) return null;
-			try {
-				return this.decryptZenPriv(user.zen_priv);
-			} catch (e) {
-				console.error(
-					`⚠️ Failed to decrypt ZEN keys for ${username}. (Secret mismatch?)`,
-				);
-				return null;
-			}
-		},
-
-		updateZenPair(username: string, pair: any): void {
-			const encryptedPriv = this.encryptZenPriv(pair);
-			db.prepare(
-				"UPDATE admin SET zen_pub = ?, zen_priv = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ? COLLATE NOCASE",
-			).run(pair.pub, encryptedPriv, username);
-
-			// Also ensure it's in zen_users for profile lookups
-			db.prepare(
-				`INSERT OR IGNORE INTO zen_users (pub, epub, alias) VALUES (?, ?, ?)`,
-			).run(pair.pub, pair.epub, username);
-		},
-
-		// Encryption helpers
-		encryptZenPriv(priv: any): string {
-			return encryptZenPrivHelper(priv, jwtSecret);
-		},
-
-		decryptZenPriv(encrypted: string): any {
-			return decryptZenPrivHelper(encrypted, jwtSecret);
 		},
 
 		async deriveZenWallet(pair: any, id?: string): Promise<string> {

@@ -17,10 +17,15 @@ TuneCamp espone un'API **Subsonic completa** all'indirizzo `/rest`, compatibile 
 
 - **URL del Server**: `https://tuo-server.com/rest`
 - **Nome Utente**: Il tuo nome utente di TuneCamp (amministratore o artista)
-- **Password**: La password del tuo account
+- **Password**: La tua **password Subsonic** — non la password del tuo account
+
+Genera la password Subsonic da **Profilo → Impostazioni → Subsonic Password**. Viene mostrata una sola volta, al momento della creazione; se la perdi, generane una nuova. Rimuoverla disconnette tutti i client Subsonic che la usano e non tocca il resto dell'account.
 
 > [!NOTE]
-> **Utenti in Roaming (Roaming Users)**: Per utilizzare Subsonic su una nuova istanza, devi prima effettuare l'accesso a quell'istanza tramite l'interfaccia web almeno una volta. Questo avvia il processo di **Creazione Pigra dell'Account** (roaming), che configura il tuo profilo locale e le credenziali richieste per l'autenticazione Subsonic.
+> Il protocollo Subsonic autentica come `md5(password + salt)`, quindi il server deve poter rileggere il segreto in chiaro — non può conservarne un hash a senso unico. Per questo Subsonic ha una propria password casuale invece di quella dell'account: una fuga del database espone solo credenziali revocabili e limitate allo streaming.
+
+> [!NOTE]
+> **Utenti in Roaming (Roaming Users)**: Per utilizzare Subsonic su una nuova istanza, effettua prima l'accesso a quell'istanza tramite l'interfaccia web. Questo avvia il processo di **Creazione Pigra dell'Account** (roaming), che configura il tuo profilo locale; poi genera lì una password Subsonic.
 
 ## Endpoint Supportati
 
