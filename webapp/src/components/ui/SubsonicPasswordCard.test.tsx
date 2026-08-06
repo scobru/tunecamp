@@ -24,17 +24,17 @@ describe('SubsonicPasswordCard', () => {
 
   it('shows the generated password once and offers no way to re-read it', async () => {
     api.getSubsonicPasswordStatus.mockResolvedValue({ configured: false })
-    api.createSubsonicPassword.mockResolvedValue({ appPassword: 's3cr3t-app-pw' })
+    api.createSubsonicPassword.mockResolvedValue({ appPassword: 'test-app-password' })
 
     render(<SubsonicPasswordCard />)
     fireEvent.click(await screen.findByRole('button', { name: /Generate Password/i }))
 
-    expect(await screen.findByDisplayValue('s3cr3t-app-pw')).toBeInTheDocument()
+    expect(await screen.findByDisplayValue('test-app-password')).toBeInTheDocument()
 
     // Dismissing drops it from memory — only a fresh one can be issued.
     fireEvent.click(screen.getByRole('button', { name: /Done/i }))
     await waitFor(() =>
-      expect(screen.queryByDisplayValue('s3cr3t-app-pw')).not.toBeInTheDocument(),
+      expect(screen.queryByDisplayValue('test-app-password')).not.toBeInTheDocument(),
     )
     expect(
       screen.getByRole('button', { name: /Generate New Password/i }),

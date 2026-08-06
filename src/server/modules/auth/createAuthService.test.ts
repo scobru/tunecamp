@@ -260,14 +260,14 @@ describe('createAuthService', () => {
                     name TEXT
                 )
             `);
-            await auth.createAdmin('subuser', 'AccountPassword123!');
+            await auth.createAdmin('subuser', 'test-account-password');
         };
 
         test('login does not store the account password in cleartext', async () => {
             const auth = createAuthService(db, 'secret') as any;
             await seedUser(auth);
 
-            const result = await auth.authenticateUser('subuser', 'AccountPassword123!');
+            const result = await auth.authenticateUser('subuser', 'test-account-password');
             expect(result).toBeTruthy();
 
             const row = db
@@ -289,7 +289,7 @@ describe('createAuthService', () => {
                 auth.verifySubsonicToken('subuser', md5(appPassword + salt), salt)
             ).resolves.toBe(true);
             await expect(
-                auth.verifySubsonicToken('subuser', md5('AccountPassword123!' + salt), salt)
+                auth.verifySubsonicToken('subuser', md5('test-account-password' + salt), salt)
             ).resolves.toBe(false);
         });
 
@@ -321,11 +321,11 @@ describe('createAuthService', () => {
             await seedUser(auth);
             // Simulate a row written by a pre-migration release.
             db.prepare("UPDATE admin SET subsonic_password = ? WHERE username = 'subuser'")
-                .run(encryptZenPrivHelper('LegacyPassword123!', 'secret'));
+                .run(encryptZenPrivHelper('test-legacy-password', 'secret'));
 
             const salt = 'zz99';
             await expect(
-                auth.verifySubsonicToken('subuser', md5('LegacyPassword123!' + salt), salt)
+                auth.verifySubsonicToken('subuser', md5('test-legacy-password' + salt), salt)
             ).resolves.toBe(true);
         });
     });
