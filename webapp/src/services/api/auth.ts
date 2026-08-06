@@ -81,6 +81,24 @@ export const authApi = {
 		handleResponse(
 			api.post<{ message: string }>("auth/forgot-password", { email }),
 		),
+
+	// --- Subsonic app password ---
+	// Subsonic's token auth is `md5(password + salt)`, so the server has to keep a
+	// secret it can read back. It keeps this random one instead of the account
+	// password, which users reuse elsewhere.
+	getSubsonicPasswordStatus: () =>
+		handleResponse(
+			api.get<{ configured: boolean }>("auth/subsonic-password"),
+		),
+	/** Returns the new password once — the server never serves it again. */
+	createSubsonicPassword: () =>
+		handleResponse(
+			api.post<{ appPassword: string }>("auth/subsonic-password"),
+		),
+	revokeSubsonicPassword: () =>
+		handleResponse(
+			api.delete<{ success: boolean }>("auth/subsonic-password"),
+		),
 	resetPassword: (token: string, newPassword: string) =>
 		handleResponse(
 			api.post<{ message: string }>("auth/reset-password", {

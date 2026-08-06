@@ -41,19 +41,27 @@ const MINTED_PAIR = {
     epriv: 'minted-epriv',
 };
 
+// `tcv1:` marks a vault sealed with the PBKDF2 envelope; without it the blob is
+// one of the old ones whose password was stretched by a single SHA-256.
 function fakeVault(pair: unknown, password: string): string {
+    return `tcv1:vault(${password}):${JSON.stringify(pair)}`;
+}
+
+function legacyVault(pair: unknown, password: string): string {
     return `vault(${password}):${JSON.stringify(pair)}`;
 }
 
 vi.mock('@tunecamp/chat', () => ({
     generateKeyPair: vi.fn(async () => ({ ...MINTED_PAIR })),
     encryptPairVault: vi.fn(async (pair: unknown, password: string) =>
-        `vault(${password}):${JSON.stringify(pair)}`,
+        `tcv1:vault(${password}):${JSON.stringify(pair)}`,
     ),
     decryptPairVault: vi.fn(async (vault: string, password: string) => {
+        const body = vault.startsWith('tcv1:') ? vault.slice('tcv1:'.length) : vault;
         const prefix = `vault(${password}):`;
-        return vault.startsWith(prefix) ? JSON.parse(vault.slice(prefix.length)) : null;
+        return body.startsWith(prefix) ? JSON.parse(body.slice(prefix.length)) : null;
     }),
+    isLegacyPairVault: vi.fn((vault: string) => !vault.startsWith('tcv1:')),
 }));
 
 describe('useAuthStore', () => {
@@ -205,6 +213,39 @@ describe('useAuthStore', () => {
         // Opening an existing vault must not re-upload anything.
         expect(API.uploadZenKeys).not.toHaveBeenCalled();
         expect(JSON.parse(localStorage.getItem('tunecamp_chatkey_testuser')!)).toEqual(existing);
+    });
+
+    // Login is the only moment the client holds the password, so it is the only
+    // chance to replace the weakly-sealed copy the server is storing.
+    test('login re-seals a legacy vault under the current KDF', async () => {
+        const existing = { pub: 'zen-pub', priv: 'zen-priv', epub: 'ep', epriv: 'es' };
+        mockLoginFlow('testuser', {
+            zenPub: existing.pub,
+            zenPriv: legacyVault(existing, 'password123'),
+        });
+
+        await useAuthStore.getState().login('testuser', 'password123');
+
+        expect(useAuthStore.getState().chatKeyPair).toEqual(existing);
+        expect(API.uploadZenKeys).toHaveBeenCalledWith(
+            existing.pub,
+            fakeVault(existing, 'password123'),
+        );
+    });
+
+    test('a failed re-seal does not cost the user their session', async () => {
+        const existing = { pub: 'zen-pub', priv: 'zen-priv', epub: 'ep', epriv: 'es' };
+        mockLoginFlow('testuser', {
+            zenPub: existing.pub,
+            zenPriv: legacyVault(existing, 'password123'),
+        });
+        // Once, not permanently: clearAllMocks resets calls but keeps implementations.
+        vi.mocked(API.uploadZenKeys).mockRejectedValueOnce(new Error('offline'));
+
+        await useAuthStore.getState().login('testuser', 'password123');
+
+        expect(useAuthStore.getState().chatKeyPair).toEqual(existing);
+        expect(useAuthStore.getState().isAuthenticated).toBe(true);
     });
 
     test('login mints and uploads an identity for an account that has none', async () => {
