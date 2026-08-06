@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import type { ChatService } from "./chat.service.js";
+import type { RemoteActor } from "../../core/database.types.js";
 
 // ponytail: dedup stays in-process; if this ever runs clustered, move to Redis
 // or a shared SQLite table. For a single Node process the Set is correct and
@@ -28,14 +29,22 @@ export interface FederatedChatMessage {
 	roomName?: string;
 }
 
+export interface ChatFederationDatabase {
+	getSetting(key: string): string | undefined;
+	getRemoteActor(uri: string): RemoteActor | undefined;
+	upsertRemoteActor(actor: Partial<RemoteActor>): void;
+}
+
 export class ChatFederationService {
 	private dedup = new Map<string, number>();
 	private secret: string;
 	private peers: string[] = [];
+	private publicKeyCache = new Map<string, string>();
 
 	constructor(
 		private chatService: ChatService,
-		secret: string,
+		private db: ChatFederationDatabase,
+		secret = "",
 	) {
 		this.secret = secret;
 	}
@@ -49,9 +58,8 @@ export class ChatFederationService {
 	}
 
 	/**
-	 * HMAC-SHA256 over the signed fields. JSON-encoded rather than joined on a
-	 * separator: `text` is attacker-controlled, so a separator it can contain
-	 * would let two different messages produce the same signing input.
+	 * RSA-SHA256 signature (asymmetric) over the JSON-encoded payload fields,
+	 * falling back to HMAC-SHA256 using the legacy secret if site keys are not set.
 	 */
 	sign(payload: FederatedChatMessage): string {
 		const signInput = JSON.stringify([
@@ -64,19 +72,189 @@ export class ChatFederationService {
 			payload.roomGlobalId || "",
 			payload.roomName || "",
 		]);
+		const privateKey = this.db.getSetting("site_private_key");
+		if (privateKey) {
+			try {
+				const signer = crypto.createSign("sha256");
+				signer.update(signInput);
+				return signer.sign(privateKey, "hex");
+			} catch (e) {
+				console.error("❌ Failed to sign message asymetrically, falling back to HMAC:", e);
+			}
+		}
 		return crypto
-			.createHmac("sha256", this.secret)
+			.createHmac("sha256", this.secret || "")
 			.update(signInput)
 			.digest("hex");
 	}
 
-	verify(payload: FederatedChatMessage, signature: string): boolean {
-		const expected = Buffer.from(this.sign(payload));
-		const given = Buffer.from(String(signature || ""));
-		return (
-			expected.length === given.length &&
-			crypto.timingSafeEqual(expected, given)
-		);
+	async verify(payload: FederatedChatMessage, signature: string): Promise<boolean> {
+		const signInput = JSON.stringify([
+			payload.username,
+			payload.instance,
+			payload.text,
+			payload.ts,
+			payload.lobby ?? false,
+			payload.toUsername || "",
+			payload.roomGlobalId || "",
+			payload.roomName || "",
+		]);
+
+		// 1. Try asymmetric verification first
+		const publicKey = await this.resolvePeerPublicKey(payload.instance);
+		if (publicKey) {
+			try {
+				const verifier = crypto.createVerify("sha256");
+				verifier.update(signInput);
+				const verified = verifier.verify(publicKey, signature, "hex");
+				if (verified) return true;
+			} catch (e: any) {
+				console.error(`❌ Asymmetric signature verification failed for ${payload.instance}:`, e.message);
+			}
+		}
+
+		// 2. Fallback to legacy HMAC verification
+		if (this.secret) {
+			try {
+				const expected = crypto
+					.createHmac("sha256", this.secret)
+					.update(signInput)
+					.digest("hex");
+				const expectedBuf = Buffer.from(expected);
+				const givenBuf = Buffer.from(String(signature || ""));
+				if (
+					expectedBuf.length === givenBuf.length &&
+					crypto.timingSafeEqual(expectedBuf, givenBuf)
+				) {
+					return true;
+				}
+			} catch (e) {
+				// ignore
+			}
+		}
+
+		return false;
+	}
+
+	private getPeerUrl(instance: string): string | null {
+		const claimed = String(instance || "").toLowerCase();
+		if (!claimed) return null;
+		for (const peer of this.peers) {
+			try {
+				const url = new URL(peer);
+				const host = url.hostname.toLowerCase();
+				if (host === claimed || host.split(".")[0] === claimed) {
+					return url.origin;
+				}
+			} catch {
+				// ignore
+			}
+		}
+		return null;
+	}
+
+	async resolvePeerPublicKey(instance: string): Promise<string | null> {
+		const origin = this.getPeerUrl(instance);
+		if (!origin) return null;
+
+		// Check in-memory cache first
+		if (this.publicKeyCache.has(origin)) {
+			return this.publicKeyCache.get(origin) || null;
+		}
+
+		// Try to resolve via NodeInfo
+		const actorId = await this.fetchNodeInfoActorId(origin);
+		if (!actorId) {
+			// Fallback guess: standard TuneCamp actor ID
+			const fallbackActorId = `${origin}/users/site`;
+			const cachedActor = this.db.getRemoteActor(fallbackActorId);
+			if (cachedActor?.public_key) {
+				this.publicKeyCache.set(origin, cachedActor.public_key);
+				return cachedActor.public_key;
+			}
+			const pubKey = await this.fetchActorPublicKey(fallbackActorId);
+			if (pubKey) {
+				this.db.upsertRemoteActor({
+					uri: fallbackActorId,
+					type: "Application",
+					public_key: pubKey,
+				});
+				this.publicKeyCache.set(origin, pubKey);
+				return pubKey;
+			}
+			return null;
+		}
+
+		// Try DB cache with resolved actorId
+		const cachedActor = this.db.getRemoteActor(actorId);
+		if (cachedActor?.public_key) {
+			this.publicKeyCache.set(origin, cachedActor.public_key);
+			return cachedActor.public_key;
+		}
+
+		// Fetch from the actor endpoint
+		const pubKey = await this.fetchActorPublicKey(actorId);
+		if (pubKey) {
+			this.db.upsertRemoteActor({
+				uri: actorId,
+				type: "Application",
+				public_key: pubKey,
+			});
+			this.publicKeyCache.set(origin, pubKey);
+			return pubKey;
+		}
+
+		return null;
+	}
+
+	private async fetchNodeInfoActorId(origin: string): Promise<string | null> {
+		try {
+			const wellKnownRes = await fetch(`${origin}/.well-known/nodeinfo`);
+			if (wellKnownRes.ok) {
+				const wellKnown = await wellKnownRes.json() as any;
+				const nodeInfoLink = wellKnown.links?.find((l: any) => l.rel?.includes("nodeinfo"));
+				if (nodeInfoLink?.href) {
+					const niRes = await fetch(nodeInfoLink.href);
+					if (niRes.ok) {
+						const ni = await niRes.json() as any;
+						if (ni.metadata?.actorId) return ni.metadata.actorId;
+					}
+				}
+			}
+		} catch (e) {
+			// ignore
+		}
+
+		try {
+			const res = await fetch(`${origin}/api/v1/instance/nodeinfo/2.0`);
+			if (res.ok) {
+				const ni = await res.json() as any;
+				if (ni.software?.name === "tunecamp" && ni.metadata?.actorId) {
+					return ni.metadata.actorId;
+				}
+			}
+		} catch (e) {
+			// ignore
+		}
+
+		return null;
+	}
+
+	private async fetchActorPublicKey(actorId: string): Promise<string | null> {
+		try {
+			const res = await fetch(actorId, {
+				headers: {
+					"Accept": "application/activity+json, application/ld+json, application/json",
+				},
+			});
+			if (res.ok) {
+				const actor = await res.json() as any;
+				return actor.publicKey?.publicKeyPem || null;
+			}
+		} catch (e: any) {
+			console.log(`ℹ️ Peer public key fetch unavailable for ${actorId}: ${e.message}`);
+		}
+		return null;
 	}
 
 	/**
@@ -195,7 +373,8 @@ export class ChatFederationService {
 
 export function createChatFederationService(
 	chatService: ChatService,
-	secret: string,
+	db: ChatFederationDatabase,
+	secret = "",
 ): ChatFederationService {
-	return new ChatFederationService(chatService, secret);
+	return new ChatFederationService(chatService, db, secret);
 }
