@@ -10,13 +10,23 @@ function fakeChatService() {
 	};
 }
 
+import crypto from "crypto";
+
 describe("ChatFederationService", () => {
 	let service: ReturnType<typeof createChatFederationService>;
 	let fake: ReturnType<typeof fakeChatService>;
+	let mockDb: any;
 
 	beforeEach(() => {
 		fake = fakeChatService();
-		service = createChatFederationService(fake as any, "shared-secret");
+		mockDb = {
+			settings: {} as Record<string, string>,
+			remoteActors: {} as Record<string, any>,
+			getSetting(key: string) { return this.settings[key]; },
+			getRemoteActor(uri: string) { return this.remoteActors[uri]; },
+			upsertRemoteActor(actor: any) { this.remoteActors[actor.uri] = { ...this.remoteActors[actor.uri], ...actor }; }
+		};
+		service = createChatFederationService(fake as any, mockDb, "shared-secret");
 		service.setPeers(["https://a.example.com", "https://b.example.com"]);
 	});
 
@@ -29,11 +39,12 @@ describe("ChatFederationService", () => {
 				ts: 1000,
 				lobby: true,
 			};
+			// Since keys are not set, it falls back to HMAC (which is a 64-char hex string)
 			expect(service.sign(payload)).toHaveLength(64);
 			expect(service.sign(payload)).toBe(service.sign(payload));
 		});
 
-		it("verifies a matching signature and rejects a tampered one", () => {
+		it("verifies a matching signature and rejects a tampered one", async () => {
 			const payload: FederatedChatMessage = {
 				username: "alice",
 				instance: "a.example.com",
@@ -41,9 +52,9 @@ describe("ChatFederationService", () => {
 				ts: 1000,
 			};
 			const sig = service.sign(payload);
-			expect(service.verify(payload, sig)).toBe(true);
-			expect(service.verify({ ...payload, text: "bye" }, sig)).toBe(false);
-			expect(service.verify(payload, "bad")).toBe(false);
+			expect(await service.verify(payload, sig)).toBe(true);
+			expect(await service.verify({ ...payload, text: "bye" }, sig)).toBe(false);
+			expect(await service.verify(payload, "bad")).toBe(false);
 		});
 
 		it("does not let separator characters in text forge another payload", () => {
@@ -64,6 +75,45 @@ describe("ChatFederationService", () => {
 				lobby: false,
 			};
 			expect(service.sign(forged)).not.toBe(service.sign(honest));
+		});
+	});
+
+	describe("asymmetric sign / verify", () => {
+		let peerPublicKey: string;
+		let peerPrivateKey: string;
+
+		beforeEach(() => {
+			const keys = crypto.generateKeyPairSync("rsa", {
+				modulusLength: 2048,
+				publicKeyEncoding: { type: "pkcs1", format: "pem" },
+				privateKeyEncoding: { type: "pkcs1", format: "pem" },
+			});
+			peerPublicKey = keys.publicKey;
+			peerPrivateKey = keys.privateKey;
+		});
+
+		it("signs with site private key and verifies with peer public key", async () => {
+			// Local signs with our key
+			mockDb.settings["site_private_key"] = peerPrivateKey;
+
+			// Seed peer's public key in the db cache so no network call is needed
+			mockDb.remoteActors["https://a.example.com/users/site"] = {
+				uri: "https://a.example.com/users/site",
+				public_key: peerPublicKey,
+			};
+
+			const payload: FederatedChatMessage = {
+				username: "alice",
+				instance: "a.example.com",
+				text: "hello asymmetric",
+				ts: 1000,
+			};
+
+			const sig = service.sign(payload);
+			// Verification should succeed using asymmetric crypto
+			expect(await service.verify(payload, sig)).toBe(true);
+			// Tampered payload should fail
+			expect(await service.verify({ ...payload, text: "forged" }, sig)).toBe(false);
 		});
 	});
 
