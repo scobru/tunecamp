@@ -1,4 +1,4 @@
-import { describe, expect, it, jest, beforeEach } from "@jest/globals";
+import { describe, expect, it, jest, beforeEach, afterEach } from "@jest/globals";
 import {
 	createChatFederationService,
 	type FederatedChatMessage,
@@ -16,8 +16,17 @@ describe("ChatFederationService", () => {
 	let service: ReturnType<typeof createChatFederationService>;
 	let fake: ReturnType<typeof fakeChatService>;
 	let mockDb: any;
+	const realFetch = global.fetch;
 
 	beforeEach(() => {
+		// `verify` resolves the peer's key over the network whenever the DB has no
+		// cached actor. Unstubbed, that is a real DNS lookup per assertion: fast
+		// enough alone to look harmless, slow enough under a parallel run to make
+		// the suite flaky. Tests that want a peer key seed `mockDb.remoteActors`.
+		global.fetch = jest.fn(async () => {
+			throw new Error("ENOTFOUND");
+		}) as any;
+
 		fake = fakeChatService();
 		mockDb = {
 			settings: {} as Record<string, string>,
@@ -28,6 +37,11 @@ describe("ChatFederationService", () => {
 		};
 		service = createChatFederationService(fake as any, mockDb, "shared-secret");
 		service.setPeers(["https://a.example.com", "https://b.example.com"]);
+	});
+
+	afterEach(() => {
+		global.fetch = realFetch;
+		jest.restoreAllMocks();
 	});
 
 	describe("sign / verify", () => {
@@ -114,6 +128,51 @@ describe("ChatFederationService", () => {
 			expect(await service.verify(payload, sig)).toBe(true);
 			// Tampered payload should fail
 			expect(await service.verify({ ...payload, text: "forged" }, sig)).toBe(false);
+		});
+
+		it("refuses a shared-secret signature once the peer publishes a key", async () => {
+			mockDb.remoteActors["https://a.example.com/users/site"] = {
+				uri: "https://a.example.com/users/site",
+				public_key: peerPublicKey,
+			};
+
+			const payload: FederatedChatMessage = {
+				username: "alice",
+				instance: "a.example.com",
+				text: "downgrade attempt",
+				ts: 1000,
+			};
+
+			// A well-formed HMAC from anyone holding the federation-wide secret.
+			const hmac = crypto
+				.createHmac("sha256", "shared-secret")
+				.update(
+					JSON.stringify([
+						payload.username,
+						payload.instance,
+						payload.text,
+						payload.ts,
+						false,
+						"",
+						"",
+						"",
+					]),
+				)
+				.digest("hex");
+
+			expect(await service.verify(payload, hmac)).toBe(false);
+		});
+
+		it("still accepts a shared-secret signature from a peer with no published key", async () => {
+			const payload: FederatedChatMessage = {
+				username: "alice",
+				instance: "a.example.com",
+				text: "legacy peer",
+				ts: 1000,
+			};
+			// No site_private_key and no cached actor: sign() and verify() both
+			// take the HMAC path.
+			expect(await service.verify(payload, service.sign(payload))).toBe(true);
 		});
 	});
 

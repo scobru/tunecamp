@@ -6,8 +6,10 @@ import type { FederatedChatMessage } from "../../modules/chat/chat-federation.se
 // replay is bounded by a timestamp freshness window plus the in-memory dedup
 // map, which is enough for a single process. If you need durable replay
 // protection, add a SQLite table keyed by message id.
-// The shared secret still means any peer can sign as any other peer: the
-// known-instance check narrows that to the federation, not to one host.
+// Signatures are asymmetric (the peer's published actor key) wherever that key
+// resolves; the shared secret is only accepted from a peer that publishes none,
+// and there it still means any peer can sign as any other, narrowed to the
+// federation by the known-instance check.
 
 export function createChatFederationRoutes(
 	container: ServiceContainer,
@@ -59,6 +61,13 @@ export function createChatFederationRoutes(
 			return res.status(400).json({ error: "Missing required fields" });
 		}
 
+		// Must run before `verify`, not after: resolving the sender's public key
+		// goes through the peer list, so verifying first would find it empty on
+		// the first inbound message, fail to resolve any key, and silently accept
+		// the weaker shared-secret signature instead. Assigning peers reveals
+		// nothing to the caller — no response depends on it yet.
+		federation.setPeers(container.federatedDiscoveryService.getPeers());
+
 		if (!(await federation.verify(payload, signature))) {
 			return res.status(401).json({ error: "Invalid signature" });
 		}
@@ -69,9 +78,6 @@ export function createChatFederationRoutes(
 			return res.status(401).json({ error: "Stale or future-dated message" });
 		}
 
-		// Peers are otherwise only loaded on outbound fanout, so an instance that
-		// has not sent anything yet would have an empty list and refuse everyone.
-		federation.setPeers(container.federatedDiscoveryService.getPeers());
 		if (!federation.isKnownInstance(payload.instance)) {
 			return res.status(403).json({ error: "Unknown peer instance" });
 		}
