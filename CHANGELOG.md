@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [5.1.0] - 2026-08-06
+
+### Security
+
+- **A federated chat message could be downgraded from the sender's own key to the shared federation secret.** `verify()` checked the claimed peer's published ActivityPub key first, but on any failure — bad signature, key not resolvable, peer momentarily unreachable — it fell through and accepted an HMAC minted with `chatFederationSecret`. That secret is held by every instance in the federation, so anyone with it could sign as any user of any host simply by making the asymmetric check fail. A resolved key is now conclusive: the message is accepted or refused on that key alone. The shared secret is still accepted, but only from a peer that publishes no key at all.
+- **The inbound route loaded its peer list after verifying the signature.** Key resolution walks that list to map a claimed instance name onto an origin, so on the first inbound message of a process the list was empty, no key ever resolved, and the weaker path was taken for a peer that had a perfectly good key published. `setPeers` now runs before `verify`.
+
+### Changed
+
+- **Cross-instance chat federation now requires peers on 5.1.0 or later** wherever both sides publish a site actor key. An instance still running an older release signs with the shared secret while publishing a key, and those messages are now refused. Upgrade peers before relying on cross-instance chat; a peer with no `site_public_key` keeps working over the legacy secret.
+
 ## [5.0.0] - 2026-08-06
 
 Major because API surface was removed and two authentication paths changed

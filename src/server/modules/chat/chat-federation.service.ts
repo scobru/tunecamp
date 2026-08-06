@@ -100,20 +100,24 @@ export class ChatFederationService {
 			payload.roomName || "",
 		]);
 
-		// 1. Try asymmetric verification first
+		// 1. Try asymmetric verification first. Once the claimed instance has a
+		// published key, that key is the only thing we accept: the HMAC secret is
+		// shared by the whole federation, so falling through to it here would let
+		// anyone holding that secret sign as this host just by making the
+		// asymmetric check fail. A key that resolves is a decision, not a hint.
 		const publicKey = await this.resolvePeerPublicKey(payload.instance);
 		if (publicKey) {
 			try {
 				const verifier = crypto.createVerify("sha256");
 				verifier.update(signInput);
-				const verified = verifier.verify(publicKey, signature, "hex");
-				if (verified) return true;
+				return verifier.verify(publicKey, signature, "hex");
 			} catch (e: any) {
 				console.error(`❌ Asymmetric signature verification failed for ${payload.instance}:`, e.message);
+				return false;
 			}
 		}
 
-		// 2. Fallback to legacy HMAC verification
+		// 2. Fallback to legacy HMAC, only for a peer that publishes no key at all.
 		if (this.secret) {
 			try {
 				const expected = crypto
@@ -268,11 +272,10 @@ export class ChatFederationService {
 	}
 
 	/**
-	 * `instance` is self-asserted by the sender and the HMAC secret is shared by
-	 * the whole federation, so a valid signature only proves "some peer", not
-	 * "this peer". Requiring the claimed origin to be a peer we already know at
-	 * least keeps hosts outside the federation out. Per-peer secrets would be
-	 * the real fix.
+	 * `instance` is self-asserted by the sender. For a peer that publishes a key
+	 * the signature already pins the message to that host; for one still on the
+	 * shared HMAC secret it only proves "some peer", so requiring the claimed
+	 * origin to be a peer we already know keeps hosts outside the federation out.
 	 */
 	isKnownInstance(instance: string): boolean {
 		const claimed = String(instance || "").toLowerCase();
