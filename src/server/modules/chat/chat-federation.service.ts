@@ -12,6 +12,8 @@ export const MAX_CLOCK_SKEW_MS = 60 * 1000; // 1 minute
 // Must outlive the freshness window: if an entry expired first, a message could
 // fall out of dedup while still young enough to be accepted a second time.
 const DEDUP_WINDOW_MS = MAX_MESSAGE_AGE_MS + MAX_CLOCK_SKEW_MS;
+/** Backoff between outbound delivery attempts. Short: see `scheduleRetry`. */
+export const RETRY_BACKOFF_MS = [2_000, 8_000, 30_000];
 
 export interface FederatedChatMessage {
 	id?: string;
@@ -37,6 +39,7 @@ export interface ChatFederationDatabase {
 
 export class ChatFederationService {
 	private dedup = new Map<string, number>();
+	private retryTimers = new Set<NodeJS.Timeout>();
 	private secret: string;
 	private peers: string[] = [];
 	private publicKeyCache = new Map<string, string>();
@@ -58,8 +61,12 @@ export class ChatFederationService {
 	}
 
 	/**
-	 * RSA-SHA256 signature (asymmetric) over the JSON-encoded payload fields,
-	 * falling back to HMAC-SHA256 using the legacy secret if site keys are not set.
+	 * RSA-SHA256 signature (asymmetric) over the JSON-encoded payload fields.
+	 *
+	 * The HMAC branch is a last resort for an instance whose site keypair is
+	 * missing or unusable. Peers no longer accept it — `verify` is asymmetric
+	 * only — so it exists to keep the send path from throwing, not to federate:
+	 * such a message will be refused at the far end.
 	 */
 	sign(payload: FederatedChatMessage): string {
 		const signInput = JSON.stringify([
@@ -100,44 +107,27 @@ export class ChatFederationService {
 			payload.roomName || "",
 		]);
 
-		// 1. Try asymmetric verification first. Once the claimed instance has a
-		// published key, that key is the only thing we accept: the HMAC secret is
-		// shared by the whole federation, so falling through to it here would let
-		// anyone holding that secret sign as this host just by making the
-		// asymmetric check fail. A key that resolves is a decision, not a hint.
+		// Asymmetric only. The legacy HMAC fallback was removed: that secret is
+		// shared by the whole federation, so it proves "some peer we already
+		// know", never *which* one — any holder could sign as any other host
+		// simply by being a peer. Every instance generates a site keypair at
+		// boot (`generateKeysForAllArtists`) and publishes it on its site actor,
+		// so a peer with no resolvable key is misconfigured or unreachable, and
+		// a message we cannot attribute is refused rather than half-trusted.
 		const publicKey = await this.resolvePeerPublicKey(payload.instance);
-		if (publicKey) {
-			try {
-				const verifier = crypto.createVerify("sha256");
-				verifier.update(signInput);
-				return verifier.verify(publicKey, signature, "hex");
-			} catch (e: any) {
-				console.error(`❌ Asymmetric signature verification failed for ${payload.instance}:`, e.message);
-				return false;
-			}
+		if (!publicKey) {
+			console.error(`❌ No published key for ${payload.instance}; refusing unattributable message`);
+			return false;
 		}
 
-		// 2. Fallback to legacy HMAC, only for a peer that publishes no key at all.
-		if (this.secret) {
-			try {
-				const expected = crypto
-					.createHmac("sha256", this.secret)
-					.update(signInput)
-					.digest("hex");
-				const expectedBuf = Buffer.from(expected);
-				const givenBuf = Buffer.from(String(signature || ""));
-				if (
-					expectedBuf.length === givenBuf.length &&
-					crypto.timingSafeEqual(expectedBuf, givenBuf)
-				) {
-					return true;
-				}
-			} catch (e) {
-				// ignore
-			}
+		try {
+			const verifier = crypto.createVerify("sha256");
+			verifier.update(signInput);
+			return verifier.verify(publicKey, signature, "hex");
+		} catch (e: any) {
+			console.error(`❌ Asymmetric signature verification failed for ${payload.instance}:`, e.message);
+			return false;
 		}
-
-		return false;
 	}
 
 	private getPeerUrl(instance: string): string | null {
@@ -166,49 +156,57 @@ export class ChatFederationService {
 			return this.publicKeyCache.get(origin) || null;
 		}
 
-		// Try to resolve via NodeInfo
 		const actorId = await this.fetchNodeInfoActorId(origin);
-		if (!actorId) {
-			// Fallback guess: standard TuneCamp actor ID
-			const fallbackActorId = `${origin}/users/site`;
-			const cachedActor = this.db.getRemoteActor(fallbackActorId);
+		for (const candidate of this.actorIdCandidates(origin, actorId)) {
+			const cachedActor = this.db.getRemoteActor(candidate);
 			if (cachedActor?.public_key) {
 				this.publicKeyCache.set(origin, cachedActor.public_key);
 				return cachedActor.public_key;
 			}
-			const pubKey = await this.fetchActorPublicKey(fallbackActorId);
+			const pubKey = await this.fetchActorPublicKey(candidate);
 			if (pubKey) {
 				this.db.upsertRemoteActor({
-					uri: fallbackActorId,
+					uri: candidate,
 					type: "Application",
 					public_key: pubKey,
 				});
 				this.publicKeyCache.set(origin, pubKey);
 				return pubKey;
 			}
-			return null;
-		}
-
-		// Try DB cache with resolved actorId
-		const cachedActor = this.db.getRemoteActor(actorId);
-		if (cachedActor?.public_key) {
-			this.publicKeyCache.set(origin, cachedActor.public_key);
-			return cachedActor.public_key;
-		}
-
-		// Fetch from the actor endpoint
-		const pubKey = await this.fetchActorPublicKey(actorId);
-		if (pubKey) {
-			this.db.upsertRemoteActor({
-				uri: actorId,
-				type: "Application",
-				public_key: pubKey,
-			});
-			this.publicKeyCache.set(origin, pubKey);
-			return pubKey;
 		}
 
 		return null;
+	}
+
+	/**
+	 * Actor URIs to try, best first.
+	 *
+	 * A peer whose `publicUrl` is misconfigured advertises a NodeInfo `actorId`
+	 * on some other host, which then 404s — and an unresolved key silently
+	 * downgrades verification to the shared HMAC secret. So when the advertised
+	 * actorId is cross-origin, try its path on the peer's own origin first: that
+	 * keeps the key we trust for `instance` coming from `instance` itself rather
+	 * than from a host it merely names. The advertised URI is still tried after,
+	 * since a peer may genuinely serve its actor elsewhere.
+	 */
+	private actorIdCandidates(origin: string, actorId: string | null): string[] {
+		const candidates: string[] = [];
+		if (actorId) {
+			let parsed: URL | null = null;
+			try {
+				parsed = new URL(actorId);
+			} catch {
+				// Not a URL: unusable as-is, and there is no path to rewrite.
+			}
+			if (parsed?.origin === origin) {
+				candidates.push(actorId);
+			} else if (parsed) {
+				candidates.push(`${origin}${parsed.pathname}`, actorId);
+			}
+		}
+		// Legacy guess, for a peer that advertises no actorId at all.
+		candidates.push(`${origin}/users/site`);
+		return [...new Set(candidates)];
 	}
 
 	private async fetchNodeInfoActorId(origin: string): Promise<string | null> {
@@ -327,19 +325,80 @@ export class ChatFederationService {
 
 		const targets = targetPeer ? [targetPeer] : this.peers;
 		await Promise.allSettled(
-			targets.map((peer) =>
-				fetch(`${peer}/api/chat/federated/inbound`, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						"X-Chat-Signature": signature,
-					},
-					body,
-				}).then((r) => {
-					if (!r.ok) throw new Error(`HTTP ${r.status}`);
-				}),
-			),
+			targets.map((peer) => this.deliver(peer, body, signature, payload.ts, 0)),
 		);
+	}
+
+	/**
+	 * POST one message to one peer, retrying a transient failure.
+	 *
+	 * A permanent answer is not retried: a 4xx other than 429 means the peer
+	 * refused this message on its merits (bad signature, unknown instance,
+	 * stale `ts`), and nothing about resending it unchanged would help.
+	 */
+	private async deliver(
+		peer: string,
+		body: string,
+		signature: string,
+		ts: number,
+		attempt: number,
+	): Promise<void> {
+		try {
+			const res = await fetch(`${peer}/api/chat/federated/inbound`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"X-Chat-Signature": signature,
+				},
+				body,
+			});
+			if (res.ok) return;
+			if (res.status < 500 && res.status !== 429) {
+				console.warn(`⚠️ Chat delivery to ${peer} refused: HTTP ${res.status}`);
+				return;
+			}
+			this.scheduleRetry(peer, body, signature, ts, attempt, `HTTP ${res.status}`);
+		} catch (e: any) {
+			this.scheduleRetry(peer, body, signature, ts, attempt, e?.message || String(e));
+		}
+	}
+
+	/**
+	 * Retries are bounded by the receiver's own freshness window, not by an
+	 * attempt count alone: a peer refuses anything older than
+	 * `MAX_MESSAGE_AGE_MS`, and a retry carries the original signed `ts`, so
+	 * once that deadline passes there is no delay at which the message could
+	 * still be accepted. That is also why there is no durable queue here — a
+	 * message surviving a restart would already be too stale to deliver.
+	 */
+	private scheduleRetry(
+		peer: string,
+		body: string,
+		signature: string,
+		ts: number,
+		attempt: number,
+		reason: string,
+	): void {
+		const delay = RETRY_BACKOFF_MS[attempt];
+		if (delay === undefined || Date.now() + delay >= ts + MAX_MESSAGE_AGE_MS) {
+			console.warn(
+				`⚠️ Chat delivery to ${peer} abandoned after ${attempt + 1} attempt(s): ${reason}`,
+			);
+			return;
+		}
+		const timer = setTimeout(() => {
+			this.retryTimers.delete(timer);
+			void this.deliver(peer, body, signature, ts, attempt + 1);
+		}, delay);
+		// Never keep the process alive for a chat retry.
+		timer.unref?.();
+		this.retryTimers.add(timer);
+	}
+
+	/** Drop scheduled retries. For shutdown, and for tests that must not leak timers. */
+	stopRetries(): void {
+		for (const timer of this.retryTimers) clearTimeout(timer);
+		this.retryTimers.clear();
 	}
 
 	private computeId(payload: FederatedChatMessage): string {

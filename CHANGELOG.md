@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [5.3.0] - 2026-08-07
+
+### Added
+
+- **Federated chat deliveries now retry a transient failure.** Fan-out previously discarded every outcome through `Promise.allSettled`, so a peer that was restarting lost the message with nothing logged. A network error, `5xx` or `429` is now retried after 2s, 8s and 30s; a `4xx` other than `429` is not, since the peer refused the message on its merits and resending the same bytes cannot change the answer. Retries are bounded by the receiver's freshness window rather than an attempt count alone — a retry carries the original signed `ts`, so past 5 minutes no delay could still get it accepted, and the attempt is abandoned with a logged warning. Deliberately not durable: unlike `ap_delivery_queue`, anything surviving a restart would already be too stale to deliver. `stopRetries()` is called during graceful shutdown.
+
+### Documentation
+
+- Documented what the chat server actually stores. Direct messages are never persisted, locally or on receipt from a peer — only lobby and room traffic reaches SQLite, and no table records who messaged whom. Also documented the routing metadata a peer necessarily sees in flight, the delivery/retry semantics, and why the protocol is federated rather than peer-to-peer.
+
+## [5.2.0] - 2026-08-07
+
+### Security
+
+- **The shared-secret fallback for federated chat signatures is gone.** `verify()` is asymmetric only: a message whose sender cannot be pinned to one host is refused rather than half-trusted. Previously a peer that published no resolvable key was authenticated by `chatFederationSecret`, which every instance in the federation holds — so a valid signature proved "some peer", never which one. This was reachable for any claimed instance, not only known ones: `verify` runs *before* the known-peer check, so an unknown claimant's HMAC signature verified and was stopped only by the later `403`. `/inbound` now fails closed on a missing `site_public_key` alone; the secret no longer stands in for it.
+- **Key resolution now prefers the peer's own origin.** A peer whose NodeInfo advertised an `actorId` on another host — a `publicUrl` misconfiguration — never resolved a key and silently fell back to the shared secret. The advertised path is now tried on the peer's origin first, and only then the advertised URI, so the key trusted for an instance comes from that instance. The resolved key is cached under the URI it was actually fetched from.
+
+### Changed
+
+- An instance outside the peer list is now refused at `401` (no origin from which to resolve a key) rather than reaching the `403` unknown-peer response.
+- **Wire-compat break: cross-instance chat now requires peers on 5.2.0 or later.** A peer on an older release still accepts shared-secret signatures, and one before 5.1.0 signs with the secret while already publishing a site key. Upgrade both sides. `TUNECAMP_CHAT_FEDERATION_SECRET` is obsolete: it authenticates nothing on receipt, and survives only as a last-resort signing input for an instance missing its site keypair — a signature every peer now refuses.
+
 ## [5.1.0] - 2026-08-06
 
 ### Security
