@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [5.4.0] - 2026-08-07
+
+### Added
+
+- **The chat page can now accept a peer's changed encryption key.** `@tunecamp/chat` pins a peer's key on first sight and blocks DMs when a different one is later offered, since the server picks which key it hands out and a silent substitution is indistinguishable from a wiretap. The page told the user to verify the new fingerprint but exposed no way to act on it, so DMs to that peer stayed blocked for good — the only escape was deleting the `tunecamp_chat_pin_*` entries from localStorage by hand. The composer now shows both fingerprints with an explicit "Accept new key" confirmation, and the connected-peers list flags the peer instead of showing it as E2E-ready.
+
+### Fixed
+
+- **A refused message no longer wipes the draft.** `sendMessage` became async and refuses a DM it cannot encrypt, but the page tested its return value as if it were a synchronous boolean — a Promise is always truthy, so the input was cleared on every send. The user was left with a "message not sent" notice and nothing to retry with. The draft is now cleared only once the message is on the wire, and the send button is disabled while that is in flight.
+
 ## [5.3.0] - 2026-08-07
 
 ### Added

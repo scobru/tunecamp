@@ -37,6 +37,7 @@ export default function Chat() {
 		roleStr === "manager";
 	const [to, setTo] = useState("");
 	const [text, setText] = useState("");
+	const [sending, setSending] = useState(false);
 	const [showScrollBtn, setShowScrollBtn] = useState(false);
 	const bottomRef = useRef<HTMLDivElement>(null);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -52,6 +53,8 @@ export default function Chat() {
 		username,
 		isAdmin,
 		peers,
+		keyChanges,
+		acceptKeyChange,
 		unreadCounts,
 		clearUnread,
 		sendMessage,
@@ -92,9 +95,34 @@ export default function Chat() {
 		}
 	}, [messages.length, scrollToBottom]);
 
-	const handleSend = () => {
-		if (!sendMessage(to.trim(), text.trim())) return;
-		setText("");
+	// sendMessage is async and refuses a DM it can't encrypt, so the draft is
+	// only cleared once the message is actually on the wire — otherwise the
+	// user loses what they wrote to a "message not sent" they can't retry.
+	const handleSend = async () => {
+		const target = to.trim();
+		const body = text.trim();
+		if (!body || sending) return;
+		setSending(true);
+		try {
+			if (await sendMessage(target, body)) setText("");
+		} finally {
+			setSending(false);
+		}
+	};
+
+	const pendingKeyChange = to.trim() ? keyChanges[to.trim()] : undefined;
+
+	const handleAcceptKeyChange = (peerId: string) => {
+		const change = keyChanges[peerId];
+		if (!change) return;
+		const confirmed = confirm(
+			`Accept ${peerId}'s new encryption key?\n\n` +
+				`Pinned:  ${change.pinned}\n` +
+				`Offered: ${change.offered}\n\n` +
+				`Only accept if ${peerId} confirmed this fingerprint over a channel this server does not control. ` +
+				`A key swapped by the server looks exactly the same from here.`,
+		);
+		if (confirmed) acceptKeyChange(peerId);
 	};
 
 	const handleAdminAction = (action: string, targetUser: string) => {
@@ -290,6 +318,34 @@ export default function Chat() {
 					)}
 
 					<div className="border-t border-base-content/5 p-3 flex flex-col gap-2">
+						{pendingKeyChange && (
+							<div className="bg-warning/10 border border-warning/30 rounded-xl px-3 py-2 text-xs space-y-2">
+								<div className="flex items-start gap-2">
+									<ShieldAlert size={14} className="text-warning shrink-0 mt-0.5" />
+									<div className="space-y-1">
+										<p className="font-semibold">
+											{pendingKeyChange.peerId}'s encryption key changed.
+										</p>
+										<p className="opacity-70">
+											Messages stay blocked until you accept it. Ask them for
+											their fingerprint somewhere this server can't reach — a
+											swapped key looks identical from here.
+										</p>
+										<p className="font-mono opacity-80 break-all">
+											pinned&nbsp;&nbsp;{pendingKeyChange.pinned}
+											<br />
+											offered&nbsp;{pendingKeyChange.offered}
+										</p>
+									</div>
+								</div>
+								<button
+									className="btn btn-xs btn-warning rounded-lg gap-1"
+									onClick={() => handleAcceptKeyChange(pendingKeyChange.peerId)}
+								>
+									Accept new key
+								</button>
+							</div>
+						)}
 						{text.startsWith("/") && (
 							<div className="bg-base-300/80 border border-base-content/10 rounded-xl px-3 py-2 text-xs text-base-content/70 font-mono flex items-center gap-2">
 								<HelpCircle size={14} className="text-info shrink-0" />
@@ -331,7 +387,7 @@ export default function Chat() {
 							<button
 								className="btn btn-sm btn-primary rounded-xl gap-2"
 								onClick={handleSend}
-								disabled={status !== "online" || !text.trim()}
+								disabled={status !== "online" || !text.trim() || sending}
 							>
 								<Send size={14} /> Send
 							</button>
@@ -405,12 +461,20 @@ export default function Chat() {
 										{isSelf && (
 											<span className="opacity-40 text-[10px]">you</span>
 										)}
-										{peer.pubkey && (
-											<Lock
+										{keyChanges[peerTarget(peer)] ? (
+											<ShieldAlert
 												size={10}
-												className="text-success shrink-0"
-												aria-label="E2E ready"
+												className="text-warning shrink-0"
+												aria-label="Key changed — messages blocked"
 											/>
+										) : (
+											peer.pubkey && (
+												<Lock
+													size={10}
+													className="text-success shrink-0"
+													aria-label="E2E ready"
+												/>
+											)
 										)}
 									</button>
 									{unread > 0 && !isActivePeer(peer) && (
