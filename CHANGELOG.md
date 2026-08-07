@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [5.2.0] - 2026-08-07
+
+### Security
+
+- **The shared-secret fallback for federated chat signatures is gone.** `verify()` is asymmetric only: a message whose sender cannot be pinned to one host is refused rather than half-trusted. Previously a peer that published no resolvable key was authenticated by `chatFederationSecret`, which every instance in the federation holds — so a valid signature proved "some peer", never which one. This was reachable for any claimed instance, not only known ones: `verify` runs *before* the known-peer check, so an unknown claimant's HMAC signature verified and was stopped only by the later `403`. `/inbound` now fails closed on a missing `site_public_key` alone; the secret no longer stands in for it.
+- **Key resolution now prefers the peer's own origin.** A peer whose NodeInfo advertised an `actorId` on another host — a `publicUrl` misconfiguration — never resolved a key and silently fell back to the shared secret. The advertised path is now tried on the peer's origin first, and only then the advertised URI, so the key trusted for an instance comes from that instance. The resolved key is cached under the URI it was actually fetched from.
+
+### Changed
+
+- An instance outside the peer list is now refused at `401` (no origin from which to resolve a key) rather than reaching the `403` unknown-peer response.
+- **Wire-compat break: cross-instance chat now requires peers on 5.2.0 or later.** A peer on an older release still accepts shared-secret signatures, and one before 5.1.0 signs with the secret while already publishing a site key. Upgrade both sides. `TUNECAMP_CHAT_FEDERATION_SECRET` is obsolete: it authenticates nothing on receipt, and survives only as a last-resort signing input for an instance missing its site keypair — a signature every peer now refuses.
+
 ## [5.1.0] - 2026-08-06
 
 ### Security

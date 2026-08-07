@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from "@jest/globals";
+import { describe, expect, it, jest, beforeEach, afterEach } from "@jest/globals";
 import express from "express";
 import request from "supertest";
 import Database from "better-sqlite3";
@@ -7,9 +7,27 @@ import { createChatFederationRoutes } from "./chat-federation.js";
 import { createChatService } from "../../modules/chat/chat.service.js";
 import { createChatFederationService as realCreateChatFederationService } from "../../modules/chat/chat-federation.service.js";
 
+// Verification is asymmetric only, so the shared fixture db has to publish a
+// real keypair: the service signs with `site_private_key` and resolves the
+// peer's key from the cached actor. One pair for both sides keeps the existing
+// round-trip tests meaningful without each one minting its own.
+const SITE_KEYS = crypto.generateKeyPairSync("rsa", {
+	modulusLength: 2048,
+	publicKeyEncoding: { type: "pkcs1", format: "pem" },
+	privateKeyEncoding: { type: "pkcs1", format: "pem" },
+});
+
+const PEER_ACTOR = "https://a.example.com/users/site";
+
 const dummyDb = {
-	getSetting: () => undefined,
-	getRemoteActor: () => undefined,
+	getSetting: (key: string) =>
+		key === "site_private_key"
+			? SITE_KEYS.privateKey
+			: key === "site_public_key"
+				? SITE_KEYS.publicKey
+				: undefined,
+	getRemoteActor: (uri: string) =>
+		uri === PEER_ACTOR ? { uri, public_key: SITE_KEYS.publicKey } : undefined,
 	upsertRemoteActor: () => {}
 };
 
@@ -49,6 +67,21 @@ function buildApp(secret = "shared-secret", peers = ["https://a.example.com"]) {
 }
 
 describe("Chat federation routes", () => {
+	const realFetch = global.fetch;
+
+	beforeEach(() => {
+		// Key resolution tries NodeInfo before the cached actor. Unstubbed that
+		// is a real lookup of a.example.com on every assertion; failing it fast
+		// sends resolution to the seeded `/users/site` candidate.
+		global.fetch = jest.fn(async () => {
+			throw new Error("ENOTFOUND");
+		}) as any;
+	});
+
+	afterEach(() => {
+		global.fetch = realFetch;
+	});
+
 	describe("POST /api/chat/federated/inbound", () => {
 		it("accepts a valid signed lobby message and relays it locally", async () => {
 			const { app, chatService } = buildApp();
@@ -409,8 +442,12 @@ describe("Chat federation routes", () => {
 				.set("X-Chat-Signature", signature)
 				.send(payload);
 
-			expect(res.status).toBe(403);
-			expect(res.body.error).toBe("Unknown peer instance");
+			// Stopped at the signature now, not at the peer check: an instance
+			// outside the peer list has no origin to resolve a key from, so the
+			// message is unattributable. Previously the shared secret verified
+			// here and only the later 403 kept it out.
+			expect(res.status).toBe(401);
+			expect(res.body.error).toBe("Invalid signature");
 			expect(spy).not.toHaveBeenCalled();
 		});
 

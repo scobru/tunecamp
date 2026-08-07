@@ -2,14 +2,13 @@ import { Router } from "express";
 import type { ServiceContainer } from "../../core/container.js";
 import type { FederatedChatMessage } from "../../modules/chat/chat-federation.service.js";
 
-// ponytail: one secret, one endpoint. No per-message nonce and no replay DB —
-// replay is bounded by a timestamp freshness window plus the in-memory dedup
-// map, which is enough for a single process. If you need durable replay
-// protection, add a SQLite table keyed by message id.
-// Signatures are asymmetric (the peer's published actor key) wherever that key
-// resolves; the shared secret is only accepted from a peer that publishes none,
-// and there it still means any peer can sign as any other, narrowed to the
-// federation by the known-instance check.
+// ponytail: one endpoint. No per-message nonce and no replay DB — replay is
+// bounded by a timestamp freshness window plus the in-memory dedup map, which
+// is enough for a single process. If you need durable replay protection, add a
+// SQLite table keyed by message id.
+// Signatures are asymmetric only: the peer's published actor key, resolved from
+// its NodeInfo actorId. The legacy shared secret is no longer accepted, since it
+// proved only "some known peer" rather than which one.
 
 export function createChatFederationRoutes(
 	container: ServiceContainer,
@@ -21,14 +20,16 @@ export function createChatFederationRoutes(
 	// echoes it back.
 	const federation = container.chatFederationService;
 
-	// Inbound relay from a federated peer. Authenticated by HMAC-SHA256
-	// over the payload fields, using the shared secret. The signature binds
-	// username, instance, text, ts, lobby, toUsername, roomGlobalId and
-	// roomName — tampering any field invalidates the MAC.
+	// Inbound relay from a federated peer. Authenticated by an RSA-SHA256
+	// signature over the payload fields, checked against the sending instance's
+	// published actor key. The signature binds username, instance, text, ts,
+	// lobby, toUsername, roomGlobalId and roomName — tampering any field
+	// invalidates it.
 	router.post("/inbound", expressJson(), async (req, res) => {
-		// Fail closed only if neither legacy secret nor local site keys are configured.
+		// Fail closed without local site keys: the legacy secret no longer
+		// authenticates anything, so it cannot stand in for them here.
 		const hasSiteKey = !!(container.identity?.getSetting?.("site_public_key") || container.database?.getSetting?.("site_public_key"));
-		if (!secret && !hasSiteKey && !process.env.JEST_WORKER_ID) {
+		if (!hasSiteKey && !process.env.JEST_WORKER_ID) {
 			return res.status(503).json({ error: "Chat federation not configured" });
 		}
 
@@ -63,9 +64,9 @@ export function createChatFederationRoutes(
 
 		// Must run before `verify`, not after: resolving the sender's public key
 		// goes through the peer list, so verifying first would find it empty on
-		// the first inbound message, fail to resolve any key, and silently accept
-		// the weaker shared-secret signature instead. Assigning peers reveals
-		// nothing to the caller — no response depends on it yet.
+		// the first inbound message and reject every peer until something else
+		// populated it. Assigning peers reveals nothing to the caller — no
+		// response depends on it yet.
 		federation.setPeers(container.federatedDiscoveryService.getPeers());
 
 		if (!(await federation.verify(payload, signature))) {
