@@ -59,7 +59,30 @@ Il sistema di chat si basa su un trasporto WebSocket leggero e sulla persistenza
 - **Modello di fiducia — leggere prima di mettere in produzione**: una firma lega sempre il messaggio a un singolo host. Ogni istanza genera al boot la propria coppia di chiavi di sito e la pubblica sul proprio attore, quindi non resta alcun caso «senza chiave» da gestire. `TUNECAMP_CHAT_FEDERATION_SECRET` non autentica più nulla in ricezione.
 - **La chat cross-instance richiede peer dalla 5.2.0 in su**: un'istanza su una release precedente accetta ancora firme con segreto condiviso, e una precedente alla 5.1.0 firma con il segreto pur pubblicando già una chiave attore di sito, quindi i suoi messaggi vengono rifiutati da un ricevente aggiornato. Aggiorna entrambi i lati prima di contare sulla chat cross-instance. Un peer la cui `publicUrl` punta a un host che non serve il suo attore prima veniva mascherato dal percorso a segreto condiviso; ora è visibile come `401`, e il suo operatore dovrebbe correggere `publicUrl`.
 - **Deduplica**: I messaggi in entrata vengono deduplicati tramite hash dei campi firmati, tenuto in memoria per 6 minuti (finestra di freschezza più la tolleranza di skew, così una voce non può scadere mentre il messaggio è ancora abbastanza fresco da rientrare). L'`id` inviato nel body viene ignorato e ricalcolato localmente: non è coperto dal MAC, quindi accettarlo permetterebbe a un peer di scegliere la chiave di deduplica e pre-inserirla per sopprimere un messaggio successivo. Nessuno storage di replay persistente: la mappa si perde al riavvio.
+- **Consegna e retry**: il fan-out in uscita prova ogni peer una volta, poi ritenta un errore *transitorio* — errore di rete, `5xx` o `429` — dopo 2s, 8s e 30s. Un `4xx` diverso da `429` non viene ritentato: il peer ha rifiutato il messaggio nel merito, e rimandare gli stessi byte non può cambiare la risposta. Ogni retry è inoltre limitato dalla finestra di freschezza del ricevente: il retry porta con sé il `ts` firmato originale, quindi una volta che il messaggio ha più di 5 minuti nessun ritardo potrebbe farlo accettare, e viene abbandonato con un warning nei log. È anche il motivo per cui per la chat **non esiste una coda persistente**, a differenza della consegna ActivityPub (`ap_delivery_queue`): qualunque cosa sopravvivesse a un riavvio sarebbe già troppo vecchia per essere consegnata. Un peer giù per più di ~40 secondi perde il messaggio, per scelta.
 - **Il testo cifrato dei DM resta E2EE end-to-end**: la federazione inoltra solo il payload DM già cifrato tra i server — il testo in chiaro non tocca mai nessuna istanza.
+
+### Cosa conserva il server
+
+Per un protocollo instradato dai server la domanda rilevante sulla privacy è cosa resta su disco, quindi, esplicitamente:
+
+- **I messaggi diretti non vengono mai persistiti** — né in locale, né alla ricezione da un peer. `relayChat` scrive su `peer_chat_messages` solo se il messaggio è un broadcast di lobby, e `relayFederatedMessage` solo per traffico di lobby o di stanza. Un DM esiste come testo cifrato in transito e nel client del destinatario, da nessun'altra parte. Non esiste una tabella che registri chi ha scritto a chi, e nessun metadato dei DM finisce nei log.
+- **Lo storico della lobby** sta in `peer_chat_messages`, tagliato alle 500 righe più recenti a ogni inserimento. Il traffico di lobby è pubblico per definizione.
+- **I messaggi di stanza** stanno in `chat_room_messages`, indirizzati tra istanze tramite `chat_rooms.global_id`. Le stanze private non vengono mai federate.
+- **In transito** un peer vede necessariamente la busta di instradamento — `username`, `instance`, `toUsername`, `ts` — perché è ciò che gli dice dove consegnare. Non viene conservata. Toglierla significherebbe cambiare il modello di instradamento, non quello di storage.
+
+Questo è il limite onesto del design: il *contenuto* dei messaggi è cifrato end-to-end e non finisce nei log, mentre i *metadati di instradamento* sono visibili ai due server sul percorso per il tempo necessario a instradare.
+
+### Perché federato e non peer-to-peer
+
+Il protocollo di chat è server-to-server, come Matrix o l'email — non peer-to-peer come Soulseek o eMule. I client tengono una WebSocket verso la propria istanza; le istanze fanno POST tra loro. È una scelta deliberata, ed è chiusa:
+
+- **La consegna offline** richiede store-and-forward, che reintroduce un server. Un design P2P avrebbe bisogno di relay che trattengono i messaggi, e a quel punto il relay è il server.
+- **I client browser e mobile** non possono mantenere connessioni peer di lunga durata — NAT, limiti di esecuzione in background, batteria. WebRTC richiederebbe signaling più TURN, e TURN inoltra comunque il traffico.
+- **La riservatezza del contenuto è già garantita** dalla cifratura end-to-end, quindi il P2P comprerebbe solo privacy sui metadati.
+- **La moderazione** dipende dalla possibilità per l'operatore di un'istanza di bloccare un peer. Una mesh P2P elimina del tutto questa leva.
+
+Nota che nemmeno «spostare la chat su un grafo P2P» è un'opzione: il vecchio grafo P2P ZEN è stato rimosso e non va reintrodotto (vedi le note ZEN nel `CLAUDE.md` del repo).
 
 ---
 

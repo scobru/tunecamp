@@ -59,7 +59,30 @@ The chat system is built around a lightweight WebSocket transport and local SQLi
 - **Trust model — read this before deploying**: a signature pins a message to one host, always. Every instance generates a site keypair at boot and publishes it on its site actor, so there is no keyless case left to accommodate. `TUNECAMP_CHAT_FEDERATION_SECRET` no longer authenticates anything on the receiving side.
 - **Cross-instance chat requires peers on 5.2.0 or later**: an instance on an older release still accepts shared-secret signatures, and one on a release before 5.1.0 signs with the secret while already publishing a site actor key, so its messages are refused by an updated receiver. Upgrade both sides before relying on cross-instance chat. A peer whose `publicUrl` points at a host that does not serve its actor was previously masked by the shared-secret path; it is now visible as a `401`, and its operator should fix `publicUrl`.
 - **Dedup**: Inbound messages are deduplicated by a content hash of the signed fields, held in process for 6 minutes (the freshness window plus the skew allowance, so an entry can never expire while the message is still fresh enough to re-enter). The `id` a sender puts in the body is ignored and recomputed locally — it is not covered by the MAC, so honouring it would let a peer choose the dedup key and pre-seed it to suppress a later message. No durable replay store: the map is lost on restart.
+- **Delivery & retry**: outbound fan-out attempts each peer once, then retries a *transient* failure — a network error, a `5xx`, or a `429` — after 2s, 8s and 30s. A `4xx` other than `429` is not retried: the peer refused the message on its merits and resending the same bytes cannot change the answer. Every retry is additionally bounded by the receiver's freshness window: a retry carries the original signed `ts`, so once the message is older than 5 minutes no delay could still get it accepted, and it is abandoned with a logged warning. This is also why there is **no durable queue** for chat, unlike ActivityPub delivery (`ap_delivery_queue`): anything that survived a restart would already be too stale to deliver. A peer that is down for more than ~40 seconds loses the message, by design.
 - **DM ciphertext stays E2EE end-to-end**: federation only relays the already-encrypted DM payload between servers — plaintext still never touches any instance.
+
+### What the server stores
+
+The relevant privacy question for a server-routed protocol is what survives on disk, so, explicitly:
+
+- **Direct messages are never persisted** — not locally, not on receipt from a peer. `relayChat` writes to `peer_chat_messages` only when the message is a lobby broadcast, and `relayFederatedMessage` only for lobby or room traffic. A DM exists as ciphertext in flight and in the recipient's client, nowhere else. There is no table recording who messaged whom, and no DM metadata is logged.
+- **Lobby history** lives in `peer_chat_messages`, trimmed to the most recent 500 rows on every insert. Lobby traffic is public by definition.
+- **Room messages** live in `chat_room_messages`, addressed across instances by `chat_rooms.global_id`. Private rooms are never federated.
+- **In flight**, a peer necessarily sees the routing envelope — `username`, `instance`, `toUsername`, `ts` — because that is what tells it where to deliver. It is not stored. Removing it would mean changing the routing model, not the storage model.
+
+This is the honest limit of the design: message *content* is end-to-end encrypted and unlogged, while *routing metadata* is visible to the two servers on the path for as long as it takes to route.
+
+### Why federated, not peer-to-peer
+
+The chat protocol is server-to-server, like Matrix or email — not peer-to-peer like Soulseek or eMule. Clients hold a WebSocket to their own instance; instances POST to each other. This is a deliberate choice, and it is settled:
+
+- **Offline delivery** needs store-and-forward, which reintroduces a server. A P2P design would need relays to hold messages, at which point the relay is the server.
+- **Browser and mobile clients** cannot hold long-lived peer connections — NAT, background execution limits, battery. WebRTC would need signaling plus TURN, and TURN relays the traffic anyway.
+- **Content confidentiality is already handled** by end-to-end encryption, so P2P would buy metadata privacy only.
+- **Moderation** depends on instance operators being able to block a peer. A P2P mesh removes that lever entirely.
+
+Note that "move chat onto a P2P graph" is not an option here either: the old ZEN P2P graph was removed and must not be reintroduced (see the ZEN notes in the repo's `CLAUDE.md`).
 
 ---
 

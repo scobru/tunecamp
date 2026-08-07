@@ -1,6 +1,8 @@
 import { describe, expect, it, jest, beforeEach, afterEach } from "@jest/globals";
 import {
 	createChatFederationService,
+	MAX_MESSAGE_AGE_MS,
+	RETRY_BACKOFF_MS,
 	type FederatedChatMessage,
 } from "./chat-federation.service.js";
 
@@ -462,6 +464,86 @@ describe("ChatFederationService", () => {
 
 			await expect(service.fanout(payload)).resolves.toBeUndefined();
 			expect(fetchMock).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe("fanout retries", () => {
+		afterEach(() => {
+			service.stopRetries();
+			jest.useRealTimers();
+		});
+
+		/** Fresh enough that the receiver's freshness window is not the limit. */
+		function livePayload(text: string): FederatedChatMessage {
+			return {
+				username: "alice",
+				instance: "a.example.com",
+				text,
+				ts: Date.now(),
+				lobby: false,
+			};
+		}
+
+		it("retries a transient failure until the peer accepts", async () => {
+			jest.useFakeTimers();
+			const fetchMock = jest
+				.fn<any>()
+				.mockImplementationOnce(async () => {
+					throw new Error("ECONNREFUSED");
+				})
+				.mockImplementationOnce(async () => ({ ok: true }));
+			global.fetch = fetchMock as any;
+
+			await service.fanout(livePayload("peer restarting"), "https://a.example.com");
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+
+			await jest.advanceTimersByTimeAsync(RETRY_BACKOFF_MS[0]);
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+
+			// Accepted on the retry, so nothing further is scheduled.
+			await jest.advanceTimersByTimeAsync(RETRY_BACKOFF_MS[1]);
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+		});
+
+		it("retries a 5xx but not a refusal the peer would repeat", async () => {
+			jest.useFakeTimers();
+			const fetchMock = jest.fn<any>(async () => ({ ok: false, status: 503 }));
+			global.fetch = fetchMock as any;
+
+			await service.fanout(livePayload("peer overloaded"), "https://a.example.com");
+			await jest.advanceTimersByTimeAsync(RETRY_BACKOFF_MS[0]);
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+
+			service.stopRetries();
+			fetchMock.mockClear();
+			fetchMock.mockImplementation(async () => ({ ok: false, status: 401 }));
+
+			// A bad signature is not a transient condition: resending the same
+			// bytes cannot change the answer.
+			await service.fanout(livePayload("bad signature"), "https://a.example.com");
+			await jest.advanceTimersByTimeAsync(RETRY_BACKOFF_MS[0]);
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		});
+
+		it("does not retry a message already too stale for the peer to accept", async () => {
+			jest.useFakeTimers();
+			const fetchMock = jest.fn<any>(async () => {
+				throw new Error("ECONNREFUSED");
+			});
+			global.fetch = fetchMock as any;
+
+			// Retries carry the original signed `ts`, so past the freshness
+			// window every attempt would be refused as stale. Give up instead.
+			const stale: FederatedChatMessage = {
+				username: "alice",
+				instance: "a.example.com",
+				text: "long gone",
+				ts: Date.now() - MAX_MESSAGE_AGE_MS - 1000,
+			};
+
+			await service.fanout(stale, "https://a.example.com");
+			await jest.advanceTimersByTimeAsync(RETRY_BACKOFF_MS[0] * 10);
+			expect(fetchMock).toHaveBeenCalledTimes(1);
 		});
 	});
 });

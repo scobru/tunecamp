@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [5.3.0] - 2026-08-07
+
+### Added
+
+- **Federated chat deliveries now retry a transient failure.** Fan-out previously discarded every outcome through `Promise.allSettled`, so a peer that was restarting lost the message with nothing logged. A network error, `5xx` or `429` is now retried after 2s, 8s and 30s; a `4xx` other than `429` is not, since the peer refused the message on its merits and resending the same bytes cannot change the answer. Retries are bounded by the receiver's freshness window rather than an attempt count alone — a retry carries the original signed `ts`, so past 5 minutes no delay could still get it accepted, and the attempt is abandoned with a logged warning. Deliberately not durable: unlike `ap_delivery_queue`, anything surviving a restart would already be too stale to deliver. `stopRetries()` is called during graceful shutdown.
+
+### Documentation
+
+- Documented what the chat server actually stores. Direct messages are never persisted, locally or on receipt from a peer — only lobby and room traffic reaches SQLite, and no table records who messaged whom. Also documented the routing metadata a peer necessarily sees in flight, the delivery/retry semantics, and why the protocol is federated rather than peer-to-peer.
+
 ## [5.2.0] - 2026-08-07
 
 ### Security
