@@ -83,6 +83,9 @@ export async function startServer(config: ServerConfig): Promise<void> {
         try { pluginCleanups.forEach(c => c()); console.log('  ✓ Plugins disconnected'); }
         catch (e) { console.warn('  ⚠ Plugin disconnect error:', e); }
 
+        try { container.chatFederationService?.stopRetries(); console.log('  ✓ Chat federation retries stopped'); }
+        catch (e) { console.warn('  ⚠ Chat federation stop error:', e); }
+
         try { peerService.stopHeartbeat(); console.log('  ✓ PeerService heartbeat stopped'); }
         catch (e) { console.warn('  ⚠ PeerService stop error:', e); }
 

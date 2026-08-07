@@ -51,12 +51,38 @@ The chat system is built around a lightweight WebSocket transport and local SQLi
 - **Lobby relay**: Public lobby messages are broadcast to every known federated peer instance and injected into their local lobby, tagged with the sender's origin instance.
 - **Cross-instance DMs**: Sending to `username@instance` resolves the target instance via `federatedDiscoveryService.resolvePeerByInstance()` and delivers the message to that single peer only (not broadcast).
 - **Federated room messages**: A public room's messages fan out to every peer, addressed by the room's `global_id` (never by the local `id`, which means a different room on every instance). A peer that does not know that `global_id` drops the message instead of guessing. Private rooms are never federated: membership is not federated yet, so no peer could enforce who may read them.
-- **Transport & auth**: Federated instances relay over `POST /api/chat/federated/inbound`, authenticated with an `X-Chat-Signature` header — HMAC-SHA256 over the JSON encoding of `[username, instance, text, ts, lobby, toUsername, roomGlobalId, roomName]` using a shared secret (`TUNECAMP_CHAT_FEDERATION_SECRET`). The fields are JSON-encoded rather than joined on a separator so that a separator character inside the attacker-controlled `text` cannot produce the same signing input as a different message. The endpoint returns `503` if the secret is unset (fail-closed) and `401` on a bad signature.
+- **Transport & auth**: Federated instances relay over `POST /api/chat/federated/inbound`, authenticated with an `X-Chat-Signature` header over the JSON encoding of `[username, instance, text, ts, lobby, toUsername, roomGlobalId, roomName]`. The fields are JSON-encoded rather than joined on a separator so that a separator character inside the attacker-controlled `text` cannot produce the same signing input as a different message. A sender signs with its own site actor key — RSA-SHA256 under `site_private_key`, the same keypair its ActivityPub actor publishes. The receiver resolves the claimed instance's public key through NodeInfo `metadata.actorId` → the actor's `publicKey.publicKeyPem`, and caches it in `remote_actors`. The endpoint fails closed with `503` when no local `site_public_key` is configured, and returns `401` on a bad signature.
+- **Signatures are asymmetric only**: verification uses the claimed peer's published key and nothing else. There is no shared-secret fallback — a message whose sender cannot be pinned to one host is refused rather than half-trusted. One operational consequence: if a peer's key cannot be fetched (its NodeInfo or actor endpoint is briefly unreachable) its first message is refused with `401`; once fetched the key is cached and reused, so this does not repeat.
+- **Key resolution prefers the peer's own origin**: when a peer's NodeInfo advertises an `actorId` on a different host — usually a `publicUrl` misconfiguration — the same path is tried on the peer's own origin first, and only then the advertised URI. This keeps the key trusted for an instance coming from that instance, and stops a misconfigured peer from looking keyless.
 - **Freshness window**: a signature never expires on its own, so `ts` must be within 5 minutes in the past and 1 minute in the future (clock skew) or the message is refused with `401`. Without it a captured message would stay replayable forever once it aged out of the dedup window.
-- **Known-peer check**: the claimed `instance` must resolve to a peer already in federated discovery, otherwise `403`. The peer list is refreshed from `federatedDiscoveryService` on every inbound request, so a receiver that has never sent anything still knows who it federates with — but an instance that has not yet discovered the sender will reject it.
-- **Trust model — read this before deploying**: the HMAC secret is shared by the whole federation, so a valid signature proves *some* peer sent the message, not *which* one. Any peer holding the secret can sign as any user of any other instance; the known-peer check only bounds that to instances you already federate with. Treat the secret as a federation-wide trust boundary, not a per-peer credential, and only share it with operators you trust. Per-peer secrets are the fix and are not implemented yet.
+- **Known-peer check**: the claimed `instance` must resolve to a peer already in federated discovery, otherwise `403`. The peer list is refreshed from `federatedDiscoveryService` on every inbound request, so a receiver that has never sent anything still knows who it federates with — but an instance that has not yet discovered the sender will reject it. Note this check runs *after* the signature check, so an instance outside the peer list is stopped at `401` (no origin to resolve a key from) rather than reaching the `403`.
+- **Trust model — read this before deploying**: a signature pins a message to one host, always. Every instance generates a site keypair at boot and publishes it on its site actor, so there is no keyless case left to accommodate. `TUNECAMP_CHAT_FEDERATION_SECRET` no longer authenticates anything on the receiving side.
+- **Cross-instance chat requires peers on 5.2.0 or later**: an instance on an older release still accepts shared-secret signatures, and one on a release before 5.1.0 signs with the secret while already publishing a site actor key, so its messages are refused by an updated receiver. Upgrade both sides before relying on cross-instance chat. A peer whose `publicUrl` points at a host that does not serve its actor was previously masked by the shared-secret path; it is now visible as a `401`, and its operator should fix `publicUrl`.
 - **Dedup**: Inbound messages are deduplicated by a content hash of the signed fields, held in process for 6 minutes (the freshness window plus the skew allowance, so an entry can never expire while the message is still fresh enough to re-enter). The `id` a sender puts in the body is ignored and recomputed locally — it is not covered by the MAC, so honouring it would let a peer choose the dedup key and pre-seed it to suppress a later message. No durable replay store: the map is lost on restart.
+- **Delivery & retry**: outbound fan-out attempts each peer once, then retries a *transient* failure — a network error, a `5xx`, or a `429` — after 2s, 8s and 30s. A `4xx` other than `429` is not retried: the peer refused the message on its merits and resending the same bytes cannot change the answer. Every retry is additionally bounded by the receiver's freshness window: a retry carries the original signed `ts`, so once the message is older than 5 minutes no delay could still get it accepted, and it is abandoned with a logged warning. This is also why there is **no durable queue** for chat, unlike ActivityPub delivery (`ap_delivery_queue`): anything that survived a restart would already be too stale to deliver. A peer that is down for more than ~40 seconds loses the message, by design.
 - **DM ciphertext stays E2EE end-to-end**: federation only relays the already-encrypted DM payload between servers — plaintext still never touches any instance.
+
+### What the server stores
+
+The relevant privacy question for a server-routed protocol is what survives on disk, so, explicitly:
+
+- **Direct messages are never persisted** — not locally, not on receipt from a peer. `relayChat` writes to `peer_chat_messages` only when the message is a lobby broadcast, and `relayFederatedMessage` only for lobby or room traffic. A DM exists as ciphertext in flight and in the recipient's client, nowhere else. There is no table recording who messaged whom, and no DM metadata is logged.
+- **Lobby history** lives in `peer_chat_messages`, trimmed to the most recent 500 rows on every insert. Lobby traffic is public by definition.
+- **Room messages** live in `chat_room_messages`, addressed across instances by `chat_rooms.global_id`. Private rooms are never federated.
+- **In flight**, a peer necessarily sees the routing envelope — `username`, `instance`, `toUsername`, `ts` — because that is what tells it where to deliver. It is not stored. Removing it would mean changing the routing model, not the storage model.
+
+This is the honest limit of the design: message *content* is end-to-end encrypted and unlogged, while *routing metadata* is visible to the two servers on the path for as long as it takes to route.
+
+### Why federated, not peer-to-peer
+
+The chat protocol is server-to-server, like Matrix or email — not peer-to-peer like Soulseek or eMule. Clients hold a WebSocket to their own instance; instances POST to each other. This is a deliberate choice, and it is settled:
+
+- **Offline delivery** needs store-and-forward, which reintroduces a server. A P2P design would need relays to hold messages, at which point the relay is the server.
+- **Browser and mobile clients** cannot hold long-lived peer connections — NAT, background execution limits, battery. WebRTC would need signaling plus TURN, and TURN relays the traffic anyway.
+- **Content confidentiality is already handled** by end-to-end encryption, so P2P would buy metadata privacy only.
+- **Moderation** depends on instance operators being able to block a peer. A P2P mesh removes that lever entirely.
+
+Note that "move chat onto a P2P graph" is not an option here either: the old ZEN P2P graph was removed and must not be reintroduced (see the ZEN notes in the repo's `CLAUDE.md`).
 
 ---
 
@@ -82,7 +108,7 @@ Instance administrators can control chat behavior from the Admin Dashboard or en
 
 - **`peerChatEnabled`** (`boolean`): Master toggle to enable or disable the chat service across the instance.
 - **`peerChatGuestEnabled`** (`boolean`): Allows unauthenticated guests to view and participate in the public lobby with generated guest handles.
-- **`TUNECAMP_CHAT_FEDERATION_SECRET`** (env var): Shared HMAC secret for cross-instance chat federation. Unset disables federated relay (`/inbound` returns `503`). Shared by every peer, so it is a federation-wide trust boundary — see [Federated Chat](#federated-chat-cross-instance).
+- **`TUNECAMP_CHAT_FEDERATION_SECRET`** (env var): Obsolete. It no longer authenticates any inbound message; signing and verification both use the instance's own RSA site key. It survives only as a last-resort signing input for an instance whose site keypair is missing, and such a signature is refused by every peer. Federated relay is disabled (`/inbound` returns `503`) when there is no local `site_public_key` — see [Federated Chat](#federated-chat-cross-instance).
 
 ---
 
@@ -104,7 +130,7 @@ All of them require a session (`/api/chat` is mounted behind `authMiddleware.req
 - **`GET /api/chat/rooms/:id/members`**: Room member list.
 
 ### Federation Endpoints
-- **`POST /api/chat/federated/inbound`**: Accepts a signed message relay from a federated peer (see [Federated Chat](#federated-chat-cross-instance) above). Known peers are listed by `GET /api/community/peers`. Responses: `202` accepted, `409` duplicate, `400` missing fields, `401` missing/bad signature or a stale/future-dated `ts`, `403` unknown peer instance, `415` non-JSON body, `503` federation secret unset.
+- **`POST /api/chat/federated/inbound`**: Accepts a signed message relay from a federated peer (see [Federated Chat](#federated-chat-cross-instance) above). Known peers are listed by `GET /api/community/peers`. Responses: `202` accepted, `409` duplicate, `400` missing fields, `401` missing/bad signature or a stale/future-dated `ts`, `403` unknown peer instance, `415` non-JSON body, `503` federation not configured (no site actor key). An instance outside the peer list is refused at `401`, since no key can be resolved for it.
 
 ### WebSocket `/ws/chat` Events
 - **`chat:message`**: Outgoing/incoming lobby or DM payloads.
