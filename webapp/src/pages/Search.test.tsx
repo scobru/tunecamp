@@ -46,14 +46,14 @@ describe('Search', () => {
     } as any)
   })
 
-  it('renders search input and allows typing', () => {
+  it('renders search input and allows typing', async () => {
     render(
       <MemoryRouter>
         <Search />
       </MemoryRouter>
     )
 
-    expect(screen.getByPlaceholderText(/Search for songs, artists, albums.../i)).toBeInTheDocument()
+    expect(await screen.findByPlaceholderText(/Search for songs, artists, albums.../i)).toBeInTheDocument()
   })
 
   it('performs search and displays results', async () => {

@@ -27,6 +27,7 @@ describe('usePeerChat', () => {
         expect(useTuneCampChat).toHaveBeenCalledWith(
             expect.objectContaining({ keyPair: pair }),
             'peer1',
+            undefined,
         );
     });
 
@@ -38,6 +39,19 @@ describe('usePeerChat', () => {
         expect(useTuneCampChat).toHaveBeenCalledWith(
             expect.objectContaining({ keyPair: undefined }),
             'peer1',
+            undefined,
+        );
+    });
+
+    test('passes activeRoomId to useTuneCampChat', () => {
+        vi.mocked(useAuthStore).mockImplementation((selector: any) => selector({ chatKeyPair: null }));
+
+        renderHook(() => usePeerChat(true, 'peer1', 42));
+
+        expect(useTuneCampChat).toHaveBeenCalledWith(
+            expect.objectContaining({ keyPair: undefined }),
+            'peer1',
+            42,
         );
     });
 });
