@@ -459,6 +459,13 @@ describe("ChatService", () => {
 			expect(chatService.listRooms()).toHaveLength(1);
 		});
 
+		it("listRooms reports the creator, so a client can gate the Delete button", () => {
+			chatService.createRoom("general", "", false, "alice");
+			expect(chatService.listRooms()[0]).toEqual(
+				expect.objectContaining({ created_by: "alice", member_count: 0 }),
+			);
+		});
+
 		it("deleteRoom is creator-only (non-creator returns false)", () => {
 			const room = chatService.createRoom("secret", "", true, "alice");
 			expect(chatService.deleteRoom(room.id, "bob")).toBe(false);

@@ -1,7 +1,7 @@
 // WebRTC P2P Service for TuneCamp Web Client
 // Connects to Sidecamp peers via WebSocket Signaling (@tunecamp/chat) and transfers track data over RTCDataChannel.
 
-import { TuneCampChatClient, type RtcSignalMessage } from '@tunecamp/chat';
+import { TuneCampChatClient, type RtcSignalMessage, type ChatStatus } from '@tunecamp/chat';
 
 export interface WebRTCStreamOptions {
   serverUrl: string;
@@ -139,7 +139,7 @@ export class WebRTCPeerService {
       if (client.getStatus() === 'online') {
         startHandshake();
       } else {
-        const unbindStatus = client.onStatus((status) => {
+        const unbindStatus = client.onStatus((status: ChatStatus) => {
           if (status === 'online') {
             unbindStatus();
             startHandshake();
