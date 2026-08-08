@@ -3,6 +3,7 @@ import {
 	usePeerChat,
 	type ChatMessage,
 	type PeerInfo,
+	type RoomInfo,
 } from "../hooks/usePeerChat";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useSiteSettingsStore, truthy } from "../stores/useSiteSettingsStore";
@@ -15,6 +16,9 @@ import {
 	Globe,
 	ChevronDown,
 	Users,
+	Hash,
+	Plus,
+	LogOut,
 	ShieldAlert,
 	UserX,
 	VolumeX,
@@ -38,6 +42,10 @@ export default function Chat() {
 	const [to, setTo] = useState("");
 	const [text, setText] = useState("");
 	const [sending, setSending] = useState(false);
+	const [activeRoomId, setActiveRoomId] = useState<number | undefined>();
+	const [newRoomName, setNewRoomName] = useState("");
+	const [newRoomPrivate, setNewRoomPrivate] = useState(false);
+	const [showRoomForm, setShowRoomForm] = useState(false);
 	const [showScrollBtn, setShowScrollBtn] = useState(false);
 	const bottomRef = useRef<HTMLDivElement>(null);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -53,6 +61,13 @@ export default function Chat() {
 		username,
 		isAdmin,
 		peers,
+		rooms,
+		createRoom,
+		deleteRoom,
+		leaveRoom,
+		sendRoomMessage,
+		roomUnreadCounts,
+		clearRoomUnread,
 		keyChanges,
 		acceptKeyChange,
 		unreadCounts,
@@ -61,7 +76,9 @@ export default function Chat() {
 		sendAdminAction,
 		formatUser,
 		client,
-	} = usePeerChat(isChatEnabled, to);
+	} = usePeerChat(isChatEnabled, to, activeRoomId);
+
+	const activeRoom = rooms.find((r: RoomInfo) => r.id === activeRoomId);
 
 	const peerTarget = (peer: PeerInfo) => {
 		if (!peer.instance || peer.instance === client?.getInstanceName()) {
@@ -104,10 +121,53 @@ export default function Chat() {
 		if (!body || sending) return;
 		setSending(true);
 		try {
-			if (await sendMessage(target, body)) setText("");
+			if (activeRoomId) {
+				if (sendRoomMessage(activeRoomId, body)) setText("");
+			} else if (await sendMessage(target, body)) {
+				setText("");
+			}
 		} finally {
 			setSending(false);
 		}
+	};
+
+	// Lobby, a room and a DM are three different destinations for the same
+	// composer, so selecting one has to clear the other two.
+	const selectLobby = () => {
+		setTo("");
+		setActiveRoomId(undefined);
+	};
+
+	const selectRoom = (room: RoomInfo) => {
+		setTo("");
+		setActiveRoomId(room.id);
+		clearRoomUnread(room.id);
+	};
+
+	const selectPeer = (target: string) => {
+		setActiveRoomId(undefined);
+		setTo(target);
+	};
+
+	const handleCreateRoom = async () => {
+		const name = newRoomName.trim();
+		if (!name) return;
+		const room = await createRoom(name, undefined, newRoomPrivate);
+		setNewRoomName("");
+		setNewRoomPrivate(false);
+		setShowRoomForm(false);
+		if (room) selectRoom(room);
+	};
+
+	const handleLeaveRoom = async (room: RoomInfo) => {
+		await leaveRoom(room.id);
+		if (activeRoomId === room.id) setActiveRoomId(undefined);
+	};
+
+	const handleDeleteRoom = async (room: RoomInfo) => {
+		if (!confirm(`Delete "${room.name}" and its history for everyone?`)) return;
+		await deleteRoom(room.id);
+		if (activeRoomId === room.id) setActiveRoomId(undefined);
 	};
 
 	const pendingKeyChange = to.trim() ? keyChanges[to.trim()] : undefined;
@@ -172,7 +232,11 @@ export default function Chat() {
 			<PageHeader
 				title="Peer Chat"
 				subtitle={
-					to ? `Direct message to ${to}` : "Talk to everyone in the lobby"
+					activeRoom
+						? `Room · ${activeRoom.name}`
+						: to
+							? `Direct message to ${to}`
+							: "Talk to everyone in the lobby"
 				}
 				icon={MessageCircle}
 				iconColor="text-primary"
@@ -238,9 +302,11 @@ export default function Chat() {
 								<MessageCircle size={32} className="opacity-20 mx-auto" />
 								<p className="text-sm opacity-50">Nothing here yet.</p>
 								<p className="text-xs opacity-40">
-									{to
-										? `Start an encrypted conversation with ${to}.`
-										: "Say hello to the lobby, or select a peer for a direct message."}
+									{activeRoom
+										? `Be the first to say something in ${activeRoom.name}.`
+										: to
+											? `Start an encrypted conversation with ${to}.`
+											: "Say hello to the lobby, pick a room, or select a peer for a direct message."}
 								</p>
 							</div>
 						)}
@@ -358,12 +424,19 @@ export default function Chat() {
 							</div>
 						)}
 						<div className="flex flex-col sm:flex-row gap-2">
-							<input
-								className="input input-sm input-bordered rounded-xl sm:w-48"
-								value={to}
-								onChange={(e) => setTo(e.target.value)}
-								placeholder="Peer username (empty = lobby)"
-							/>
+							{activeRoom ? (
+								<div className="flex items-center gap-1 text-xs font-semibold text-primary sm:w-48 px-1 truncate">
+									<Hash size={12} className="shrink-0" />
+									<span className="truncate">{activeRoom.name}</span>
+								</div>
+							) : (
+								<input
+									className="input input-sm input-bordered rounded-xl sm:w-48"
+									value={to}
+									onChange={(e) => setTo(e.target.value)}
+									placeholder="Peer username (empty = lobby)"
+								/>
+							)}
 							<input
 								className="input input-sm input-bordered rounded-xl flex-1 font-sans"
 								value={text}
@@ -376,11 +449,13 @@ export default function Chat() {
 								}}
 								maxLength={2000}
 								placeholder={
-									status === "online"
-										? to
-											? "Encrypted message..."
-											: "Message or /command..."
-										: "Connecting..."
+									status !== "online"
+										? "Connecting..."
+										: activeRoom
+											? `Message #${activeRoom.name}...`
+											: to
+												? "Encrypted message..."
+												: "Message or /command..."
 								}
 								disabled={status !== "online"}
 							/>
@@ -396,30 +471,140 @@ export default function Chat() {
 				</div>
 
 				<div className="bg-base-200/50 rounded-3xl border border-base-content/5 glass-effect p-3">
-					<div className="flex items-center justify-between text-xs font-semibold opacity-60 mb-2 px-1">
-						<div className="flex items-center gap-2">
-							<Users size={14} />
-							Connected ({peers.length})
-						</div>
-					</div>
-					<div className="space-y-1 max-h-[50vh] overflow-y-auto">
+					<div className="space-y-1 max-h-[60vh] overflow-y-auto">
 						{/* Explicit Lobby Option */}
 						<div
 							className={clsx(
 								"group w-full flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg text-xs cursor-pointer transition-colors",
-								to === ""
+								to === "" && !activeRoomId
 									? "bg-primary/10 text-primary font-bold"
 									: "hover:bg-base-content/5",
 							)}
-							onClick={() => setTo("")}
+							onClick={selectLobby}
 						>
 							<div className="flex items-center gap-2 min-w-0 flex-1">
 								<Globe
 									size={14}
-									className={to === "" ? "text-primary" : "opacity-60"}
+									className={
+										to === "" && !activeRoomId ? "text-primary" : "opacity-60"
+									}
 								/>
 								<span className="truncate">🌐 Public Lobby</span>
 							</div>
+						</div>
+
+						<div className="flex items-center justify-between text-xs font-semibold opacity-60 mt-3 mb-1 px-1">
+							<div className="flex items-center gap-2">
+								<Hash size={14} />
+								Rooms ({rooms.length})
+							</div>
+							<button
+								className="btn btn-ghost btn-xs btn-square"
+								onClick={() => setShowRoomForm((v) => !v)}
+								title="New room"
+								aria-label="New room"
+							>
+								<Plus size={12} />
+							</button>
+						</div>
+
+						{showRoomForm && (
+							<div className="space-y-1 px-1 pb-1">
+								<input
+									className="input input-xs input-bordered rounded-lg w-full"
+									value={newRoomName}
+									onChange={(e) => setNewRoomName(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											e.preventDefault();
+											handleCreateRoom();
+										}
+									}}
+									maxLength={64}
+									placeholder="Room name"
+								/>
+								<label className="flex items-center gap-1.5 text-[11px] opacity-70 px-1">
+									<input
+										type="checkbox"
+										className="checkbox checkbox-xs"
+										checked={newRoomPrivate}
+										onChange={(e) => setNewRoomPrivate(e.target.checked)}
+									/>
+									Keep off other instances
+								</label>
+								<button
+									className="btn btn-xs btn-primary rounded-lg w-full"
+									onClick={handleCreateRoom}
+									disabled={!newRoomName.trim()}
+								>
+									Create
+								</button>
+							</div>
+						)}
+
+						{rooms.length === 0 && (
+							<p className="text-xs opacity-40 px-1 pb-1">No rooms yet.</p>
+						)}
+						{rooms.map((room: RoomInfo) => {
+							const isActive = activeRoomId === room.id;
+							const unread = roomUnreadCounts[room.id] || 0;
+							return (
+								<div
+									key={room.id}
+									className={clsx(
+										"group w-full flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors",
+										isActive
+											? "bg-primary/10 text-primary"
+											: "hover:bg-base-content/5",
+									)}
+								>
+									<button
+										className="flex items-center gap-2 min-w-0 flex-1 text-left"
+										onClick={() => selectRoom(room)}
+									>
+										<Hash size={14} className={isActive ? "" : "opacity-60"} />
+										<span className="truncate font-medium">{room.name}</span>
+										{room.is_private && (
+											<Lock
+												size={10}
+												className="opacity-50 shrink-0"
+												aria-label="Local to this instance"
+											/>
+										)}
+										<span className="opacity-40 text-[10px] shrink-0">
+											{room.member_count}
+										</span>
+									</button>
+									{unread > 0 && !isActive && (
+										<span className="badge badge-sm badge-error text-white font-bold shrink-0">
+											{unread}
+										</span>
+									)}
+									<div className="hidden group-hover:flex items-center gap-1 shrink-0">
+										<button
+											onClick={() => handleLeaveRoom(room)}
+											className="btn btn-ghost btn-xs btn-square opacity-70 hover:opacity-100"
+											title={`Leave ${room.name}`}
+										>
+											<LogOut size={12} />
+										</button>
+										{room.created_by === username && (
+											<button
+												onClick={() => handleDeleteRoom(room)}
+												className="btn btn-ghost btn-xs btn-square text-error"
+												title={`Delete ${room.name}`}
+											>
+												<Trash2 size={12} />
+											</button>
+										)}
+									</div>
+								</div>
+							);
+						})}
+
+						<div className="flex items-center gap-2 text-xs font-semibold opacity-60 mt-3 mb-1 px-1">
+							<Users size={14} />
+							Connected ({peers.length})
 						</div>
 
 						{peers.length === 0 && (
@@ -444,9 +629,9 @@ export default function Chat() {
 										className="flex items-center gap-2 min-w-0 flex-1 text-left"
 										onClick={() => {
 											if (isSelf) {
-												setTo("");
+												selectLobby();
 											} else {
-												setTo(peerTarget(peer));
+												selectPeer(peerTarget(peer));
 												clearUnread(peer.username);
 											}
 										}}
@@ -524,9 +709,13 @@ export default function Chat() {
 			</div>
 
 			<p className="text-xs opacity-50">
-				{to
-					? "Messages are end-to-end encrypted and never stored on the server."
-					: "Lobby messages are visible to everyone connected. Type /help for slash commands."}
+				{activeRoom
+					? activeRoom.is_private
+						? "Room messages are stored on this instance and stay on it. Anyone here can join this room."
+						: "Room messages are stored on this instance and relayed to federated peers. Anyone here can join this room."
+					: to
+						? "Messages are end-to-end encrypted and never stored on the server."
+						: "Lobby messages are visible to everyone connected. Type /help for slash commands."}
 			</p>
 		</div>
 	);

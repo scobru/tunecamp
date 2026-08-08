@@ -715,12 +715,16 @@ export class ChatService {
 		name: string;
 		description: string | null;
 		is_private: boolean;
+		created_by: string;
 		member_count: number;
 	}[] {
 		try {
+			// created_by ships with the row so a client can tell whether to offer
+			// Delete at all: deleteRoom is creator-only, and a button that fails
+			// for everyone but one person is worse than no button.
 			const rooms = this.database.db
 				.prepare(
-					`SELECT r.id, r.global_id, r.name, r.description, r.is_private,
+					`SELECT r.id, r.global_id, r.name, r.description, r.is_private, r.created_by,
 					 COUNT(m.username) AS member_count
 					 FROM chat_rooms r
 					 LEFT JOIN chat_room_members m ON m.room_id = r.id
@@ -734,6 +738,7 @@ export class ChatService {
 				name: r.name,
 				description: r.description,
 				is_private: !!r.is_private,
+				created_by: r.created_by,
 				member_count: r.member_count,
 			}));
 		} catch (err) {
