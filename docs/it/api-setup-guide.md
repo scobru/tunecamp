@@ -54,7 +54,21 @@ Stripe Connect ti consente di instradare i pagamenti in valuta fiat direttamente
 
 ---
 
-## 4. Messaggistica e Social
+## 4. Email Transazionali
+
+### Brevo (Recupero Password)
+Il login di TuneCamp richiede solo username e password, senza un server di posta integrato — le API HTTP di Brevo inviano l'email di "reset password".
+1. Vai su [Brevo](https://www.brevo.com/) e crea un account.
+2. Vai su *SMTP & API > Chiavi API* e genera una nuova chiave API.
+3. Verifica un indirizzo o dominio mittente sotto *Mittenti & IP*.
+4. Imposta `BREVO_API_KEY` e `BREVO_SENDER_EMAIL` (il mittente verificato) nel tuo `.env`. `BREVO_SENDER_NAME` è facoltativo (impostato di default sul nome del sito).
+5. Ogni utente deve impostare un'email sul proprio account (Profilo → Impostazioni Account) prima di poter richiedere un reset — TuneCamp non richiede l'email durante la registrazione iniziale.
+
+Senza `BREVO_API_KEY`/`BREVO_SENDER_EMAIL` configurati, `/forgot-password` risponde comunque con esito positivo (per evitare il leaking dell'esistenza dell'account) ma nessuna email verrà effettivamente inviata.
+
+---
+
+## 5. Messaggistica e Social
 
 ### Bot Telegram (Ingestione Rapida)
 1. Cerca [@BotFather](https://t.me/BotFather) su Telegram.
@@ -64,13 +78,13 @@ Stripe Connect ti consente di instradare i pagamenti in valuta fiat direttamente
 
 ---
 
-## 5. Peer-to-Peer (P2P)
+## 6. Peer-to-Peer (P2P)
 
 L'acquisizione di contenuti P2P (Soulseek, BitTorrent, yt-dlp) è gestita dall'[app desktop Sidecamp](./sidecamp.md), un compagno standalone che funziona sulla tua macchina locale e sincronizza i download con la tua istanza TuneCamp. Consulta [Sidecamp](./sidecamp.md) per le istruzioni di configurazione.
 
 ---
 
-## 6. Configurazione del Server
+## 7. Configurazione del Server
 
 Tutte queste chiavi possono essere configurate in due modi:
 
@@ -84,6 +98,8 @@ TUNECAMP_GDRIVE_CLIENT_ID=...
 TUNECAMP_GDRIVE_CLIENT_SECRET=...
 TUNECAMP_TELEGRAM_BOT_TOKEN=...
 TUNECAMP_TELEGRAM_MASTER_ID=...
+BREVO_API_KEY=...
+BREVO_SENDER_EMAIL=noreply@tuo-dominio.com
 ```
 
 ### Metodo B: Pannello di Amministrazione (consigliato per la produzione)
@@ -91,7 +107,7 @@ Molte di queste chiavi possono essere inserite direttamente nell'interfaccia di 
 
 ---
 
-## 7. Model Context Protocol (MCP)
+## 8. Model Context Protocol (MCP)
 
 Se desideri connettere un chatbot AI esterno (es. Claude Desktop) a TuneCamp, puoi utilizzare il server MCP integrato. I client si autenticano con token personali per utente (Bearer `tc_...`) che possono essere generati dal tuo Profilo nell'applicazione web.
 Per la guida alla configurazione e su come utilizzare lo script di bridge, vedi [mcp-setup-guide.md](./mcp-setup-guide.md).

@@ -41,6 +41,54 @@ Authorization: Bearer <token>
 | `GET`  | `/api/waveform/:id` | Dati della forma d'onda per la visualizzazione grafica |
 | `GET`  | `/api/releases/:id/artwork/:filename` | Serve in modo sicuro gli artwork aggiuntivi delle release |
 
+### Campioni Gratuiti / Samples (`/api/samples`)
+
+| Metodo | Percorso | Descrizione |
+|--------|----------|-------------|
+| `GET` | `/api/samples` | Elenca i campioni approvati. `mine=true` limita ai caricamenti del chiamante (qualsiasi stato); `q` filtra per termine di ricerca |
+| `GET` | `/api/samples/moderation/pending` | Root-admin/admin/super-user: elenca i campioni in attesa di moderazione/curatela |
+| `GET` | `/api/samples/:id` | Metadati del campione |
+| `GET` | `/api/samples/:id/download` | Scarica il file audio del campione. Supporta autenticazione tramite query `?token=` (i campioni approvati sono pubblici; i campioni in sospeso richiedono il proprietario o un moderatore) |
+| `POST` | `/api/samples` | Carica un campione (`multipart/form-data`: file, title, description, bpm, musicalKey, license, attributionName, tags). Inizia nello stato `pending` |
+| `PUT` | `/api/samples/:id` | Aggiorna i metadati del campione (proprietario o moderatore) |
+| `DELETE` | `/api/samples/:id` | Elimina un campione (proprietario o moderatore) |
+| `POST` | `/api/samples/:id/approve` | Root-admin/admin/super-user: approva un campione in sospeso |
+| `POST` | `/api/samples/:id/reject` | Root-admin/admin/super-user: rifiuta un campione in sospeso con note opzionali |
+
+I campioni gratuiti non sono asset di vendita: nessun prezzo, nessun flusso di acquisto o crediti. La licenza è una tra `cc0`, `cc-by`, `cc-by-sa`, `royalty-free`. Il caricamento è raggiungibile da `/publish`; la gestione dei propri caricamenti si trova nella scheda "Samples" su `/my-music`; la moderazione si trova in "Sample Curation" su `/admin`.
+
+### Pacchetti di Campioni / Sample Packs (`/api/sample-packs`)
+
+| Metodo | Percorso | Descrizione |
+|--------|----------|-------------|
+| `GET` | `/api/sample-packs` | Elenca i pacchetti approvati. `mine=true` limita ai propri pack (qualsiasi stato); `q` filtra per ricerca |
+| `GET` | `/api/sample-packs/moderation/pending` | Root-admin/admin/super-user: elenca i pack in attesa di moderazione |
+| `GET` | `/api/sample-packs/:id` | Metadati del pack inclusi i campioni membri |
+| `GET` | `/api/sample-packs/:id/cover` | Immagine di copertina del pack; fallback su SVG segnaposto se non impostata |
+| `POST` | `/api/sample-packs` | Carica più file contemporaneamente come pack (`multipart/form-data`: files[], title, description, license, attributionName). Stesse regole di pubblicazione di `/api/samples`; inizia in `pending` salvo auto-approvazione |
+| `POST` | `/api/sample-packs/:id/cover` | Imposta/sostituisce la copertina del pack (`multipart/form-data`: cover). Solo proprietario o moderatore |
+| `PUT` | `/api/sample-packs/:id` | Aggiorna i metadati del pack (proprietario o moderatore) |
+| `DELETE` | `/api/sample-packs/:id` | Elimina un pack e tutti i campioni associati (proprietario o moderatore) |
+| `POST` | `/api/sample-packs/:id/approve` | Root-admin/admin/super-user: approva un pack in sospeso (a cascata sui suoi campioni) |
+| `POST` | `/api/sample-packs/:id/reject` | Root-admin/admin/super-user: rifiuta un pack in sospeso con note opzionali |
+
+Un campione inserito in un pack (`samples.pack_id` impostato) è escluso dall'elenco pubblico di `/api/samples` ed emerge unicamente attraverso il rispettivo pack.
+
+### Collab (`/api/collab`)
+
+Tutte le route richiedono l'autenticazione. Vedi [COLLAB.md](COLLAB.md) per la documentazione completa.
+
+| Metodo | Percorso | Descrizione |
+|--------|----------|-------------|
+| `GET` | `/api/collab` | Elenca i progetti condivisi. `mine=true` limita ai propri |
+| `GET` | `/api/collab/:id` | Metadati del progetto con relative versioni e stem |
+| `POST` | `/api/collab` | Crea un progetto (richiede `canPublishContent`) |
+| `DELETE` | `/api/collab/:id` | Elimina un progetto e i suoi stem (solo proprietario) |
+| `POST` | `/api/collab/:id/versions` | Salva uno snapshot di versione append-only (`state`, `note` opzionale) |
+| `POST` | `/api/collab/:id/stems` | Carica uno stem audio (`multipart/form-data`: file, nome opzionale) |
+| `GET` | `/api/collab/:id/stems/:stemId/download` | Esegue lo streaming audio di uno stem |
+| `DELETE` | `/api/collab/:id/stems/:stemId` | Elimina uno stem (autore dello stem o proprietario del progetto) |
+
 ### Pagamenti e Monetizzazione (`/api/payments`)
 
 | Metodo | Percorso | Descrizione |

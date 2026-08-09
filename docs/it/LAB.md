@@ -16,7 +16,7 @@ Le app sono salvate nella tabella SQLite `lab_apps` (`src/server/core/database.t
 
 - **Via UI:** Pannello Admin → Lab Apps → *Add App*, compila i campi qui sotto.
 - **Via API:** `POST /api/admin/lab-apps` (solo root-admin) con gli stessi campi come corpo JSON.
-- **Default integrati:** seminati al primo avvio in `database.ts` (attualmente 4-Track Recorder, id 1, e Audiofabric, id 2) — modifica quei blocchi `INSERT OR IGNORE` per cambiare i default distribuiti.
+- **Default integrati:** seminati al primo avvio in `database.ts` (attualmente 4-Track Recorder, Audiofabric, Iris e Wormhole) — modifica quei blocchi `INSERT OR IGNORE` per cambiare i default distribuiti.
 
 La pagina pubblica `/lab` e il runner `/lab/<id>` leggono da `GET /api/lab-apps` (solo app abilitate) e caricano automaticamente le nuove righe, senza bisogno di rebuild.
 

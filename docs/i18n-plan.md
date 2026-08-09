@@ -10,7 +10,7 @@
 
 ## 1. Context & Current State
 
-- The webapp is **React 18 + Vite + TypeScript**, with Zustand stores, TanStack Query and React Router (`webapp/src`, ~113 `.tsx` files, 42 pages, 69 components).
+- The webapp is **React 19 + Vite + TypeScript**, with Zustand stores, TanStack Query and React Router (`webapp/src`, ~113 `.tsx` files, 42 pages, 69 components).
 - **No i18n framework is installed today.** All UI copy is hardcoded inline in JSX.
 - Copy is currently a **mix of English and Italian** (e.g. the admin Setup Wizard was Italian; now translated to English). This inconsistency is exactly what this plan fixes structurally.
 - Docs already ship an Italian mirror under `docs/it/`, so bilingual intent exists — we now bring it to the product UI.

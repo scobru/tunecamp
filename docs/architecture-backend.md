@@ -56,6 +56,7 @@ TuneCamp uses **SQLite** as its relational database engine for managing music me
 ### Core Entities (Music Library)
 
 - **`artists`**: Stores information about artists (name, biography, image, federated identifiers).
+- **`artist_events`**: Upcoming live dates, concerts, and tour events for artists.
 - **`albums`**: Represents releases (title, artist, year, cover art).
 - **`tracks`**: Individual audio tracks (title, album, track number, duration, file path, bitrate, `genre`, `fingerprint` for internal deduplication). Genre is a column on `tracks`, not a separate table.
 - **`album_ownership`** / **`track_ownership`**: On-chain ownership (NFT) of albums and tracks.
@@ -63,35 +64,54 @@ TuneCamp uses **SQLite** as its relational database engine for managing music me
 ### Users & Social
 
 - **`admin`**: Table of all local accounts (all roles, not just admin: the name is historical). Includes `role`, `password_hash`, `artist_id`, storage quotas.
-- **`zen_users`**: FID/Zen identity profile cache (pub key, alias, avatar), kept in sync with `admin.zen_pub` for cross-instance SSO login. Formerly named `zen_users`.
-- **`zen_cache`**: Legacy table from the removed ZEN sync layer — retained for schema compatibility but no longer written to. See [FEDERATION.md](FEDERATION.md) for history.
-- **`followers`**: Follow relations between local and remote users.
+- **`password_reset_tokens`**: Time-limited cryptographic tokens for Brevo-powered email password resets.
+- **`zen_users`**: FID/Zen identity profile cache (pub key, alias, avatar), kept in sync with `admin.zen_pub` for cross-instance SSO login.
+- **`zen_cache`**: Legacy table from the removed ZEN sync layer — retained for schema compatibility but no longer written to.
+- **`fid_registry`**: Federation identity passports and cryptographic claim verification registry.
+- **`followers`** / **`following`**: Follow relations between local users and remote ActivityPub actors.
 - **`posts`** / **`ap_notes`**: Messages and activities in the Fediverse.
-- **`starred_items`** / **`item_ratings`**: User favorites and ratings.
-- **`comments`**: Comments on tracks and albums.
-- **`chat_messages`**: Community chat history.
-- **`bookmarks`**: Personal bookmarks.
+- **`board_messages`**: Community pinboard / public bulletin board messages.
+- **`starred_items`** / **`item_ratings`**: User favorites and track ratings.
+- **`comments`**: User comments on tracks and releases.
+- **`reports`**: Copyright and content abuse reports awaiting moderation in the admin panel.
+- **`bookmarks`**: Personal user bookmarks.
 
-### Federation (ActivityPub)
+### Real-Time Chat
+
+- **`peer_chat_messages`**: Persistent community lobby messages (capped at 500 rows).
+- **`peer_chat_bans`** / **`peer_chat_mutes`**: Moderation records for chat bans and mutes.
+- **`chat_rooms`**: Named multi-user chat rooms carrying a persistent UUID `global_id`.
+- **`chat_room_members`**: Membership mapping for multi-user chat rooms.
+- **`chat_room_messages`**: Message history and backlog within chat rooms.
+
+### P2P Peer Sharing (Sidecamp)
+
+- **`peer_sessions`**: Active daemon connection sessions authenticated over `/ws/peer`.
+- **`peer_tracks`** / **`peer_tracks_new`**: Ephemeral track manifests shared by active Sidecamp daemons.
+- **`peer_catalog_cache`**: SQLite cache of remote instances' peer catalogs for federated network browsing.
+
+### Federation (ActivityPub & Discovery)
 
 - **`remote_actors`**: Cache of remote user profiles discovered via ActivityPub.
 - **`remote_content`**: Local copy of metadata for federated content (e.g., posts from other servers).
+- **`ap_interactions`** / **`ap_replies`** / **`ap_following`** / **`ap_delivery_queue`** / **`fedify_kv`**: ActivityPub state, actor signatures, and outbound delivery queue.
+- **`federated_instances`**: Discovered network peers tracked by the HTTP gossip discovery service.
 
-### Advanced Features
+### Advanced Features & Lab Apps
 
-- **`playlists`** / **`playlist_tracks`**: User playlist management.
-- **`play_history`**: Listens log for stats and recommendations.
+- **`playlists`** / **`playlist_tracks`**: User playlist management and track order.
+- **`play_history`**: Listens log for stats, scrobbling, and recommendations.
 - **`unlock_codes`**: Access codes for protected or paid content.
 - **`torrents`**: File sharing integrations for retrieving content (P2P acquisition itself lives in the companion [Sidecamp](./sidecamp.md) app).
 - **`dig_sessions`** / **`dig_crate_items`** / **`dig_history`** / **`dig_cache`**: State and cache of "Dig" mode (crate digging / music discovery).
 - **`assets`** / **`storage_accounts`**: Store assets and connected cloud storage accounts (e.g., Google Drive).
-- **`track_stats`** / **`release_stats`**: Aggregated play counters.
-- **`settings`**: Instance configuration (key/value).
-- **`api_tokens`** / **`oauth_clients`** / **`oauth_links`**: API tokens and OAuth clients (e.g., Fediverse login).
-- **`ap_interactions`** / **`ap_replies`** / **`ap_following`** / **`ap_delivery_queue`** / **`fedify_kv`**: ActivityPub state and delivery queue.
-- **`system_plugins`**: State (enabled/disabled) of plugin providers.
-- **`samples`** / **`sample_packs`**: Free (non-store) sample uploads — BPM, key, license, moderation status. A sample optionally belongs to a pack via `samples.pack_id`; packed samples are excluded from the public `/api/samples` listing and only surface through their pack. `sample_packs.cover_path` holds an optional cover image, served via `/api/sample-packs/:id/cover`.
-- **`collab_projects`** / **`collab_versions`** / **`collab_stems`**: Multi-artist collaborative track building. A project has many append-only `collab_versions` (never overwritten, `UNIQUE(project_id, version)`) and many `collab_stems` (raw in-progress audio layers, kept separate from `tracks`/`samples`). Writes gated by `VisibilityGuardian.canPublishContent()`; delete restricted to the project's `owner_id`. No realtime — versioning only.
+- **`track_stats`** / **`release_stats`**: Aggregated play counters and listening time analytics.
+- **`settings`**: Instance configuration key/value store.
+- **`api_tokens`** / **`oauth_clients`** / **`oauth_links`**: Personal API tokens (e.g. MCP) and OAuth linkages.
+- **`system_plugins`**: State (enabled/disabled) of modular plugin providers.
+- **`samples`** / **`sample_packs`**: Free (non-store) sample uploads — BPM, key, license, moderation status. A sample optionally belongs to a pack via `samples.pack_id`.
+- **`collab_projects`** / **`collab_versions`** / **`collab_stems`**: Multi-artist collaborative track building with append-only versions and audio stem uploads.
+- **`lab_apps`**: Sandboxed iFrame audio tools and web experiments (4-Track Recorder, Audiofabric, Iris, Wormhole).
 
 ### Key Relationships
 

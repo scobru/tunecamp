@@ -10,7 +10,7 @@
 
 ## 1. Contestualizzazione & Stato Attuale
 
-- La webapp è basata su **React 18 + Vite + TypeScript**, con store Zustand, TanStack Query e React Router (`webapp/src`, ~113 file `.tsx`, 42 pagine, 69 componenti).
+- La webapp è basata su **React 19 + Vite + TypeScript**, con store Zustand, TanStack Query e React Router (`webapp/src`, ~113 file `.tsx`, 42 pagine, 69 componenti).
 - **Attualmente non è installato alcun framework i18n.** Tutti i testi dell'interfaccia sono hardcoded in linea nel JSX.
 - I testi rappresentano una **miscela di inglese e italiano** (ad esempio la configurazione guidata admin era in italiano; ora tradotta in inglese). Questa incoerenza è esattamente ciò che il piano risolve a livello strutturale.
 - Le documentazioni offrono già una versione speculare in italiano in `docs/it/`, dimostrando che l'intento bilingue è presente — lo estendiamo ora all'interfaccia utente del prodotto.

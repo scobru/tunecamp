@@ -210,7 +210,7 @@ export function registerRoutes(
 	);
 	app.use(
 		"/api/chat",
-		authMiddleware.requireUser,
+		authMiddleware.optionalAuth,
 		requireModuleEnabled(container, "peerChatEnabled", {
 			invert: true,
 			allowAdmin: true,

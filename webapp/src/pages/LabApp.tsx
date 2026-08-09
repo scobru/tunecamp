@@ -190,7 +190,7 @@ const LabApp = () => {
             if (!app) return;
             const token = localStorage.getItem('tunecamp_token');
             let url = app.src;
-            if (app.name.toLowerCase() === 'audiofabric' && token) {
+            if (app.name.toLowerCase().includes('audiofabric') && token) {
               const params = new URLSearchParams({
                 tc: window.location.origin,
                 u: user?.username || '_',
