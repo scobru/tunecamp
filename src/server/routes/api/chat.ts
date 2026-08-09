@@ -1,10 +1,11 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import { wrapAsync } from "../../middleware/error-handling.js";
 import type { ServiceContainer } from "../../core/container.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 
 export function createChatRoutes(container: ServiceContainer): Router {
 	const router = Router();
+	router.use(express.json());
 
 	/**
 	 * GET /api/chat/history
@@ -94,10 +95,11 @@ export function createChatRoutes(container: ServiceContainer): Router {
 		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
 			const { name, description, is_private } = req.body || {};
 			const username = req.username;
-			if (!name || !username) {
-				return res
-					.status(400)
-					.json({ error: "name and authenticated user required" });
+			if (!username) {
+				return res.status(401).json({ error: "Authentication required" });
+			}
+			if (!name || !name.trim()) {
+				return res.status(400).json({ error: "Room name is required" });
 			}
 			const room = container.chatService.createRoom(
 				name,
@@ -114,11 +116,14 @@ export function createChatRoutes(container: ServiceContainer): Router {
 		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
 			const roomId = parseInt(req.params.id);
 			const username = req.username;
-			if (!roomId || !username) {
-				return res.status(400).json({ error: "room id and user required" });
+			if (!username) {
+				return res.status(401).json({ error: "Authentication required" });
+			}
+			if (!roomId) {
+				return res.status(400).json({ error: "Room id required" });
 			}
 			const ok = container.chatService.deleteRoom(roomId, username);
-			if (!ok) return res.status(404).json({ error: "Room not found" });
+			if (!ok) return res.status(404).json({ error: "Room not found or unauthorized" });
 			res.json({ ok: true });
 		}),
 	);
@@ -128,8 +133,11 @@ export function createChatRoutes(container: ServiceContainer): Router {
 		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
 			const roomId = parseInt(req.params.id);
 			const username = req.username;
-			if (!roomId || !username) {
-				return res.status(400).json({ error: "room id and user required" });
+			if (!username) {
+				return res.status(401).json({ error: "Authentication required" });
+			}
+			if (!roomId) {
+				return res.status(400).json({ error: "Room id required" });
 			}
 			const ok = container.chatService.joinRoomByUser(username, roomId);
 			if (!ok) return res.status(404).json({ error: "Room not found" });
@@ -142,8 +150,11 @@ export function createChatRoutes(container: ServiceContainer): Router {
 		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
 			const roomId = parseInt(req.params.id);
 			const username = req.username;
-			if (!roomId || !username) {
-				return res.status(400).json({ error: "room id and user required" });
+			if (!username) {
+				return res.status(401).json({ error: "Authentication required" });
+			}
+			if (!roomId) {
+				return res.status(400).json({ error: "Room id required" });
 			}
 			// leaveRoom() takes a socket id; over REST there is no socket.
 			container.chatService.leaveRoomByUser(username, roomId);

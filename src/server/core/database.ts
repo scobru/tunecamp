@@ -805,11 +805,11 @@ export function createDatabase(dbPath: string): DatabaseService {
             1
         );
 
-        -- Seed TuneCamp Iris (Air-Gapped Optical Transfer) if not already present
+        -- Seed Iris (Air-Gapped Optical Transfer) if not already present
         INSERT OR IGNORE INTO lab_apps (id, name, description, src, category, author, source_url, permissions, sandbox, allow, enabled)
         VALUES (
             3,
-            'TuneCamp Iris',
+            'Iris',
             'Air-Gapped Optical File Transfer via Fountain Codes & WASM. Transfer stems and keys via light without a network.',
             'https://tunecamp-iris.vercel.app',
             'other',
@@ -819,23 +819,6 @@ export function createDatabase(dbPath: string): DatabaseService {
             '["allow-scripts","allow-same-origin","allow-forms","allow-modals"]',
             '["camera *"]',
             1
-        );
-
-        -- Seed TuneCamp Beam (Zero-Server WebRTC) if not already present — disabled by default,
-        -- superseded by Wormhole (id 5) which covers the same P2P file-transfer use case
-        INSERT OR IGNORE INTO lab_apps (id, name, description, src, category, author, source_url, permissions, sandbox, allow, enabled)
-        VALUES (
-            4,
-            'TuneCamp Beam',
-            'Zero-Server WebRTC P2P Data Drops. Send massive DAW projects or high-res WAVs directly phone-to-phone via local network by scanning a QR Code.',
-            'https://tunecamp-beam.vercel.app',
-            'other',
-            'TuneCamp Labs',
-            'https://github.com/scobru/tunecamp-beam',
-            '["camera"]',
-            '["allow-scripts","allow-same-origin","allow-forms","allow-modals"]',
-            '["camera *"]',
-            0
         );
 
         INSERT OR IGNORE INTO lab_apps (id, name, description, src, category, author, source_url, permissions, sandbox, allow, enabled) VALUES (
@@ -856,11 +839,19 @@ export function createDatabase(dbPath: string): DatabaseService {
         UPDATE lab_apps SET src = 'https://tunecamp-4-track-recorder.vercel.app' WHERE id = 1 AND src != 'https://tunecamp-4-track-recorder.vercel.app';
         UPDATE lab_apps SET src = 'https://tunecamp-audiofabric.vercel.app' WHERE id = 2 AND src != 'https://tunecamp-audiofabric.vercel.app';
         UPDATE lab_apps SET src = 'https://tunecamp-iris.vercel.app' WHERE id = 3 AND src != 'https://tunecamp-iris.vercel.app';
-        UPDATE lab_apps SET src = 'https://tunecamp-beam.vercel.app' WHERE id = 4 AND src != 'https://tunecamp-beam.vercel.app';
         UPDATE lab_apps SET src = 'https://wormhole.scobrudot.dev' WHERE id = 5 AND src != 'https://wormhole.scobrudot.dev';
 
-        -- Beam superseded by Wormhole (same P2P transfer use case) — disable for existing installs
-        UPDATE lab_apps SET enabled = 0 WHERE id = 4 AND enabled = 1;
+        -- Normalize Lab app names (remove Tunecamp- / TuneCamp prefixes)
+        UPDATE lab_apps SET name = '4-Track Recorder' WHERE id = 1 AND name != '4-Track Recorder';
+        UPDATE lab_apps SET name = 'Audiofabric' WHERE id = 2 AND name != 'Audiofabric';
+        UPDATE lab_apps SET name = 'Iris' WHERE id = 3 AND name != 'Iris';
+        UPDATE lab_apps SET name = 'Wormhole' WHERE id = 5 AND name != 'Wormhole';
+        UPDATE lab_apps SET name = 'Iris' WHERE name IN ('TuneCamp Iris', 'Tunecamp Iris', 'Tunecamp-Iris', 'tunecamp-iris');
+        UPDATE lab_apps SET name = 'Audiofabric' WHERE name IN ('Tunecamp-Audiofabric', 'TuneCamp Audiofabric', 'Tunecamp Audiofabric', 'tunecamp-audiofabric');
+        UPDATE lab_apps SET name = '4-Track Recorder' WHERE name IN ('Tunecamp-4-Track Recorder', 'TuneCamp 4-Track Recorder', 'Tunecamp 4-Track Recorder', 'tunecamp-4-track-recorder');
+
+        -- Remove Beam (discontinued / superseded by Wormhole)
+        DELETE FROM lab_apps WHERE id = 4 OR src LIKE '%tunecamp-beam%' OR name IN ('Beam', 'TuneCamp Beam', 'Tunecamp Beam', 'Tunecamp-Beam', 'tunecamp-beam');
 
         -- Collab: multi-artist collaborative track projects (native feature, no ZEN/realtime)
         CREATE TABLE IF NOT EXISTS collab_projects (
@@ -1765,7 +1756,55 @@ export function createDatabase(dbPath: string): DatabaseService {
 					"CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_rooms_global_id ON chat_rooms(global_id)",
 				);
 			}
+			if (!roomCols.some((col: any) => col.name === "created_by")) {
+				console.log(
+					"📦 [Database] Migrating chat_rooms: adding created_by column...",
+				);
+				db.exec(
+					"ALTER TABLE chat_rooms ADD COLUMN created_by TEXT NOT NULL DEFAULT ''",
+				);
+			}
+			if (!roomCols.some((col: any) => col.name === "is_private")) {
+				console.log(
+					"📦 [Database] Migrating chat_rooms: adding is_private column...",
+				);
+				db.exec(
+					"ALTER TABLE chat_rooms ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0",
+				);
+			}
+			if (!roomCols.some((col: any) => col.name === "description")) {
+				console.log(
+					"📦 [Database] Migrating chat_rooms: adding description column...",
+				);
+				db.exec("ALTER TABLE chat_rooms ADD COLUMN description TEXT");
+			}
+			if (!roomCols.some((col: any) => col.name === "created_at")) {
+				console.log(
+					"📦 [Database] Migrating chat_rooms: adding created_at column...",
+				);
+				db.exec(
+					"ALTER TABLE chat_rooms ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0",
+				);
+			}
 		}
+
+		db.exec(`
+			CREATE TABLE IF NOT EXISTS chat_room_members (
+				room_id INTEGER NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+				username TEXT NOT NULL,
+				joined_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+				PRIMARY KEY (room_id, username)
+			);
+			CREATE TABLE IF NOT EXISTS chat_room_messages (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				room_id INTEGER NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+				username TEXT NOT NULL,
+				message TEXT NOT NULL,
+				created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+			);
+			CREATE INDEX IF NOT EXISTS idx_chat_room_messages_room
+				ON chat_room_messages(room_id, id);
+		`);
 
 		const chatMessagesExists = db
 			.prepare(

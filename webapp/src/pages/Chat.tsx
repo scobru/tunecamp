@@ -152,11 +152,19 @@ export default function Chat() {
 	const handleCreateRoom = async () => {
 		const name = newRoomName.trim();
 		if (!name) return;
-		const room = await createRoom(name, undefined, newRoomPrivate);
-		setNewRoomName("");
-		setNewRoomPrivate(false);
-		setShowRoomForm(false);
-		if (room) selectRoom(room);
+		try {
+			const room = await createRoom(name, undefined, newRoomPrivate);
+			if (room) {
+				setNewRoomName("");
+				setNewRoomPrivate(false);
+				setShowRoomForm(false);
+				selectRoom(room);
+			} else {
+				alert("Impossibile creare la stanza. Assicurati di aver effettuato l'accesso.");
+			}
+		} catch (err: any) {
+			alert(err?.message || "Errore durante la creazione della stanza.");
+		}
 	};
 
 	const handleLeaveRoom = async (room: RoomInfo) => {

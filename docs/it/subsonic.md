@@ -29,99 +29,75 @@ Genera la password Subsonic da **Profilo → Impostazioni → Subsonic Password*
 
 ## Endpoint Supportati
 
-### Sistema
+TuneCamp implementa le specifiche principali del protocollo Subsonic (v1.16.1) richieste dai client mobili:
 
-| Endpoint | Descrizione |
-| :--- | :--- |
-| `ping.view` | Verifica la connettività del server |
-| `getLicense.view` | Restituisce una licenza valida |
-| `getOpenSubsonicExtensions.view` | Elenco delle estensioni OpenSubsonic |
+### Sistema & Connettività
 
-### Navigazione
+| Endpoint | Descrizione | Stato |
+| :--- | :--- | :--- |
+| `ping.view` | Verifica la connettività al server e autentica | ✅ Supportato |
+| `getLicense.view` | Restituisce licenza valida del server | ✅ Supportato |
+| `getScanStatus.view` | Stato della scansione della libreria | ✅ Supportato |
 
-| Endpoint | Descrizione |
-| :--- | :--- |
-| `getMusicFolders.view` | Elenca le cartelle musicali |
-| `getIndexes.view` | Elenca gli artisti indicizzati alfabeticamente |
-| `getMusicDirectory.view` | Naviga la directory (artista → album → tracce) |
-| `getArtists.view` | Elenca tutti gli artisti (ID3) |
-| `getArtist.view` | Dettagli dell'artista con relativi album |
-| `getAlbum.view` | Dettagli dell'album con relative tracce |
-| `getSong.view` | Dettagli di una singola traccia |
-| `getGenres.view` | Elenca tutti i generi |
-| `getArtistInfo.view` / `getArtistInfo2.view` | Biografia e immagini dell'artista |
-| `getAlbumInfo.view` / `getAlbumInfo2.view` | Note e immagini dell'album |
-| `getSimilarSongs.view` / `getSimilarSongs2.view` | Scopri canzoni simili |
-| `getTopSongs.view` | Brani principali/popolari |
+### Esplorazione & Catalogo
 
-### Elenchi Album/Brani
+| Endpoint | Descrizione | Stato |
+| :--- | :--- | :--- |
+| `getMusicFolders.view` | Elenca le cartelle radice della musica | ✅ Supportato |
+| `getIndexes.view` | Elenco alfabetico degli artisti indicizzati | ✅ Supportato |
+| `getArtists.view` | Elenca tutti gli artisti (indicizzazione ID3) | ✅ Supportato |
+| `getMusicDirectory.view` | Esplora la directory (artista → album → tracce) | ✅ Supportato |
+| `getArtist.view` | Dettagli artista e discografia | ✅ Supportato |
+| `getAlbum.view` | Dettagli album con lista tracce | ✅ Supportato |
+| `getArtistInfo.view` / `getArtistInfo2.view` | Biografia e immagini dell'artista | ✅ Supportato |
+| `getAlbumInfo.view` / `getAlbumInfo2.view` | Descrizione dell'album e copertina | ✅ Supportato |
+| `getGenres.view` | Elenco di tutti i generi musicali | ✅ Supportato |
 
-| Endpoint | Descrizione |
-| :--- | :--- |
-| `getAlbumList.view` / `getAlbumList2.view` | Elenchi di album (casuali, più recenti, alfabetici, frequenti, recenti, preferiti, per genere, per anno) |
-| `getRandomSongs.view` | Selezione casuale delle tracce |
-| `getSongsByGenre.view` | Filtra i brani per genere |
-| `getStarred.view` / `getStarred2.view` | Ottieni elementi contrassegnati come preferiti (stellati) |
+### Liste Album / Brani & Ricerca
 
-### Media
+| Endpoint | Descrizione | Stato |
+| :--- | :--- | :--- |
+| `getAlbumList.view` / `getAlbumList2.view` | Liste album (`newest`, `random`, `frequent`, `recent`, `starred`, `alphabeticalByName`, `byGenre`, `byYear`) | ✅ Supportato |
+| `getRandomSongs.view` | Selezione casuale di brani dalla libreria | ✅ Supportato |
+| `getStarred.view` / `getStarred2.view` | Elementi preferiti/stellati | ✅ Supportato |
+| `search.view` / `search2.view` / `search3.view` | Ricerca full-text su artisti, album e tracce | ✅ Supportato |
 
-| Endpoint | Descrizione |
-| :--- | :--- |
-| `stream.view` | Esegui lo streaming di file audio |
-| `download.view` | Scarica i file audio |
-| `getCoverArt.view` | Ottieni le immagini di copertina |
-| `getLyrics.view` | Ottieni i testi dei brani |
+### Streaming Multimediale & Riproduzione
 
-### Ricerca
+| Endpoint | Descrizione | Stato |
+| :--- | :--- | :--- |
+| `stream.view` | Streaming di file audio (supporta bitrate transcodifica e conversione formati) | ✅ Supportato |
+| `getCoverArt.view` | Fornisce copertine e artwork per artisti, album e tracce | ✅ Supportato |
+| `scrobble.view` | Registra riproduzioni nel DB e su scrobbler esterni | ✅ Supportato |
+| `getNowPlaying.view` | Elenco dei brani in riproduzione attiva nelle sessioni | ✅ Supportato |
 
-| Endpoint | Descrizione |
-| :--- | :--- |
-| `search.view` / `search2.view` / `search3.view` | Ricerca full-text tra artisti, album e tracce |
+### Playlist & Podcast
 
-### Playlist
+| Endpoint | Descrizione | Stato |
+| :--- | :--- | :--- |
+| `getPlaylists.view` | Elenca tutte le playlist accessibili | ✅ Supportato |
+| `getPlaylist.view` | Dettagli playlist con lista brani | ✅ Supportato |
+| `createPlaylist.view` | Crea una nuova playlist utente | ✅ Supportato |
+| `updatePlaylist.view` | Aggiungi/rimuovi brani, aggiorna visibilità | ✅ Supportato |
+| `deletePlaylist.view` | Elimina una playlist | ✅ Supportato |
+| `getPodcasts.view` | Elenca canali podcast / episodi | ✅ Supportato |
+| `getNewestPodcasts.view` | Elenca gli episodi podcast più recenti | ✅ Supportato |
 
-| Endpoint | Descrizione |
-| :--- | :--- |
-| `getPlaylists.view` | Elenca tutte le playlist |
-| `getPlaylist.view` | Ottieni playlist con relative tracce |
-| `createPlaylist.view` | Crea o aggiorna una playlist |
-| `updatePlaylist.view` | Aggiungi/rimuovi canzoni, rinomina |
-| `deletePlaylist.view` | Elimina una playlist |
+### Profilo Utente
 
-### Preferiti (Stelle)
+| Endpoint | Descrizione | Stato |
+| :--- | :--- | :--- |
+| `getUser.view` | Dettagli utente e permessi di streaming | ✅ Supportato |
 
-| Endpoint | Descrizione |
-| :--- | :--- |
-| `star.view` | Aggiungi ai preferiti artisti, album, canzoni |
-| `unstar.view` | Rimuovi dai preferiti |
+---
 
-### Utente e Scrobbling
+## Endpoint Non Implementati / Pianificati
 
-| Endpoint | Descrizione |
-| :--- | :--- |
-| `getUser.view` | Ottieni dettagli e permessi dell'utente |
-| `getUsers.view` | Elenca tutti gli utenti |
-| `scrobble.view` | Registra le riproduzioni dei brani (SQLite locale) |
-| `getNowPlaying.view` | Brani attualmente in riproduzione |
+I seguenti endpoint Subsonic non sono attualmente necessari per la riproduzione su DSub/Symfonium/Tempo e restituiscono un codice di endpoint non supportato:
 
-### Coda di Riproduzione e Segnalibri
-
-| Endpoint | Descrizione |
-| :--- | :--- |
-| `getPlayQueue.view` | Ottieni la coda di riproduzione salvata |
-| `savePlayQueue.view` | Salva lo stato della coda di riproduzione |
-| `getBookmarks.view` | Ottieni i segnalibri |
-| `createBookmark.view` | Crea un segnalibro |
-| `deleteBookmark.view` | Elimina un segnalibro |
-
-### Sistema e Varie
-
-| Endpoint | Descrizione |
-| :--- | :--- |
-| `getScanStatus.view` | Stato della scansione della libreria multimediale |
-| `startScan.view` | Avvia la scansione della libreria |
-| `getAvatar.view` | Ottieni l'avatar dell'utente |
-| `getPodcasts.view` | Canali podcast (stub) |
-| `getInternetRadioStations.view` | Stazioni radio internet (stub) |
-| `getShares.view` | Elementi condivisi (stub) |
-| `jukeboxControl.view` | Controllo jukebox (stub) |
+- `download.view` (gestito tramite `stream.view` o le API REST native di TuneCamp)
+- `getSong.view`, `getTopSongs.view`, `getSimilarSongs.view`
+- `getLyrics.view`, `getAvatar.view`
+- `star.view`, `unstar.view` (preferiti gestiti dall'interfaccia Web)
+- `getPlayQueue.view`, `savePlayQueue.view`, `getBookmarks.view`
+- `getInternetRadioStations.view`, `getShares.view`, `jukeboxControl.view`

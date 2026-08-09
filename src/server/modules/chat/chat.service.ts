@@ -636,7 +636,7 @@ export class ChatService {
 				safeName,
 				description || null,
 				isPrivate ? 1 : 0,
-				createdBy,
+				createdBy || "",
 			);
 		return { id: Number(result.lastInsertRowid), globalId, name: safeName };
 	}

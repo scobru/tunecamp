@@ -56,6 +56,7 @@ TuneCamp utilizza **SQLite** come motore di database relazionale per la gestione
 ### Entità Principali (Libreria Musicale)
 
 - **`artists`**: Memorizza le informazioni sugli artisti (nome, biografia, immagine, identificativi federati).
+- **`artist_events`**: Date live, concerti e tour degli artisti.
 - **`albums`**: Rappresenta le pubblicazioni musicali (titolo, artista, anno, copertina).
 - **`tracks`**: Singole tracce audio (titolo, album, numero di traccia, durata, percorso del file, bitrate, `genre`, `fingerprint` per la deduplicazione interna). Il genere (`genre`) è una colonna sulla tabella `tracks`, non una tabella separata.
 - **`album_ownership`** / **`track_ownership`**: Proprietà on-chain (NFT) di album e tracce.
@@ -63,35 +64,54 @@ TuneCamp utilizza **SQLite** come motore di database relazionale per la gestione
 ### Utenti e Social
 
 - **`admin`**: Tabella contenente tutti gli account locali (tutti i ruoli, non solo l'amministratore: il nome ha ragioni storiche). Include `role`, `password_hash`, `artist_id`, quote di archiviazione.
-- **`zen_users`**: Cache del profilo identità FID/Zen (chiave pubblica, alias, avatar), sincronizzata con `admin.zen_pub` per il login SSO cross-istanza. In precedenza chiamata `zen_users`.
-- **`zen_cache`**: Tabella ereditata dal livello di sincronizzazione ZEN rimosso — conservata per compatibilità di schema ma non più scritta. Vedi [FEDERATION.md](./FEDERATION.md) per la cronologia dettagliata.
-- **`followers`**: Relazioni di tipo "follow" tra utenti locali e remoti.
+- **`password_reset_tokens`**: Token crittografici a scadenza per il reset password via Brevo.
+- **`zen_users`**: Cache del profilo identità FID/Zen (chiave pubblica, alias, avatar), sincronizzata con `admin.zen_pub` per il login SSO cross-istanza.
+- **`zen_cache`**: Tabella ereditata dal livello di sincronizzazione ZEN rimosso — conservata per compatibilità di schema ma non più scritta.
+- **`fid_registry`**: Registro passaporti e verifiche crittografiche dell'identità federata.
+- **`followers`** / **`following`**: Relazioni di tipo "follow" tra utenti locali e attori remoti ActivityPub.
 - **`posts`** / **`ap_notes`**: Messaggi e attività nel Fediverso.
-- **`starred_items`** / **`item_ratings`**: Preferiti e valutazioni degli utenti.
-- **`comments`**: Commenti su tracce e album.
-- **`chat_messages`**: Cronologia dei messaggi della chat di community.
+- **`board_messages`**: Messaggi della bacheca / bulletin board pubblica della community.
+- **`starred_items`** / **`item_ratings`**: Preferiti e valutazioni dei brani.
+- **`comments`**: Commenti degli utenti su tracce e pubblicazioni.
+- **`reports`**: Segnalazioni di copyright o contenuti inappropriati in attesa di moderazione.
 - **`bookmarks`**: Segnalibri personali degli utenti.
 
-### Federazione (ActivityPub)
+### Chat in Tempo Reale
+
+- **`peer_chat_messages`**: Messaggi persistenti della lobby di community (limitati a 500 righe).
+- **`peer_chat_bans`** / **`peer_chat_mutes`**: Record di moderazione per ban e mute della chat.
+- **`chat_rooms`**: Stanze chat multi-utente dotate di un identificativo UUID persistente `global_id`.
+- **`chat_room_members`**: Mappatura dei membri delle stanze chat.
+- **`chat_room_messages`**: Cronologia e backlog dei messaggi all'interno delle stanze chat.
+
+### Condivisione P2P Peer Sharing (Sidecamp)
+
+- **`peer_sessions`**: Sessioni attive di connessione dei daemon autenticate su `/ws/peer`.
+- **`peer_tracks`** / **`peer_tracks_new`**: Manifesti effimeri dei brani condivisi dai daemon Sidecamp connessi.
+- **`peer_catalog_cache`**: Cache SQLite dei cataloghi peer delle istanze remote per la navigazione di rete.
+
+### Federazione (ActivityPub & Discovery)
 
 - **`remote_actors`**: Cache dei profili utente remoti scoperti tramite ActivityPub.
 - **`remote_content`**: Copia locale dei metadati per i contenuti federati (es. post di altri server).
+- **`ap_interactions`** / **`ap_replies`** / **`ap_following`** / **`ap_delivery_queue`** / **`fedify_kv`**: Stato di ActivityPub, firme degli attori e coda di consegna dei messaggi in uscita.
+- **`federated_instances`**: Peer scoperti nella rete tramite il servizio di gossip discovery HTTP.
 
-### Funzionalità Avanzate
+### Funzionalità Avanzate & App Lab
 
-- **`playlists`** / **`playlist_tracks`**: Gestione delle playlist degli utenti.
-- **`play_history`**: Registro degli ascolti per statistiche e raccomandazioni.
+- **`playlists`** / **`playlist_tracks`**: Gestione delle playlist degli utenti e ordine delle tracce.
+- **`play_history`**: Registro degli ascolti per statistiche, scrobbling e raccomandazioni.
 - **`unlock_codes`**: Codici di sblocco per l'accesso a contenuti protetti o a pagamento.
-- **`torrents`**: Integrazioni di condivisione file per il recupero di contenuti (l'acquisizione P2P vera e propria vive nell'app companion [Sidecamp](./sidecamp.md)).
+- **`torrents`**: Integrazioni di condivisione file per il recupero di contenuti (l'acquisizione P2P vive in [Sidecamp](./sidecamp.md)).
 - **`dig_sessions`** / **`dig_crate_items`** / **`dig_history`** / **`dig_cache`**: Stato e cache della modalità "Dig" (scoperta musicale / crate digging).
 - **`assets`** / **`storage_accounts`**: Memorizzazione di asset e account di archiviazione cloud connessi (es. Google Drive).
-- **`track_stats`** / **`release_stats`**: Contatori aggregati degli ascolti.
-- **`settings`**: Configurazione dell'istanza (chiave/valore).
-- **`api_tokens`** / **`oauth_clients`** / **`oauth_links`**: Token API e client OAuth (es. accesso tramite Fediverso).
-- **`ap_interactions`** / **`ap_replies`** / **`ap_following`** / **`ap_delivery_queue`** / **`fedify_kv`**: Stato di ActivityPub e coda di consegna dei messaggi.
+- **`track_stats`** / **`release_stats`**: Contatori aggregati degli ascolti e statistiche sul tempo di riproduzione.
+- **`settings`**: Configurazione chiave/valore dell'istanza.
+- **`api_tokens`** / **`oauth_clients`** / **`oauth_links`**: Token API personali (es. MCP) e collegamenti OAuth.
 - **`system_plugins`**: Stato (abilitato/disabilitato) dei provider di plugin.
-- **`samples`** / **`sample_packs`**: Upload di sample gratuiti (non in store) — BPM, chiave, licenza, stato di moderazione. Un sample appartiene opzionalmente a un pack tramite `samples.pack_id`; i sample in pack sono esclusi dal listing pubblico `/api/samples` e compaiono solo tramite il loro pack. `sample_packs.cover_path` contiene un'immagine di copertina opzionale, servita tramite `/api/sample-packs/:id/cover`.
-- **`collab_projects`** / **`collab_versions`** / **`collab_stems`**: Costruzione collaborativa di tracce multi-artista. Un progetto ha molte `collab_versions` di tipo append-only (mai sovrascritte, `UNIQUE(project_id, version)`) e molti `collab_stems` (layer audio grezzi in lavorazione, tenuti separati da `tracks`/`samples`). Le scritture sono regolate da `VisibilityGuardian.canPublishContent()`; la cancellazione è limitata all'`owner_id` del progetto. Nessun realtime — solo versionamento.
+- **`samples`** / **`sample_packs`**: Upload di sample gratuiti (non in store) — BPM, tonalità, licenza, moderazione. Un sample può appartenere a un pack tramite `samples.pack_id`.
+- **`collab_projects`** / **`collab_versions`** / **`collab_stems`**: Creazione collaborativa di tracce multi-artista con snapshot di versioni append-only e caricamento stem.
+- **`lab_apps`**: Strumenti audio ed esperimenti web in iFrame sandbox (4-Track Recorder, Audiofabric, Iris, Wormhole).
 
 ### Relazioni Chiave
 

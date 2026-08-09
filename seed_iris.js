@@ -3,7 +3,7 @@ import Database from "better-sqlite3";
 const dbPath = "./tunecamp.db";
 const db = new Database(dbPath);
 
-const name = "TuneCamp Iris";
+const name = "Iris";
 const description = "Air-Gapped Optical File Transfer via Fountain Codes & WASM. Pass data securely through light.";
 const src = "https://tunecamp-iris.vercel.app";
 const category = "other";
