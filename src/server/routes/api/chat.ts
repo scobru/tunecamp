@@ -1,10 +1,11 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import { wrapAsync } from "../../middleware/error-handling.js";
 import type { ServiceContainer } from "../../core/container.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 
 export function createChatRoutes(container: ServiceContainer): Router {
 	const router = Router();
+	router.use(express.json());
 
 	/**
 	 * GET /api/chat/history
