@@ -4,7 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [5.4.0] - 2026-08-07
+## [5.4.1] - 2026-08-10
+
+### Added
+
+- **Prominent room header and deletion controls in Peer Chat.** When inside a room, an active room banner now displays the room title, privacy badge, member count, and explicit action buttons to Leave or Delete the room (available to room creators and instance admins/moderators).
+- **Admin moderation support for chat rooms.** Server and client now allow site administrators and moderators to delete any chat room, not strictly limited to the creator.
+
+### Fixed
+
+- **Room action buttons accessibility in sidebar.** Room management buttons in the sidebar are no longer completely hidden on touch devices/mobile without hover. Creator matching is now case-insensitive and resilient to username resolution timings.
 
 ### Added
 

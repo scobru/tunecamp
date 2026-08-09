@@ -32,7 +32,7 @@ const formatTime = (ts: number) =>
 
 export default function Chat() {
 	const { settings: siteSettings, fetchFlags } = useSiteSettingsStore();
-	const { role } = useAuthStore();
+	const { role, user } = useAuthStore();
 	const roleStr = String(role || "");
 	const isSiteAdmin =
 		roleStr === "admin" ||
@@ -92,6 +92,12 @@ export default function Chat() {
 	};
 
 	const canModerate = isSiteAdmin || isAdmin;
+	const currentUsername = username || user?.username || "";
+	const canDeleteRoom = (room: RoomInfo) =>
+		canModerate ||
+		(Boolean(room.created_by) &&
+			Boolean(currentUsername) &&
+			room.created_by?.toLowerCase() === currentUsername.toLowerCase());
 
 	const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
 		bottomRef.current?.scrollIntoView({ behavior });
@@ -300,7 +306,58 @@ export default function Chat() {
 			</div>
 
 			<div className="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-4">
-				<div className="bg-base-200/50 rounded-3xl border border-base-content/5 glass-effect overflow-hidden">
+				<div className="bg-base-200/50 rounded-3xl border border-base-content/5 glass-effect overflow-hidden flex flex-col">
+					{activeRoom && (
+						<div className="px-4 py-2.5 bg-base-300/40 border-b border-base-content/5 flex items-center justify-between gap-3 text-xs">
+							<div className="flex items-center gap-2 min-w-0">
+								<Hash size={16} className="text-primary shrink-0" />
+								<div className="min-w-0">
+									<div className="flex items-center gap-2">
+										<span className="font-bold text-sm text-base-content truncate">
+											{activeRoom.name}
+										</span>
+										{activeRoom.is_private ? (
+											<span className="badge badge-xs badge-outline gap-1 opacity-70">
+												<Lock size={10} /> Privata
+											</span>
+										) : (
+											<span className="badge badge-xs badge-ghost gap-1 opacity-70">
+												<Globe size={10} /> Pubblica
+											</span>
+										)}
+									</div>
+									{activeRoom.description && (
+										<p className="text-[11px] opacity-60 truncate">
+											{activeRoom.description}
+										</p>
+									)}
+								</div>
+							</div>
+							<div className="flex items-center gap-1.5 shrink-0">
+								<span className="text-[11px] opacity-50 mr-1 hidden sm:inline">
+									{activeRoom.member_count} {activeRoom.member_count === 1 ? "membro" : "membri"}
+								</span>
+								<button
+									onClick={() => handleLeaveRoom(activeRoom)}
+									className="btn btn-xs btn-ghost gap-1 opacity-70 hover:opacity-100"
+									title={`Leave ${activeRoom.name}`}
+								>
+									<LogOut size={12} />
+									<span className="hidden sm:inline">Esci</span>
+								</button>
+								{canDeleteRoom(activeRoom) && (
+									<button
+										onClick={() => handleDeleteRoom(activeRoom)}
+										className="btn btn-xs btn-error btn-outline gap-1"
+										title={`Delete ${activeRoom.name}`}
+									>
+										<Trash2 size={12} />
+										<span className="hidden sm:inline">Elimina stanza</span>
+									</button>
+								)}
+							</div>
+						</div>
+					)}
 					<div
 						ref={scrollContainerRef}
 						className="h-[55vh] overflow-y-auto p-4 space-y-3"
@@ -588,19 +645,27 @@ export default function Chat() {
 											{unread}
 										</span>
 									)}
-									<div className="hidden group-hover:flex items-center gap-1 shrink-0">
+									<div className="flex items-center gap-1 shrink-0 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
 										<button
-											onClick={() => handleLeaveRoom(room)}
+											onClick={(e) => {
+												e.stopPropagation();
+												handleLeaveRoom(room);
+											}}
 											className="btn btn-ghost btn-xs btn-square opacity-70 hover:opacity-100"
 											title={`Leave ${room.name}`}
+											aria-label={`Leave ${room.name}`}
 										>
 											<LogOut size={12} />
 										</button>
-										{room.created_by === username && (
+										{canDeleteRoom(room) && (
 											<button
-												onClick={() => handleDeleteRoom(room)}
-												className="btn btn-ghost btn-xs btn-square text-error"
+												onClick={(e) => {
+													e.stopPropagation();
+													handleDeleteRoom(room);
+												}}
+												className="btn btn-ghost btn-xs btn-square text-error hover:bg-error/10"
 												title={`Delete ${room.name}`}
+												aria-label={`Delete ${room.name}`}
 											>
 												<Trash2 size={12} />
 											</button>

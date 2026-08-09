@@ -466,11 +466,15 @@ describe("ChatService", () => {
 			);
 		});
 
-		it("deleteRoom is creator-only (non-creator returns false)", () => {
+		it("deleteRoom is creator-only unless admin (non-creator returns false)", () => {
 			const room = chatService.createRoom("secret", "", true, "alice");
 			expect(chatService.deleteRoom(room.id, "bob")).toBe(false);
 			expect(chatService.listRooms()).toHaveLength(1);
-			expect(chatService.deleteRoom(room.id, "alice")).toBe(true);
+			expect(chatService.deleteRoom(room.id, "Alice")).toBe(true);
+			expect(chatService.listRooms()).toHaveLength(0);
+
+			const room2 = chatService.createRoom("admin-test", "", false, "charlie");
+			expect(chatService.deleteRoom(room2.id, "admin_user", true)).toBe(true);
 			expect(chatService.listRooms()).toHaveLength(0);
 		});
 

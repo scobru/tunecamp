@@ -122,7 +122,13 @@ export function createChatRoutes(container: ServiceContainer): Router {
 			if (!roomId) {
 				return res.status(400).json({ error: "Room id required" });
 			}
-			const ok = container.chatService.deleteRoom(roomId, username);
+			const isAdmin = Boolean(
+				req.isAdmin ||
+					req.isRootAdmin ||
+					req.role === "admin" ||
+					req.role === "root_admin",
+			);
+			const ok = container.chatService.deleteRoom(roomId, username, isAdmin);
 			if (!ok) return res.status(404).json({ error: "Room not found or unauthorized" });
 			res.json({ ok: true });
 		}),
