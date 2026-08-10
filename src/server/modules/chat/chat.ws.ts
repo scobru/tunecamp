@@ -2,6 +2,7 @@ import { WebSocketServer, type WebSocket } from "ws";
 import crypto from "crypto";
 import type * as http from "http";
 import type { ServiceContainer } from "../../core/container.js";
+import { CHAT_PROTOCOL_VERSION } from "./chat.protocol.js";
 
 // Browser transport for the chat lobby. Deliberately separate from /ws/peer:
 //
@@ -122,6 +123,7 @@ export function createChatWsHandler(
 				ws.send(
 					JSON.stringify({
 						type: "auth_ok",
+						protocol: CHAT_PROTOCOL_VERSION,
 						sessionId: clientId,
 						username: assignedUsername,
 						isAdmin,
