@@ -651,13 +651,28 @@ export class ChatService {
 			.get(idOrGlobalId) as ChatRoom | undefined;
 	}
 
-	deleteRoom(roomId: number, requester: string): boolean {
+	deleteRoom(roomId: number, requester: string, isAdmin = false): boolean {
 		const room = this.database.db
 			.prepare("SELECT id, created_by FROM chat_rooms WHERE id = ?")
 			.get(roomId) as { id: number; created_by: string } | undefined;
 		if (!room) return false;
-		if (room.created_by !== requester) return false;
+		const isCreator = Boolean(
+			room.created_by &&
+				requester &&
+				room.created_by.toLowerCase() === requester.toLowerCase(),
+		);
+		if (!isCreator && !isAdmin) return false;
 		this.database.db.prepare("DELETE FROM chat_rooms WHERE id = ?").run(roomId);
+		try {
+			this.database.db
+				.prepare("DELETE FROM chat_room_members WHERE room_id = ?")
+				.run(roomId);
+			this.database.db
+				.prepare("DELETE FROM chat_room_messages WHERE room_id = ?")
+				.run(roomId);
+		} catch {
+			/* handled by CASCADE */
+		}
 		return true;
 	}
 

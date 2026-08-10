@@ -12,6 +12,8 @@ webapp/dist
 .env.local
 *.md
 !README.md
+# Served by GET /api/changelog and copied into the runtime image (Dockerfile:127)
+!CHANGELOG.md
 
 # IDE
 .vscode

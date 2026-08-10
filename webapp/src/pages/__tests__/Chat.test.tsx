@@ -219,6 +219,30 @@ describe("Chat page", () => {
 			confirmSpy.mockRestore();
 		});
 
+		test("shows room banner with delete action when room is active", () => {
+			const active = room({ id: 5, name: "my-active-room", created_by: "me" });
+			mockChat({ rooms: [active] });
+			render(<Chat />);
+
+			// Select the room
+			fireEvent.click(screen.getByRole("button", { name: /^my-active-room/ }));
+
+			// Should have active room header with Leave and Delete room
+			expect(screen.getByText("Elimina stanza")).toBeInTheDocument();
+			expect(screen.getByText("Esci")).toBeInTheDocument();
+		});
+
+		test("allows admin to delete rooms created by other users", () => {
+			vi.mocked(useAuthStore).mockReturnValue({ role: "admin" } as any);
+			mockChat({
+				rooms: [room({ id: 4, name: "other-user-room", created_by: "other" })],
+				isAdmin: true,
+			});
+			render(<Chat />);
+
+			expect(screen.getByTitle("Delete other-user-room")).toBeInTheDocument();
+		});
+
 		test("counts unread room traffic separately from DMs", () => {
 			mockChat({ rooms: [room()], roomUnreadCounts: { 3: 4 } });
 			render(<Chat />);
