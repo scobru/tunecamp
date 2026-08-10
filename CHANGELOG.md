@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **An instance no longer crash-loops on `no such table: main.admin_old`.** A legacy migration did `ALTER TABLE admin RENAME TO admin_old`, which makes SQLite rewrite every referencing table's foreign key to follow the new name. The rescue phase dropped the orphan but left those references behind, and with `foreign_keys = ON` SQLite resolves a foreign key target when a statement is *prepared* — so `DELETE FROM peer_sessions` failed before running anything, taking down both the boot-time session purge and every `/ws/peer` upgrade. Reported from a live instance. The rescue phase now repairs the stored schema of any table still pointing at a dropped `*_old`, so an affected database fixes itself on restart with no operator intervention. `peer_sessions` is simply the table a timer touches first: around eighteen tables reference `admin(id)`, and all of them were exposed.
+- A startup `foreign_key_check` now reports violations by table instead of being able to take the instance down: the pragma throws on a schema-level mismatch, and a diagnostic must not be fatal.
+
+### Added
+
+- **Every stored chat message now carries an id.** Clients had to recognise a message by sender and timestamp, which drops one of any two that land in the same millisecond. Lobby and room messages are now sent and served with an `id` (`l<row>` / `r<row>` — the two tables are separate AUTOINCREMENTs that share one list on the client, so the row number alone would collide). Scope is the instance: a client talks to exactly one, and a federated message is stored and numbered locally like any other.
+- **`auth_ok` announces the chat protocol version this instance speaks.** Instances and clients upgrade on their own schedules, and until now a client had no way to ask what it was talking to: it could only send a frame and wait to see whether an answer came back, which is indistinguishable from a dropped message. `protocol` is 1, and `CHAT_PROTOCOL_VERSION` in `chat.protocol.ts` records when to bump it — only when a client assuming the older shape would get a wrong answer, never for a purely additive frame, since bumping for those trains clients to ignore the field. A client seeing no `protocol` at all is talking to an instance predating this, which is version 0. Only `/ws/chat` is versioned: `/ws/peer` is spoken by the Sidecamp daemon alone, which ships against a known instance, so nothing there has to negotiate.
+- **The sender is acked with the id of the message they just sent.** They are skipped in every fan-out, so they had no way to learn it, and the copy their client rendered on send reappeared as a duplicate once history was fetched. `chat_ack` / `room_chat_ack` carry the id, the server timestamp and the client's own `ref` echoed back. Both are additive — a client that does not know them ignores them.
+
+### Documentation
+
+- **The chat docs now collect what the design does not protect against.** The limits were all stated somewhere — plaintext rooms, routing metadata, no durable federated queue — but spread across five sections, so finding them meant reading the whole document, and the largest one was not stated at all: DMs have **no forward secrecy**, since the secret comes from two long-term identities and never ratchets, so one leaked key opens every archived DM for that identity. A *Known limits* section in `docs/chat.md` and `docs/it/chat.md` lists that first, alongside the password that bounds every key, trust-on-first-use pinning, and the fact that the instance serves the very bundle that handles the keys.
+- **Rooms are plaintext by decision, and the chat docs now say why.** They already recorded that room messages are not E2EE, but as "not E2EE yet" — which reads as an unfinished feature rather than a settled trade-off. Moderation, admin backlog clearing, and serving history to a member who joins later all require the server to read room messages; group encryption would additionally have to answer who holds the key, how it reaches a late joiner, and what becomes of the backlog when a member is removed. Both `docs/chat.md` and `docs/it/chat.md` now state the reasoning, so rooms are not mistaken for private.
+
+### Fixed
+
+- **One message no longer gets a different timestamp per recipient.** `Date.now()` was read inside the delivery loop, so every client was told a different `ts` for the same message and none of them matched the row that was stored. A federated lobby message was likewise stored under the receiving instance's clock while being relayed under the sender's.
+
 ## [5.4.1] - 2026-08-10
 
 ### Added

@@ -110,7 +110,83 @@ export function createDatabase(dbPath: string): DatabaseService {
 			}
 		}
 	})();
+
+	// Second half of the same rescue: dropping the orphan above removes the
+	// table, not the foreign keys SQLite rewrote to point at it. Every other
+	// table that referenced `admin` still declares REFERENCES "admin_old", and
+	// with foreign_keys ON SQLite resolves that target when a statement is
+	// *prepared* — so a DELETE on such a table fails with
+	// `no such table: main.admin_old` before it runs anything. peer_sessions
+	// hits this on a timer at boot, which is how it was found; ~18 tables
+	// reference admin(id), so leaving it unrepaired arms the rest of them too.
+	//
+	// A foreign key cannot be altered: the documented in-place repair is to
+	// edit the stored schema text, which is what writable_schema exists for.
+	// The alternative is rebuilding and copying every affected table.
+	for (const table of tablesToRescue) {
+		const orphan = `${table}_old`;
+		const stillExists = db
+			.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")
+			.get(orphan);
+		if (stillExists) continue;
+
+		// SQLite quotes the name when it rewrites a reference, so matching the
+		// quoted token cannot collide with a column or default that merely
+		// contains the word.
+		const token = `"${orphan}"`;
+		const dangling = db
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND sql LIKE ?",
+			)
+			.all(`%${token}%`) as Array<{ name: string }>;
+		if (dangling.length === 0) continue;
+
+		console.log(
+			`🩹 [Database] Repairing ${dangling.length} table(s) still referencing ${orphan}: ${dangling
+				.map((r) => r.name)
+				.join(", ")}`,
+		);
+		// better-sqlite3 runs in defensive mode, which refuses writes to
+		// sqlite_master outright — the protection is what makes this repair
+		// worth scoping as tightly as possible, so it is lifted for the single
+		// statement and restored in the same breath.
+		db.unsafeMode(true);
+		db.pragma("writable_schema = ON");
+		try {
+			db.prepare(
+				"UPDATE sqlite_master SET sql = replace(sql, ?, ?) WHERE type='table' AND sql LIKE ?",
+			).run(token, `"${table}"`, `%${token}%`);
+		} finally {
+			// RESET rather than OFF: it also makes SQLite re-read the schema it
+			// has cached, so the connection does not keep serving the broken one.
+			db.pragma("writable_schema = RESET");
+			db.unsafeMode(false);
+		}
+	}
+
 	db.pragma("foreign_keys = ON");
+
+	// Only meaningful once foreign keys are back on. A row orphaned while the
+	// schema was broken is worth reporting, but not worth refusing to boot
+	// over: the server is more useful running than dead, and the operator can
+	// act on a named table.
+	try {
+		const fkViolations = db.pragma("foreign_key_check") as Array<{
+			table: string;
+		}>;
+		if (fkViolations.length > 0) {
+			const tables = [...new Set(fkViolations.map((v) => v.table))].join(", ");
+			console.warn(
+				`⚠️ [Database] ${fkViolations.length} foreign key violation(s) after rescue, in: ${tables}`,
+			);
+		}
+	} catch (err) {
+		// The check itself throws on a schema-level mismatch (a reference to a
+		// column that is not a key), which is exactly the kind of damage worth
+		// reporting -- and exactly the wrong thing to refuse to boot over,
+		// since a diagnostic must not be able to take the server down.
+		console.warn("⚠️ [Database] Foreign key check could not complete:", err);
+	}
 
 	// Legacy ZEN naming: rename in place so existing FID identity data survives
 	// (a plain CREATE TABLE IF NOT EXISTS zen_users below would leave it as an empty table).

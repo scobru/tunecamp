@@ -157,6 +157,7 @@ export function createPeerWsHandler(
 										sessionId,
 										message.to,
 										message.text,
+										message.ref,
 									);
 									break;
 								case "pubkey": {
