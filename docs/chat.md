@@ -14,7 +14,7 @@ The chat system is built around a lightweight WebSocket transport and local SQLi
   - `chat_messages`: Stores public lobby messages with persistent history.
   - `chat_rooms`: Named multi-user rooms. Besides the local `id` (a per-instance `AUTOINCREMENT`) each room carries a `global_id` UUID minted once by the instance that created it — that is the only identifier valid across instances.
   - `chat_room_members`: Room membership, keyed by `(room_id, username)`.
-  - `chat_room_messages`: Room backlog (plaintext; rooms are not E2EE yet).
+  - `chat_room_messages`: Room backlog (plaintext; rooms are not E2EE, by decision — see *Rooms*).
   - `peer_chat_bans`: Persistent IP / user bans for chat moderation.
   - `peer_chat_mutes`: Persistent user mute list.
 - **Client Library**: Packaged separately as `@tunecamp/chat` (`tunecamp-chat`), which provides the `TuneCampChatClient` class and the `useTuneCampChat` React hook.
@@ -45,7 +45,9 @@ The chat system is built around a lightweight WebSocket transport and local SQLi
 - **Named multi-user conversations**, separate from the single global lobby. Membership is keyed by *username*, not by socket: a user who joins from the webapp is still a member from their Sidecamp daemon and across reconnects.
 - **Managed over REST** (`/api/chat/rooms*`, all behind `authMiddleware.requireUser`) and used over WebSocket (`room_join`, `room_leave`, `room_chat`). The acting user is always taken from the authenticated session — never from a query parameter.
 - **Deletion is creator-only**; private rooms (`is_private`) are visible to members only.
-- **Not E2EE**: room messages are stored and relayed in plaintext, unlike DMs. Do not use rooms for anything that needs the DM threat model.
+- **Not E2EE, by decision rather than by omission.** Room messages are stored and relayed in plaintext, unlike DMs. Do not use a room for anything that needs the DM threat model.
+
+  A room is a moderated space: an instance admin can clear its backlog, a moderator acts on what was said, and the backlog is served to whoever joins later — including members who were not present. All of that requires the server to read the messages. Group E2EE would also have to answer who holds the key, how it reaches a member who joins a year late, and what happens to the backlog when someone is removed, which is a key-management problem rather than a cipher problem. The two are in genuine tension, and resolving it is not release-sized work. Rooms are therefore plaintext on purpose, and documented as such, so nobody mistakes them for private. DMs remain end-to-end encrypted and unmoderated; that is the trade, and it is deliberate on both sides.
 
 ### Federated Chat (Cross-Instance)
 - **Lobby relay**: Public lobby messages are broadcast to every known federated peer instance and injected into their local lobby, tagged with the sender's origin instance.

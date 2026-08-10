@@ -9,6 +9,10 @@ All notable changes to this project will be documented in this file.
 - **Every stored chat message now carries an id.** Clients had to recognise a message by sender and timestamp, which drops one of any two that land in the same millisecond. Lobby and room messages are now sent and served with an `id` (`l<row>` / `r<row>` — the two tables are separate AUTOINCREMENTs that share one list on the client, so the row number alone would collide). Scope is the instance: a client talks to exactly one, and a federated message is stored and numbered locally like any other.
 - **The sender is acked with the id of the message they just sent.** They are skipped in every fan-out, so they had no way to learn it, and the copy their client rendered on send reappeared as a duplicate once history was fetched. `chat_ack` / `room_chat_ack` carry the id, the server timestamp and the client's own `ref` echoed back. Both are additive — a client that does not know them ignores them.
 
+### Documentation
+
+- **Rooms are plaintext by decision, and the chat docs now say why.** They already recorded that room messages are not E2EE, but as "not E2EE yet" — which reads as an unfinished feature rather than a settled trade-off. Moderation, admin backlog clearing, and serving history to a member who joins later all require the server to read room messages; group encryption would additionally have to answer who holds the key, how it reaches a late joiner, and what becomes of the backlog when a member is removed. Both `docs/chat.md` and `docs/it/chat.md` now state the reasoning, so rooms are not mistaken for private.
+
 ### Fixed
 
 - **One message no longer gets a different timestamp per recipient.** `Date.now()` was read inside the delivery loop, so every client was told a different `ts` for the same message and none of them matched the row that was stored. A federated lobby message was likewise stored under the receiving instance's clock while being relayed under the sender's.
