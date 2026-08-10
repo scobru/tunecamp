@@ -90,7 +90,11 @@ describe("ChatService", () => {
 			const delivered = chatService.relayChat("alice-id", "", "hi everyone");
 
 			expect(delivered).toBe(true);
-			expect(aliceWs.send).not.toHaveBeenCalled();
+			// Alice gets an ack carrying the id of what she just sent, but never
+			// the message itself echoed back at her.
+			expect(aliceWs.send).not.toHaveBeenCalledWith(
+				expect.stringContaining('"type":"chat"'),
+			);
 			expect(bobWs.send).toHaveBeenCalledWith(
 				expect.stringContaining('"lobby":true'),
 			);
@@ -448,6 +452,104 @@ describe("ChatService", () => {
 					signal,
 				}),
 			);
+		});
+	});
+
+	// A client that has to recognise a message by sender and timestamp loses one
+	// of any two that land in the same millisecond. These cover the id that
+	// replaces that guess.
+	describe("message ids", () => {
+		function parseSent(ws: any, type: string) {
+			return (ws.send.mock.calls as string[][])
+				.map((call) => JSON.parse(call[0]))
+				.filter((msg) => msg.type === type);
+		}
+
+		it("gives two lobby messages sent in the same millisecond distinct ids", () => {
+			const aliceWs = fakeWs();
+			const bobWs = fakeWs();
+			chatService.register("alice-id", "alice", aliceWs);
+			chatService.register("bob-id", "bob", bobWs);
+			const now = jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+
+			chatService.relayChat("alice-id", "", "first");
+			chatService.relayChat("alice-id", "", "second");
+			now.mockRestore();
+
+			const sent = parseSent(bobWs, "chat");
+			expect(sent).toHaveLength(2);
+			expect(sent[0].ts).toBe(sent[1].ts);
+			expect(sent[0].id).not.toBe(sent[1].id);
+
+			// Both survive the round trip that a ts-keyed client would collapse.
+			const history = chatService.getHistory();
+			expect(history.map((m) => m.message)).toEqual(["first", "second"]);
+			expect(new Set(history.map((m) => m.id)).size).toBe(2);
+		});
+
+		it("hands every recipient the same id and ts for one message", () => {
+			const aliceWs = fakeWs();
+			const bobWs = fakeWs();
+			const carolWs = fakeWs();
+			chatService.register("alice-id", "alice", aliceWs);
+			chatService.register("bob-id", "bob", bobWs);
+			chatService.register("carol-id", "carol", carolWs);
+
+			chatService.relayChat("alice-id", "", "hi everyone");
+
+			const [toBob] = parseSent(bobWs, "chat");
+			const [toCarol] = parseSent(carolWs, "chat");
+			expect(toBob.id).toBe(toCarol.id);
+			expect(toBob.ts).toBe(toCarol.ts);
+			// The id has to name the row, or history cannot be matched to it.
+			expect(chatService.getHistory()[0].id).toBe(toBob.id);
+		});
+
+		it("acks the sender with the id and ref of what they just sent", () => {
+			const aliceWs = fakeWs();
+			const bobWs = fakeWs();
+			chatService.register("alice-id", "alice", aliceWs);
+			chatService.register("bob-id", "bob", bobWs);
+
+			chatService.relayChat("alice-id", "", "hi", "ref-7");
+
+			const [ack] = parseSent(aliceWs, "chat_ack");
+			const [toBob] = parseSent(bobWs, "chat");
+			expect(ack.ref).toBe("ref-7");
+			expect(ack.id).toBe(toBob.id);
+			expect(ack.ts).toBe(toBob.ts);
+		});
+
+		it("keeps lobby and room ids apart even at the same row number", () => {
+			const aliceWs = fakeWs();
+			const bobWs = fakeWs();
+			chatService.register("alice-id", "alice", aliceWs);
+			chatService.register("bob-id", "bob", bobWs);
+			const room = chatService.createRoom("general", "", false, "alice");
+			chatService.joinRoomByUser("alice", room.id);
+			chatService.joinRoomByUser("bob", room.id);
+			chatService.joinRoom("bob-id", room.id);
+
+			chatService.relayChat("alice-id", "", "lobby one");
+			chatService.relayRoomMessage(room.id, "alice-id", "room one");
+
+			// Both are row 1 of their table; they share one list on the client.
+			const [lobby] = parseSent(bobWs, "chat");
+			const [inRoom] = parseSent(bobWs, "room_chat");
+			expect(lobby.id).not.toBe(inRoom.id);
+			expect(chatService.getRoomHistory(room.id)[0].id).toBe(inRoom.id);
+		});
+
+		it("leaves a DM without an id, since nothing stores it", () => {
+			const aliceWs = fakeWs();
+			const bobWs = fakeWs();
+			chatService.register("alice-id", "alice", aliceWs);
+			chatService.register("bob-id", "bob", bobWs);
+
+			chatService.relayChat("alice-id", "bob", "ciphertext-blob", "ref-1");
+
+			expect(parseSent(bobWs, "chat")[0].id).toBeUndefined();
+			expect(parseSent(aliceWs, "chat_ack")).toHaveLength(0);
 		});
 	});
 

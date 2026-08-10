@@ -30,6 +30,8 @@ interface ChatClient {
 }
 
 export interface LobbyMessage {
+	/** Stable handle for this stored message. See `wireId`. */
+	id?: string;
 	username: string;
 	message: string;
 	created_at: number;
@@ -41,6 +43,23 @@ export interface ChatRoom {
 	name: string;
 	description: string | null;
 	is_private: number;
+}
+
+/**
+ * Identity of a stored message, for clients that would otherwise have to guess
+ * it from sender and timestamp — which drops a genuine message whenever two
+ * land in the same millisecond.
+ *
+ * The row id alone will not do: lobby and room messages come from two
+ * AUTOINCREMENT tables and end up in one client-side list, so their ids
+ * collide. The prefix separates them.
+ *
+ * Scope is this instance. A client talks to exactly one, and a federated
+ * message is stored locally and numbered locally like any other, so no
+ * cross-instance equality is claimed or needed.
+ */
+function wireId(table: "l" | "r", rowId: number | bigint): string {
+	return `${table}${rowId}`;
 }
 
 const OPEN = 1;
@@ -323,7 +342,12 @@ export class ChatService {
 	// Relay a chat message. An empty toUsername broadcasts to every other live
 	// client (lobby); otherwise it's delivered only to clients of that username.
 	// Returns true if delivered to at least one socket.
-	relayChat(fromClientId: string, toUsername: string, text: string): boolean {
+	relayChat(
+		fromClientId: string,
+		toUsername: string,
+		text: string,
+		ref?: string,
+	): boolean {
 		const from = this.clients.get(fromClientId);
 		if (!from) return false;
 		const clean = String(text ?? "").slice(0, MAX_TEXT_LENGTH);
@@ -348,7 +372,18 @@ export class ChatService {
 			return false;
 		}
 
-		if (isLobby) this.persistLobbyMessage(from.username, clean);
+		// One timestamp for the whole message rather than one per recipient:
+		// otherwise every client is told a different `ts` for the same message,
+		// and none of them matches the row that was stored.
+		const ts = Date.now();
+		// DMs are never persisted -- the server only sees ciphertext -- so they
+		// have no row and honestly no id. They also have no history to dedupe
+		// against, so nothing needs one.
+		const rowId = isLobby
+			? this.persistLobbyMessage(from.username, clean, ts)
+			: null;
+		const id = rowId === null ? undefined : wireId("l", rowId);
+
 		let delivered = false;
 		for (const client of this.clients.values()) {
 			if (client.id === fromClientId || client.ws.readyState !== OPEN) continue;
@@ -360,16 +395,44 @@ export class ChatService {
 				client.ws.send(
 					JSON.stringify({
 						type: "chat",
+						id,
 						from: from.username,
 						text: clean,
-						ts: Date.now(),
+						ts,
 						lobby: isLobby,
 					}),
 				);
 				delivered = true;
 			}
 		}
+		this.sendAck(from, "chat_ack", id, ts, ref);
 		return delivered;
+	}
+
+	/**
+	 * Tell the sender what their own message ended up as. They are skipped in
+	 * every fan-out above, so without this they never learn its id or the
+	 * server's timestamp, and the copy they rendered optimistically appears a
+	 * second time as soon as history is fetched.
+	 *
+	 * `ref` is whatever the client attached on the way out; it is echoed
+	 * untouched so a client with several messages in flight can tell the acks
+	 * apart. Older clients send none and simply ignore the frame.
+	 */
+	private sendAck(
+		client: ChatClient,
+		type: "chat_ack" | "room_chat_ack",
+		id: string | undefined,
+		ts: number,
+		ref?: string,
+		roomId?: number,
+	): void {
+		if (!id || client.ws.readyState !== OPEN) return;
+		try {
+			client.ws.send(JSON.stringify({ type, id, ts, ref, roomId }));
+		} catch (err) {
+			console.error("[ChatService] ack error:", err);
+		}
 	}
 
 	// Store a client's E2E public key (opaque to the server — just relayed for
@@ -434,10 +497,13 @@ export class ChatService {
 		try {
 			const rows = this.database.db
 				.prepare(
-					"SELECT username, message, created_at FROM peer_chat_messages ORDER BY id DESC LIMIT ?",
+					"SELECT id, username, message, created_at FROM peer_chat_messages ORDER BY id DESC LIMIT ?",
 				)
-				.all(Math.min(limit, LOBBY_HISTORY_CAP)) as LobbyMessage[];
-			return rows.reverse();
+				.all(Math.min(limit, LOBBY_HISTORY_CAP)) as (Omit<
+				LobbyMessage,
+				"id"
+			> & { id: number })[];
+			return rows.reverse().map((r) => ({ ...r, id: wireId("l", r.id) }));
 		} catch (err) {
 			console.error("[ChatService] Failed to fetch lobby history:", err);
 			return [];
@@ -496,21 +562,29 @@ export class ChatService {
 	}
 
 	// Chat must keep flowing even if the write fails: a broken backlog is an
-	// annoyance, a relay that throws mid-broadcast drops live messages.
-	private persistLobbyMessage(username: string, message: string): void {
+	// annoyance, a relay that throws mid-broadcast drops live messages. A null
+	// return means the row is gone, so the message goes out without an id
+	// rather than with one that points at nothing.
+	private persistLobbyMessage(
+		username: string,
+		message: string,
+		ts: number,
+	): number | null {
 		try {
-			this.database.db
+			const result = this.database.db
 				.prepare(
 					"INSERT INTO peer_chat_messages (username, message, created_at) VALUES (?, ?, ?)",
 				)
-				.run(username, message, Date.now());
+				.run(username, message, ts || Date.now());
 			this.database.db
 				.prepare(
 					"DELETE FROM peer_chat_messages WHERE id <= (SELECT MAX(id) FROM peer_chat_messages) - ?",
 				)
 				.run(LOBBY_HISTORY_CAP);
+			return Number(result.lastInsertRowid);
 		} catch (err) {
 			console.error("[ChatService] Failed to persist lobby message:", err);
+			return null;
 		}
 	}
 	/**
@@ -540,9 +614,15 @@ export class ChatService {
 			);
 		}
 
-		if (isLobby) {
-			this.persistLobbyMessage(qualifiedFrom, clean);
-		}
+		// The sender's timestamp, not ours: the row has to carry what every
+		// client is told on the wire below, or history and live traffic
+		// disagree about the same message. Freshness is already bounded by the
+		// federation service before we get here.
+		const wireTs = ts || Date.now();
+		const rowId = isLobby
+			? this.persistLobbyMessage(qualifiedFrom, clean, wireTs)
+			: null;
+		const id = rowId === null ? undefined : wireId("l", rowId);
 
 		let delivered = false;
 		for (const client of this.clients.values()) {
@@ -559,9 +639,10 @@ export class ChatService {
 				client.ws.send(
 					JSON.stringify({
 						type: "chat",
+						id,
 						from: qualifiedFrom,
 						text: clean,
-						ts: ts || Date.now(),
+						ts: wireTs,
 						lobby: isLobby,
 					}),
 				);
@@ -589,7 +670,8 @@ export class ChatService {
 		const room = this.getRoom(roomGlobalId);
 		if (!room) return false;
 
-		this.persistRoomMessage(room.id, qualifiedFrom, text, ts);
+		const rowId = this.persistRoomMessage(room.id, qualifiedFrom, text, ts);
+		const id = rowId === null ? undefined : wireId("r", rowId);
 
 		let delivered = false;
 		for (const client of this.clients.values()) {
@@ -598,6 +680,7 @@ export class ChatService {
 				client.ws.send(
 					JSON.stringify({
 						type: "room_chat",
+						id,
 						roomId: room.id,
 						roomGlobalId,
 						from: qualifiedFrom,
@@ -778,13 +861,24 @@ export class ChatService {
 	getRoomHistory(
 		roomId: number,
 		limit = 100,
-	): { username: string; message: string; created_at: number }[] {
+	): {
+		id: string;
+		username: string;
+		message: string;
+		created_at: number;
+	}[] {
 		try {
-			return this.database.db
+			const rows = this.database.db
 				.prepare(
-					"SELECT username, message, created_at FROM chat_room_messages WHERE room_id = ? ORDER BY id DESC LIMIT ?",
+					"SELECT id, username, message, created_at FROM chat_room_messages WHERE room_id = ? ORDER BY id DESC LIMIT ?",
 				)
-				.all(roomId, Math.min(limit, ROOM_HISTORY_CAP)) as any[];
+				.all(roomId, Math.min(limit, ROOM_HISTORY_CAP)) as {
+				id: number;
+				username: string;
+				message: string;
+				created_at: number;
+			}[];
+			return rows.map((r) => ({ ...r, id: wireId("r", r.id) }));
 		} catch {
 			return [];
 		}
@@ -795,6 +889,7 @@ export class ChatService {
 		roomId: number,
 		fromClientId: string,
 		text: string,
+		ref?: string,
 	): boolean {
 		const from = this.clients.get(fromClientId);
 		if (!from) return false;
@@ -803,7 +898,8 @@ export class ChatService {
 		if (!this.isMember(roomId, from.username)) return false;
 
 		const ts = Date.now();
-		this.persistRoomMessage(roomId, from.username, clean, ts);
+		const rowId = this.persistRoomMessage(roomId, from.username, clean, ts);
+		const id = rowId === null ? undefined : wireId("r", rowId);
 
 		let delivered = false;
 		for (const client of this.clients.values()) {
@@ -817,6 +913,7 @@ export class ChatService {
 				client.ws.send(
 					JSON.stringify({
 						type: "room_chat",
+						id,
 						roomId,
 						from: from.username,
 						text: clean,
@@ -828,6 +925,7 @@ export class ChatService {
 				console.error("[ChatService] room relay error:", err);
 			}
 		}
+		this.sendAck(from, "room_chat_ack", id, ts, ref, roomId);
 		return delivered;
 	}
 
@@ -844,15 +942,16 @@ export class ChatService {
 	}
 
 	// Timestamps are milliseconds everywhere on the wire, so room history must
-	// not fall back to the table's strftime('%s') default (seconds).
+	// not fall back to the table's strftime('%s') default (seconds). A null
+	// return means the row is gone; see `persistLobbyMessage`.
 	private persistRoomMessage(
 		roomId: number,
 		username: string,
 		message: string,
 		ts: number,
-	): void {
+	): number | null {
 		try {
-			this.database.db
+			const result = this.database.db
 				.prepare(
 					"INSERT INTO chat_room_messages (room_id, username, message, created_at) VALUES (?, ?, ?, ?)",
 				)
@@ -862,8 +961,10 @@ export class ChatService {
 					"DELETE FROM chat_room_messages WHERE room_id = ? AND id <= (SELECT MAX(id) FROM chat_room_messages WHERE room_id = ?) - ?",
 				)
 				.run(roomId, roomId, ROOM_HISTORY_CAP);
+			return Number(result.lastInsertRowid);
 		} catch (err) {
 			console.error("[ChatService] Failed to persist room message:", err);
+			return null;
 		}
 	}
 }

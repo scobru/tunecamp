@@ -157,7 +157,12 @@ export function createChatWsHandler(
 										);
 									}
 								} else {
-									container.chatService.relayChat(clientId, to, message.text);
+									container.chatService.relayChat(
+										clientId,
+										to,
+										message.text,
+										message.ref,
+									);
 									if (!to && federation) {
 										federation.setPeers(
 											container.federatedDiscoveryService.getPeers(),
@@ -213,6 +218,7 @@ export function createChatWsHandler(
 										roomId,
 										clientId,
 										message.text,
+										message.ref,
 									);
 									const federation = container.chatFederationService;
 									const room = container.chatService.getRoom(roomId);
