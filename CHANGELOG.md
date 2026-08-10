@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **An instance no longer crash-loops on `no such table: main.admin_old`.** A legacy migration did `ALTER TABLE admin RENAME TO admin_old`, which makes SQLite rewrite every referencing table's foreign key to follow the new name. The rescue phase dropped the orphan but left those references behind, and with `foreign_keys = ON` SQLite resolves a foreign key target when a statement is *prepared* — so `DELETE FROM peer_sessions` failed before running anything, taking down both the boot-time session purge and every `/ws/peer` upgrade. Reported from a live instance. The rescue phase now repairs the stored schema of any table still pointing at a dropped `*_old`, so an affected database fixes itself on restart with no operator intervention. `peer_sessions` is simply the table a timer touches first: around eighteen tables reference `admin(id)`, and all of them were exposed.
+- A startup `foreign_key_check` now reports violations by table instead of being able to take the instance down: the pragma throws on a schema-level mismatch, and a diagnostic must not be fatal.
+
 ### Added
 
 - **Every stored chat message now carries an id.** Clients had to recognise a message by sender and timestamp, which drops one of any two that land in the same millisecond. Lobby and room messages are now sent and served with an `id` (`l<row>` / `r<row>` — the two tables are separate AUTOINCREMENTs that share one list on the client, so the row number alone would collide). Scope is the instance: a client talks to exactly one, and a federated message is stored and numbered locally like any other.
