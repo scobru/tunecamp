@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 
+- **The chat docs now collect what the design does not protect against.** The limits were all stated somewhere — plaintext rooms, routing metadata, no durable federated queue — but spread across five sections, so finding them meant reading the whole document, and the largest one was not stated at all: DMs have **no forward secrecy**, since the secret comes from two long-term identities and never ratchets, so one leaked key opens every archived DM for that identity. A *Known limits* section in `docs/chat.md` and `docs/it/chat.md` lists that first, alongside the password that bounds every key, trust-on-first-use pinning, and the fact that the instance serves the very bundle that handles the keys.
 - **Rooms are plaintext by decision, and the chat docs now say why.** They already recorded that room messages are not E2EE, but as "not E2EE yet" — which reads as an unfinished feature rather than a settled trade-off. Moderation, admin backlog clearing, and serving history to a member who joins later all require the server to read room messages; group encryption would additionally have to answer who holds the key, how it reaches a late joiner, and what becomes of the backlog when a member is removed. Both `docs/chat.md` and `docs/it/chat.md` now state the reasoning, so rooms are not mistaken for private.
 
 ### Fixed

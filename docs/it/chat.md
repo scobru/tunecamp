@@ -86,6 +86,18 @@ Il protocollo di chat è server-to-server, come Matrix o l'email — non peer-to
 
 Nota che nemmeno «spostare la chat su un grafo P2P» è un'opzione: il vecchio grafo P2P ZEN è stato rimosso e non va reintrodotto (vedi le note ZEN nel `CLAUDE.md` del repo).
 
+### Limiti noti
+
+Tutto quanto sopra descrive ciò che il design fa. Questo è ciò che non fa, raccolto in un unico posto perché nessuno debba dedurlo da un'assenza:
+
+- **Nessuna forward secrecy.** Un DM è cifrato con un segreto derivato dalle due identità di lungo termine, e non c'è ratchet: lo stesso segreto protegge il primo messaggio e il millesimo. Chi ottiene una chiave privata può leggere ogni DM da o verso quell'identità che qualcuno abbia archiviato, messaggi passati compresi. È il limite più pesante di questo elenco, ed è quello che un utente ha meno probabilità di immaginare.
+- **Una chiave privata vale quanto la password che c'è dietro.** L'identità è derivata dalla password dell'utente, o sigillata sotto di essa, e il vault sigillato sta sul server. Chi possiede il vault — l'istanza lo possiede — può attaccarlo offline, senza rate limit e senza account da bloccare. PBKDF2 a 600 000 iterazioni alza il costo per tentativo; non salva una password debole.
+- **Stanze e lobby sono in chiaro.** Non è una svista: vedi [Stanze](#stanze-rooms) per perché moderazione e storico per chi entra dopo lo richiedono. Non mettere in una stanza nulla che richieda il modello di minaccia dei DM.
+- **I metadati di instradamento sono visibili ai server sul percorso.** Chi ha scritto a chi, e quando, è esattamente ciò che dice a un'istanza dove consegnare. Non viene conservato, ma viene visto. Vedi [Cosa conserva il server](#cosa-conserva-il-server).
+- **Il pinning delle chiavi è trust-on-first-use.** La prima chiave vista per un peer viene fissata e una sostituzione successiva è rifiutata, il che intercetta un server che cambia risposta. Non intercetta un server che ha mentito la *prima* volta, prima che l'utente avesse una chiave autentica con cui confrontare. I fingerprint vanno verificati fuori banda.
+- **Il client te lo serve l'istanza con cui parli.** La webapp è un bundle che l'istanza ti consegna, quindi chi controlla l'istanza controlla il codice che maneggia le chiavi. La cifratura end-to-end limita ciò che un server *passivo* impara; non vincola un server che decide di servire JavaScript diverso. Un client daemon come Sidecamp, installato una volta dalla sua release, restringe il problema — non lo elimina.
+- **I messaggi federati non hanno consegna offline.** Un peer irraggiungibile per più di ~40 secondi perde il messaggio; non esiste una coda durabile, per il motivo spiegato in [Chat Federata](#chat-federata-cross-instance).
+
 ---
 
 ## 3. Comandi Stile IRC e Moderazione

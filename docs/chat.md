@@ -86,6 +86,18 @@ The chat protocol is server-to-server, like Matrix or email — not peer-to-peer
 
 Note that "move chat onto a P2P graph" is not an option here either: the old ZEN P2P graph was removed and must not be reintroduced (see the ZEN notes in the repo's `CLAUDE.md`).
 
+### Known limits
+
+Everything above describes what the design does. This is what it does not do, collected in one place so nobody has to infer it from an absence:
+
+- **No forward secrecy.** A DM is encrypted under a secret derived from the two long-term identity keys, and there is no ratchet: the same secret protects the first message and the thousandth. Whoever obtains one private key can read every DM to or from that identity that anyone archived — past messages included. This is the most consequential limit listed here, and it is the one a user is least likely to guess.
+- **A private key is only as strong as the password behind it.** The identity is derived from, or sealed under, the user's password, and the sealed vault lives on the server. Whoever holds the vault — the instance does — can attack it offline, with no rate limit and no account to lock. PBKDF2 at 600 000 iterations raises the cost per guess; it does not save a weak password.
+- **Rooms and the lobby are plaintext.** Not an oversight: see [Rooms](#rooms) for why moderation and late-joiner history require it. Do not put anything in a room that needs the DM threat model.
+- **Routing metadata is visible to the servers on the path.** Who messaged whom, and when, is what tells an instance where to deliver. It is not stored, but it is seen. See [What the server stores](#what-the-server-stores).
+- **Key pinning is trust-on-first-use.** The first key seen for a peer is pinned and a later substitution is refused, which catches a server that changes its answer. It cannot catch one that lied the *first* time, before the user had a genuine key to compare against. Fingerprints are meant to be checked out of band.
+- **The client is served by the instance it talks to.** The webapp is a bundle the instance hands you, so whoever controls the instance controls the code that handles the keys. End-to-end encryption bounds what a *passive* server learns; it does not bind a server that chooses to ship different JavaScript. A daemon client such as Sidecamp, installed once from its own release, narrows this — it does not eliminate it.
+- **Federated messages have no offline delivery.** A peer unreachable for more than ~40 seconds loses the message; there is no durable queue, for the reason given under [Federated Chat](#federated-chat-cross-instance).
+
 ---
 
 ## 3. IRC-Style Commands & Moderation
