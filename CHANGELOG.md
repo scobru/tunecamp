@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Removed
+
+- **`TUNECAMP_CHAT_FEDERATION_SECRET` is gone, along with the last code that read it.** 5.2.0 made inbound verification asymmetric-only, which left the shared secret authenticating nothing — but `sign()` still fell back to an HMAC under it when the site keypair was missing. That fallback could not federate anything: every peer refuses those bytes, so an operator with a broken keypair saw messages leave and never arrive, with no error at the point of failure. `sign()` now throws when there is no `site_private_key`, `fanout()` catches that and skips delivery with a logged error rather than rejecting (`chat.ws.ts` fires it without awaiting, so a rejection would be an unhandled one), and `config.chatFederationSecret` no longer exists. No action needed beyond deleting the variable from your environment; an instance generates its site keypair at boot.
+
 ### Fixed
 
 - **An instance no longer crash-loops on `no such table: main.admin_old`.** A legacy migration did `ALTER TABLE admin RENAME TO admin_old`, which makes SQLite rewrite every referencing table's foreign key to follow the new name. The rescue phase dropped the orphan but left those references behind, and with `foreign_keys = ON` SQLite resolves a foreign key target when a statement is *prepared* — so `DELETE FROM peer_sessions` failed before running anything, taking down both the boot-time session purge and every `/ws/peer` upgrade. Reported from a live instance. The rescue phase now repairs the stored schema of any table still pointing at a dropped `*_old`, so an affected database fixes itself on restart with no operator intervention. `peer_sessions` is simply the table a timer touches first: around eighteen tables reference `admin(id)`, and all of them were exposed.

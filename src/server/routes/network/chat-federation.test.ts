@@ -31,15 +31,15 @@ const dummyDb = {
 	upsertRemoteActor: () => {}
 };
 
-function createChatFederationService(chatService: any, secret: string) {
-	return realCreateChatFederationService(chatService, dummyDb, secret);
+function createChatFederationService(chatService: any) {
+	return realCreateChatFederationService(chatService, dummyDb);
 }
 
 // Inbound now requires a fresh timestamp, so payloads are dated at call time
 // instead of using fixed constants.
 const NOW = Date.now();
 
-function buildApp(secret = "shared-secret", peers = ["https://a.example.com"]) {
+function buildApp(peers = ["https://a.example.com"]) {
 	const db = new Database(":memory:");
 	db.exec(`CREATE TABLE peer_chat_messages (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,7 +48,7 @@ function buildApp(secret = "shared-secret", peers = ["https://a.example.com"]) {
 		created_at INTEGER NOT NULL
 	)`);
 	const chatService = createChatService({ db } as any);
-	const federation = createChatFederationService(chatService, secret);
+	const federation = createChatFederationService(chatService);
 
 	const app = express();
 	app.use(express.json());
@@ -58,7 +58,7 @@ function buildApp(secret = "shared-secret", peers = ["https://a.example.com"]) {
 			database: { db } as any,
 			chatService,
 			chatFederationService: federation,
-			config: { chatFederationSecret: secret } as any,
+			config: {} as any,
 			federatedDiscoveryService: { getPeers: () => peers },
 		} as any),
 	);
@@ -96,10 +96,9 @@ describe("Chat federation routes", () => {
 				ts: NOW,
 				lobby: true,
 			};
-			const signature = createChatFederationService(
-				chatService,
-				"shared-secret",
-			).sign(payload as any);
+			const signature = createChatFederationService(chatService).sign(
+				payload as any,
+			);
 
 			const res = await request(app)
 				.post("/api/chat/federated/inbound")
@@ -133,10 +132,9 @@ describe("Chat federation routes", () => {
 				lobby: false,
 				toUsername: "bob",
 			};
-			const signature = createChatFederationService(
-				chatService,
-				"shared-secret",
-			).sign(payload as any);
+			const signature = createChatFederationService(chatService).sign(
+				payload as any,
+			);
 
 			const res = await request(app)
 				.post("/api/chat/federated/inbound")
@@ -170,10 +168,9 @@ describe("Chat federation routes", () => {
 				roomGlobalId: "11111111-2222-3333-4444-555555555555",
 				roomName: "general",
 			};
-			const signature = createChatFederationService(
-				chatService,
-				"shared-secret",
-			).sign(payload as any);
+			const signature = createChatFederationService(chatService).sign(
+				payload as any,
+			);
 
 			const res = await request(app)
 				.post("/api/chat/federated/inbound")
@@ -225,7 +222,7 @@ describe("Chat federation routes", () => {
 				public_key: keys.publicKey,
 			};
 
-			const federation = realCreateChatFederationService(chatService, mockDbInstance as any, "");
+			const federation = realCreateChatFederationService(chatService, mockDbInstance as any);
 			federation.setPeers(["https://a.example.com"]);
 
 			const app = express();
@@ -236,7 +233,7 @@ describe("Chat federation routes", () => {
 					database: { db, getSetting: (k: string) => mockDbInstance.getSetting(k) } as any,
 					chatService,
 					chatFederationService: federation,
-					config: { chatFederationSecret: "" } as any,
+					config: {} as any,
 					federatedDiscoveryService: { getPeers: () => ["https://a.example.com"] },
 				} as any),
 			);
@@ -301,10 +298,9 @@ describe("Chat federation routes", () => {
 				ts: 1000,
 				lobby: true,
 			};
-			const signature = createChatFederationService(
-				chatService,
-				"shared-secret",
-			).sign(payload as any);
+			const signature = createChatFederationService(chatService).sign(
+				payload as any,
+			);
 
 			const res = await request(app)
 				.post("/api/chat/federated/inbound")
@@ -340,10 +336,9 @@ describe("Chat federation routes", () => {
 				ts: NOW,
 				lobby: true,
 			};
-			const signature = createChatFederationService(
-				chatService,
-				"shared-secret",
-			).sign(payload as any);
+			const signature = createChatFederationService(chatService).sign(
+				payload as any,
+			);
 
 			const first = await request(app)
 				.post("/api/chat/federated/inbound")
@@ -377,10 +372,9 @@ describe("Chat federation routes", () => {
 				ts: NOW - 10 * 60 * 1000,
 				lobby: true,
 			};
-			const signature = createChatFederationService(
-				chatService,
-				"shared-secret",
-			).sign(payload as any);
+			const signature = createChatFederationService(chatService).sign(
+				payload as any,
+			);
 
 			const res = await request(app)
 				.post("/api/chat/federated/inbound")
@@ -402,10 +396,9 @@ describe("Chat federation routes", () => {
 				ts: NOW + 60 * 60 * 1000,
 				lobby: true,
 			};
-			const signature = createChatFederationService(
-				chatService,
-				"shared-secret",
-			).sign(payload as any);
+			const signature = createChatFederationService(chatService).sign(
+				payload as any,
+			);
 
 			const res = await request(app)
 				.post("/api/chat/federated/inbound")
@@ -417,9 +410,7 @@ describe("Chat federation routes", () => {
 		});
 
 		it("rejects a signed message claiming an instance that is not a known peer", async () => {
-			const { app, chatService } = buildApp("shared-secret", [
-				"https://a.example.com",
-			]);
+			const { app, chatService } = buildApp(["https://a.example.com"]);
 			const spy = jest
 				.spyOn(chatService, "relayFederatedMessage")
 				.mockReturnValue(true);
@@ -431,10 +422,9 @@ describe("Chat federation routes", () => {
 				ts: NOW,
 				lobby: true,
 			};
-			const signature = createChatFederationService(
-				chatService,
-				"shared-secret",
-			).sign(payload as any);
+			const signature = createChatFederationService(chatService).sign(
+				payload as any,
+			);
 
 			const res = await request(app)
 				.post("/api/chat/federated/inbound")
@@ -462,10 +452,9 @@ describe("Chat federation routes", () => {
 				ts: NOW,
 				lobby: true,
 			};
-			const signature = createChatFederationService(
-				chatService,
-				"shared-secret",
-			).sign(payload as any);
+			const signature = createChatFederationService(chatService).sign(
+				payload as any,
+			);
 
 			// A peer pre-seeding the dedup map with the id of a message it wants
 			// suppressed: honouring `id` would make the real message a duplicate.
