@@ -32,11 +32,6 @@ export interface ServerConfig {
 	brevoSenderEmail?: string;
 	brevoSenderName?: string;
 
-	// Chat federation HMAC secret for cross-instance lobby/DM relay.
-	// When set, lobby messages are fanned out to federated peers and
-	// inbound federated messages are authenticated by MAC.
-	chatFederationSecret?: string;
-
 	// Live streaming (P2P WebRTC audio rooms). The server only announces
 	// sessions; media flows browser-to-browser, so the cost of enabling
 	// this is negligible. Opt-out via TUNECAMP_LIVE_ENABLED=false.
@@ -229,10 +224,6 @@ export async function loadConfig(
 			process.env.TUNECAMP_XACCEL_CACHE_PREFIX ||
 			overrides?.xaccelCachePrefix ||
 			"/_protected_cache",
-		chatFederationSecret:
-			process.env.TUNECAMP_CHAT_FEDERATION_SECRET ||
-			overrides?.chatFederationSecret ||
-			"",
 	};
 }
 

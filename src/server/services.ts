@@ -388,7 +388,6 @@ export async function bootstrapServices(
 	const chatFederationService = createChatFederationService(
 		chatService,
 		database,
-		config.chatFederationSecret || "",
 	);
 	const samplesRepository = new SampleRepository(database.db);
 	const samplePacksRepository = new SamplePackRepository(database.db);

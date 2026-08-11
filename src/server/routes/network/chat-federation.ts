@@ -14,7 +14,6 @@ export function createChatFederationRoutes(
 	container: ServiceContainer,
 ): Router {
 	const router = Router();
-	const secret = container.config.chatFederationSecret || "";
 	// The container's instance, not a second one: outbound fanout shares its
 	// dedup window, so a message we sent can't be re-ingested when a peer
 	// echoes it back.
