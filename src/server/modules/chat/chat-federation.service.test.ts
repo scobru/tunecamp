@@ -12,6 +12,15 @@ function fakeChatService() {
 	};
 }
 
+// Generated once: RSA keygen is slow enough that per-test generation shows up
+// in the suite's runtime, and no test needs a *different* local key.
+const localKeys = crypto.generateKeyPairSync("rsa", {
+	modulusLength: 2048,
+	publicKeyEncoding: { type: "pkcs1", format: "pem" },
+	privateKeyEncoding: { type: "pkcs1", format: "pem" },
+});
+const localPrivateKey = localKeys.privateKey;
+
 import crypto from "crypto";
 
 describe("ChatFederationService", () => {
@@ -31,13 +40,16 @@ describe("ChatFederationService", () => {
 
 		fake = fakeChatService();
 		mockDb = {
-			settings: {} as Record<string, string>,
+			// Every instance generates a site keypair at boot, and `sign` now
+			// refuses without one. A mock that omits it is not a leaner mock,
+			// it is an instance that cannot federate.
+			settings: { site_private_key: localPrivateKey } as Record<string, string>,
 			remoteActors: {} as Record<string, any>,
 			getSetting(key: string) { return this.settings[key]; },
 			getRemoteActor(uri: string) { return this.remoteActors[uri]; },
 			upsertRemoteActor(actor: any) { this.remoteActors[actor.uri] = { ...this.remoteActors[actor.uri], ...actor }; }
 		};
-		service = createChatFederationService(fake as any, mockDb, "shared-secret");
+		service = createChatFederationService(fake as any, mockDb);
 		service.setPeers(["https://a.example.com", "https://b.example.com"]);
 	});
 
@@ -55,8 +67,9 @@ describe("ChatFederationService", () => {
 				ts: 1000,
 				lobby: true,
 			};
-			// Since keys are not set, it falls back to HMAC (which is a 64-char hex string)
-			expect(service.sign(payload)).toHaveLength(64);
+			// RSA-SHA256 over the site key: 2048-bit, hex, so 512 chars — and
+			// deterministic, which is what the dedup and retry paths rely on.
+			expect(service.sign(payload)).toHaveLength(512);
 			expect(service.sign(payload)).toBe(service.sign(payload));
 		});
 
@@ -145,7 +158,7 @@ describe("ChatFederationService", () => {
 			expect(await service.verify({ ...payload, text: "forged" }, sig)).toBe(false);
 		});
 
-		it("refuses a shared-secret signature once the peer publishes a key", async () => {
+		it("refuses a signature that is not checkable against the peer's key", async () => {
 			mockDb.remoteActors["https://a.example.com/users/site"] = {
 				uri: "https://a.example.com/users/site",
 				public_key: peerPublicKey,
@@ -158,7 +171,10 @@ describe("ChatFederationService", () => {
 				ts: 1000,
 			};
 
-			// A well-formed HMAC from anyone holding the federation-wide secret.
+			// The shape of the retired federation-wide HMAC, over the same signed
+			// fields. It once authenticated this message. It proved "some peer we
+			// already know" and never which one, so any holder could speak as any
+			// other host — which is why nothing verifies it now.
 			const hmac = crypto
 				.createHmac("sha256", "shared-secret")
 				.update(
@@ -178,18 +194,36 @@ describe("ChatFederationService", () => {
 			expect(await service.verify(payload, hmac)).toBe(false);
 		});
 
-		it("refuses a shared-secret signature from a peer with no published key", async () => {
+		it("refuses to sign at all when the instance has no site key", () => {
+			delete mockDb.settings["site_private_key"];
 			const payload: FederatedChatMessage = {
 				username: "alice",
 				instance: "a.example.com",
-				text: "legacy peer",
+				text: "keyless instance",
 				ts: 1000,
 			};
-			// No site_private_key and no cached actor, so sign() takes the HMAC
-			// path — which no peer accepts any more. The secret is shared by the
-			// whole federation, so honouring it would let any peer speak as any
-			// other; an unattributable message is refused instead.
-			expect(await service.verify(payload, service.sign(payload))).toBe(false);
+			// Failing here beats emitting bytes no peer accepts: the old HMAC
+			// fallback made an undeliverable message look like a sent one.
+			expect(() => service.sign(payload)).toThrow(/site_private_key/);
+		});
+
+		it("skips fanout instead of rejecting when it cannot sign", async () => {
+			delete mockDb.settings["site_private_key"];
+			const fetchMock = jest.fn<any>(async () => ({ ok: true }));
+			global.fetch = fetchMock as any;
+
+			// `chat.ws.ts` fires fanout without awaiting it, so a rejection here
+			// would surface as an unhandled one and take the process down.
+			await expect(
+				service.fanout({
+					username: "alice",
+					instance: "a.example.com",
+					text: "keyless fanout",
+					ts: Date.now(),
+					lobby: true,
+				}),
+			).resolves.toBeUndefined();
+			expect(fetchMock).not.toHaveBeenCalled();
 		});
 
 		it("refuses a message from a peer whose key cannot be resolved", async () => {

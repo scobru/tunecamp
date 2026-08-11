@@ -40,17 +40,13 @@ export interface ChatFederationDatabase {
 export class ChatFederationService {
 	private dedup = new Map<string, number>();
 	private retryTimers = new Set<NodeJS.Timeout>();
-	private secret: string;
 	private peers: string[] = [];
 	private publicKeyCache = new Map<string, string>();
 
 	constructor(
 		private chatService: ChatService,
 		private db: ChatFederationDatabase,
-		secret = "",
-	) {
-		this.secret = secret;
-	}
+	) {}
 
 	getPeers(): string[] {
 		return this.peers;
@@ -61,12 +57,15 @@ export class ChatFederationService {
 	}
 
 	/**
-	 * RSA-SHA256 signature (asymmetric) over the JSON-encoded payload fields.
+	 * RSA-SHA256 signature (asymmetric) over the JSON-encoded payload fields,
+	 * made with this instance's own site key.
 	 *
-	 * The HMAC branch is a last resort for an instance whose site keypair is
-	 * missing or unusable. Peers no longer accept it — `verify` is asymmetric
-	 * only — so it exists to keep the send path from throwing, not to federate:
-	 * such a message will be refused at the far end.
+	 * Throws when that key is missing or unusable, because there is nothing
+	 * left to fall back to. The only alternative we ever had was a secret
+	 * shared by the whole federation, and `verify` stopped accepting it: it
+	 * proved "some peer we already know", never which one. Signing with it
+	 * produced bytes every peer refuses — a message that looked sent and was
+	 * dropped at the far end. Failing here says so at the point of failure.
 	 */
 	sign(payload: FederatedChatMessage): string {
 		const signInput = JSON.stringify([
@@ -80,19 +79,15 @@ export class ChatFederationService {
 			payload.roomName || "",
 		]);
 		const privateKey = this.db.getSetting("site_private_key");
-		if (privateKey) {
-			try {
-				const signer = crypto.createSign("sha256");
-				signer.update(signInput);
-				return signer.sign(privateKey, "hex");
-			} catch (e) {
-				console.error("❌ Failed to sign message asymetrically, falling back to HMAC:", e);
-			}
+		if (!privateKey) {
+			throw new Error(
+				"No site_private_key: cannot sign a federated chat message. " +
+					"Every instance generates one at boot; until it exists, federation is off.",
+			);
 		}
-		return crypto
-			.createHmac("sha256", this.secret || "")
-			.update(signInput)
-			.digest("hex");
+		const signer = crypto.createSign("sha256");
+		signer.update(signInput);
+		return signer.sign(privateKey, "hex");
 	}
 
 	async verify(payload: FederatedChatMessage, signature: string): Promise<boolean> {
@@ -182,9 +177,9 @@ export class ChatFederationService {
 	 * Actor URIs to try, best first.
 	 *
 	 * A peer whose `publicUrl` is misconfigured advertises a NodeInfo `actorId`
-	 * on some other host, which then 404s — and an unresolved key silently
-	 * downgrades verification to the shared HMAC secret. So when the advertised
-	 * actorId is cross-origin, try its path on the peer's own origin first: that
+	 * on some other host, which then 404s — and an unresolved key means every
+	 * message from that peer is refused. So when the advertised actorId is
+	 * cross-origin, try its path on the peer's own origin first: that
 	 * keeps the key we trust for `instance` coming from `instance` itself rather
 	 * than from a host it merely names. The advertised URI is still tried after,
 	 * since a peer may genuinely serve its actor elsewhere.
@@ -260,9 +255,9 @@ export class ChatFederationService {
 	}
 
 	/**
-	 * A signature proves the sender knew the shared secret, not *when* it minted
-	 * the message: without a freshness bound a captured message stays replayable
-	 * forever once it ages out of the dedup window.
+	 * A signature proves which peer minted the message, not *when*: without a
+	 * freshness bound a captured message stays replayable forever once it ages
+	 * out of the dedup window.
 	 */
 	isFresh(ts: number, now: number = Date.now()): boolean {
 		if (!Number.isFinite(ts)) return false;
@@ -270,10 +265,10 @@ export class ChatFederationService {
 	}
 
 	/**
-	 * `instance` is self-asserted by the sender. For a peer that publishes a key
-	 * the signature already pins the message to that host; for one still on the
-	 * shared HMAC secret it only proves "some peer", so requiring the claimed
-	 * origin to be a peer we already know keeps hosts outside the federation out.
+	 * `instance` is self-asserted by the sender, and the signature already pins
+	 * the message to the host that published the key. This is the second, cheap
+	 * check: it keeps a stranger who signs correctly for their own host from
+	 * being relayed at all unless we already peer with them.
 	 */
 	isKnownInstance(instance: string): boolean {
 		const claimed = String(instance || "").toLowerCase();
@@ -312,12 +307,23 @@ export class ChatFederationService {
 	 * Fan out a message to federated peers. With `targetPeer`, delivers to that
 	 * one origin only (cross-instance DM); otherwise broadcasts to every known
 	 * peer (lobby message).
+	 *
+	 * Never rejects: callers in `chat.ws.ts` fire this without awaiting, so a
+	 * rejection would surface as an unhandled one and take the process down.
+	 * An unsignable message is a local misconfiguration — it must not cost the
+	 * sender their own delivery, which already happened before we were called.
 	 */
 	async fanout(
 		payload: FederatedChatMessage,
 		targetPeer?: string,
 	): Promise<void> {
-		const signature = this.sign(payload);
+		let signature: string;
+		try {
+			signature = this.sign(payload);
+		} catch (e: any) {
+			console.error(`❌ Chat federation disabled: ${e?.message || e}`);
+			return;
+		}
 		const body = JSON.stringify({
 			...payload,
 			id: payload.id || this.computeId(payload),
@@ -436,7 +442,6 @@ export class ChatFederationService {
 export function createChatFederationService(
 	chatService: ChatService,
 	db: ChatFederationDatabase,
-	secret = "",
 ): ChatFederationService {
-	return new ChatFederationService(chatService, db, secret);
+	return new ChatFederationService(chatService, db);
 }
