@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import crypto from 'node:crypto';
 import { ActivityPubService } from '../activitypub.service.js';
 import type { FederationProvider } from '../federation.provider.js';
 import type { ServerConfig } from '../../../core/config.js';
@@ -42,6 +43,7 @@ describe('ActivityPubService', () => {
       getFollower: jest.fn(),
       rejectFollower: jest.fn(),
       removeFollower: jest.fn(),
+      getRemoteActor: jest.fn().mockReturnValue(undefined),
     } as any;
 
     mockConfig = {
@@ -523,6 +525,418 @@ describe('ActivityPubService', () => {
       mockDb.getFollowers = jest.fn().mockReturnValue([] as any);
       await service.broadcastPost(post as any);
       expect(mockDb.createApNote).toHaveBeenCalledTimes(1);
+      expect(mockTransport.send).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('verifySignature', () => {
+    let keyPair: { publicKey: string; privateKey: string };
+
+    function signRequest(headers: Record<string, string>, opts: { method?: string; originalUrl?: string; headerList?: string; algorithm?: string; keyId?: string; tamper?: boolean } = {}) {
+      const method = opts.method ?? 'POST';
+      const originalUrl = opts.originalUrl ?? '/inbox';
+      const headerList = opts.headerList ?? 'date';
+      const keyId = opts.keyId ?? 'https://remote.test/actor#main-key';
+      const signAlgo = opts.algorithm === 'sha512' ? 'RSA-SHA512' : 'RSA-SHA256';
+      const algorithmHeader = opts.algorithm === 'sha512' ? 'rsa-sha512' : 'rsa-sha256';
+
+      const signingLines = headerList.split(' ').map(name => {
+        if (name === '(request-target)') return `(request-target): ${method.toLowerCase()} ${originalUrl}`;
+        return `${name.toLowerCase()}: ${headers[name.toLowerCase()]}`;
+      });
+      const signingString = signingLines.join('\n');
+
+      const signer = crypto.createSign(signAlgo);
+      signer.update(signingString);
+      let signature = signer.sign(keyPair.privateKey, 'base64');
+      if (opts.tamper) signature = signature.slice(0, -4) + 'abcd';
+
+      const signatureHeader = `keyId="${keyId}",algorithm="${algorithmHeader}",headers="${headerList}",signature="${signature}"`;
+
+      return {
+        method,
+        originalUrl,
+        headers: { ...headers, signature: signatureHeader },
+      };
+    }
+
+    beforeEach(() => {
+      keyPair = crypto.generateKeyPairSync('rsa', {
+        modulusLength: 2048,
+        publicKeyEncoding: { type: 'spki', format: 'pem' },
+        privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+      });
+      jest.spyOn(service as any, 'getRemotePublicKey').mockResolvedValue(keyPair.publicKey);
+    });
+
+    it('returns false when the Signature header is missing', async () => {
+      const result = await service.verifySignature({ headers: {}, method: 'POST', url: '/inbox' });
+      expect(result).toBe(false);
+    });
+
+    it('returns false when keyId or signature is missing from the header', async () => {
+      const req = { headers: { signature: 'algorithm="rsa-sha256",headers="date"' }, method: 'POST', url: '/inbox' };
+      expect(await service.verifySignature(req)).toBe(false);
+    });
+
+    it('returns false when the remote public key cannot be retrieved', async () => {
+      jest.spyOn(service as any, 'getRemotePublicKey').mockResolvedValue(null);
+      const req = signRequest({ date: 'Wed, 01 Jan 2026 00:00:00 GMT' });
+      expect(await service.verifySignature(req)).toBe(false);
+    });
+
+    it('returns false when a header required by the signature is absent from the request', async () => {
+      const req = signRequest({ date: 'Wed, 01 Jan 2026 00:00:00 GMT' }, { headerList: 'date digest' });
+      delete (req.headers as any).digest;
+      expect(await service.verifySignature(req)).toBe(false);
+    });
+
+    it('verifies a valid sha256 signature over the default "date" header', async () => {
+      const req = signRequest({ date: 'Wed, 01 Jan 2026 00:00:00 GMT' });
+      expect(await service.verifySignature(req)).toBe(true);
+    });
+
+    it('verifies a valid signature including the (request-target) pseudo-header', async () => {
+      const req = signRequest(
+        { host: 'test.com', date: 'Wed, 01 Jan 2026 00:00:00 GMT' },
+        { headerList: '(request-target) host date', method: 'POST', originalUrl: '/inbox' }
+      );
+      expect(await service.verifySignature(req)).toBe(true);
+    });
+
+    it('verifies a valid sha512 signature', async () => {
+      const req = signRequest({ date: 'Wed, 01 Jan 2026 00:00:00 GMT' }, { algorithm: 'sha512' });
+      expect(await service.verifySignature(req)).toBe(true);
+    });
+
+    it('rejects a tampered signature', async () => {
+      const req = signRequest({ date: 'Wed, 01 Jan 2026 00:00:00 GMT' }, { tamper: true });
+      expect(await service.verifySignature(req)).toBe(false);
+    });
+
+    it('rejects a signature verified against a different keypair (spoofed actor)', async () => {
+      const req = signRequest({ date: 'Wed, 01 Jan 2026 00:00:00 GMT' });
+      const otherKeyPair = crypto.generateKeyPairSync('rsa', {
+        modulusLength: 2048,
+        publicKeyEncoding: { type: 'spki', format: 'pem' },
+        privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+      });
+      jest.spyOn(service as any, 'getRemotePublicKey').mockResolvedValue(otherKeyPair.publicKey);
+      expect(await service.verifySignature(req)).toBe(false);
+    });
+
+    it('returns false and does not throw when an internal error occurs', async () => {
+      jest.spyOn(service as any, 'getRemotePublicKey').mockRejectedValue(new Error('network down'));
+      const req = signRequest({ date: 'Wed, 01 Jan 2026 00:00:00 GMT' });
+      await expect(service.verifySignature(req)).resolves.toBe(false);
+    });
+  });
+
+  describe('getRemotePublicKey', () => {
+    it('returns the cached public key without making a network request', async () => {
+      mockDb.getRemoteActor = jest.fn().mockReturnValue({ public_key: 'cached-pem' } as any);
+      const result = await (service as any).getRemotePublicKey('https://remote.test/actor#main-key');
+      expect(result).toBe('cached-pem');
+      expect(mockTransport.fetchWithSignature).not.toHaveBeenCalled();
+    });
+
+    it('fetches and caches the remote actor public key when not cached', async () => {
+      mockDb.getRemoteActor = jest.fn().mockReturnValue(undefined);
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          type: 'Person',
+          preferredUsername: 'remote',
+          inbox: 'https://remote.test/inbox',
+          publicKey: { publicKeyPem: 'fetched-pem' },
+        }),
+      });
+
+      const result = await (service as any).getRemotePublicKey('https://remote.test/actor#main-key');
+
+      expect(result).toBe('fetched-pem');
+      expect(mockDb.upsertRemoteActor).toHaveBeenCalledWith(
+        expect.objectContaining({ uri: 'https://remote.test/actor', public_key: 'fetched-pem' })
+      );
+    });
+
+    it('returns null when the remote fetch response is not ok', async () => {
+      mockDb.getRemoteActor = jest.fn().mockReturnValue(undefined);
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({ ok: false, json: async () => ({}) });
+      const result = await (service as any).getRemotePublicKey('https://remote.test/actor#main-key');
+      expect(result).toBeNull();
+      expect(mockDb.upsertRemoteActor).not.toHaveBeenCalled();
+    });
+
+    it('returns null when the remote actor has no publicKeyPem', async () => {
+      mockDb.getRemoteActor = jest.fn().mockReturnValue(undefined);
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({ ok: true, json: async () => ({ type: 'Person' }) });
+      const result = await (service as any).getRemotePublicKey('https://remote.test/actor#main-key');
+      expect(result).toBeNull();
+    });
+
+    it('returns null when the fetch throws', async () => {
+      mockDb.getRemoteActor = jest.fn().mockReturnValue(undefined);
+      mockTransport.fetchWithSignature.mockRejectedValueOnce(new Error('timeout'));
+      const result = await (service as any).getRemotePublicKey('https://remote.test/actor#main-key');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('handleMoveActivity', () => {
+    const oldActorUri = 'https://old.test/actor';
+    const newActorUri = 'https://new.test/actor';
+
+    beforeEach(() => {
+      mockDb.updateFollowerUri = jest.fn();
+      mockDb.unfollowActor = jest.fn();
+    });
+
+    it('updates followers when the new actor backlinks the old actor via alsoKnownAs', async () => {
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ alsoKnownAs: [oldActorUri], inbox: 'https://new.test/inbox' }),
+      });
+      mockDb.getRemoteActor = jest.fn().mockReturnValue(undefined);
+
+      await service.handleMoveActivity(oldActorUri, newActorUri);
+
+      expect(mockDb.updateFollowerUri).toHaveBeenCalledWith(oldActorUri, newActorUri, 'https://new.test/inbox', undefined);
+    });
+
+    it('supports the "aliases" field as a fallback for alsoKnownAs', async () => {
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ aliases: oldActorUri, inbox: 'https://new.test/inbox' }),
+      });
+
+      await service.handleMoveActivity(oldActorUri, newActorUri);
+
+      expect(mockDb.updateFollowerUri).toHaveBeenCalledWith(oldActorUri, newActorUri, 'https://new.test/inbox', undefined);
+    });
+
+    it('refuses the move when the new actor does not backlink the old actor', async () => {
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ alsoKnownAs: ['https://someone-else.test/actor'], inbox: 'https://new.test/inbox' }),
+      });
+
+      await service.handleMoveActivity(oldActorUri, newActorUri);
+
+      expect(mockDb.updateFollowerUri).not.toHaveBeenCalled();
+    });
+
+    it('refuses the move when the new actor lists no aliases at all', async () => {
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ inbox: 'https://new.test/inbox' }),
+      });
+
+      await service.handleMoveActivity(oldActorUri, newActorUri);
+
+      expect(mockDb.updateFollowerUri).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the new actor cannot be fetched', async () => {
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({ ok: false, json: async () => ({}) });
+
+      await service.handleMoveActivity(oldActorUri, newActorUri);
+
+      expect(mockDb.updateFollowerUri).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the verified new actor exposes no inbox', async () => {
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ alsoKnownAs: [oldActorUri] }),
+      });
+
+      await service.handleMoveActivity(oldActorUri, newActorUri);
+
+      expect(mockDb.updateFollowerUri).not.toHaveBeenCalled();
+    });
+
+    it('re-caches the remote actor and unfollows the old URI when a cached entry existed', async () => {
+      mockDb.getRemoteActor = jest.fn().mockReturnValue({ is_followed: true });
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ alsoKnownAs: [oldActorUri], inbox: 'https://new.test/inbox', type: 'Person', name: 'New Name' }),
+      });
+
+      await service.handleMoveActivity(oldActorUri, newActorUri);
+
+      expect(mockDb.upsertRemoteActor).toHaveBeenCalledWith(
+        expect.objectContaining({ uri: newActorUri, inbox_url: 'https://new.test/inbox', is_followed: true })
+      );
+      expect(mockDb.unfollowActor).toHaveBeenCalledWith(oldActorUri);
+    });
+
+    it('swallows errors instead of throwing', async () => {
+      mockTransport.fetchWithSignature.mockRejectedValueOnce(new Error('network down'));
+      await expect(service.handleMoveActivity(oldActorUri, newActorUri)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('initiateMove', () => {
+    const artistActorUrl = 'https://test.com/users/test-artist';
+    const targetActorUri = 'https://new.test/actor';
+    const artist = { id: 1, slug: 'test-artist', name: 'Test', also_known_as: null };
+
+    beforeEach(() => {
+      mockDb.getArtist = jest.fn().mockReturnValue(artist as any);
+      mockDb.updateArtistMigrationStatus = jest.fn();
+      mockDb.getFollowers = jest.fn().mockReturnValue([{ inbox_uri: 'https://remote.test/inbox' }] as any);
+      mockTransport.send.mockResolvedValue(true);
+    });
+
+    it('throws when the artist does not exist', async () => {
+      mockDb.getArtist = jest.fn().mockReturnValue(undefined as any);
+      await expect(service.initiateMove(1, targetActorUri)).rejects.toThrow(/Artist not found/);
+    });
+
+    it('throws when the target actor cannot be fetched', async () => {
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({ ok: false, json: async () => ({}) });
+      await expect(service.initiateMove(1, targetActorUri)).rejects.toThrow(/Could not fetch target actor/);
+      expect(mockDb.updateArtistMigrationStatus).not.toHaveBeenCalled();
+    });
+
+    it('refuses the move when the target actor does not backlink this local artist', async () => {
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ alsoKnownAs: ['https://someone-else.test/actor'] }),
+      });
+      await expect(service.initiateMove(1, targetActorUri)).rejects.toThrow(/Verification failed/);
+      expect(mockDb.updateArtistMigrationStatus).not.toHaveBeenCalled();
+    });
+
+    it('marks the migration and broadcasts a Move activity once the backlink is verified', async () => {
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ alsoKnownAs: [artistActorUrl] }),
+      });
+
+      await service.initiateMove(1, targetActorUri);
+
+      expect(mockDb.updateArtistMigrationStatus).toHaveBeenCalledWith(1, null, targetActorUri);
+      expect(mockTransport.send).toHaveBeenCalledTimes(1);
+      const [, sendInbox, sendActivity] = mockTransport.send.mock.calls[0];
+      expect(sendInbox).toBe('https://remote.test/inbox');
+      expect(sendActivity.type).toBe('Move');
+      expect(sendActivity.target).toBe(targetActorUri);
+    });
+
+    it('marks the migration but skips broadcast when there are no followers', async () => {
+      mockDb.getFollowers = jest.fn().mockReturnValue([] as any);
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ aliases: artistActorUrl }),
+      });
+
+      await service.initiateMove(1, targetActorUri);
+
+      expect(mockDb.updateArtistMigrationStatus).toHaveBeenCalledWith(1, null, targetActorUri);
+      expect(mockTransport.send).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('importRemoteIdentity', () => {
+    const artistActorUrl = 'https://test.com/users/test-artist';
+    const remoteActorUri = 'https://old.test/actor';
+
+    beforeEach(() => {
+      mockDb.updateArtist = jest.fn();
+    });
+
+    it('throws when the artist does not exist', async () => {
+      mockDb.getArtist = jest.fn().mockReturnValue(undefined as any);
+      await expect(service.importRemoteIdentity(1, remoteActorUri)).rejects.toThrow(/Artist not found/);
+    });
+
+    it('refuses to import when the local artist has not declared the remote actor in also_known_as', async () => {
+      mockDb.getArtist = jest.fn().mockReturnValue({ id: 1, slug: 'test-artist', name: 'Test', also_known_as: [] } as any);
+      await expect(service.importRemoteIdentity(1, remoteActorUri)).rejects.toThrow(/must list/);
+      expect(mockDb.updateArtist).not.toHaveBeenCalled();
+    });
+
+    it('throws when the remote actor profile cannot be fetched', async () => {
+      mockDb.getArtist = jest.fn().mockReturnValue({ id: 1, slug: 'test-artist', name: 'Test', also_known_as: [remoteActorUri] } as any);
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({ ok: false, json: async () => ({}) });
+      await expect(service.importRemoteIdentity(1, remoteActorUri)).rejects.toThrow(/Could not fetch remote actor/);
+    });
+
+    it('refuses to import when the remote actor does not backlink via movedTo/successor', async () => {
+      mockDb.getArtist = jest.fn().mockReturnValue({ id: 1, slug: 'test-artist', name: 'Test', also_known_as: [remoteActorUri] } as any);
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ movedTo: 'https://someone-else.test/actor' }),
+      });
+      await expect(service.importRemoteIdentity(1, remoteActorUri)).rejects.toThrow(/Verification failed/);
+      expect(mockDb.updateArtist).not.toHaveBeenCalled();
+    });
+
+    it('imports the remote profile when movedTo backlinks to this local artist', async () => {
+      mockDb.getArtist = jest.fn().mockReturnValue({ id: 1, slug: 'test-artist', name: 'Test', bio: 'old bio', also_known_as: [remoteActorUri] } as any);
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ movedTo: artistActorUrl, name: 'Remote Name', summary: 'Remote bio' }),
+      });
+
+      await service.importRemoteIdentity(1, remoteActorUri);
+
+      expect(mockDb.updateArtist).toHaveBeenCalledWith(
+        1, 'Remote Name', 'Remote bio', undefined, undefined, undefined, undefined, undefined
+      );
+    });
+
+    it('falls back to the "successor" field when movedTo is absent', async () => {
+      mockDb.getArtist = jest.fn().mockReturnValue({ id: 1, slug: 'test-artist', name: 'Test', bio: 'old bio', also_known_as: [remoteActorUri] } as any);
+      mockTransport.fetchWithSignature.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ successor: artistActorUrl, preferredUsername: 'remotename' }),
+      });
+
+      await service.importRemoteIdentity(1, remoteActorUri);
+
+      expect(mockDb.updateArtist).toHaveBeenCalledWith(
+        1, 'remotename', 'old bio', undefined, undefined, undefined, undefined, undefined
+      );
+    });
+  });
+
+  describe('setAlsoKnownAs', () => {
+    const artist = { id: 1, slug: 'test-artist', name: 'Test', moved_to: null };
+
+    beforeEach(() => {
+      mockDb.getArtist = jest.fn().mockReturnValue(artist as any);
+      mockDb.updateArtistMigrationStatus = jest.fn();
+      mockDb.getFollowers = jest.fn().mockReturnValue([{ inbox_uri: 'https://remote.test/inbox' }] as any);
+      mockTransport.send.mockResolvedValue(true);
+      jest.spyOn((service as any).renderer, 'renderActor').mockReturnValue({ id: artistActorUrlFor(artist.slug), type: 'Person' });
+    });
+
+    function artistActorUrlFor(slug: string) {
+      return `https://test.com/users/${slug}`;
+    }
+
+    it('throws when the artist does not exist', async () => {
+      mockDb.getArtist = jest.fn().mockReturnValue(undefined as any);
+      await expect(service.setAlsoKnownAs(1, ['https://old.test/actor'])).rejects.toThrow(/Artist not found/);
+    });
+
+    it('persists the alsoKnownAs list and broadcasts an Update to followers', async () => {
+      await service.setAlsoKnownAs(1, ['https://old.test/actor']);
+
+      expect(mockDb.updateArtistMigrationStatus).toHaveBeenCalledWith(1, ['https://old.test/actor'], null);
+      expect(mockTransport.send).toHaveBeenCalledTimes(1);
+      const [, sendInbox, sendActivity] = mockTransport.send.mock.calls[0];
+      expect(sendInbox).toBe('https://remote.test/inbox');
+      expect(sendActivity.type).toBe('Update');
+    });
+
+    it('skips broadcast when there are no followers', async () => {
+      mockDb.getFollowers = jest.fn().mockReturnValue([] as any);
+      await service.setAlsoKnownAs(1, ['https://old.test/actor']);
+      expect(mockDb.updateArtistMigrationStatus).toHaveBeenCalled();
       expect(mockTransport.send).not.toHaveBeenCalled();
     });
   });
