@@ -26,11 +26,26 @@ export function createIdentityManager(db: DatabaseType): IdentityManager {
 			);
 		},
 		updateUser(id: number, data: Partial<User>): void {
-			const f = Object.keys(data)
-				.map((k) => `${k} = ?`)
-				.join(", ");
+			const allowed = new Set([
+				"username",
+				"password_hash",
+				"artist_id",
+				"is_active",
+				"role",
+				"storage_quota",
+				"storage_used",
+				"subscription_status",
+				"subscription_expires_at",
+				"ap_public_key",
+				"ap_private_key",
+				"artist_unlinked",
+				"can_peer",
+			]);
+			const keys = Object.keys(data).filter((k) => allowed.has(k));
+			if (!keys.length) return;
+			const f = keys.map((k) => `${k} = ?`).join(", ");
 			db.prepare(`UPDATE admin SET ${f} WHERE id = ?`).run(
-				...Object.values(data),
+				...keys.map((k) => (data as any)[k]),
 				id,
 			);
 		},
