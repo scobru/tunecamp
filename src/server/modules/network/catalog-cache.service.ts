@@ -242,9 +242,25 @@ export function createCatalogCacheService(db: DatabaseType): CatalogCacheService
 function parseCatalog(catalog: any, siteUrl: string, siteName?: string): any[] {
     const tracks: any[] = [];
 
+    // Remote catalog JSON carries coverUrl relative to ITS OWN origin
+    // (e.g. "/api/albums/5/cover"), meant for that site's own frontend.
+    // Resolve it against siteUrl so it still loads from a foreign origin.
+    const resolveCover = (coverUrl: any): string | null => {
+        if (!coverUrl || typeof coverUrl !== "string") return null;
+        if (coverUrl.startsWith("http://") || coverUrl.startsWith("https://") || coverUrl.startsWith("data:") || coverUrl.startsWith("blob:")) {
+            return coverUrl;
+        }
+        if (coverUrl.startsWith("/")) return `${siteUrl}${coverUrl}`;
+        return `${siteUrl}/${coverUrl}`;
+    };
+
     if (catalog.releases && Array.isArray(catalog.releases)) {
         for (const release of catalog.releases) {
             if (!release.tracks || !Array.isArray(release.tracks)) continue;
+
+            const releaseCover = resolveCover(release.coverUrl || release.coverImage) ||
+                (release.cover_path ? `${siteUrl}/api/albums/${release.slug || release.id}/cover` : null) ||
+                (release.slug || release.id ? `${siteUrl}/api/albums/${release.slug || release.id}/cover` : null);
 
             for (const track of release.tracks) {
                 tracks.push({
@@ -252,7 +268,9 @@ function parseCatalog(catalog: any, siteUrl: string, siteName?: string): any[] {
                     title: track.title || "Untitled",
                     artistName: track.artistName || track.artist || release.artist_name || siteName || "Unknown Artist",
                     releaseTitle: release.title || "Unknown Release",
-                    coverUrl: track.coverUrl || (release.cover_path ? `${siteUrl}/api/albums/${release.slug || release.id}/cover` : null),
+                    coverUrl: resolveCover(track.coverUrl || track.coverImage) ||
+                        (track.id ? `${siteUrl}/api/tracks/${track.id}/cover` : null) ||
+                        releaseCover,
                     audioUrl: track.streamUrl || (track.id ? `${siteUrl}/api/tracks/${track.id}/stream` : null),
                     magnetUri: release.magnetUri || undefined,
                     duration: track.duration || 0,
@@ -297,7 +315,7 @@ function parseCatalog(catalog: any, siteUrl: string, siteName?: string): any[] {
                 title: track.title || "Untitled",
                 artistName: track.artistName || track.artist || siteName || "Unknown Artist",
                 releaseTitle: track.album || "Unknown Release",
-                coverUrl: track.coverUrl || null,
+                coverUrl: resolveCover(track.coverUrl || track.coverImage) || (track.id ? `${siteUrl}/api/tracks/${track.id}/cover` : null),
                 audioUrl: track.streamUrl || (track.id ? `${siteUrl}/api/tracks/${track.id}/stream` : null),
                 duration: track.duration || 0,
                 siteUrl: siteUrl,
