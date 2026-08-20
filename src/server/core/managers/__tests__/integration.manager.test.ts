@@ -26,6 +26,10 @@ describe("IntegrationManager", () => {
 
     describe("Storage Accounts", () => {
         it("creates, updates with allowlist, and deletes storage accounts", () => {
+            dbService.db
+                .prepare("INSERT INTO admin (id, username, password_hash) VALUES (1, 'u1', 'h')")
+                .run();
+
             const integration = createIntegrationManager(dbService.db);
             const accountId = integration.createStorageAccount({
                 user_id: 1,
@@ -62,6 +66,19 @@ describe("IntegrationManager", () => {
 
     describe("Unlock Codes", () => {
         it("creates, validates, and redeems unlock codes", () => {
+            dbService.db
+                .prepare("INSERT INTO admin (id, username, password_hash) VALUES (1, 'u1', 'h')")
+                .run();
+            dbService.db
+                .prepare("INSERT INTO albums (id, title, slug) VALUES (10, 'Album', 'album')")
+                .run();
+            dbService.db
+                .prepare("INSERT INTO tracks (id, title) VALUES (20, 'Track')")
+                .run();
+            dbService.db
+                .prepare("INSERT INTO assets (id, title, slug) VALUES (30, 'Asset', 'asset')")
+                .run();
+
             const integration = createIntegrationManager(dbService.db);
             integration.createUnlockCode("CODE-ABC-123", 10, 20, "0xtxhash", 30, 1);
 
