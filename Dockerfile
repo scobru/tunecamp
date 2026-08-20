@@ -114,7 +114,7 @@ COPY scripts ./scripts
 COPY webapp/package.json ./webapp/
 
 # Install build tools, run npm ci, and cleanup in one layer
-RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
+RUN apk add --no-cache --virtual .build-deps python3 make g++ git && \
     npm ci --omit=dev && \
     npm cache clean --force && \
     apk del .build-deps && \
