@@ -42,12 +42,10 @@ Se preferisci gestire autonomamente i prerequisiti e la configurazione:
 git clone https://github.com/scobru/tunecamp.git
 cd tunecamp
 
-# 2. Collega TuneCamp alla tua cartella musicale
-#    Modifica docker-compose.yml e sostituisci /path/to/your/music
-#    con il percorso effettivo dei tuoi file audio.
-
-# 3. Avvia e compila in background
+# 2. Avvia in background (la cartella musica punta a ./music di default)
 docker-compose up -d --build
+
+# (Opzionale: imposta TUNECAMP_MUSIC_PATH=/percorso/musica in .env o docker-compose.yml)
 ```
 
 Quando il container è avviato correttamente, apri `http://localhost:1970` (o il tuo dominio) nel browser.

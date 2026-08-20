@@ -15,14 +15,13 @@ The fastest way to run Tunecamp is using Docker Compose.
 git clone https://github.com/scobru/tunecamp.git
 cd tunecamp
 
-# 2. Edit docker-compose.yml to set your music directory
-#    Change /path/to/your/music to your actual music folder
-
-# 3. Start the server in the background
+# 2. Start the server (works out-of-the-box, defaults music to ./music)
 docker-compose up -d --build
 
-# 4. Access the dashboard
-# Open http://localhost:1970 in your browser
+# (Optional: customize music path via TUNECAMP_MUSIC_PATH in .env or docker-compose.yml)
+
+# 3. Access the dashboard
+# Open http://localhost:1970 in your browser (Login: admin / admin)
 ```
 
 > **First Run**: Tunecamp creates a default admin account (`admin`/`admin`, configurable via `TUNECAMP_ADMIN_USER` / `TUNECAMP_ADMIN_PASS`). Change the password right after logging in, from the admin settings.
