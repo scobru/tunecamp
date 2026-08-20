@@ -14,7 +14,7 @@ function deferred<T = void>() {
 }
 
 describe('TaskManager', () => {
-    test('run() starts a task and reports it as running', () => {
+    test('run() starts a task and reports it as running', async () => {
         const id = uid('run');
         const d = deferred();
         const started = taskManager.run(id, () => d.promise);
@@ -22,14 +22,16 @@ describe('TaskManager', () => {
         expect(taskManager.isRunning(id)).toBe(true);
         expect(taskManager.getStatus(id)?.status).toBe('running');
         d.resolve();
+        await new Promise(r => setImmediate(r));
     });
 
-    test('rejects a duplicate run while the task is still running', () => {
+    test('rejects a duplicate run while the task is still running', async () => {
         const id = uid('dup');
         const d = deferred();
         expect(taskManager.run(id, () => d.promise)).toBe(true);
         expect(taskManager.run(id, () => d.promise)).toBe(false);
         d.resolve();
+        await new Promise(r => setImmediate(r));
     });
 
     test('marks a task completed and stores its result', async () => {
@@ -68,35 +70,39 @@ describe('TaskManager', () => {
         expect(taskManager.run(id, () => d2.promise)).toBe(true);
         expect(taskManager.isRunning(id)).toBe(true);
         d2.resolve();
+        await new Promise(r => setImmediate(r));
     });
 
-    test('updateProgress records progress only for running tasks', () => {
+    test('updateProgress records progress only for running tasks', async () => {
         const id = uid('progress');
         const d = deferred();
         taskManager.run(id, () => d.promise);
         taskManager.updateProgress(id, 3, 10, 'working');
         expect(taskManager.getStatus(id)?.progress).toEqual({ current: 3, total: 10, message: 'working' });
         d.resolve();
+        await new Promise(r => setImmediate(r));
     });
 
     test('getStatus returns null for an unknown task', () => {
         expect(taskManager.getStatus(uid('unknown'))).toBeNull();
     });
 
-    test('getRunningTasks includes only running tasks', () => {
+    test('getRunningTasks includes only running tasks', async () => {
         const id = uid('running-filter');
         const d = deferred();
         taskManager.run(id, () => d.promise);
         const ids = taskManager.getRunningTasks().map(t => t.taskId);
         expect(ids).toContain(id);
         d.resolve();
+        await new Promise(r => setImmediate(r));
     });
 
-    test('getStatus never leaks the internal promise', () => {
+    test('getStatus never leaks the internal promise', async () => {
         const id = uid('no-promise');
         const d = deferred();
         taskManager.run(id, () => d.promise);
         expect(taskManager.getStatus(id)).not.toHaveProperty('promise');
         d.resolve();
+        await new Promise(r => setImmediate(r));
     });
 });

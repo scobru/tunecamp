@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [5.4.2] - 2026-08-20
+
+### Added
+
+- **Docker Compose out-of-the-box support:** `docker-compose.yml` now defaults the host music volume to `./music` (`${TUNECAMP_MUSIC_PATH:-./music}:/music`) avoiding setup crashes on fresh clones when a custom path is not yet configured.
+- **Container healthcheck in Compose:** Added explicit `healthcheck` definition testing `GET /health` with 30s interval, providing immediate container health visibility via `docker ps`.
+- **Comprehensive test suites:**
+  - `zen.supplementary.test.ts`: Added tests for client-side encrypted vault upload (`POST /api/auth/zen/keys`), instance passport cryptographic verification (`POST /api/auth/zen/verify`), and signature forgery defenses.
+  - `misc.routes.test.ts`: Added full endpoint coverage for changelog, waveform SVG streaming, digital assets visibility, NodeInfo 2.0 and library federation, redirects, and RSS/podcast feeds.
+  - `identity.manager.test.ts` & `integration.manager.test.ts`: Added real SQLite integration tests covering user CRUD, subscription lifecycles, column allowlist filtering on updates, cloud storage accounts, unlock code minting and redemption, and torrent tracking.
+  - `community-sites.test.ts`: Added tests for federated discovery aggregation, gossip sites, ActivityPub actor liveness checks, and cross-protocol deduplication.
+
+### Fixed
+
+- **Async lifecycle in task-manager tests:** Fixed unhandled promises in `task-manager.test.ts` ensuring clean asynchronous teardown without Jest worker leaks.
+
+### Documentation
+
+- Updated `README.md`, `docs/getting-started.md`, `docs/it/getting-started.md`, `.env.example`, and `install.sh` reflecting zero-configuration Docker Compose startup.
+
+### Security
+
+- **`updateUser` and `updateStorageAccount` now write only known columns.** Both built their `SET` clause by interpolating the caller's object keys straight into the SQL — values were parameterised, column names were not. Neither is reachable from user input today: `updateUser` has no callers at all, and `updateStorageAccount` is called twice from `google-drive.service.ts` with literal keys. So this closes nothing that was open; it removes a footgun that the next caller would have had no reason to suspect. Each now filters against an explicit allowlist and returns early when nothing survives the filter. The allowlists match the declared types field for field — `Partial<User>` minus `id`, `Partial<StorageAccount>` minus `id` and `created_at` — so a key the type permits is never silently dropped. Note that the `admin` table carries columns the `User` type does not (`zen_pub`, `subsonic_token`, `token_version`, the `security_*` pair); reaching those needs a purpose-built method, not a wider allowlist.
+
+### Added
+
+- **`ActivityPubService` now has tests for the parts a remote instance can reach.** Coverage stopped short of the surface that actually faces the fediverse, so the security properties of federation rested on reading the code. 414 lines of new cases cover `verifySignature` (valid sha256 and sha512, `(request-target)` pseudo-header, tampered signature rejected, signature checked against a different keypair rejected — the actor-spoofing case, missing required header, unfetchable key, internal error swallowed rather than thrown), `getRemotePublicKey` (cache hit makes no request, cache miss fetches and caches, every failure path returns null), `handleMoveActivity` and `initiateMove` (a `Move` is refused unless the other actor backlinks via `alsoKnownAs`/`aliases`), `importRemoteIdentity` (refused unless the remote backlinks via `movedTo`/`successor`), and `setAlsoKnownAs`.
+
 ### Removed
 
 - **`TUNECAMP_CHAT_FEDERATION_SECRET` is gone, along with the last code that read it.** 5.2.0 made inbound verification asymmetric-only, which left the shared secret authenticating nothing — but `sign()` still fell back to an HMAC under it when the site keypair was missing. That fallback could not federate anything: every peer refuses those bytes, so an operator with a broken keypair saw messages leave and never arrive, with no error at the point of failure. `sign()` now throws when there is no `site_private_key`, `fanout()` catches that and skips delivery with a logged error rather than rejecting (`chat.ws.ts` fires it without awaiting, so a rejection would be an unhandled one), and `config.chatFederationSecret` no longer exists. No action needed beyond deleting the variable from your environment; an instance generates its site keypair at boot.

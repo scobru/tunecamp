@@ -146,11 +146,13 @@ TUNECAMP_ADMIN_USER=$ADMIN_USER
 TUNECAMP_ADMIN_PASS=$ADMIN_PASS
 TUNECAMP_JWT_SECRET=$JWT_SECRET
 TUNECAMP_DOWNLOAD_DIR=/data/downloads
+TUNECAMP_MUSIC_PATH=$MUSIC_DIR
 EOF
 
 echo "Setting music directory mount in docker-compose.yml..."
 mkdir -p "$MUSIC_DIR"
-sed -i "s|- /path/to/your/music:|- $MUSIC_DIR:|g" "$INSTALL_DIR/docker-compose.yml"
+sed -i "s|- \${TUNECAMP_MUSIC_PATH:-./music}:|- $MUSIC_DIR:|g" "$INSTALL_DIR/docker-compose.yml" 2>/dev/null || true
+sed -i "s|- /path/to/your/music:|- $MUSIC_DIR:|g" "$INSTALL_DIR/docker-compose.yml" 2>/dev/null || true
 
 # Setup Nginx
 echo "Installing Nginx..."

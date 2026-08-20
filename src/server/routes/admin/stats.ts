@@ -176,13 +176,25 @@ export function createStatsRoutes(container: ServiceContainer): Router {
             const httpTracks = await catalogCache.getTracks(remoteSites);
 
             // 2. Get tracks from ActivityPub (Standard Federation - Remote)
+            const resolveRemoteCover = (cover?: string | null, siteUrl?: string | null) => {
+                if (!cover) return null;
+                if (cover.startsWith("http://") || cover.startsWith("https://") || cover.startsWith("data:") || cover.startsWith("blob:")) return cover;
+                if (!siteUrl) return cover;
+                try {
+                    const base = siteUrl.startsWith("http") ? new URL(siteUrl).origin : siteUrl.replace(/\/$/, "");
+                    return cover.startsWith("/") ? `${base}${cover}` : `${base}/${cover}`;
+                } catch {
+                    return cover;
+                }
+            };
+
             const remoteApTracks = dbService.getRemoteTracks();
             const apTracks = remoteApTracks.map(content => ({
                 slug: content.ap_id,
                 title: content.title || "Untitled",
                 artistName: content.artist_name || "Unknown Artist",
                 releaseTitle: content.album_name || "Unknown Album",
-                coverUrl: content.cover_url || null,
+                coverUrl: resolveRemoteCover(content.cover_url, content.url || content.actor_uri),
                 audioUrl: content.stream_url || null,
                 duration: content.duration || 0,
                 siteUrl: content.url || null,

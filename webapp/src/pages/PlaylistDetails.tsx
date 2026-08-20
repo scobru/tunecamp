@@ -32,12 +32,12 @@ function toPlayableTrack(t: Track | UserPlaylistTrack): Track {
     return t as Track;
   }
 
-  // Local track from DB
+  // Local or external track from DB
   const track = t as Track;
   return {
     ...track,
-    streamUrl: API.getStreamUrl(String(track.id)),
-    coverUrl: track.albumId ? API.getAlbumCoverUrl(String(track.albumId)) : undefined
+    streamUrl: (track as any).url || API.getStreamUrl(String(track.id)),
+    coverUrl: track.coverUrl || (track.albumId ? API.getAlbumCoverUrl(String(track.albumId)) : `/api/tracks/${track.id}/cover`)
   };
 }
 
@@ -55,16 +55,16 @@ const PlaylistDetails = () => {
   const { user, isAuthenticated, isAdminAuthenticated, isLoading: authLoading } = useAuthStore();
   const { playTrack } = usePlayerStore();
 
-  const loadPlaylist = async (playlistId: string) => {
-    setLoading(true);
+  const loadPlaylist = async (playlistId: string, silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const data = await API.getPlaylist(playlistId);
       setPlaylist(data);
     } catch (e) {
       console.error(e);
-      navigate("/playlists");
+      if (!silent) navigate("/playlists");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -102,7 +102,7 @@ const PlaylistDetails = () => {
     if (!await confirm("Remove track from playlist?")) return;
     try {
       await API.removeTrackFromPlaylist(String(playlist.id), String(trackId));
-      loadPlaylist(String(playlist.id));
+      loadPlaylist(String(playlist.id), true);
       notify.success("Track removed from playlist");
     } catch (e) {
       console.error(e);
@@ -195,8 +195,11 @@ const PlaylistDetails = () => {
   const trackCovers = Array.from(
     new Map(
       (playlist.tracks ?? [])
-        .filter((t: any) => t.album_id || t.albumId)
-        .map((t: any) => [t.album_id ?? t.albumId, `/api/tracks/${t.id}/cover`])
+        .filter((t: any) => t.album_id || t.albumId || t.coverUrl || t.external_artwork || t.externalArtwork)
+        .map((t: any) => [
+          t.album_id ?? t.albumId ?? t.id,
+          t.coverUrl || `/api/tracks/${t.id}/cover`
+        ])
     ).values()
   ).slice(0, 4);
 
@@ -475,8 +478,9 @@ const PlaylistDetails = () => {
       {id && playlist && isOwner && (
         <AddTrackToUserPlaylistModal
           playlistId={id}
-          onAdded={() => id && loadPlaylist(id)}
+          onAdded={() => id && loadPlaylist(id, true)}
           existingTrackIds={playlist.tracks?.map(t => String(t.id)) || []}
+          existingTracks={playlist.tracks || []}
         />
       )}
     </div>

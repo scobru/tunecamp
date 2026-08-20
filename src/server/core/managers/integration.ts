@@ -42,11 +42,19 @@ export function createIntegrationManager(db: DatabaseType): IntegrationManager {
 					).lastInsertRowid,
 			),
 		updateStorageAccount: (id: number, a: any) => {
-			const f = Object.keys(a)
-				.map((k) => `${k} = ?`)
-				.join(", ");
+			const allowed = new Set([
+				"user_id",
+				"provider",
+				"account_email",
+				"access_token",
+				"refresh_token",
+				"expiry_date",
+			]);
+			const keys = Object.keys(a).filter((k) => allowed.has(k));
+			if (!keys.length) return;
+			const f = keys.map((k) => `${k} = ?`).join(", ");
 			db.prepare(`UPDATE storage_accounts SET ${f} WHERE id = ?`).run(
-				...Object.values(a),
+				...keys.map((k) => a[k]),
 				id,
 			);
 		},

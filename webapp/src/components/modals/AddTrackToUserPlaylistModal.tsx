@@ -3,7 +3,7 @@ import { useAuthStore } from "../../stores/useAuthStore";
 import API from "../../services/api";
 import { Plus, Search, Music, Check, Globe } from "lucide-react";
 import { notify } from "../../utils/notify";
-import type { Track, NetworkTrack } from "../../types";
+import type { Track, NetworkTrack, UserPlaylistTrack } from "../../types";
 
 /** Derive a short, human label for a federated site from its URL. */
 const siteLabel = (url?: string) => {
@@ -17,16 +17,178 @@ const siteLabel = (url?: string) => {
 
 /** Stable id for a network track across the modal's session state. */
 const networkTrackId = (nt: NetworkTrack) =>
-  nt.slug || `${nt.siteUrl}::${nt.title}`;
+  nt.slug || (nt.audioUrl ? nt.audioUrl : `${nt.siteUrl}::${nt.title}`);
+
+/**
+ * Resolves full artwork cover URL for a network track against its origin site URL.
+ */
+const resolveNetworkTrackCover = (nt: NetworkTrack): string | undefined => {
+  const baseUrl = nt.siteUrl ? nt.siteUrl.replace(/\/$/, "") : "";
+  let url = nt.coverUrl || nt.track?.coverUrl || nt.track?.coverImage;
+  if (!url && nt.track?.albumId && baseUrl) {
+    url = `${baseUrl}/api/albums/${encodeURIComponent(nt.track.albumId)}/cover`;
+  }
+  if (!url && (nt.track as any)?.id && baseUrl) {
+    url = `${baseUrl}/api/tracks/${encodeURIComponent((nt.track as any).id)}/cover`;
+  }
+  if (!url) return undefined;
+  if (
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("data:") ||
+    url.startsWith("blob:")
+  ) {
+    return url;
+  }
+  if (baseUrl) {
+    return `${baseUrl}/${url.replace(/^\//, "")}`;
+  }
+  return url;
+};
+
+const NetworkTrackRow = ({
+  nt,
+  isAdded,
+  isAdding,
+  onAdd,
+}: {
+  nt: NetworkTrack;
+  isAdded: boolean;
+  isAdding: boolean;
+  onAdd: () => void;
+}) => {
+  const coverUrl = resolveNetworkTrackCover(nt);
+  const [imgError, setImgError] = useState(false);
+
+  return (
+    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-base-300 transition-colors group">
+      <div className="w-10 h-10 rounded bg-base-300 flex-shrink-0 overflow-hidden flex items-center justify-center text-center">
+        {coverUrl && !imgError ? (
+          <img
+            src={coverUrl}
+            alt=""
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center opacity-30">
+            <Music size={16} />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-bold text-sm truncate">{nt.title || "Untitled"}</div>
+        <div className="text-xs opacity-50 truncate flex items-center gap-1">
+          <span>{nt.artistName || "Unknown Artist"}</span>
+          <span className="opacity-30">•</span>
+          <span className="text-primary/70 flex items-center gap-1">
+            <Globe size={10} /> {siteLabel(nt.siteUrl)}
+          </span>
+        </div>
+      </div>
+      <button
+        type="button"
+        className={`btn btn-sm gap-1 transition-all ${
+          isAdded
+            ? "btn-success"
+            : "btn-ghost opacity-80 group-hover:opacity-100"
+        }`}
+        onClick={onAdd}
+        disabled={isAdding || isAdded}
+      >
+        {isAdding ? (
+          <span className="loading loading-spinner loading-xs"></span>
+        ) : isAdded ? (
+          <>
+            <Check size={14} /> Added
+          </>
+        ) : (
+          <>
+            <Plus size={14} /> Add
+          </>
+        )}
+      </button>
+    </div>
+  );
+};
+
+const LocalTrackRow = ({
+  track,
+  isAdded,
+  isAdding,
+  onAdd,
+}: {
+  track: Track;
+  isAdded: boolean;
+  isAdding: boolean;
+  onAdd: () => void;
+}) => {
+  const [imgError, setImgError] = useState(false);
+  const coverUrl = track.albumId
+    ? API.getAlbumCoverUrl(track.albumId)
+    : track.coverUrl || undefined;
+
+  return (
+    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-base-300 transition-colors group">
+      <div className="w-10 h-10 rounded bg-base-300 flex-shrink-0 overflow-hidden flex items-center justify-center text-center">
+        {coverUrl && !imgError ? (
+          <img
+            src={coverUrl}
+            alt=""
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center opacity-30">
+            <Music size={16} />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-bold text-sm truncate">{track.title}</div>
+        <div className="text-xs opacity-50 truncate">
+          {track.artistName}{" "}
+          {track.albumName ? `• ${track.albumName}` : ""}
+        </div>
+      </div>
+      <button
+        type="button"
+        className={`btn btn-sm gap-1 transition-all ${
+          isAdded
+            ? "btn-success"
+            : "btn-ghost opacity-80 group-hover:opacity-100"
+        }`}
+        onClick={onAdd}
+        disabled={isAdding || isAdded}
+      >
+        {isAdding ? (
+          <span className="loading loading-spinner loading-xs"></span>
+        ) : isAdded ? (
+          <>
+            <Check size={14} /> Added
+          </>
+        ) : (
+          <>
+            <Plus size={14} /> Add
+          </>
+        )}
+      </button>
+    </div>
+  );
+};
 
 export const AddTrackToUserPlaylistModal = ({
   playlistId,
   onAdded,
   existingTrackIds = [],
+  existingTracks = [],
 }: {
   playlistId: string;
   onAdded?: () => void;
   existingTrackIds?: string[];
+  existingTracks?: (Track | UserPlaylistTrack)[];
 }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const { isAuthenticated } = useAuthStore();
@@ -42,7 +204,6 @@ export const AddTrackToUserPlaylistModal = ({
   const [tab, setTab] = useState<"local" | "network">("local");
 
   const [addingId, setAddingId] = useState<string | null>(null);
-  const [successId, setSuccessId] = useState<string | null>(null);
   const [sessionAddedIds, setSessionAddedIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -69,7 +230,6 @@ export const AddTrackToUserPlaylistModal = ({
   const resetState = () => {
     setSearchQuery("");
     setSearchResults([]);
-    setSuccessId(null);
     setTab("local");
     setSessionAddedIds([]);
   };
@@ -78,7 +238,7 @@ export const AddTrackToUserPlaylistModal = ({
     try {
       const tracks = await API.getTracks();
       setAllTracks(tracks);
-      setSearchResults(tracks.slice(0, 20));
+      setSearchResults(tracks.slice(0, 30));
     } catch (e) {
       console.error("Failed to load tracks:", e);
     }
@@ -100,31 +260,46 @@ export const AddTrackToUserPlaylistModal = ({
     setSearchQuery(query);
     if (tab === "local") {
       if (!query.trim()) {
-        setSearchResults(allTracks.slice(0, 20));
+        setSearchResults(allTracks.slice(0, 30));
         return;
       }
       const q = query.toLowerCase();
       const filtered = allTracks.filter(
         (t) =>
-          (t.title.toLowerCase().includes(q) ||
+          t.title.toLowerCase().includes(q) ||
           (t.artistName && t.artistName.toLowerCase().includes(q)) ||
-          (t.albumName && t.albumName.toLowerCase().includes(q))) &&
-          !existingTrackIds.includes(String(t.id)) &&
-          !sessionAddedIds.includes(String(t.id))
+          (t.albumName && t.albumName.toLowerCase().includes(q)),
       );
-      setSearchResults(filtered.slice(0, 30));
+      setSearchResults(filtered.slice(0, 50));
     }
   };
 
-  // The /api/stats/network/tracks endpoint returns flat items
-  // ({ title, artistName, audioUrl, coverUrl, siteUrl, type, ... }), not a
-  // nested { track } shape. Keep only streamable releases (skip posts).
+  const isLocalTrackAdded = (track: Track) => {
+    const idStr = String(track.id);
+    if (sessionAddedIds.includes(idStr) || existingTrackIds.includes(idStr)) {
+      return true;
+    }
+    return existingTracks.some((t: any) => String(t.id) === idStr);
+  };
+
+  const isNetworkTrackAdded = (nt: NetworkTrack) => {
+    const uniqueId = networkTrackId(nt);
+    if (sessionAddedIds.includes(uniqueId) || existingTrackIds.includes(uniqueId)) {
+      return true;
+    }
+    return existingTracks.some((t: any) => {
+      if (String(t.id) === uniqueId) return true;
+      if (t.url && nt.audioUrl && t.url === nt.audioUrl) return true;
+      if (t.external_id && nt.audioUrl && t.external_id === nt.audioUrl) return true;
+      if (t.externalId && nt.audioUrl && t.externalId === nt.audioUrl) return true;
+      if (nt.slug && (t.slug === nt.slug || t.external_id === nt.slug)) return true;
+      return false;
+    });
+  };
+
   const filteredNetworkTracks = networkTracks
     .filter((nt) => {
       if (!nt || nt.type === "post" || !nt.audioUrl) return false;
-      const uniqueId = networkTrackId(nt);
-      if (existingTrackIds.includes(uniqueId) || sessionAddedIds.includes(uniqueId)) return false;
-
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
       return (
@@ -133,26 +308,22 @@ export const AddTrackToUserPlaylistModal = ({
         siteLabel(nt.siteUrl).toLowerCase().includes(q)
       );
     })
-    .slice(0, 30);
+    .slice(0, 50);
 
   const handleAddNetworkTrack = async (nt: NetworkTrack) => {
     const uniqueId = networkTrackId(nt);
+    const resolvedCover = resolveNetworkTrackCover(nt);
     setAddingId(uniqueId);
-    setSuccessId(null);
     try {
-      // The backend creates a local reference track for external http URLs
-      // (see POST /api/playlists/:id/tracks), so we pass the stream URL as the
-      // trackId together with the metadata needed to display it.
       await API.addTrackToPlaylist(playlistId, nt.audioUrl as string, {
-        title: nt.title,
-        artist: nt.artistName,
-        coverUrl: nt.coverUrl,
-        duration: nt.duration,
+        title: nt.title || "Untitled",
+        artist: nt.artistName || "Unknown Artist",
+        coverUrl: resolvedCover,
+        duration: nt.duration || 0,
       });
-      setSuccessId(uniqueId);
       setSessionAddedIds((prev) => [...prev, uniqueId]);
+      notify.success(`Added "${nt.title || 'Track'}" to playlist`);
       onAdded?.();
-      setTimeout(() => setSuccessId(null), 2000);
     } catch (e: any) {
       console.error("Failed to add network track:", e);
       notify.error(e, "Failed to add network track");
@@ -161,50 +332,17 @@ export const AddTrackToUserPlaylistModal = ({
     }
   };
 
-  const handleAddTrack = async (
-    track: Track,
-    options?: {
-      source: "tunecamp" | "network";
-      siteUrl?: string;
-      siteName?: string;
-    },
-  ) => {
-    const id =
-      options?.source === "network"
-        ? `${options.siteUrl}::${track.id}`
-        : String(track.id);
+  const handleAddTrack = async (track: Track) => {
+    const id = String(track.id);
     setAddingId(id);
-    setSuccessId(null);
-
     try {
-      let streamUrl = track.streamUrl;
-      let coverUrl = track.coverUrl || track.coverImage;
-
-      if (options?.source === "network" && options.siteUrl) {
-        // Network tracks are currently handled via ZenDB or not supported in SQL backend yet
-        const baseUrl = options.siteUrl.replace(/\/$/, "");
-        if (!streamUrl) streamUrl = `${baseUrl}/api/tracks/${track.id}/stream`;
-        if (!coverUrl && track.albumId)
-          coverUrl = `${baseUrl}/api/albums/${track.albumId}/cover`;
-      } else if (options?.source === "tunecamp" || !options?.source) {
-        streamUrl = API.getStreamUrl(String(track.id));
-        coverUrl = track.albumId
-          ? API.getAlbumCoverUrl(String(track.albumId))
-          : undefined;
-      }
-
-      if (options?.source === "network") {
-        throw new Error("Adding network tracks to playlists is not yet supported.");
-      } else {
-        await API.addTrackToPlaylist(playlistId, String(track.id));
-      }
-
-      setSuccessId(id);
-      setSessionAddedIds(prev => [...prev, id]);
+      await API.addTrackToPlaylist(playlistId, id);
+      setSessionAddedIds((prev) => [...prev, id]);
+      notify.success(`Added "${track.title}" to playlist`);
       onAdded?.();
-      setTimeout(() => setSuccessId(null), 2000);
     } catch (e: any) {
       console.error("Failed to add track:", e);
+      notify.error(e, "Failed to add track");
     } finally {
       setAddingId(null);
     }
@@ -227,20 +365,23 @@ export const AddTrackToUserPlaylistModal = ({
           </form>
 
           <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-            <Plus size={24} className="text-primary" /> Add Track
+            <Plus size={24} className="text-primary" /> Add Track to Playlist
           </h3>
 
           <div className="tabs tabs-boxed bg-base-200 mb-4">
             <button
+              type="button"
               className={`tab flex-1 ${tab === "local" ? "tab-active" : ""}`}
               onClick={() => {
                 setTab("local");
                 setSearchQuery("");
+                setSearchResults(allTracks.slice(0, 30));
               }}
             >
               Local Library
             </button>
             <button
+              type="button"
               className={`tab flex-1 ${tab === "network" ? "tab-active" : ""}`}
               onClick={() => {
                 setTab("network");
@@ -263,8 +404,8 @@ export const AddTrackToUserPlaylistModal = ({
                 onChange={(e) => handleSearch(e.target.value)}
                 placeholder={
                   tab === "local"
-                    ? "Search local tracks..."
-                    : "Search network tracks..."
+                    ? "Search local tracks by title, artist, album..."
+                    : "Search network tracks by title, artist, site..."
                 }
               />
             </div>
@@ -280,60 +421,14 @@ export const AddTrackToUserPlaylistModal = ({
                   : "No local tracks found"}
               </div>
             ) : (
-              searchResults
-                .filter(t => !existingTrackIds.includes(String(t.id)) && !sessionAddedIds.includes(String(t.id)))
-                .map((track) => (
-                <div
+              searchResults.map((track) => (
+                <LocalTrackRow
                   key={track.id}
-                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-base-300 transition-colors group"
-                >
-                  <div className="w-10 h-10 rounded bg-base-300 flex-shrink-0 overflow-hidden">
-                    {track.albumId ? (
-                      <img
-                        src={API.getAlbumCoverUrl(track.albumId)}
-                        alt=""
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center opacity-30">
-                        <Music size={16} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm truncate">
-                      {track.title}
-                    </div>
-                    <div className="text-xs opacity-50 truncate">
-                      {track.artistName}{" "}
-                      {track.albumName ? `• ${track.albumName}` : ""}
-                    </div>
-                  </div>
-                  <button
-                    className={`btn btn-sm gap-1 transition-all ${
-                      successId === track.id
-                        ? "btn-success"
-                        : "btn-ghost opacity-0 group-hover:opacity-100"
-                    }`}
-                    onClick={() =>
-                      handleAddTrack(track, { source: "tunecamp" })
-                    }
-                    disabled={addingId === track.id}
-                  >
-                    {addingId === track.id ? (
-                      <span className="loading loading-spinner loading-xs"></span>
-                    ) : successId === track.id ? (
-                      <>
-                        <Check size={14} /> Added
-                      </>
-                    ) : (
-                      <>
-                        <Plus size={14} /> Add
-                      </>
-                    )}
-                  </button>
-                </div>
+                  track={track}
+                  isAdded={isLocalTrackAdded(track)}
+                  isAdding={addingId === String(track.id)}
+                  onAdd={() => handleAddTrack(track)}
+                />
               ))
             )
           ) : networkLoading ? (
@@ -348,59 +443,14 @@ export const AddTrackToUserPlaylistModal = ({
           ) : (
             filteredNetworkTracks.map((nt, i) => {
               const uniqueId = networkTrackId(nt);
-              const coverUrl = nt.coverUrl || undefined;
-
               return (
-                <div
+                <NetworkTrackRow
                   key={uniqueId || i}
-                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-base-300 transition-colors group"
-                >
-                  <div className="w-10 h-10 rounded bg-base-300 flex-shrink-0 overflow-hidden text-center flex items-center justify-center">
-                    {coverUrl ? (
-                      <img
-                        src={coverUrl}
-                        alt=""
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <span className="text-xs opacity-30">🎵</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm truncate">
-                      {nt.title}
-                    </div>
-                    <div className="text-xs opacity-50 truncate flex items-center gap-1">
-                      <span>{nt.artistName}</span>
-                      <span className="opacity-30">•</span>
-                      <span className="text-primary/70 flex items-center gap-1">
-                        <Globe size={10} /> {siteLabel(nt.siteUrl)}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    className={`btn btn-sm gap-1 transition-all ${
-                      successId === uniqueId
-                        ? "btn-success"
-                        : "btn-ghost opacity-0 group-hover:opacity-100"
-                    }`}
-                    onClick={() => handleAddNetworkTrack(nt)}
-                    disabled={addingId === uniqueId}
-                  >
-                    {addingId === uniqueId ? (
-                      <span className="loading loading-spinner loading-xs"></span>
-                    ) : successId === uniqueId ? (
-                      <>
-                        <Check size={14} /> Added
-                      </>
-                    ) : (
-                      <>
-                        <Plus size={14} /> Add
-                      </>
-                    )}
-                  </button>
-                </div>
+                  nt={nt}
+                  isAdded={isNetworkTrackAdded(nt)}
+                  isAdding={addingId === uniqueId}
+                  onAdd={() => handleAddNetworkTrack(nt)}
+                />
               );
             })
           )}
@@ -423,4 +473,3 @@ export const AddTrackToUserPlaylistModal = ({
     </dialog>
   );
 };
-

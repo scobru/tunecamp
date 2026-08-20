@@ -1,5 +1,8 @@
 # TuneCamp Docker Compose Configuration
-# Usage: docker-compose up -d
+# Quick start:
+#   docker-compose up -d --build
+#
+# Default web UI: http://localhost:1970 (Admin: admin / admin)
 
 services:
   tunecamp:
@@ -13,39 +16,55 @@ services:
     image: tunecamp:latest
     container_name: tunecamp
     ports:
-      - "1970:1970"
+      - "${TUNECAMP_PORT:-1970}:1970"
     volumes:
-      # Map your music library (REQUIRED - change this path)
-      - /path/to/your/music:/music
-      # Persistent data (database, uploads) 
+      # Map your music library (defaults to ./music in current directory or set TUNECAMP_MUSIC_PATH)
+      - ${TUNECAMP_MUSIC_PATH:-./music}:/music
+      # Persistent data (SQLite database, downloaded content, uploads)
       - tunecamp_data:/data
     env_file:
       - .env
     environment:
-      # Base Mainnet RPC
-      - TUNECAMP_RPC_URL=${TUNECAMP_RPC_URL:-https://mainnet.base.org}
-      # Base Network Currency Contract (e.g. USDC)
-      - TUNECAMP_CURRENCY_CONTRACT=${TUNECAMP_CURRENCY_CONTRACT:-0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913}
-      # Optional: Set public URL for community registration
-      - TUNECAMP_PUBLIC_URL=${TUNECAMP_PUBLIC_URL:-}
-      # Optional: Site name for community
-      - TUNECAMP_SITE_NAME=${TUNECAMP_SITE_NAME:-TuneCamp}
-      # Optional: JWT secret (auto-generated if not set)
-      - TUNECAMP_JWT_SECRET=${TUNECAMP_JWT_SECRET:-}
-      - DISCOGS_TOKEN=${DISCOGS_TOKEN:-}
+      # Core Paths & Port
+      - NODE_ENV=production
+      - TUNECAMP_PORT=1970
+      - TUNECAMP_MUSIC_DIR=/music
+      - TUNECAMP_DB_PATH=/data/tunecamp.db
       - TUNECAMP_DOWNLOAD_DIR=${TUNECAMP_DOWNLOAD_DIR:-/data/downloads}
-      # Telegram Integration
-      - TUNECAMP_TELEGRAM_BOT_TOKEN=${TUNECAMP_TELEGRAM_BOT_TOKEN:-}
-      - TUNECAMP_TELEGRAM_MASTER_ID=${TUNECAMP_TELEGRAM_MASTER_ID:-}
-      # OpenRouter AI Integration
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-openai/gpt-4o-mini}
-      # Payments: Stripe
+      # Initial Admin credentials (change upon first login)
+      - TUNECAMP_ADMIN_USER=${TUNECAMP_ADMIN_USER:-admin}
+      - TUNECAMP_ADMIN_PASS=${TUNECAMP_ADMIN_PASS:-admin}
+      # Network & Federation
+      - TUNECAMP_PUBLIC_URL=${TUNECAMP_PUBLIC_URL:-}
+      - TUNECAMP_SITE_NAME=${TUNECAMP_SITE_NAME:-TuneCamp}
+      - TUNECAMP_JWT_SECRET=${TUNECAMP_JWT_SECRET:-}
+      - TUNECAMP_FEDERATION_SEEDS=${TUNECAMP_FEDERATION_SEEDS:-}
+      # Web3 / Payments (Base Network)
+      - TUNECAMP_RPC_URL=${TUNECAMP_RPC_URL:-https://mainnet.base.org}
+      - TUNECAMP_CURRENCY_CONTRACT=${TUNECAMP_CURRENCY_CONTRACT:-0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913}
+      - TUNECAMP_OWNER_ADDRESS=${TUNECAMP_OWNER_ADDRESS:-}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
       - STRIPE_ONRAMP_SECRET_KEY=${STRIPE_ONRAMP_SECRET_KEY:-}
+      # Integrations & Metadata
+      - DISCOGS_TOKEN=${DISCOGS_TOKEN:-}
+      - TUNECAMP_TELEGRAM_BOT_TOKEN=${TUNECAMP_TELEGRAM_BOT_TOKEN:-}
+      - TUNECAMP_TELEGRAM_MASTER_ID=${TUNECAMP_TELEGRAM_MASTER_ID:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-openai/gpt-4o-mini}
+      - TUNECAMP_GDRIVE_CLIENT_ID=${TUNECAMP_GDRIVE_CLIENT_ID:-}
+      - TUNECAMP_GDRIVE_CLIENT_SECRET=${TUNECAMP_GDRIVE_CLIENT_SECRET:-}
+      # Email & Monitoring
+      - BREVO_API_KEY=${BREVO_API_KEY:-}
+      - BREVO_SENDER_EMAIL=${BREVO_SENDER_EMAIL:-}
+      - SENTRY_DSN=${SENTRY_DSN:-}
     restart: unless-stopped
-    # Optional: healthcheck configured in Dockerfile
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:1970/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
 
 volumes:
   tunecamp_data:
