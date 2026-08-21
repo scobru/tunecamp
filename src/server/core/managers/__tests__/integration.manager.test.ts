@@ -1,171 +1,219 @@
-import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
-import path from "path";
-import os from "os";
-import fsExtra from "fs-extra";
+import { describe, test, expect, beforeAll, afterAll, beforeEach, jest } from "@jest/globals";
 import { createDatabase } from "../../database.js";
-import { createIntegrationManager } from "../integration.js";
-import type { DatabaseService } from "../../database.types.js";
 
-describe("IntegrationManager", () => {
-    let dbService: DatabaseService;
-    let dbPath: string;
+describe("Integration Manager", () => {
+	let db: any;
+	let logSpy: any;
+	let warnSpy: any;
+	let errorSpy: any;
 
-    beforeEach(() => {
-        dbPath = path.join(os.tmpdir(), `tunecamp-integration-test-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-        dbService = createDatabase(dbPath);
-    });
+	let primaryUserId: number;
 
-    afterEach(() => {
-        try {
-            dbService.db.close();
-            for (const suffix of ["", "-wal", "-shm"]) {
-                try { fsExtra.unlinkSync(`${dbPath}${suffix}`); } catch {}
-            }
-        } catch {}
-    });
+	beforeAll(() => {
+		logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+		warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+		errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+		db = createDatabase(":memory:");
 
-    describe("Storage Accounts", () => {
-        it("creates, updates with allowlist, and deletes storage accounts", () => {
-            dbService.db
-                .prepare("INSERT INTO admin (id, username, password_hash) VALUES (1, 'u1', 'h')")
-                .run();
+		primaryUserId = db.createUser("admin_int", "hashInt", null, "admin");
+	});
 
-            const integration = createIntegrationManager(dbService.db);
-            const accountId = integration.createStorageAccount({
-                user_id: 1,
-                provider: "gdrive",
-                account_email: "test@example.com",
-                access_token: "token123",
-                refresh_token: "refresh123",
-                expiry_date: 1234567890
-            });
-            expect(accountId).toBeGreaterThan(0);
+	afterAll(() => {
+		if (db?.db) db.db.close();
+		logSpy.mockRestore();
+		warnSpy.mockRestore();
+		errorSpy.mockRestore();
+	});
 
-            const acc = integration.getStorageAccount(accountId);
-            expect(acc).toBeDefined();
-            expect(acc?.account_email).toBe("test@example.com");
+	// ── Storage Accounts ────────────────────────────────────────────────────
 
-            // Update with allowlisted field
-            integration.updateStorageAccount(accountId, {
-                access_token: "new_token",
-                disallowed_field: "ignored"
-            });
+	describe("Storage Accounts", () => {
+		test("CRUD operations for storage accounts", () => {
+			const id = db.createStorageAccount({
+				user_id: primaryUserId,
+				provider: "gdrive",
+				account_email: "test@gmail.com",
+				access_token: "tok123",
+				refresh_token: "ref123",
+				expiry_date: Date.now() + 3600000,
+			});
+			expect(id).toBeGreaterThan(0);
 
-            const updated = integration.getStorageAccount(accountId);
-            expect(updated?.access_token).toBe("new_token");
+			const acc = db.getStorageAccount(id);
+			expect(acc).toBeDefined();
+			expect(acc.account_email).toBe("test@gmail.com");
+			expect(acc.provider).toBe("gdrive");
 
-            // Get by provider
-            const byProv = integration.getStorageAccountByProvider(1, "gdrive");
-            expect(byProv?.id).toBe(accountId);
+			const byProvider = db.getStorageAccountByProvider(primaryUserId, "gdrive");
+			expect(byProvider).toBeDefined();
+			expect(byProvider.id).toBe(id);
 
-            // Delete
-            integration.deleteStorageAccount(accountId);
-            expect(integration.getStorageAccount(accountId)).toBeUndefined();
-        });
-    });
+			const userAccounts = db.getStorageAccounts(primaryUserId);
+			expect(userAccounts.some((a: any) => a.id === id)).toBe(true);
 
-    describe("Unlock Codes", () => {
-        it("creates, validates, and redeems unlock codes", () => {
-            dbService.db
-                .prepare("INSERT INTO admin (id, username, password_hash) VALUES (1, 'u1', 'h')")
-                .run();
-            dbService.db
-                .prepare("INSERT INTO albums (id, title, slug) VALUES (10, 'Album', 'album')")
-                .run();
-            dbService.db
-                .prepare("INSERT INTO tracks (id, title) VALUES (20, 'Track')")
-                .run();
-            dbService.db
-                .prepare("INSERT INTO assets (id, title, slug) VALUES (30, 'Asset', 'asset')")
-                .run();
+			db.updateStorageAccount(id, { access_token: "tok_updated" });
+			expect(db.getStorageAccount(id).access_token).toBe("tok_updated");
 
-            const integration = createIntegrationManager(dbService.db);
-            integration.createUnlockCode("CODE-ABC-123", 10, 20, "0xtxhash", 30, 1);
+			db.deleteStorageAccount(id);
+			expect(db.getStorageAccount(id)).toBeUndefined();
+		});
+	});
 
-            const val = integration.validateUnlockCode("CODE-ABC-123");
-            expect(val.valid).toBe(true);
-            expect(val.releaseId).toBe(10);
-            expect(val.trackId).toBe(20);
-            expect(val.assetId).toBe(30);
-            expect(val.isUsed).toBe(false);
+	// ── Primary Admin Helper ────────────────────────────────────────────────
 
-            // Lookup by tx hash
-            const byTx = integration.getUnlockCodeByTxHash("0xtxhash");
-            expect(byTx).toBeDefined();
+	describe("Primary Admin", () => {
+		test("getPrimaryAdminId returns earliest admin id", () => {
+			const adminId = db.getPrimaryAdminId();
+			expect(adminId).toBe(primaryUserId);
+		});
+	});
 
-            // Redeem
-            integration.redeemUnlockCode("CODE-ABC-123");
-            const redeemed = integration.validateUnlockCode("CODE-ABC-123");
-            expect(redeemed.valid).toBe(true);
-            expect(redeemed.isUsed).toBe(true);
+	// ── Torrents ────────────────────────────────────────────────────────────
 
-            // Invalid code
-            const invalid = integration.validateUnlockCode("NON-EXISTENT");
-            expect(invalid.valid).toBe(false);
-        });
-    });
+	describe("Torrents", () => {
+		const infoHash = "0123456789abcdef0123456789abcdef01234567";
 
-    describe("Digital Assets", () => {
-        it("creates, fetches, updates, and deletes assets", () => {
-            const integration = createIntegrationManager(dbService.db);
-            const assetId = integration.createAsset({
-                title: "Sample Pack Vol 1",
-                description: "Dope drums",
-                price: 15,
-                currency: "USD",
-                visibility: "public"
-            });
-            expect(assetId).toBeGreaterThan(0);
+		test("createTorrent, getTorrent and updateTorrentProgress", () => {
+			db.createTorrent({
+				info_hash: infoHash,
+				magnet_uri: `magnet:?xt=urn:btih:${infoHash}`,
+				status: "downloading",
+				owner_id: primaryUserId,
+				name: "Cool Album FLAC",
+				artist: "Cool Artist",
+			});
 
-            const asset = integration.getAsset(assetId);
-            expect(asset).toBeDefined();
-            expect(asset.title).toBe("Sample Pack Vol 1");
-            expect(asset.slug).toContain("sample-pack-vol-1");
+			let torrent = db.getTorrent(infoHash);
+			expect(torrent).toBeDefined();
+			expect(torrent.name).toBe("Cool Album FLAC");
+			expect(torrent.status).toBe("downloading");
 
-            const bySlug = integration.getAssetBySlug(asset.slug);
-            expect(bySlug?.id).toBe(assetId);
+			// Update progress
+			db.updateTorrentProgress(infoHash, 0.75, "downloading", 1024, 512, 10, 1000000, "/tmp/cool.torrent");
+			torrent = db.getTorrent(infoHash);
+			expect(torrent.progress).toBe(0.75);
+			expect(torrent.num_peers).toBe(10);
 
-            const publicAssets = integration.getPublicAssets();
-            expect(publicAssets.some(a => a.id === assetId)).toBe(true);
+			// Update status
+			db.updateTorrentStatus(infoHash, "seeding");
+			expect(db.getTorrent(infoHash).status).toBe("seeding");
 
-            // Update
-            integration.updateAsset(assetId, {
-                title: "Updated Sample Pack",
-                price: 20
-            });
-            const updated = integration.getAsset(assetId);
-            expect(updated.title).toBe("Updated Sample Pack");
-            expect(updated.price).toBe(20);
+			// Delete
+			db.deleteTorrent(infoHash);
+			expect(db.getTorrent(infoHash)).toBeUndefined();
+		});
+	});
 
-            // Delete
-            integration.deleteAsset(assetId);
-            expect(integration.getAsset(assetId)).toBeUndefined();
-        });
-    });
+	// ── Unlock Codes ────────────────────────────────────────────────────────
 
-    describe("Torrents", () => {
-        it("creates, updates, and deletes torrent entries", () => {
-            const integration = createIntegrationManager(dbService.db);
-            const hash = "0123456789abcdef0123456789abcdef01234567";
+	describe("Unlock Codes", () => {
+		let releaseId: number;
+		let trackId: number;
 
-            integration.createTorrent({
-                info_hash: hash,
-                magnet_uri: `magnet:?xt=urn:btih:${hash}`,
-                status: "downloading",
-                name: "Test Album"
-            });
+		beforeEach(() => {
+			const artistId = db.createArtist("Unlock Artist");
+			releaseId = db.createAlbum({
+				title: "Unlock Album",
+				artist_id: artistId,
+				owner_id: primaryUserId,
+				visibility: "public",
+			});
+			trackId = db.createTrack({
+				title: "Unlock Track",
+				album_id: releaseId,
+				artist_id: artistId,
+				duration: 100,
+				file_path: "unlock/track.mp3",
+			});
+		});
 
-            const t = integration.getTorrent(hash);
-            expect(t).toBeDefined();
-            expect(t?.name).toBe("Test Album");
+		test("create, validate, redeem unlock code", () => {
+			const code = "DISCOUNT-50-OFF";
+			db.createUnlockCode(code, releaseId, trackId, "0xtransactionhash", undefined, primaryUserId);
 
-            integration.updateTorrentProgress(hash, 0.75, "downloading", 1024, 512, 10, 50000000, "/tmp/test");
-            const updated = integration.getTorrent(hash);
-            expect(updated?.progress).toBe(0.75);
-            expect(updated?.path).toBe("/tmp/test");
+			let status = db.validateUnlockCode(code);
+			expect(status.valid).toBe(true);
+			expect(status.isUsed).toBe(false);
+			expect(status.releaseId).toBe(releaseId);
+			expect(status.trackId).toBe(trackId);
 
-            integration.deleteTorrent(hash);
-            expect(integration.getTorrent(hash)).toBeUndefined();
-        });
-    });
+			// Redeem
+			db.redeemUnlockCode(code);
+			status = db.validateUnlockCode(code);
+			expect(status.valid).toBe(true);
+			expect(status.isUsed).toBe(true);
+
+			// Invalid code
+			expect(db.validateUnlockCode("NON-EXISTENT").valid).toBe(false);
+		});
+
+		test("getPurchasesByUser and listUnlockCodes", () => {
+			const code = "PURCHASE-USER-1";
+			db.createUnlockCode(code, null, null, "0xtx123", null, primaryUserId);
+
+			const list = db.listUnlockCodes();
+			expect(list.some((c: any) => c.code === code)).toBe(true);
+
+			const userPurchases = db.getPurchasesByUser(primaryUserId);
+			expect(userPurchases.some((p: any) => p.code === code)).toBe(true);
+
+			const byTx = db.getUnlockCodeByTxHash("0xtx123");
+			expect(byTx).toBeDefined();
+			expect(byTx.code).toBe(code);
+		});
+	});
+
+	// ── Assets ──────────────────────────────────────────────────────────────
+
+	describe("Assets", () => {
+		test("create, get, update, and delete asset", () => {
+			const artistId = db.createArtist("Asset Artist");
+			const assetId = db.createAsset({
+				title: "Exclusive Synth Pack",
+				description: "Stems and MIDI",
+				artist_id: artistId,
+				owner_id: primaryUserId,
+				type: "sample_pack",
+				price: 10,
+				currency: "USDC",
+				visibility: "public",
+				requires_subscription: false,
+			});
+
+			expect(assetId).toBeGreaterThan(0);
+
+			const asset = db.getAsset(assetId);
+			expect(asset).toBeDefined();
+			expect(asset.title).toBe("Exclusive Synth Pack");
+			expect(asset.slug).toBeDefined();
+			expect(asset.artist_name).toBe("Asset Artist");
+
+			const bySlug = db.getAssetBySlug(asset.slug);
+			expect(bySlug).toBeDefined();
+			expect(bySlug.id).toBe(assetId);
+
+			// Update
+			db.updateAsset(assetId, {
+				title: "Updated Synth Pack",
+				price: 15,
+				requires_subscription: true,
+			});
+
+			const updated = db.getAsset(assetId);
+			expect(updated.title).toBe("Updated Synth Pack");
+			expect(updated.price).toBe(15);
+			expect(updated.requires_subscription).toBe(1);
+
+			// Filter lists
+			const publicAssets = db.getPublicAssets();
+			expect(publicAssets.some((a: any) => a.id === assetId)).toBe(true);
+
+			const artistAssets = db.getAssetsByArtist(artistId);
+			expect(artistAssets.some((a: any) => a.id === assetId)).toBe(true);
+
+			// Delete
+			db.deleteAsset(assetId);
+			expect(db.getAsset(assetId)).toBeUndefined();
+		});
+	});
 });

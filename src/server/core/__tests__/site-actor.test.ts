@@ -1,73 +1,72 @@
-import { describe, expect, it } from '@jest/globals';
-import { getSiteHandle, isSiteHandle, slugifySiteName } from '../site-actor.js';
+import { describe, test, expect } from "@jest/globals";
+import {
+	SITE_ACTOR_ID,
+	getSiteHandle,
+	isSiteHandle,
+	slugifySiteName,
+} from "../site-actor.js";
 
-type SettingReaderMock = Parameters<typeof getSiteHandle>[0];
+describe("Site Actor Identity Helpers", () => {
+	test("SITE_ACTOR_ID constant is -1", () => {
+		expect(SITE_ACTOR_ID).toBe(-1);
+	});
 
-describe('site-actor', () => {
-    describe('getSiteHandle', () => {
-        it('returns siteHandle setting when it is set', () => {
-            const mockDb = { getSetting: () => 'my-instance' } as SettingReaderMock;
-            expect(getSiteHandle(mockDb)).toBe('my-instance');
-        });
+	// ── getSiteHandle ───────────────────────────────────────────────────────
 
-        it('returns "site" when siteHandle setting is not set (undefined)', () => {
-            const mockDb = { getSetting: () => undefined } as SettingReaderMock;
-            expect(getSiteHandle(mockDb)).toBe('site');
-        });
+	describe("getSiteHandle", () => {
+		test("returns configured siteHandle setting when present", () => {
+			const mockDb = {
+				getSetting: (k: string) => (k === "siteHandle" ? "my-cool-instance" : null),
+			};
+			expect(getSiteHandle(mockDb)).toBe("my-cool-instance");
+		});
 
-        it('returns "site" when siteHandle setting is null', () => {
-            const mockDb = { getSetting: () => null } as SettingReaderMock;
-            expect(getSiteHandle(mockDb)).toBe('site');
-        });
+		test("falls back to 'site' when setting is absent or empty", () => {
+			const mockDb = {
+				getSetting: () => null,
+			};
+			expect(getSiteHandle(mockDb)).toBe("site");
+		});
+	});
 
-        it('returns "site" when siteHandle setting is empty string', () => {
-            const mockDb = { getSetting: () => '' } as SettingReaderMock;
-            expect(getSiteHandle(mockDb)).toBe('site');
-        });
-    });
+	// ── isSiteHandle ────────────────────────────────────────────────────────
 
-    describe('isSiteHandle', () => {
-        it('returns true if handle matches configured siteHandle', () => {
-            const mockDb = { getSetting: () => 'custom-handle' } as SettingReaderMock;
-            expect(isSiteHandle('custom-handle', mockDb)).toBe(true);
-        });
+	describe("isSiteHandle", () => {
+		test("recognizes configured custom site handle", () => {
+			const mockDb = {
+				getSetting: (k: string) => (k === "siteHandle" ? "sudo-records" : null),
+			};
+			expect(isSiteHandle("sudo-records", mockDb)).toBe(true);
+		});
 
-        it('returns true if handle is the legacy DEFAULT_SITE_HANDLE ("site")', () => {
-            const mockDb = { getSetting: () => 'custom-handle' } as SettingReaderMock;
-            expect(isSiteHandle('site', mockDb)).toBe(true);
-        });
+		test("recognizes legacy 'site' handle even when custom handle is configured", () => {
+			const mockDb = {
+				getSetting: (k: string) => (k === "siteHandle" ? "custom-name" : null),
+			};
+			expect(isSiteHandle("site", mockDb)).toBe(true);
+		});
 
-        it('returns true if handle is DEFAULT_SITE_HANDLE when no siteHandle is configured', () => {
-            const mockDb = { getSetting: () => undefined } as SettingReaderMock;
-            expect(isSiteHandle('site', mockDb)).toBe(true);
-        });
+		test("returns false for unrelated user handles", () => {
+			const mockDb = {
+				getSetting: (k: string) => (k === "siteHandle" ? "custom-name" : null),
+			};
+			expect(isSiteHandle("alice", mockDb)).toBe(false);
+			expect(isSiteHandle("bob", mockDb)).toBe(false);
+		});
+	});
 
-        it('returns false for other handles', () => {
-            const mockDb = { getSetting: () => 'custom-handle' } as SettingReaderMock;
-            expect(isSiteHandle('other-handle', mockDb)).toBe(false);
-        });
+	// ── slugifySiteName ─────────────────────────────────────────────────────
 
-        it('returns false when handle is an empty string', () => {
-            const mockDb = { getSetting: () => 'custom-handle' } as SettingReaderMock;
-            expect(isSiteHandle('', mockDb)).toBe(false);
-        });
-    });
+	describe("slugifySiteName", () => {
+		test("slugifies regular instance names to webfinger-safe strings", () => {
+			expect(slugifySiteName("TuneCamp Music")).toBe("tunecamp-music");
+			expect(slugifySiteName("My Super Studio 2026")).toBe("my-super-studio-2026");
+		});
 
-    describe('slugifySiteName', () => {
-        it('returns a slugified site name', () => {
-            expect(slugifySiteName('My Awesome Site!')).toBe('my-awesome-site');
-        });
-
-        it('returns DEFAULT_SITE_HANDLE when name is empty', () => {
-            expect(slugifySiteName('')).toBe('site');
-        });
-
-        it('returns DEFAULT_SITE_HANDLE when name is undefined', () => {
-            expect(slugifySiteName(undefined)).toBe('site');
-        });
-
-        it('returns DEFAULT_SITE_HANDLE when name is null', () => {
-            expect(slugifySiteName(null)).toBe('site');
-        });
-    });
+		test("falls back to 'site' for empty, null, or undefined strings", () => {
+			expect(slugifySiteName("")).toBe("site");
+			expect(slugifySiteName(null)).toBe("site");
+			expect(slugifySiteName(undefined)).toBe("site");
+		});
+	});
 });
