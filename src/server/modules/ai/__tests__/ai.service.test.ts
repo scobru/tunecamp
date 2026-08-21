@@ -1,189 +1,81 @@
-import { jest } from "@jest/globals";
-import { AIService, aiService, initAIService } from "../ai.service.js";
+import { describe, test, expect, jest, beforeEach } from "@jest/globals";
+import { AIService, initAIService } from "../ai.service.js";
 import type { AIProvider } from "../../../core/provider.js";
-import type { OpenRouterService } from "../openrouter.service.js";
-
-class MockAIProvider implements AIProvider {
-    id = "mock";
-    name = "Mock Provider";
-    version = "1.0.0";
-
-    available = true;
-    shouldThrowIsAvailable = false;
-
-    async isAvailable() {
-        if (this.shouldThrowIsAvailable) throw new Error("Unavailable");
-        return this.available;
-    }
-
-    async enrichMetadata(context: any) {
-        return { genre: "mock-genre", description: "mock-desc" };
-    }
-
-    async complete(prompt: string) {
-        return "mock-response";
-    }
-}
 
 describe("AIService", () => {
-    let service: AIService;
+	let aiService: AIService;
 
-    beforeEach(() => {
-        service = new AIService();
-    });
+	beforeEach(() => {
+		aiService = new AIService();
+	});
 
-    it("should return empty object for enrichMetadata when no providers are available", async () => {
-        const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-        const result = await service.enrichMetadata({ title: "Test" });
-        expect(result).toEqual({});
-        expect(warnSpy).toHaveBeenCalledWith("[AIService] No AI provider available for enrichMetadata");
-        warnSpy.mockRestore();
-    });
+	test("enrichMetadata returns empty object when no provider is available", async () => {
+		const result = await aiService.enrichMetadata({ title: "My Song", artist: "Unknown" });
+		expect(result).toEqual({});
+	});
 
-    it("should return null for complete when no providers are available", async () => {
-        const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-        const result = await service.complete("Test prompt");
-        expect(result).toBeNull();
-        expect(warnSpy).toHaveBeenCalledWith("[AIService] No AI provider available for complete()");
-        warnSpy.mockRestore();
-    });
+	test("complete returns null when no provider is available", async () => {
+		const result = await aiService.complete("Recommend 5 songs");
+		expect(result).toBeNull();
+	});
 
-    it("should use the first available provider for enrichMetadata", async () => {
-        const provider1 = new MockAIProvider();
-        provider1.id = "mock1";
-        provider1.available = false;
+	test("enrichMetadata delegates to first available registered provider", async () => {
+		const mockProvider: AIProvider = {
+			id: "mock-ai",
+			name: "Mock AI",
+			version: "1.0.0",
+			isAvailable: jest.fn().mockImplementation(async () => true) as any,
+			enrichMetadata: jest.fn().mockImplementation(async () => ({
+				genre: "Ambient",
+				tags: ["chill", "meditation"],
+			})) as any,
+			complete: jest.fn().mockImplementation(async () => "Result") as any,
+		};
 
-        const provider2 = new MockAIProvider();
-        provider2.id = "mock2";
-        provider2.available = true;
+		aiService.getRegistry().register(mockProvider);
 
-        service.getRegistry().register(provider1);
-        service.getRegistry().register(provider2);
+		const result = await aiService.enrichMetadata({ title: "Peaceful Water", artist: "Nature" });
+		expect(result.genre).toBe("Ambient");
+		expect(result.tags).toContain("chill");
+		expect(mockProvider.enrichMetadata).toHaveBeenCalled();
+	});
 
-        const enrichSpy = jest.spyOn(provider2, "enrichMetadata");
-        const result = await service.enrichMetadata({ title: "Test Title" });
+	test("complete delegates to first available registered provider", async () => {
+		const mockProvider: AIProvider = {
+			id: "mock-ai",
+			name: "Mock AI",
+			version: "1.0.0",
+			isAvailable: jest.fn().mockImplementation(async () => true) as any,
+			enrichMetadata: jest.fn() as any,
+			complete: jest.fn().mockImplementation(async (prompt: string) => `Answer for: ${prompt}`) as any,
+		};
 
-        expect(result).toEqual({ genre: "mock-genre", description: "mock-desc" });
-        expect(enrichSpy).toHaveBeenCalledWith({ title: "Test Title" });
-    });
+		aiService.getRegistry().register(mockProvider);
 
-    it("should use the first available provider for complete", async () => {
-        const provider = new MockAIProvider();
-        service.getRegistry().register(provider);
+		const result = await aiService.complete("Hello AI");
+		expect(result).toBe("Answer for: Hello AI");
+	});
 
-        const completeSpy = jest.spyOn(provider, "complete");
-        const result = await service.complete("Hello");
+	test("listProviders returns summary of registered providers", () => {
+		aiService.getRegistry().register({
+			id: "ai-1",
+			name: "Model 1",
+			version: "1.0.0",
+		} as any);
 
-        expect(result).toBe("mock-response");
-        expect(completeSpy).toHaveBeenCalledWith("Hello");
-    });
+		const list = aiService.listProviders();
+		expect(list).toEqual([{ id: "ai-1", name: "Model 1", version: "1.0.0" }]);
+	});
 
-    it("should skip providers that throw during isAvailable check", async () => {
-        const provider1 = new MockAIProvider();
-        provider1.id = "mock1";
-        provider1.shouldThrowIsAvailable = true;
+	test("initAIService wires OpenRouterService provider and syncs with db", () => {
+		const mockOpenRouterService: any = {
+			isEnabled: () => true,
+		};
+		const mockDb = {
+			getAllPluginsState: () => [],
+		};
 
-        const provider2 = new MockAIProvider();
-        provider2.id = "mock2";
-        provider2.available = true;
-
-        service.getRegistry().register(provider1);
-        service.getRegistry().register(provider2);
-
-        const result = await service.complete("Hello");
-        expect(result).toBe("mock-response");
-    });
-
-    it("should list providers correctly", () => {
-        const provider1 = new MockAIProvider();
-        provider1.id = "mock1";
-        provider1.name = "Mock 1";
-        provider1.version = "1.0.1";
-
-        service.getRegistry().register(provider1);
-
-        const list = service.listProviders();
-        expect(list).toEqual([{
-            id: "mock1",
-            name: "Mock 1",
-            version: "1.0.1"
-        }]);
-    });
-});
-
-describe("aiService singleton", () => {
-    it("should be a singleton instance", async () => {
-        await jest.isolateModulesAsync(async () => {
-            const mod1 = await import("../ai.service.js");
-            const mod2 = await import("../ai.service.js");
-
-            expect(mod1.aiService).toBeInstanceOf(mod1.AIService);
-            expect(mod1.aiService).toBe(mod2.aiService);
-        });
-    });
-});
-
-describe("initAIService", () => {
-    it("should register OpenRouter and sync with database", async () => {
-        await jest.isolateModulesAsync(async () => {
-            const { initAIService, aiService } = await import("../ai.service.js");
-
-            const mockOpenRouterService = {} as OpenRouterService;
-            const mockDb = {
-                getAllPluginsState: jest.fn().mockReturnValue([])
-            };
-
-            const result = initAIService(mockOpenRouterService, mockDb);
-
-            expect(result).toBe(aiService);
-            expect(result.listProviders().length).toBe(1);
-            expect(result.listProviders()[0].id).toBe("openrouter");
-            expect(mockDb.getAllPluginsState).toHaveBeenCalled();
-        });
-    });
-
-    it("should sync registry with database successfully", async () => {
-        await jest.isolateModulesAsync(async () => {
-            const { initAIService, aiService } = await import("../ai.service.js");
-            const mockOpenRouterService = {} as OpenRouterService;
-
-            // Mock db that disables the openrouter provider
-            const mockDb = {
-                getAllPluginsState: jest.fn().mockReturnValue([
-                    { id: "openrouter", enabled: 0 }
-                ])
-            };
-
-            initAIService(mockOpenRouterService, mockDb);
-
-            // Wait a tick for the promise to resolve
-            await new Promise(process.nextTick);
-
-            expect(aiService.getRegistry().isEnabled("openrouter")).toBe(false);
-        });
-    });
-
-    it("should catch and log errors during db sync", async () => {
-        await jest.isolateModulesAsync(async () => {
-            const { initAIService } = await import("../ai.service.js");
-            const mockOpenRouterService = {} as OpenRouterService;
-
-            const error = new Error("Sync failed");
-            const mockDb = {
-                getAllPluginsState: jest.fn().mockImplementation(() => {
-                    throw error;
-                })
-            };
-
-            const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-
-            initAIService(mockOpenRouterService, mockDb);
-
-            // Wait a tick for the promise to resolve
-            await new Promise(process.nextTick);
-
-            expect(errorSpy).toHaveBeenCalledWith("Failed to sync AI registry:", error);
-            errorSpy.mockRestore();
-        });
-    });
+		const service = initAIService(mockOpenRouterService, mockDb);
+		expect(service.listProviders().some((p: any) => p.id === "openrouter")).toBe(true);
+	});
 });

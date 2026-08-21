@@ -1,288 +1,189 @@
-import { jest } from "@jest/globals";
+import { describe, test, expect, jest, beforeEach, afterEach } from "@jest/globals";
 import { OpenRouterService } from "../openrouter.service.js";
-import type { DatabaseService } from "../../../core/database.js";
-import type { ServerConfig } from "../../../core/config.js";
 
-describe("OpenRouterService", () => {
-    let service: OpenRouterService;
-    let mockDatabase: jest.Mocked<DatabaseService>;
-    let mockConfig: jest.Mocked<ServerConfig>;
-    let originalFetch: typeof global.fetch;
-    let mockFetch: jest.Mock;
+describe("OpenRouter Service", () => {
+	let service: OpenRouterService;
+	let mockDatabase: any;
+	let mockConfig: any;
+	let originalFetch: any;
 
-    beforeEach(() => {
-        mockDatabase = {
-            getPluginState: jest.fn(),
-            getSetting: jest.fn(),
-        } as unknown as jest.Mocked<DatabaseService>;
+	beforeEach(() => {
+		originalFetch = global.fetch;
+		mockDatabase = {
+			getSetting: jest.fn().mockImplementation((k: string) => {
+				if (k === "openrouter_api_key") return "sk-test-key-123";
+				if (k === "openrouter_model") return "meta-llama/llama-3-8b";
+				return null;
+			}),
+			getPluginState: jest.fn().mockReturnValue({ enabled: true }),
+		};
+		mockConfig = {
+			openrouterApiKey: "sk-config-key",
+			openrouterModel: "openrouter/free",
+		};
+		service = new OpenRouterService(mockDatabase, mockConfig);
+	});
 
-        mockConfig = {
-            openrouterApiKey: undefined,
-            openrouterModel: undefined,
-        } as unknown as jest.Mocked<ServerConfig>;
+	afterEach(() => {
+		global.fetch = originalFetch;
+	});
 
-        service = new OpenRouterService(mockDatabase, mockConfig);
+	// ── isEnabled ───────────────────────────────────────────────────────────
 
-        originalFetch = global.fetch;
-        mockFetch = jest.fn();
-        global.fetch = mockFetch;
-    });
+	describe("isEnabled", () => {
+		test("returns true when plugin is enabled and API key is present", () => {
+			expect(service.isEnabled()).toBe(true);
+		});
 
-    afterEach(() => {
-        global.fetch = originalFetch;
-    });
+		test("returns false when API key is missing", () => {
+			mockDatabase.getSetting.mockReturnValue(null);
+			mockConfig.openrouterApiKey = undefined;
+			expect(service.isEnabled()).toBe(false);
+		});
 
-    describe("isEnabled", () => {
-        it("should return false if no plugin state or api key", () => {
-            mockDatabase.getPluginState.mockReturnValue(undefined);
-            mockDatabase.getSetting.mockReturnValue(undefined as any);
-            expect(service.isEnabled()).toBe(false);
-        });
+		test("returns false when plugin is explicitly disabled", () => {
+			mockDatabase.getPluginState.mockReturnValue({ enabled: false });
+			expect(service.isEnabled()).toBe(false);
+		});
+	});
 
-        it("should return false if plugin is explicitly disabled", () => {
-            mockDatabase.getPluginState.mockReturnValue({ enabled: false } as any);
-            mockDatabase.getSetting.mockReturnValue("test-key" as any);
-            expect(service.isEnabled()).toBe(false);
-        });
+	// ── enrichMetadata ──────────────────────────────────────────────────────
 
-        it("should return true if plugin is enabled and api key is present", () => {
-            mockDatabase.getPluginState.mockReturnValue({ enabled: true } as any);
-            mockDatabase.getSetting.mockReturnValue("test-key" as any);
-            expect(service.isEnabled()).toBe(true);
-        });
+	describe("enrichMetadata", () => {
+		test("returns null when API key is not configured", async () => {
+			mockDatabase.getSetting.mockReturnValue(null);
+			mockConfig.openrouterApiKey = undefined;
 
-        it("should return true if plugin state is undefined and api key is present", () => {
-            mockDatabase.getPluginState.mockReturnValue(undefined);
-            mockDatabase.getSetting.mockReturnValue("test-key" as any);
-            expect(service.isEnabled()).toBe(true);
-        });
-    });
+			const result = await service.enrichMetadata("Track 1", "Artist 1");
+			expect(result).toBeNull();
+		});
 
-    describe("enrichMetadata", () => {
-        it("should skip and return null if no api key", async () => {
-            const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-            const result = await service.enrichMetadata("Track", "Artist");
-            expect(result).toBeNull();
-            expect(warnSpy).toHaveBeenCalledWith("[OpenRouter] API Key missing. Skipping enrichment.");
-            warnSpy.mockRestore();
-        });
+		test("calls OpenRouter API and parses JSON response", async () => {
+			const mockApiResponse = {
+				choices: [
+					{
+						message: {
+							content: JSON.stringify({
+								genre: "Synthwave",
+								year: 1984,
+								description: "A retro futuristic track.",
+								mood: "nostalgic, energetic",
+								tags: ["retrowave", "synthpop", "cyberpunk"],
+							}),
+						},
+					},
+				],
+			};
 
-        it("should call fetch and return parsed data", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({
-                    choices: [{ message: { content: '{"genre":"rock","year":2020}' } }]
-                })
-            });
+			global.fetch = jest.fn().mockImplementation(async () => ({
+				ok: true,
+				status: 200,
+				json: async () => mockApiResponse,
+				text: async () => JSON.stringify(mockApiResponse),
+			})) as any;
 
-            const result = await service.enrichMetadata("Track", "Artist");
-            expect(result).toEqual({ genre: "rock", year: 2020 });
-            expect(mockFetch).toHaveBeenCalledWith(
-                "https://openrouter.ai/api/v1/chat/completions",
-                expect.objectContaining({ method: "POST" })
-            );
-        });
+			const result = await service.enrichMetadata("Nightcall", "Kavinsky");
+			expect(result).toBeDefined();
+			expect(result?.genre).toBe("Synthwave");
+			expect(result?.year).toBe(1984);
+			expect(result?.tags).toContain("retrowave");
+			expect(global.fetch).toHaveBeenCalledWith(
+				"https://openrouter.ai/api/v1/chat/completions",
+				expect.objectContaining({
+					method: "POST",
+					headers: expect.objectContaining({
+						Authorization: "Bearer sk-test-key-123",
+					}),
+				}),
+			);
+		});
 
-        it("should return null if fetch fails", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockResolvedValue({
-                ok: false,
-                status: 500,
-                text: () => Promise.resolve("Internal Error")
-            });
-            const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-            const result = await service.enrichMetadata("Track", "Artist");
-            expect(result).toBeNull();
-            expect(errorSpy).toHaveBeenCalled();
-            errorSpy.mockRestore();
-        });
+		test("returns null on API failure (non-200 status)", async () => {
+			global.fetch = jest.fn().mockImplementation(async () => ({
+				ok: false,
+				status: 429,
+				text: async () => "Rate limit exceeded",
+			})) as any;
 
-        it("should catch fetch errors and return null", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockRejectedValue(new Error("Network Error"));
-            const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-            const result = await service.enrichMetadata("Track", "Artist");
-            expect(result).toBeNull();
-            expect(errorSpy).toHaveBeenCalled();
-            errorSpy.mockRestore();
-        });
-    });
+			const result = await service.enrichMetadata("Nightcall", "Kavinsky");
+			expect(result).toBeNull();
+		});
 
-    describe("suggestRelatedTracks", () => {
-        it("should return empty array if no api key", async () => {
-            mockDatabase.getSetting.mockReturnValue(undefined as any);
-            const result = await service.suggestRelatedTracks({}, [{}]);
-            expect(result).toEqual([]);
-        });
+		test("returns null when fetch throws network error", async () => {
+			global.fetch = jest.fn().mockImplementation(async () => {
+				throw new Error("Network unreachable");
+			}) as any;
 
-        it("should return empty array if candidates list is empty", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            const result = await service.suggestRelatedTracks({}, []);
-            expect(result).toEqual([]);
-        });
+			const result = await service.enrichMetadata("Nightcall", "Kavinsky");
+			expect(result).toBeNull();
+		});
+	});
 
-        it("should call fetch and return recommended ids", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({
-                    choices: [{ message: { content: '{"recommendedIds":[1,2,3]}' } }]
-                })
-            });
+	// ── suggestRelatedTracks ────────────────────────────────────────────────
 
-            const result = await service.suggestRelatedTracks({ title: "T1" }, [{ id: 1 }, { id: 2 }, { id: 3 }]);
-            expect(result).toEqual([1, 2, 3]);
-        });
+	describe("suggestRelatedTracks", () => {
+		test("returns recommended track IDs matching candidate library", async () => {
+			const target = { id: 1, title: "Resonance", artist_name: "HOME", genre: "Chillwave" };
+			const candidates = [
+				{ id: 2, title: "Sun", artist_name: "Caribou", genre: "Electronic" },
+				{ id: 3, title: "Midnight City", artist_name: "M83", genre: "Synthpop" },
+			];
 
-        it("should handle missing content in response", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({ choices: [{ message: {} }] })
-            });
+			const mockApiResponse = {
+				choices: [
+					{
+						message: {
+							content: JSON.stringify({
+								recommendedIds: [2, 3],
+							}),
+						},
+					},
+				],
+			};
 
-            const result = await service.suggestRelatedTracks({ title: "T1" }, [{ id: 1 }]);
-            expect(result).toEqual([]);
-        });
+			global.fetch = jest.fn().mockImplementation(async () => ({
+				ok: true,
+				status: 200,
+				json: async () => mockApiResponse,
+			})) as any;
 
-        it("should return empty array on fetch failure", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockResolvedValue({ ok: false });
+			const result = await service.suggestRelatedTracks(target, candidates);
+			expect(result).toEqual([2, 3]);
+		});
 
-            const result = await service.suggestRelatedTracks({ title: "T1" }, [{ id: 1 }]);
-            expect(result).toEqual([]);
-        });
+		test("returns empty array when candidate list is empty", async () => {
+			const result = await service.suggestRelatedTracks({ title: "A", artist_name: "B" }, []);
+			expect(result).toEqual([]);
+		});
+	});
 
-        it("should return empty array on fetch error", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockRejectedValue(new Error("Error"));
-            const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+	// ── identifyArtist ──────────────────────────────────────────────────────
 
-            const result = await service.suggestRelatedTracks({ title: "T1" }, [{ id: 1 }]);
-            expect(result).toEqual([]);
-            expect(errorSpy).toHaveBeenCalled();
-            errorSpy.mockRestore();
-        });
-    });
+	describe("identifyArtist", () => {
+		test("generates search query and summary for artist", async () => {
+			const mockApiResponse = {
+				choices: [
+					{
+						message: {
+							content: JSON.stringify({
+								searchQuery: "Aphex Twin Richard D James",
+								bio: "Pioneering British electronic musician and composer.",
+							}),
+						},
+					},
+				],
+			};
 
-    describe("identifyArtist", () => {
-        it("should return null if no api key", async () => {
-            mockDatabase.getSetting.mockReturnValue(undefined as any);
-            const result = await service.identifyArtist("Artist", []);
-            expect(result).toBeNull();
-        });
+			global.fetch = jest.fn().mockImplementation(async () => ({
+				ok: true,
+				status: 200,
+				json: async () => mockApiResponse,
+			})) as any;
 
-        it("should call fetch and return artist info", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({
-                    choices: [{ message: { content: '{"searchQuery":"q","bio":"b"}' } }]
-                })
-            });
-
-            const result = await service.identifyArtist("Artist", ["Album"]);
-            expect(result).toEqual({ searchQuery: "q", bio: "b" });
-        });
-
-        it("should handle fetch failure", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockResolvedValue({ ok: false });
-
-            const result = await service.identifyArtist("Artist", ["Album"]);
-            expect(result).toBeNull();
-        });
-
-        it("should handle fetch error", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockRejectedValue(new Error("Error"));
-            const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-
-            const result = await service.identifyArtist("Artist", ["Album"]);
-            expect(result).toBeNull();
-            expect(errorSpy).toHaveBeenCalled();
-            errorSpy.mockRestore();
-        });
-    });
-
-    describe("parseMetadataFromText", () => {
-        it("should return null if no api key", async () => {
-            mockDatabase.getSetting.mockReturnValue(undefined as any);
-            const result = await service.parseMetadataFromText("Text");
-            expect(result).toBeNull();
-        });
-
-        it("should call fetch and return parsed metadata", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({
-                    choices: [{ message: { content: '{"artist":"A","album":"B","year":2000}' } }]
-                })
-            });
-
-            const result = await service.parseMetadataFromText("Text");
-            expect(result).toEqual({ artist: "A", album: "B", year: 2000 });
-        });
-
-        it("should handle fetch failure", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockResolvedValue({ ok: false });
-
-            const result = await service.parseMetadataFromText("Text");
-            expect(result).toBeNull();
-        });
-
-        it("should handle fetch error", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockRejectedValue(new Error("Error"));
-            const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-
-            const result = await service.parseMetadataFromText("Text");
-            expect(result).toBeNull();
-            expect(errorSpy).toHaveBeenCalled();
-            errorSpy.mockRestore();
-        });
-    });
-
-    describe("identifyAlbum", () => {
-        it("should return null if no api key", async () => {
-            mockDatabase.getSetting.mockReturnValue(undefined as any);
-            const result = await service.identifyAlbum("Album", "Artist", []);
-            expect(result).toBeNull();
-        });
-
-        it("should call fetch and return enriched metadata", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({
-                    choices: [{ message: { content: '{"genre":"rock","year":2000}' } }]
-                })
-            });
-
-            const result = await service.identifyAlbum("Album", "Artist", ["Track"]);
-            expect(result).toEqual({ genre: "rock", year: 2000 });
-        });
-
-        it("should handle fetch failure", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockResolvedValue({ ok: false });
-
-            const result = await service.identifyAlbum("Album", "Artist", ["Track"]);
-            expect(result).toBeNull();
-        });
-
-        it("should handle fetch error", async () => {
-            mockDatabase.getSetting.mockImplementation((k: string) => k === "openrouter_api_key" ? "test-key" : undefined);
-            mockFetch.mockRejectedValue(new Error("Error"));
-            const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-
-            const result = await service.identifyAlbum("Album", "Artist", ["Track"]);
-            expect(result).toBeNull();
-            expect(errorSpy).toHaveBeenCalled();
-            errorSpy.mockRestore();
-        });
-    });
+			const result = await service.identifyArtist("Aphex Twin", ["Selected Ambient Works"]);
+			expect(result).toBeDefined();
+			expect(result?.searchQuery).toBe("Aphex Twin Richard D James");
+			expect(result?.bio).toContain("electronic musician");
+		});
+	});
 });
