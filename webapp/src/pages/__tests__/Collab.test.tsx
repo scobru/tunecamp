@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import Collab from "../Collab";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { MemoryRouter } from "react-router-dom";
-import API from "../../services/api";
 
 vi.mock("../../stores/useAuthStore");
 vi.mock("../../services/api", () => ({

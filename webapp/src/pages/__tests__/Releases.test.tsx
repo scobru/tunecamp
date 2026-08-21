@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import Releases from "../Releases";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import API from "../../services/api";
 
 vi.mock("../../services/api", () => ({
 	default: {

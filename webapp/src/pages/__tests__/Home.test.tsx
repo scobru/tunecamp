@@ -4,7 +4,6 @@ import Home from "../Home";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import API from "../../services/api";
 
 vi.mock("../../stores/useAuthStore");
 vi.mock("../../stores/useSiteSettingsStore", () => ({
