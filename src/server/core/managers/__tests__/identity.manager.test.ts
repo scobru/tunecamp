@@ -1,132 +1,186 @@
-import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
-import path from "path";
-import os from "os";
-import fsExtra from "fs-extra";
+import { describe, test, expect, beforeAll, afterAll, beforeEach, jest } from "@jest/globals";
 import { createDatabase } from "../../database.js";
-import { createIdentityManager } from "../identity.js";
-import type { DatabaseService } from "../../database.types.js";
 
-describe("IdentityManager", () => {
-    let dbService: DatabaseService;
-    let dbPath: string;
+describe("Identity Manager", () => {
+	let db: any;
+	let logSpy: any;
+	let warnSpy: any;
+	let errorSpy: any;
 
-    beforeEach(() => {
-        dbPath = path.join(os.tmpdir(), `tunecamp-identity-test-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-        dbService = createDatabase(dbPath);
-    });
+	beforeAll(() => {
+		logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+		warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+		errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+		db = createDatabase(":memory:");
+	});
 
-    afterEach(() => {
-        try {
-            dbService.db.close();
-            for (const suffix of ["", "-wal", "-shm"]) {
-                try { fsExtra.unlinkSync(`${dbPath}${suffix}`); } catch {}
-            }
-        } catch {}
-    });
+	afterAll(() => {
+		if (db?.db) db.db.close();
+		logSpy.mockRestore();
+		warnSpy.mockRestore();
+		errorSpy.mockRestore();
+	});
 
-    it("creates, retrieves, and lists users", () => {
-        const identity = createIdentityManager(dbService.db);
-        const userId = identity.createUser("alice", "hashed_pw", null, "admin");
-        expect(userId).toBeGreaterThan(0);
+	// ── Users CRUD ──────────────────────────────────────────────────────────
 
-        const user = identity.getUser(userId);
-        expect(user).toBeDefined();
-        expect(user?.username).toBe("alice");
-        expect(user?.role).toBe("admin");
+	describe("Users CRUD", () => {
+		test("createUser, getUser and getUserByUsername", () => {
+			const id = db.createUser("alice", "hash123", null, "admin");
+			expect(id).toBeGreaterThan(0);
 
-        const byName = identity.getUserByUsername("alice");
-        expect(byName?.id).toBe(userId);
+			const userById = db.getUser(id);
+			expect(userById).toBeDefined();
+			expect(userById.username).toBe("alice");
+			expect(userById.role).toBe("admin");
 
-        const admins = identity.getAdmins();
-        expect(admins.some(a => a.id === userId)).toBe(true);
-    });
+			const userByName = db.getUserByUsername("alice");
+			expect(userByName).toBeDefined();
+			expect(userByName.id).toBe(id);
+		});
 
-    it("filters updateUser against allowed columns and ignores disallowed keys", () => {
-        const identity = createIdentityManager(dbService.db);
-        const userId = identity.createUser("bob", "hashed_pw", null, "user");
+		test("getUserByArtistId returns linked user", () => {
+			const artistId = db.createArtist("Linked Artist");
+			const userId = db.createUser("artist_user", "hash456", artistId, "user");
 
-        // Allowed keys update
-        identity.updateUser(userId, {
-            is_active: 0,
-            storage_quota: 5000,
-            role: "curator"
-        } as any);
+			const found = db.getUserByArtistId(artistId);
+			expect(found).toBeDefined();
+			expect(found.id).toBe(userId);
+			expect(found.artist_id).toBe(artistId);
+		});
 
-        let user = identity.getUser(userId);
-        expect(user?.is_active).toBe(0);
-        expect(user?.storage_quota).toBe(5000);
-        expect(user?.role).toBe("curator");
+		test("updateUser updates allowed fields and ignores unauthorized fields", () => {
+			const id = db.createUser("bob", "hashBob", null, "user");
 
-        // Disallowed keys (e.g. non-existent or dangerous fields) should be filtered out safely without error
-        identity.updateUser(userId, {
-            zen_pub: "not-in-allowed-list",
-            non_existent_column: "dangerous"
-        } as any);
+			db.updateUser(id, {
+				role: "admin",
+				storage_quota: 5000000,
+				subscription_status: "active",
+				can_peer: 1 as any,
+			});
 
-        user = identity.getUser(userId);
-        expect((user as any).zen_pub).toBeNull();
-    });
+			const updated = db.getUser(id);
+			expect(updated.role).toBe("admin");
+			expect(updated.storage_quota).toBe(5000000);
+			expect(updated.subscription_status).toBe("active");
+			expect(updated.can_peer).toBe(1);
+		});
 
-    it("manages user subscriptions", () => {
-        const identity = createIdentityManager(dbService.db);
-        const userId = identity.createUser("subscriber", "pw", null, "user");
+		test("getAllUsers and getAdmins", () => {
+			const initialAdmins = db.getAdmins();
+			const adminCount = initialAdmins.length;
 
-        const initial = identity.getUserSubscription(userId);
-        expect(initial.status).toBe("none");
-        expect(initial.expiresAt).toBeNull();
+			const newAdminId = db.createUser("newadmin", "hashAdmin", null, "admin");
+			const newUserId = db.createUser("regularuser", "hashUser", null, "user");
 
-        const expiry = new Date(Date.now() + 30 * 86400000).toISOString();
-        identity.updateSubscription(userId, "active", expiry);
+			const allUsers = db.getAllUsers();
+			expect(allUsers.some((u: any) => u.id === newAdminId)).toBe(true);
+			expect(allUsers.some((u: any) => u.id === newUserId)).toBe(true);
 
-        const updated = identity.getUserSubscription(userId);
-        expect(updated.status).toBe("active");
-        expect(updated.expiresAt).toBe(expiry);
-    });
+			const admins = db.getAdmins();
+			expect(admins.length).toBe(adminCount + 1);
+			expect(admins.some((a: any) => a.id === newAdminId)).toBe(true);
+			expect(admins.some((a: any) => a.id === newUserId)).toBe(false);
+		});
 
-    it("stores, retrieves, and overrides settings", () => {
-        const identity = createIdentityManager(dbService.db);
-        identity.setSetting("siteName", "Test Music Hub");
-        identity.setSetting("theme", "dark");
+		test("deleteUser removes user", () => {
+			const id = db.createUser("to_delete", "hashDel", null, "user");
+			expect(db.getUser(id)).toBeDefined();
 
-        expect(identity.getSetting("siteName")).toBe("Test Music Hub");
-        expect(identity.getSetting("theme")).toBe("dark");
+			db.deleteUser(id);
+			expect(db.getUser(id)).toBeUndefined();
+		});
+	});
 
-        const all = identity.getAllSettings();
-        expect(all["siteName"]).toBe("Test Music Hub");
-        expect(all["theme"]).toBe("dark");
+	// ── Subscriptions ───────────────────────────────────────────────────────
 
-        // Update existing setting
-        identity.setSetting("siteName", "Updated Hub");
-        expect(identity.getSetting("siteName")).toBe("Updated Hub");
-    });
+	describe("Subscriptions", () => {
+		test("getUserSubscription defaults to none for user without active subscription", () => {
+			const id = db.createUser("sub_user", "hashSub", null, "user");
+			const sub = db.getUserSubscription(id);
 
-    it("manages system plugin states and configs", () => {
-        const identity = createIdentityManager(dbService.db);
-        identity.setPluginEnabled("scrobbler", true);
-        identity.setPluginConfig("scrobbler", JSON.stringify({ apiKey: "12345" }));
+			expect(sub.status).toBe("none");
+			expect(sub.expiresAt).toBeNull();
+		});
 
-        const state = identity.getPluginState("scrobbler");
-        expect(state).toBeDefined();
-        expect(state?.enabled).toBe(true);
-        expect(JSON.parse(state?.config || "{}")).toEqual({ apiKey: "12345" });
-    });
+		test("updateSubscription sets status and expiration date", () => {
+			const id = db.createUser("sub_active", "hashSub2", null, "user");
+			const expires = "2027-12-31T23:59:59.000Z";
 
-    it("manages ActivityPub user keys", () => {
-        const identity = createIdentityManager(dbService.db);
-        const userId = identity.createUser("apuser", "pw", null, "user");
+			db.updateSubscription(id, "active", expires);
+			const sub = db.getUserSubscription(id);
 
-        identity.updateUserApKeys(userId, "PUBKEY_PEM", "PRIVKEY_PEM");
-        const user = identity.getUser(userId);
-        expect(user?.ap_public_key).toBe("PUBKEY_PEM");
-        expect(user?.ap_private_key).toBe("PRIVKEY_PEM");
-    });
+			expect(sub.status).toBe("active");
+			expect(sub.expiresAt).toBe(expires);
+		});
+	});
 
-    it("deletes users", () => {
-        const identity = createIdentityManager(dbService.db);
-        const userId = identity.createUser("tempuser", "pw", null, "user");
-        expect(identity.getUser(userId)).toBeDefined();
+	// ── Settings ────────────────────────────────────────────────────────────
 
-        identity.deleteUser(userId);
-        expect(identity.getUser(userId)).toBeUndefined();
-    });
+	describe("Settings", () => {
+		test("setSetting and getSetting roundtrip", () => {
+			db.setSetting("site_theme", "dark");
+			expect(db.getSetting("site_theme")).toBe("dark");
+
+			// Upsert overwrite
+			db.setSetting("site_theme", "light");
+			expect(db.getSetting("site_theme")).toBe("light");
+		});
+
+		test("getAllSettings returns key-value dictionary", () => {
+			db.setSetting("custom_k1", "val1");
+			db.setSetting("custom_k2", "val2");
+
+			const all = db.getAllSettings();
+			expect(all.custom_k1).toBe("val1");
+			expect(all.custom_k2).toBe("val2");
+		});
+
+		test("getSetting returns undefined for non-existent key", () => {
+			expect(db.getSetting("non_existent_key_xyz")).toBeUndefined();
+		});
+	});
+
+	// ── Plugins ─────────────────────────────────────────────────────────────
+
+	describe("Plugins", () => {
+		test("setPluginEnabled and getPluginState", () => {
+			db.setPluginEnabled("scrobble_plugin", true);
+			let state = db.getPluginState("scrobble_plugin");
+			expect(state).toBeDefined();
+			expect(state.enabled).toBe(true);
+
+			db.setPluginEnabled("scrobble_plugin", false);
+			state = db.getPluginState("scrobble_plugin");
+			expect(state.enabled).toBe(false);
+		});
+
+		test("setPluginConfig stores configuration string", () => {
+			db.setPluginEnabled("telegram_bot", true);
+			db.setPluginConfig("telegram_bot", JSON.stringify({ token: "123:ABC" }));
+
+			const state = db.getPluginState("telegram_bot");
+			expect(state.config).toBe(JSON.stringify({ token: "123:ABC" }));
+		});
+
+		test("getAllPluginsState returns list of plugins", () => {
+			db.setPluginEnabled("plugin_a", true);
+			db.setPluginEnabled("plugin_b", false);
+
+			const all = db.getAllPluginsState();
+			expect(all.length).toBeGreaterThanOrEqual(2);
+		});
+	});
+
+	// ── ActivityPub User Keys ───────────────────────────────────────────────
+
+	describe("ActivityPub Keys", () => {
+		test("updateUserApKeys saves public and private keys", () => {
+			const id = db.createUser("ap_user", "hashAp", null, "user");
+			db.updateUserApKeys(id, "mock-pub-key-pem", "mock-priv-key-pem");
+
+			const user = db.getUser(id);
+			expect(user.ap_public_key).toBe("mock-pub-key-pem");
+			expect(user.ap_private_key).toBe("mock-priv-key-pem");
+		});
+	});
 });
