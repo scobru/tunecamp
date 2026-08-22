@@ -36,6 +36,10 @@ const chatDefaults = {
 	sendRoomMessage: vi.fn(() => true),
 	roomUnreadCounts: {} as Record<number, number>,
 	clearRoomUnread: vi.fn(),
+	roomPassphrases: {} as Record<number, string>,
+	setRoomPassphrase: vi.fn(),
+	clearRoomPassphrase: vi.fn(),
+	hasRoomPassphrase: vi.fn(() => false),
 	keyChanges: {},
 	acceptKeyChange: vi.fn(),
 	unreadCounts: {},
@@ -179,10 +183,10 @@ describe("Chat page", () => {
 			render(<Chat />);
 
 			fireEvent.click(screen.getByRole("button", { name: /new room/i }));
-			fireEvent.change(screen.getByPlaceholderText("Room name"), {
+			fireEvent.change(screen.getByPlaceholderText(/room name/i), {
 				target: { value: "new-room" },
 			});
-			fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+			fireEvent.click(screen.getByRole("button", { name: /create room/i }));
 
 			await waitFor(() =>
 				expect(chat.createRoom).toHaveBeenCalledWith(

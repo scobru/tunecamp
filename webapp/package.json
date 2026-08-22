@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.0",
-    "@tunecamp/chat": "github:scobru/tunecamp-chat#v3.0.0",
+    "@tunecamp/chat": "github:scobru/tunecamp-chat#v3.1.0",
     "axios": "^1.15.0",
     "clsx": "^2.1.1",
     "color-thief-react": "^1.0.2",
