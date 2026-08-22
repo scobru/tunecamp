@@ -131,6 +131,27 @@ function ModuleGuard({ flag, children }: { flag: ModuleFlag; children: React.Rea
   return <>{children}</>;
 }
 
+/**
+ * Blocks community routes when the instance is in single_artist mode.
+ */
+function SingleArtistGuard({ children }: { children: React.ReactNode }) {
+  const { isSingleArtist, flags, fetchFlags } = useSiteSettingsStore();
+
+  useEffect(() => {
+    if (!flags) fetchFlags();
+  }, [flags, fetchFlags]);
+
+  if (!flags) {
+    return <LoadingSpinner />;
+  }
+  
+  if (isSingleArtist) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
 /** Old bookmarks: /my-playlists/:id → unified /playlists/:id detail page. */
 function LegacyMyPlaylistRedirect() {
   const { id } = useParams<{ id: string }>();
@@ -210,8 +231,8 @@ function App() {
             <Route path="/albums/:idOrSlug" element={<AlbumDetails />} />
             <Route path="/releases/:idOrSlug" element={<AlbumDetails />} />
             <Route path="/releases/tracks" element={<Releases />} />
-            <Route path="/artists" element={<Artists />} />
-            <Route path="/artists/:idOrSlug" element={<ArtistDetails />} />
+            <Route path="/artists" element={<SingleArtistGuard><Artists /></SingleArtistGuard>} />
+            <Route path="/artists/:idOrSlug" element={<SingleArtistGuard><ArtistDetails /></SingleArtistGuard>} />
             <Route path="/@:idOrSlug" element={<ArtistRedirect />} />
             <Route path="/tracks" element={<Navigate to="/releases/tracks" replace />} />
 
@@ -227,21 +248,21 @@ function App() {
 
             {/* Purchased tracks view is now in the User Profile Collection tab */}
             <Route path="/post/:slug" element={<Post />} />
-            <Route path="/network" element={<ModuleGuard flag="hideNetwork"><Network /></ModuleGuard>} />
+            <Route path="/network" element={<SingleArtistGuard><ModuleGuard flag="hideNetwork"><Network /></ModuleGuard></SingleArtistGuard>} />
             <Route path="/live" element={<ModuleGuard flag="hideLive"><Live /></ModuleGuard>} />
             <Route path="/radio" element={<RadioPage />} />
-            <Route path="/now-listening" element={<NowListening />} />
-            <Route path="/stats" element={<Stats />} />
+            <Route path="/now-listening" element={<SingleArtistGuard><NowListening /></SingleArtistGuard>} />
+            <Route path="/stats" element={<SingleArtistGuard><Stats /></SingleArtistGuard>} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/u/:username" element={<UserProfile />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/reset-password-security" element={<ResetPasswordSecurity />} />
-            <Route path="/my-music" element={<MyMusic />} />
+            <Route path="/my-music" element={<SingleArtistGuard><MyMusic /></SingleArtistGuard>} />
             <Route path="/publish" element={<Publish />} />
-            <Route path="/social" element={<ModuleGuard flag="hideSocial"><Social /></ModuleGuard>} />
-            <Route path="/board" element={<Board />} />
-            <Route path="/chat" element={<Chat />} />
+            <Route path="/social" element={<SingleArtistGuard><ModuleGuard flag="hideSocial"><Social /></ModuleGuard></SingleArtistGuard>} />
+            <Route path="/board" element={<SingleArtistGuard><Board /></SingleArtistGuard>} />
+            <Route path="/chat" element={<SingleArtistGuard><Chat /></SingleArtistGuard>} />
             <Route path="/share/:id" element={<SharePage />} />
 
             {/* Admin - Protected */}
@@ -255,9 +276,9 @@ function App() {
 
             {/* Store */}
             <Route path="/store" element={<ModuleGuard flag="hideStore"><Store /></ModuleGuard>} />
-            <Route path="/samples" element={<ModuleGuard flag="hideSamples"><Samples /></ModuleGuard>} />
-            <Route path="/samples/pack/:id" element={<ModuleGuard flag="hideSamples"><SamplePackDetail /></ModuleGuard>} />
-            <Route path="/dig" element={<ModuleGuard flag="hideDig"><Dig /></ModuleGuard>} />
+            <Route path="/samples" element={<SingleArtistGuard><ModuleGuard flag="hideSamples"><Samples /></ModuleGuard></SingleArtistGuard>} />
+            <Route path="/samples/pack/:id" element={<SingleArtistGuard><ModuleGuard flag="hideSamples"><SamplePackDetail /></ModuleGuard></SingleArtistGuard>} />
+            <Route path="/dig" element={<SingleArtistGuard><ModuleGuard flag="hideDig"><Dig /></ModuleGuard></SingleArtistGuard>} />
 
 
             {/* Lab */}
@@ -265,8 +286,8 @@ function App() {
             <Route path="/lab/:appId" element={<ModuleGuard flag="hideLab"><LabApp /></ModuleGuard>} />
 
             {/* Collab */}
-            <Route path="/collab" element={<ModuleGuard flag="hideCollab"><Collab /></ModuleGuard>} />
-            <Route path="/collab/:id" element={<ModuleGuard flag="hideCollab"><CollabDetail /></ModuleGuard>} />
+            <Route path="/collab" element={<SingleArtistGuard><ModuleGuard flag="hideCollab"><Collab /></ModuleGuard></SingleArtistGuard>} />
+            <Route path="/collab/:id" element={<SingleArtistGuard><ModuleGuard flag="hideCollab"><CollabDetail /></ModuleGuard></SingleArtistGuard>} />
 
             {/* Other */}
             <Route path="/support" element={<Support />} />

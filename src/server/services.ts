@@ -184,16 +184,20 @@ export async function bootstrapServices(
 
 	const jobHandles: JobHandle[] = [];
 
+	const isSolo = database.getSetting("mode") === "single_artist";
+
 	// Federated discovery crawl: shortly after boot, then periodically.
-	jobHandles.push(
-		scheduleRecurring(
-			() =>
-				taskManager.run("federated-discovery", () =>
-					federatedDiscoveryService.crawl(),
-				),
-			{ initialDelayMs: 45000, intervalMs: 6 * 60 * 60 * 1000 },
-		),
-	);
+	if (!isSolo) {
+		jobHandles.push(
+			scheduleRecurring(
+				() =>
+					taskManager.run("federated-discovery", () =>
+						federatedDiscoveryService.crawl(),
+					),
+				{ initialDelayMs: 45000, intervalMs: 6 * 60 * 60 * 1000 },
+			),
+		);
+	}
 
 	// Scheduled off-peak library scan
 	jobHandles.push(
@@ -251,12 +255,14 @@ export async function bootstrapServices(
 
 	// Periodically refresh followed RSS/Atom sources
 	const rssService = createRssService(database);
-	jobHandles.push(
-		scheduleRecurring(
-			() => taskManager.run("rss-refresh", () => rssService.refreshAll()),
-			{ initialDelayMs: 90 * 1000, intervalMs: 30 * 60 * 1000 },
-		),
-	);
+	if (!isSolo) {
+		jobHandles.push(
+			scheduleRecurring(
+				() => taskManager.run("rss-refresh", () => rssService.refreshAll()),
+				{ initialDelayMs: 90 * 1000, intervalMs: 30 * 60 * 1000 },
+			),
+		);
+	}
 
 	const federation = createFedify(database, config);
 

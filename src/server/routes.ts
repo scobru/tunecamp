@@ -57,6 +57,7 @@ export function registerRoutes(
 	hasGDrive: boolean,
 ): void {
 	const { authMiddleware } = container;
+	const isSolo = container.catalogService.isSingleArtist();
 
 	createPeerWsHandler(server, container);
 	createChatWsHandler(server, container);
@@ -140,35 +141,41 @@ export function registerRoutes(
 		authMiddleware.optionalAuth,
 		createTracksRoutes(container),
 	);
-	app.use(
-		"/api/samples",
-		authMiddleware.optionalAuth,
-		requireModuleEnabled(container, "hideSamples", { allowAdmin: true }),
-		createSamplesRoutes(container),
-	);
-	app.use(
-		"/api/sample-packs",
-		authMiddleware.optionalAuth,
-		requireModuleEnabled(container, "hideSamples", { allowAdmin: true }),
-		createSamplePacksRoutes(container),
-	);
-	app.use(
-		"/api/dig",
-		authMiddleware.requireUser,
-		requireModuleEnabled(container, "hideDig"),
-		createDigRoutes(container),
-	);
+	if (!isSolo) {
+		app.use(
+			"/api/samples",
+			authMiddleware.optionalAuth,
+			requireModuleEnabled(container, "hideSamples", { allowAdmin: true }),
+			createSamplesRoutes(container),
+		);
+		app.use(
+			"/api/sample-packs",
+			authMiddleware.optionalAuth,
+			requireModuleEnabled(container, "hideSamples", { allowAdmin: true }),
+			createSamplePacksRoutes(container),
+		);
+	}
+	if (!isSolo) {
+		app.use(
+			"/api/dig",
+			authMiddleware.requireUser,
+			requireModuleEnabled(container, "hideDig"),
+			createDigRoutes(container),
+		);
+	}
 	app.use(
 		"/api/playlists",
 		authMiddleware.optionalAuth,
 		createPlaylistsRoutes(container),
 	);
-	app.use(
-		"/api/collab",
-		authMiddleware.requireUser,
-		requireModuleEnabled(container, "hideCollab", { allowAdmin: true }),
-		createCollabRoutes(container),
-	);
+	if (!isSolo) {
+		app.use(
+			"/api/collab",
+			authMiddleware.requireUser,
+			requireModuleEnabled(container, "hideCollab", { allowAdmin: true }),
+			createCollabRoutes(container),
+		);
+	}
 
 	if (hasGDrive) {
 		app.use("/api/storage", createStorageRouter(container));
@@ -199,25 +206,27 @@ export function registerRoutes(
 	app.use("/api/users", createUsersRoutes(container));
 	app.use("/api/mcp", authMiddleware.requireUser, createMcpRoutes(container));
 	app.use("/api/comments", createCommentsRoutes(container));
-	app.use(
-		"/api/board",
-		authMiddleware.optionalAuth,
-		requireModuleEnabled(container, "boardEnabled", {
-			invert: true,
-			allowAdmin: true,
-		}),
-		createBoardRoutes(container),
-	);
-	app.use(
-		"/api/chat",
-		authMiddleware.optionalAuth,
-		requireModuleEnabled(container, "peerChatEnabled", {
-			invert: true,
-			allowAdmin: true,
-		}),
-		createChatRoutes(container),
-	);
-	app.use("/api/chat/federated", createChatFederationRoutes(container));
+	if (!isSolo) {
+		app.use(
+			"/api/board",
+			authMiddleware.optionalAuth,
+			requireModuleEnabled(container, "boardEnabled", {
+				invert: true,
+				allowAdmin: true,
+			}),
+			createBoardRoutes(container),
+		);
+		app.use(
+			"/api/chat",
+			authMiddleware.optionalAuth,
+			requireModuleEnabled(container, "peerChatEnabled", {
+				invert: true,
+				allowAdmin: true,
+			}),
+			createChatRoutes(container),
+		);
+		app.use("/api/chat/federated", createChatFederationRoutes(container));
+	}
 	app.use(
 		"/api/live",
 		requireModuleEnabled(container, "hideLive", { allowAdmin: true }),

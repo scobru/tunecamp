@@ -52,6 +52,13 @@ export function createChatWsHandler(
 			);
 			if (url.pathname !== "/ws/chat") return;
 
+			// In single-artist mode the chat subsystem is entirely disabled.
+			if (container.identity.getSetting("mode") === "single_artist") {
+				socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
+				socket.destroy();
+				return;
+			}
+
 			if (container.identity.getSetting("peerChatEnabled") !== "true") {
 				socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
 				socket.destroy();

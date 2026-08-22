@@ -48,7 +48,7 @@ export const Sidebar = () => {
   const location = useLocation();
   const { user, isAuthenticated, role, logout } = useAuthStore();
   const { sidebarCollapsed, toggleSidebarCollapsed } = useUIStore();
-  const { settings, fetchFlags, isModuleHidden } = useSiteSettingsStore();
+  const { settings, fetchFlags, isModuleHidden, isSingleArtist } = useSiteSettingsStore();
   const siteName = settings?.siteName || "TuneCamp";
   const siteLogo = settings?.siteLogo || null;
   const communityLink = settings?.communityLink || null;
@@ -177,7 +177,7 @@ export const Sidebar = () => {
           <SectionHeader label="Explore" />
           <ul className="menu menu-sm p-0 gap-1">
             <NavItem to="/releases" icon={Disc} label="Releases" />
-            <NavItem to="/artists" icon={User} label="Artists" />
+            {!isSingleArtist && <NavItem to="/artists" icon={User} label="Artists" />}
             <NavItem to="/radio" icon={Rss} label="Radio" />
             {!hideLive && <NavItem to="/live" icon={Radio} label="Live" />}
             {!hideStore && <NavItem to="/store" icon={ShoppingBag} label="Store" />}
@@ -188,6 +188,7 @@ export const Sidebar = () => {
           </ul>
         </div>
 
+        {!isSingleArtist && (
         <div>
           <SectionHeader label="Community" />
           <ul className="menu menu-sm p-0 gap-1">
@@ -198,16 +199,17 @@ export const Sidebar = () => {
             {isAuthenticated && <NavItem to="/stats" icon={BarChart2} label="Stats" />}
           </ul>
         </div>
+        )}
 
         {isAuthenticated && (canPub || isAdmin) && (
           <div>
             <SectionHeader label="Studio" />
             <ul className="menu menu-sm p-0 gap-1">
               <NavItem to="/publish" icon={Upload} label="Publish" />
-              {!!user?.artistId && !hideSocial && (
+              {!isSingleArtist && !!user?.artistId && !hideSocial && (
                 <NavItem to="/social" icon={MessageSquare} label="Social" />
               )}
-              <NavItem to="/my-music" icon={Music} label="My Catalog" />
+              {!isSingleArtist && <NavItem to="/my-music" icon={Music} label="My Catalog" />}
               {isAdmin && (
                 <NavItem to="/archive" icon={Archive} label="Archive" />
               )}

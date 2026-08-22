@@ -10,6 +10,7 @@ interface SiteSettingsStore {
   /** Full public site settings (siteName, logo, communityLink, ...), same fetch as flags. */
   settings: SiteSettings | null;
   isLoading: boolean;
+  isSingleArtist: boolean;
   fetchFlags: () => Promise<void>;
   isModuleHidden: (flag: ModuleFlag) => boolean;
 }
@@ -26,6 +27,7 @@ export const useSiteSettingsStore = create<SiteSettingsStore>((set, get) => ({
   flags: null,
   settings: null,
   isLoading: false,
+  isSingleArtist: false,
   fetchFlags: async () => {
     if (get().isLoading || get().settings) return;
     set({ isLoading: true });
@@ -33,6 +35,7 @@ export const useSiteSettingsStore = create<SiteSettingsStore>((set, get) => ({
       const s = await API.getSiteSettings();
       set({
         settings: s,
+        isSingleArtist: s.mode === 'single_artist',
         flags: {
           hideLive: truthy(s.hideLive),
           hideStore: truthy(s.hideStore),
