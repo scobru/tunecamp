@@ -331,8 +331,8 @@ describe("ChatService", () => {
 
 			const clients = chatService.getClients();
 			expect(clients).toEqual([
-				{ username: "admin", pubkey: false },
-				{ username: "admin #2", pubkey: false },
+				{ username: "admin", pubkey: false, avatar: null, alias: null },
+				{ username: "admin #2", pubkey: false, avatar: null, alias: null },
 			]);
 		});
 

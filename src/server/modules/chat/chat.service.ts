@@ -663,14 +663,41 @@ export class ChatService {
 		}
 	}
 
-	getClients(): { username: string; pubkey: boolean }[] {
-		const map = new Map<string, boolean>();
+	getClients(): { username: string; pubkey: boolean; avatar?: string | null; alias?: string | null }[] {
+		const map = new Map<string, { pubkey: boolean; avatar?: string | null; alias?: string | null }>();
 		for (const client of this.clients.values()) {
 			if (!map.has(client.username) || client.pubkey) {
-				map.set(client.username, !!client.pubkey);
+				let avatar: string | null = null;
+				let alias: string | null = null;
+				try {
+					const lookupName = client.rawUsername || client.username;
+					const row = this.database.db
+						.prepare(
+							"SELECT alias, avatar FROM admin WHERE username = ? COLLATE NOCASE OR alias = ? COLLATE NOCASE",
+						)
+						.get(lookupName, lookupName) as
+						| { alias: string | null; avatar: string | null }
+						| undefined;
+					if (row) {
+						avatar = row.avatar ?? null;
+						alias = row.alias ?? null;
+					}
+				} catch {
+					/* database table may not exist in minimal mocks */
+				}
+				map.set(client.username, {
+					pubkey: !!client.pubkey,
+					avatar: avatar || null,
+					alias: alias || null,
+				});
 			}
 		}
-		return Array.from(map, ([username, pubkey]) => ({ username, pubkey }));
+		return Array.from(map, ([username, info]) => ({
+			username,
+			pubkey: info.pubkey,
+			avatar: info.avatar,
+			alias: info.alias,
+		}));
 	}
 
 	relayRtcSignal(
