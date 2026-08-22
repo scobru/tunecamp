@@ -1,6 +1,6 @@
 # Stato del Progetto
 
-Un quadro sincero di quanto ciascuna parte di TuneCamp sia pronta per la produzione. Aggiornato all'8 Luglio 2026.
+Un quadro sincero di quanto ciascuna parte di TuneCamp sia pronta per la produzione. Aggiornato al 22 Agosto 2026.
 
 **In generale**: progetto giovane, gestito da un singolo maintainer. Solido per un singolo artista self-hosted o una piccola etichetta in grado di tollerare qualche difetto; non è ancora un sostituto immediato per una piattaforma gestita. Oltre 600 test automatizzati, nessun audit di sicurezza esterno.
 
@@ -10,6 +10,8 @@ Un quadro sincero di quanto ciascuna parte di TuneCamp sia pronta per la produzi
 |------|--------|-------|
 | Libreria, scansione, streaming | **Stabile** | Funzionalità principale sin dall'inizio; analisi tramite pool di worker, pre-transcodifica dei formati lossless, API Subsonic/OpenSubsonic. |
 | Web player e pagine artista | **Stabile** | |
+| Chat e messaggistica in tempo reale | **Beta** | Lobby community, DM E2EE, moderazione per stanza (`chat_room_bans`) e stanze protette da passphrase E2EE tramite Zen SEA. Vedi [chat.md](./chat.md). |
+| Modalità portfolio Single Artist | **Nuovo** | Terza modalità istanza accanto a Record Label e Community: homepage sovrana per un artista solo, senza funzionalità community. Selezionabile nel setup wizard o in Admin Settings. |
 | Pagamenti Stripe e codici di sblocco | **Beta** | Revisionato internamente (vedi [security-review-payments.md](./security-review-payments.md)); nessun audit esterno. Si consiglia di testare inizialmente con piccoli importi. |
 | Pagamenti on-chain (Base, NFT) | **Beta / opzionale** | Disabilitati di default (`web3Enabled`). Le assunzioni di fiducia sono documentate nella revisione della sicurezza. |
 | Federazione (ActivityPub + catalogo) | **Beta** | Segue istanze da Mastodon/Funkwhale; cataloghi dei peer memorizzati in cache con stale-while-revalidate. Possibili piccoli problemi di interoperabilità. |
@@ -18,6 +20,7 @@ Un quadro sincero di quanto ciascuna parte di TuneCamp sia pronta per la produzi
 | Radio (stazione HLS) | **Nuovo** | Stazione sempre attiva da playlist + mix dinamici per genere; loop di concatenazione FFmpeg. Vedi [radio.md](./radio.md). |
 | Server MCP | **Nuovo / opzionale** | Espone il catalogo ai client IA (ricerca, statistiche, scansione) tramite SSE, protetto da token. Vedi [mcp-setup-guide.md](./mcp-setup-guide.md). |
 | App Lab | **Sperimentale** | Strumenti audio per browser protetti da iFrame sandbox; bridge PostMessage implementato (getUser/getLibrary/getNowPlaying/exportAudio). Vedi [LAB.md](./LAB.md). |
+| Collab | **Nuovo** | Costruzione collaborativa di brani multi-artista su una istanza: progetti condivisi/privati, cronologia versioni append-only, upload stem. Collaborazione aperta (ogni artista può contribuire), solo versioning — nessun realtime. Vedi [COLLAB.md](./COLLAB.md). |
 | Pannello di sistema amministratore | **Nuovo** | Metriche in tempo reale di CPU/RAM/archiviazione/attività per il rilevamento di leak. Vedi [monitoring.md](./monitoring.md). |
 | Bot Telegram, archiviazione Google Drive | **Beta** | Funzionali, copertura dei test più limitata. |
 | Streaming SoundCloud e Bandcamp | **Opzionale** | Integrazione streaming tramite provider SoundCloud / Bandcamp; abilita in Amministrazione → Integrazioni. |

@@ -62,6 +62,8 @@ Per ascoltatori e artisti che utilizzano un'istanza TuneCamp.
 | [Radio](./radio.md) | Trasmissione di una stazione sempre attiva dalla tua libreria (playlist + mix di genere) |
 | [Protocollo Subsonic](./subsonic.md) | Collegamento di client esterni (DSub, Symfonium, Tempo, Substreamer) |
 | [Funzionalità Social e Community](./social-features.md) | Post, commenti e interazioni con i fan |
+| [Chat e Messaggistica in Tempo Reale](./chat.md) | Lobby community, messaggi diretti E2EE e stanze protette da passphrase E2EE |
+| [Collab](./COLLAB.md) | Costruzione collaborativa di brani multi-artista: stem, snapshot di versione, nessun realtime |
 | [Diventare un Artista e Vendere](./community-mode.md) | Flusso di richiesta artista e gate di vendita `can_sell` |
 | [Pagamenti e Monetizzazione](./payments.md) | Checkout Stripe, on-ramp crypto e acquisti on-chain |
 
@@ -92,6 +94,7 @@ Per contributori e sviluppatori su TuneCamp.
 | [Architettura Backend](./architecture-backend.md) | Server Express, SQLite, ActivityPub, scoperta federata e modello dati completo / schema del database |
 | [Architettura Webapp](./architecture-webapp.md) | React, Vite, Zustand e scoperta dell'istanza nel frontend |
 | [Contratti API](./api-contracts.md) | Endpoint REST, autenticazione e protocolli supportati |
+| [Identità FID](./FID-IDENTITY.md) | Identità auto-sovrana e passaporti d'istanza tramite FID + Zen SEA |
 | [Applicazioni Lab](./LAB.md) | Creazione e invio di strumenti audio sperimentali |
 | [App Lab: Audiofabric](./audiofabric.md) | Visualizzatore musicale 3D WebGL in tempo reale integrato in Lab |
 | [App Lab: Registratore a 4 Tracce](./4-track-recorder.md) | Pacchetto companion registratore a cassette a 4 tracce basato su browser |
@@ -124,4 +127,4 @@ Servizi di terze parti opzionali che puoi collegare alla tua istanza.
 
 ---
 
-*Ultimo aggiornamento: 25 Giugno 2026*
+*Ultimo aggiornamento: 22 Agosto 2026*
