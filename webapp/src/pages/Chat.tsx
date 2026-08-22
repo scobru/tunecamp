@@ -411,7 +411,7 @@ export default function Chat() {
 						ref={scrollContainerRef}
 						className="h-[55vh] overflow-y-auto p-4 space-y-3"
 					>
-						{activeRoom && !roomPassphrases[activeRoom.id] && messages.some((m: ChatMessage) => m.isEncrypted || (m.text && m.text.includes("[Messaggio cifrato"))) && (
+						{activeRoom && !roomPassphrases[activeRoom.id] && messages.some((m: ChatMessage) => (m as any).isEncrypted || (m.text && m.text.includes("[Messaggio cifrato"))) && (
 							<div className="alert alert-warning py-2 px-3 rounded-2xl flex items-center justify-between gap-2 text-xs shadow-xs">
 								<div className="flex items-center gap-2 min-w-0">
 									<Key size={14} className="text-warning shrink-0" />
@@ -421,7 +421,7 @@ export default function Chat() {
 									type="button"
 									className="btn btn-xs btn-warning rounded-xl shrink-0 gap-1 font-bold"
 									onClick={() => {
-										setUnlockModalRoom(activeRoom);
+										setUnlockModalRoom(activeRoom || null);
 										setShowUnlockModal(true);
 									}}
 								>
@@ -482,7 +482,7 @@ export default function Chat() {
 												className="text-success"
 												aria-label="E2E"
 											/>
-										) : m.isEncrypted ? (
+										) : (m as any).isEncrypted ? (
 											<Key
 												size={10}
 												className="text-warning"
