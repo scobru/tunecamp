@@ -8,10 +8,14 @@ import {
 import { PageHeader } from "../components/ui/PageHeader";
 import { useSiteSettingsStore, truthy } from "../stores/useSiteSettingsStore";
 import { useAuthStore } from "../stores/useAuthStore";
+import { UnlockRoomModal } from "../components/modals/UnlockRoomModal";
 import {
 	MessageCircle,
 	Send,
 	Lock,
+	Key,
+	Unlock,
+	ShieldCheck,
 	AlertCircle,
 	Globe,
 	ChevronDown,
@@ -45,8 +49,12 @@ export default function Chat() {
 	const [activeRoomId, setActiveRoomId] = useState<number | undefined>();
 	const [newRoomName, setNewRoomName] = useState("");
 	const [newRoomPrivate, setNewRoomPrivate] = useState(false);
+	const [newRoomEncrypted, setNewRoomEncrypted] = useState(false);
+	const [newRoomPassphrase, setNewRoomPassphrase] = useState("");
 	const [showRoomForm, setShowRoomForm] = useState(false);
 	const [showScrollBtn, setShowScrollBtn] = useState(false);
+	const [unlockModalRoom, setUnlockModalRoom] = useState<RoomInfo | null>(null);
+	const [showUnlockModal, setShowUnlockModal] = useState(false);
 	const bottomRef = useRef<HTMLDivElement>(null);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -68,6 +76,9 @@ export default function Chat() {
 		sendRoomMessage,
 		roomUnreadCounts,
 		clearRoomUnread,
+		roomPassphrases,
+		setRoomPassphrase,
+		clearRoomPassphrase,
 		keyChanges,
 		acceptKeyChange,
 		unreadCounts,
@@ -161,8 +172,13 @@ export default function Chat() {
 		try {
 			const room = await createRoom(name, undefined, newRoomPrivate);
 			if (room) {
+				if (newRoomEncrypted && newRoomPassphrase.trim()) {
+					setRoomPassphrase(room.id, newRoomPassphrase.trim());
+				}
 				setNewRoomName("");
 				setNewRoomPrivate(false);
+				setNewRoomEncrypted(false);
+				setNewRoomPassphrase("");
 				setShowRoomForm(false);
 				selectRoom(room);
 			} else {
@@ -316,7 +332,11 @@ export default function Chat() {
 										<span className="font-bold text-sm text-base-content truncate">
 											{activeRoom.name}
 										</span>
-										{activeRoom.is_private ? (
+										{roomPassphrases[activeRoom.id] ? (
+											<span className="badge badge-xs badge-accent gap-1 font-semibold">
+												<ShieldCheck size={10} /> E2EE Attiva
+											</span>
+										) : activeRoom.is_private ? (
 											<span className="badge badge-xs badge-outline gap-1 opacity-70">
 												<Lock size={10} /> Privata
 											</span>
@@ -337,6 +357,35 @@ export default function Chat() {
 								<span className="text-[11px] opacity-50 mr-1 hidden sm:inline">
 									{activeRoom.member_count} {activeRoom.member_count === 1 ? "membro" : "membri"}
 								</span>
+								<button
+									onClick={() => {
+										setUnlockModalRoom(activeRoom);
+										setShowUnlockModal(true);
+									}}
+									className={clsx(
+										"btn btn-xs gap-1 rounded-lg",
+										roomPassphrases[activeRoom.id]
+											? "btn-ghost text-accent hover:bg-accent/10"
+											: "btn-outline btn-warning",
+									)}
+									title={
+										roomPassphrases[activeRoom.id]
+											? "Modifica o dimentica passphrase E2EE"
+											: "Sblocca stanza con passphrase"
+									}
+								>
+									{roomPassphrases[activeRoom.id] ? (
+										<>
+											<ShieldCheck size={12} />
+											<span className="hidden sm:inline">E2EE</span>
+										</>
+									) : (
+										<>
+											<Key size={12} />
+											<span className="hidden sm:inline">Sblocca E2EE</span>
+										</>
+									)}
+								</button>
 								<button
 									onClick={() => handleLeaveRoom(activeRoom)}
 									className="btn btn-xs btn-ghost gap-1 opacity-70 hover:opacity-100"
@@ -362,6 +411,24 @@ export default function Chat() {
 						ref={scrollContainerRef}
 						className="h-[55vh] overflow-y-auto p-4 space-y-3"
 					>
+						{activeRoom && !roomPassphrases[activeRoom.id] && messages.some((m: ChatMessage) => (m as any).isEncrypted || (m.text && m.text.includes("[Messaggio cifrato"))) && (
+							<div className="alert alert-warning py-2 px-3 rounded-2xl flex items-center justify-between gap-2 text-xs shadow-xs">
+								<div className="flex items-center gap-2 min-w-0">
+									<Key size={14} className="text-warning shrink-0" />
+									<span className="truncate">Questa stanza contiene messaggi cifrati con Passphrase.</span>
+								</div>
+								<button
+									type="button"
+									className="btn btn-xs btn-warning rounded-xl shrink-0 gap-1 font-bold"
+									onClick={() => {
+										setUnlockModalRoom(activeRoom || null);
+										setShowUnlockModal(true);
+									}}
+								>
+									<Unlock size={12} /> Sblocca
+								</button>
+							</div>
+						)}
 						{messages.length === 0 && (
 							<div className="text-center py-12 space-y-2">
 								<MessageCircle size={32} className="opacity-20 mx-auto" />
@@ -414,6 +481,12 @@ export default function Chat() {
 												size={10}
 												className="text-success"
 												aria-label="E2E"
+											/>
+										) : (m as any).isEncrypted ? (
+											<Key
+												size={10}
+												className="text-warning"
+												aria-label="Cifrato"
 											/>
 										) : (
 											<Globe
@@ -574,7 +647,7 @@ export default function Chat() {
 						</div>
 
 						{showRoomForm && (
-							<div className="space-y-1 px-1 pb-1">
+							<div className="space-y-2 p-2 bg-base-300/40 rounded-xl border border-base-content/5">
 								<input
 									className="input input-xs input-bordered rounded-lg w-full"
 									value={newRoomName}
@@ -586,23 +659,45 @@ export default function Chat() {
 										}
 									}}
 									maxLength={64}
-									placeholder="Room name"
+									placeholder="Room name..."
+									aria-label="Room name"
 								/>
-								<label className="flex items-center gap-1.5 text-[11px] opacity-70 px-1">
+								<label className="flex items-center gap-1.5 text-[11px] opacity-70 px-1 cursor-pointer">
 									<input
 										type="checkbox"
 										className="checkbox checkbox-xs"
 										checked={newRoomPrivate}
 										onChange={(e) => setNewRoomPrivate(e.target.checked)}
 									/>
-									Keep off other instances
+									Local to this instance
 								</label>
+								<label className="flex items-center gap-1.5 text-[11px] opacity-80 px-1 cursor-pointer">
+									<input
+										type="checkbox"
+										className="checkbox checkbox-xs checkbox-accent"
+										checked={newRoomEncrypted}
+										onChange={(e) => setNewRoomEncrypted(e.target.checked)}
+									/>
+									<span className="flex items-center gap-1 text-accent font-semibold">
+										<Key size={11} /> Encrypt with Passphrase (E2EE)
+									</span>
+								</label>
+								{newRoomEncrypted && (
+									<input
+										type="password"
+										className="input input-xs input-bordered rounded-lg w-full font-mono text-xs"
+										value={newRoomPassphrase}
+										onChange={(e) => setNewRoomPassphrase(e.target.value)}
+										placeholder="Encryption passphrase..."
+										aria-label="Encryption passphrase"
+									/>
+								)}
 								<button
 									className="btn btn-xs btn-primary rounded-lg w-full"
 									onClick={handleCreateRoom}
-									disabled={!newRoomName.trim()}
+									disabled={!newRoomName.trim() || (newRoomEncrypted && !newRoomPassphrase.trim())}
 								>
-									Create
+									Create Room
 								</button>
 							</div>
 						)}
@@ -613,6 +708,7 @@ export default function Chat() {
 						{rooms.map((room: RoomInfo) => {
 							const isActive = activeRoomId === room.id;
 							const unread = roomUnreadCounts[room.id] || 0;
+							const isUnlocked = Boolean(roomPassphrases[room.id]);
 							return (
 								<div
 									key={room.id}
@@ -627,14 +723,22 @@ export default function Chat() {
 										className="flex items-center gap-2 min-w-0 flex-1 text-left"
 										onClick={() => selectRoom(room)}
 									>
-										<Hash size={14} className={isActive ? "" : "opacity-60"} />
-										<span className="truncate font-medium">{room.name}</span>
-										{room.is_private && (
+										{isUnlocked ? (
+											<ShieldCheck size={14} className="text-accent shrink-0" />
+										) : room.is_private ? (
 											<Lock
-												size={10}
+												size={14}
 												className="opacity-50 shrink-0"
 												aria-label="Local to this instance"
 											/>
+										) : (
+											<Hash size={14} className={clsx("shrink-0", isActive ? "" : "opacity-60")} />
+										)}
+										<span className="truncate font-medium">{room.name}</span>
+										{isUnlocked && (
+											<span className="badge badge-xs badge-accent text-[9px] px-1 py-0 font-bold shrink-0">
+												E2EE
+											</span>
 										)}
 										<span className="opacity-40 text-[10px] shrink-0">
 											{room.member_count}
@@ -646,6 +750,21 @@ export default function Chat() {
 										</span>
 									)}
 									<div className="flex items-center gap-1 shrink-0 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+										<button
+											onClick={(e) => {
+												e.stopPropagation();
+												setUnlockModalRoom(room);
+												setShowUnlockModal(true);
+											}}
+											className={clsx(
+												"btn btn-ghost btn-xs btn-square",
+												isUnlocked ? "text-accent" : "opacity-70 hover:opacity-100",
+											)}
+											title={isUnlocked ? "Stanza E2EE sbloccata" : "Sblocca stanza con Passphrase"}
+											aria-label="Gestisci Passphrase E2EE"
+										>
+											<Key size={12} />
+										</button>
 										<button
 											onClick={(e) => {
 												e.stopPropagation();
@@ -790,6 +909,15 @@ export default function Chat() {
 						? "Messages are end-to-end encrypted and never stored on the server."
 						: "Lobby messages are visible to everyone connected. Type /help for slash commands."}
 			</p>
+
+			<UnlockRoomModal
+				isOpen={showUnlockModal}
+				onClose={() => setShowUnlockModal(false)}
+				room={unlockModalRoom}
+				currentPassphrase={unlockModalRoom ? roomPassphrases[unlockModalRoom.id] || "" : ""}
+				onSavePassphrase={setRoomPassphrase}
+				onClearPassphrase={clearRoomPassphrase}
+			/>
 		</div>
 	);
 }

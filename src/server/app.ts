@@ -124,11 +124,10 @@ export function createApp(config: ServerConfig): AppSetupResult {
         });
     });
 
-    // GET /api/chat/history and /api/chat/peers are polled by desktop P2P chat
-    // clients (e.g. sidecamp) from arbitrary local origins. This app never uses
-    // cookie sessions — auth here is Bearer-only — so a cross-origin GET carries
-    // no CSRF risk: a malicious page can't forge a token it was never given.
-    const chatCors = cors({ origin: '*', credentials: false, methods: ['GET', 'OPTIONS'] });
+    // GET /api/chat/history, /api/chat/peers, and /api/chat/rooms are accessed by
+    // standalone and desktop chat clients (e.g. sidecamp, tunecamp-chat-client) from arbitrary origins.
+    // Auth is Bearer-only (no cookie sessions), so cross-origin requests carry no CSRF risk.
+    const chatCors = cors({ origin: '*', credentials: false, methods: ['GET', 'POST', 'DELETE', 'OPTIONS'] });
     const chatCorsMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
         chatCors(req, res, (err?: any) => {
             if (err) return next(err);
@@ -139,6 +138,7 @@ export function createApp(config: ServerConfig): AppSetupResult {
     app.use('/api/chat/history', chatCorsMiddleware);
     app.use('/api/chat/peers', chatCorsMiddleware);
     app.use('/api/chat/pubkey', chatCorsMiddleware);
+    app.use('/api/chat/rooms', chatCorsMiddleware);
 
     app.use((req, res, next) => {
         if (res.locals.skipStrictCors) {
