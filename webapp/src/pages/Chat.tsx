@@ -102,10 +102,16 @@ export default function Chat() {
 		return to === peer.username || to === peerTarget(peer);
 	};
 
-	const canModerate = isSiteAdmin || isAdmin;
 	const currentUsername = username || user?.username || "";
+	const isRoomOwner = Boolean(
+		activeRoom?.created_by &&
+			Boolean(currentUsername) &&
+			activeRoom.created_by.toLowerCase() === currentUsername.toLowerCase()
+	);
+	const canModerate = isSiteAdmin || isAdmin || isRoomOwner;
 	const canDeleteRoom = (room: RoomInfo) =>
-		canModerate ||
+		isSiteAdmin ||
+		isAdmin ||
 		(Boolean(room.created_by) &&
 			Boolean(currentUsername) &&
 			room.created_by?.toLowerCase() === currentUsername.toLowerCase());
@@ -216,14 +222,29 @@ export default function Chat() {
 	};
 
 	const handleAdminAction = (action: string, targetUser: string) => {
+		const targetRoomId = activeRoomId || undefined;
 		if (action === "kick") {
-			const reason = prompt(`Reason for kicking ${targetUser}?`);
+			const promptMsg = targetRoomId
+				? `Reason for kicking ${targetUser} from this room?`
+				: `Reason for kicking ${targetUser}?`;
+			const reason = prompt(promptMsg);
 			if (reason !== null)
-				sendAdminAction("kick", targetUser, reason || undefined);
+				sendAdminAction("kick", targetUser, reason || undefined, undefined, targetRoomId);
 		} else if (action === "ban") {
-			const reason = prompt(`Reason for banning ${targetUser}?`);
+			const promptMsg = targetRoomId
+				? `Reason for banning ${targetUser} from this room?`
+				: `Reason for banning ${targetUser}?`;
+			const reason = prompt(promptMsg);
 			if (reason !== null)
-				sendAdminAction("ban", targetUser, reason || undefined);
+				sendAdminAction("ban", targetUser, reason || undefined, undefined, targetRoomId);
+		} else if (action === "zkick") {
+			const reason = prompt(`Reason for global server kick for ${targetUser}?`);
+			if (reason !== null)
+				sendAdminAction("zkick", targetUser, reason || undefined);
+		} else if (action === "zban") {
+			const reason = prompt(`Reason for global server ban for ${targetUser}?`);
+			if (reason !== null)
+				sendAdminAction("zban", targetUser, reason || undefined);
 		} else if (action === "mute") {
 			const minutes = prompt(`Mute ${targetUser} for how many minutes?`, "15");
 			if (minutes !== null) {
@@ -554,10 +575,17 @@ export default function Chat() {
 							<div className="bg-base-300/80 border border-base-content/10 rounded-xl px-3 py-2 text-xs text-base-content/70 font-mono flex items-center gap-2">
 								<HelpCircle size={14} className="text-info shrink-0" />
 								<span>
-									Commands: <code>/kick &lt;user&gt; [reason]</code> |{" "}
-									<code>/ban &lt;user&gt; [reason]</code> |{" "}
-									<code>/mute &lt;user&gt; [min]</code> | <code>/unban</code> |{" "}
-									<code>/unmute</code> | <code>/clear</code>
+									{activeRoom ? (
+										<>
+											Room: <code>/kick &lt;user&gt;</code> | <code>/ban &lt;user&gt;</code> | <code>/unban &lt;user&gt;</code>
+											{(isSiteAdmin || isAdmin) && <> | Global Zen: <code>/zkick</code> | <code>/zban</code> | <code>/zmute</code></>}
+										</>
+									) : (
+										<>
+											Commands: <code>/kick &lt;user&gt;</code> | <code>/ban &lt;user&gt;</code> | <code>/mute &lt;user&gt;</code> | <code>/clear</code>
+											{(isSiteAdmin || isAdmin) && <> | Global Zen: <code>/zkick</code> | <code>/zban</code> | <code>/zunban</code></>}
+										</>
+									)}
 								</span>
 							</div>
 						)}
@@ -867,27 +895,29 @@ export default function Chat() {
 													handleAdminAction("kick", peer.username);
 												}}
 												className="btn btn-ghost btn-xs btn-square text-warning"
-												title={`Kick ${peer.username}`}
+												title={activeRoom ? `Kick ${peer.username} from room` : `Kick ${peer.username}`}
 											>
 												<UserX size={12} />
 											</button>
-											<button
-												onClick={(e) => {
-													e.stopPropagation();
-													handleAdminAction("mute", peer.username);
-												}}
-												className="btn btn-ghost btn-xs btn-square opacity-70 hover:opacity-100"
-												title={`Mute ${peer.username}`}
-											>
-												<VolumeX size={12} />
-											</button>
+											{!activeRoom && (
+												<button
+													onClick={(e) => {
+														e.stopPropagation();
+														handleAdminAction("mute", peer.username);
+													}}
+													className="btn btn-ghost btn-xs btn-square opacity-70 hover:opacity-100"
+													title={`Mute ${peer.username}`}
+												>
+													<VolumeX size={12} />
+												</button>
+											)}
 											<button
 												onClick={(e) => {
 													e.stopPropagation();
 													handleAdminAction("ban", peer.username);
 												}}
 												className="btn btn-ghost btn-xs btn-square text-error"
-												title={`Ban ${peer.username}`}
+												title={activeRoom ? `Ban ${peer.username} from room` : `Ban ${peer.username}`}
 											>
 												<ShieldAlert size={12} />
 											</button>

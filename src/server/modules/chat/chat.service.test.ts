@@ -65,6 +65,15 @@ describe("ChatService", () => {
             message TEXT NOT NULL,
             created_at INTEGER NOT NULL DEFAULT 0
         )`);
+		db.exec(`CREATE TABLE chat_room_bans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            banned_by TEXT NOT NULL,
+            reason TEXT,
+            created_at INTEGER NOT NULL DEFAULT 0,
+            UNIQUE(room_id, username)
+        )`);
 		db.exec(`CREATE TABLE admin (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE,
@@ -614,6 +623,53 @@ describe("ChatService", () => {
 			}
 			expect(chatService.getRoomHistory(r1.id)).toHaveLength(5);
 			expect(chatService.getRoomHistory(r2.id)).toHaveLength(5);
+		});
+
+		it("kicks user from a specific room only without affecting other rooms or lobby", () => {
+			const room = chatService.createRoom("test-room", "", false, "owner");
+			const otherRoom = chatService.createRoom("other-room", "", false, "owner");
+			const userWs = fakeWs();
+			const ownerWs = fakeWs();
+			chatService.register("user-id", "spammer", userWs);
+			chatService.register("owner-id", "owner", ownerWs);
+
+			chatService.joinRoomByUser("spammer", room.id);
+			chatService.joinRoomByUser("spammer", otherRoom.id);
+
+			const kicked = chatService.kickUserFromRoom("owner", "spammer", room.id, "bad behavior");
+			expect(kicked).toBe(true);
+
+			// User is removed from target room
+			expect(chatService.isMember(room.id, "spammer")).toBe(false);
+			// User is still member of other room and lobby
+			expect(chatService.isMember(otherRoom.id, "spammer")).toBe(true);
+
+			// Target user got room_kicked message
+			expect(userWs.send).toHaveBeenCalledWith(
+				expect.stringContaining('"type":"room_kicked"'),
+			);
+		});
+
+		it("bans user from a specific room and prevents joining", () => {
+			const room = chatService.createRoom("test-room", "", false, "owner");
+			const userWs = fakeWs();
+			chatService.register("user-id", "troll", userWs);
+			chatService.joinRoomByUser("troll", room.id);
+
+			const banned = chatService.banUserFromRoom("owner", "troll", room.id, "spam", false);
+			expect(banned).toBe(true);
+
+			expect(chatService.isRoomBanned(room.id, "troll")).toBe(true);
+			expect(chatService.isMember(room.id, "troll")).toBe(false);
+
+			// Trying to rejoin fails
+			const rejoin = chatService.joinRoomByUser("troll", room.id);
+			expect(rejoin).toBe(false);
+
+			// Unbanning allows rejoining
+			chatService.unbanUserFromRoom("owner", "troll", room.id, false);
+			expect(chatService.isRoomBanned(room.id, "troll")).toBe(false);
+			expect(chatService.joinRoomByUser("troll", room.id)).toBe(true);
 		});
 	});
 

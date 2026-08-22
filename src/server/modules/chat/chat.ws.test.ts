@@ -67,6 +67,37 @@ describe('createChatWsHandler', () => {
             reason TEXT,
             created_at INTEGER NOT NULL
         )`);
+        db.exec(`CREATE TABLE chat_rooms (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            global_id TEXT UNIQUE,
+            name TEXT NOT NULL,
+            description TEXT,
+            is_private INTEGER NOT NULL DEFAULT 0,
+            created_by TEXT NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT 0
+        )`);
+        db.exec(`CREATE TABLE chat_room_members (
+            room_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            joined_at INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (room_id, username)
+        )`);
+        db.exec(`CREATE TABLE chat_room_bans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            banned_by TEXT NOT NULL,
+            reason TEXT,
+            created_at INTEGER NOT NULL DEFAULT 0,
+            UNIQUE(room_id, username)
+        )`);
+        db.exec(`CREATE TABLE chat_room_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT 0
+        )`);
         chatService = createChatService({ db } as unknown as DatabaseService);
 
         const container = {
@@ -195,6 +226,54 @@ describe('createChatWsHandler', () => {
             const kickedMsg = await nextMessage(user1, (m) => m.type === 'kicked');
 
             expect(kickedMsg.reason).toBe('behave');
+        });
+
+        it('allows manager to execute global admin_action zkick', async () => {
+            const verifyToken = jest.fn(async (t: string) => {
+                if (t === 'mgr') return { userId: 1, username: 'mgr', role: 'manager' };
+                return { userId: 2, username: 'user1', role: 'user' };
+            });
+            const port = await setup({ peerChatEnabled: 'true' }, verifyToken);
+
+            const mgr = connect(port, '?token=mgr');
+            await nextMessage(mgr, (m) => m.type === 'auth_ok');
+
+            const user1 = connect(port, '?token=user1');
+            await nextMessage(user1, (m) => m.type === 'auth_ok');
+
+            mgr.send(JSON.stringify({ type: 'admin_action', action: 'zkick', target: 'user1', reason: 'global kick' }));
+            const kickedMsg = await nextMessage(user1, (m) => m.type === 'kicked');
+
+            expect(kickedMsg.reason).toBe('global kick');
+        });
+
+        it('allows room owner to kick user from room using room-scoped admin_action', async () => {
+            const verifyToken = jest.fn(async (t: string) => {
+                if (t === 'alice') return { userId: 1, username: 'alice', role: 'user' };
+                return { userId: 2, username: 'bob', role: 'user' };
+            });
+            const port = await setup({ peerChatEnabled: 'true' }, verifyToken);
+
+            const room = chatService.createRoom('alice-room', '', false, 'alice');
+
+            const alice = connect(port, '?token=alice');
+            await nextMessage(alice, (m) => m.type === 'auth_ok');
+            alice.send(JSON.stringify({ type: 'room_join', roomId: room.id }));
+
+            const bob = connect(port, '?token=bob');
+            await nextMessage(bob, (m) => m.type === 'auth_ok');
+            bob.send(JSON.stringify({ type: 'room_join', roomId: room.id }));
+
+            // Give a tick for membership
+            await new Promise((r) => setTimeout(r, 50));
+            expect(chatService.isMember(room.id, 'bob')).toBe(true);
+
+            // Alice kicks Bob from the room
+            alice.send(JSON.stringify({ type: 'admin_action', action: 'kick', target: 'bob', roomId: room.id, reason: 'noise' }));
+            const roomKickedMsg = await nextMessage(bob, (m) => m.type === 'room_kicked');
+
+            expect(roomKickedMsg.roomId).toBe(room.id);
+            expect(chatService.isMember(room.id, 'bob')).toBe(false);
         });
 
         it('rejects admin_action from non-admin user', async () => {

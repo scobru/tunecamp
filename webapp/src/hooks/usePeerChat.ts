@@ -28,6 +28,15 @@ export function usePeerChat(
 
 	return {
 		...chat,
+		sendAdminAction: (
+			action: string,
+			target?: string,
+			reason?: string,
+			duration?: number,
+			roomId?: number,
+		) => {
+			(chat.sendAdminAction as any)(action, target, reason, duration, roomId);
+		},
 		formatUser: (user: string, instance?: string) =>
 			formatUsernameWithInstance(user, instance || chat.client?.getInstanceName()),
 	};
