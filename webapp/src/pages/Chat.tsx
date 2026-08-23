@@ -145,7 +145,7 @@ export default function Chat() {
 		setSending(true);
 		try {
 			if (activeRoomId) {
-				if (sendRoomMessage(activeRoomId, body)) setText("");
+				if (await sendRoomMessage(activeRoomId, body)) setText("");
 			} else if (await sendMessage(target, body)) {
 				setText("");
 			}
