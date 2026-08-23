@@ -25,6 +25,23 @@ export function createChatFederationRoutes(
 	// lobby, toUsername, roomGlobalId and roomName — tampering any field
 	// invalidates it.
 	router.post("/inbound", expressJson(), async (req, res) => {
+		// Fail closed when the chat module is off. The WebSocket already refuses
+		// clients in that state (chat.ws.ts), but this path bypassed it entirely:
+		// a federated peer could keep pushing messages that got persisted and
+		// relayed while the admin believed chat was disabled. Checked here rather
+		// than as route middleware in routes.ts so it travels with the router, and
+		// read per-request so the admin toggle takes effect without a restart.
+		// `!== "true"` — unset means off — matches chat.ws.ts exactly; the settings
+		// layer defaults this key to "false" too (catalog.service.ts).
+		const chatEnabled =
+			container.identity?.getSetting?.("peerChatEnabled") ??
+			container.database?.getSetting?.("peerChatEnabled");
+		if (chatEnabled !== "true") {
+			return res
+				.status(403)
+				.json({ error: "This module is disabled on this instance" });
+		}
+
 		// Fail closed without local site keys: the legacy secret no longer
 		// authenticates anything, so it cannot stand in for them here.
 		const hasSiteKey = !!(container.identity?.getSetting?.("site_public_key") || container.database?.getSetting?.("site_public_key"));

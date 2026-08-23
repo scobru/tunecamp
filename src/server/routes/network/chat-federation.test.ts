@@ -39,7 +39,7 @@ function createChatFederationService(chatService: any) {
 // instead of using fixed constants.
 const NOW = Date.now();
 
-function buildApp(peers = ["https://a.example.com"]) {
+function buildApp(peers = ["https://a.example.com"], peerChatEnabled = "true") {
 	const db = new Database(":memory:");
 	db.exec(`CREATE TABLE peer_chat_messages (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,6 +56,10 @@ function buildApp(peers = ["https://a.example.com"]) {
 		"/api/chat/federated",
 		createChatFederationRoutes({
 			database: { db } as any,
+			// Inbound is refused outright when the chat module is off, so these tests
+			// have to say which state they're exercising. Default "true" keeps every
+			// pre-existing case on the enabled path it was written for.
+			identity: { getSetting: (k: string) => (k === "peerChatEnabled" ? peerChatEnabled : undefined) } as any,
 			chatService,
 			chatFederationService: federation,
 			config: {} as any,
@@ -83,6 +87,37 @@ describe("Chat federation routes", () => {
 	});
 
 	describe("POST /api/chat/federated/inbound", () => {
+		it("refuses an otherwise-valid message when the chat module is disabled", async () => {
+			// The WebSocket already turns clients away when the module is off; without
+			// this the federated path stayed open behind the admin's back, persisting
+			// and relaying peer messages into an instance whose chat was "disabled".
+			const { app, chatService } = buildApp(["https://a.example.com"], "false");
+			const spy = jest
+				.spyOn(chatService, "relayFederatedMessage")
+				.mockReturnValue(true);
+
+			const payload = {
+				username: "alice",
+				instance: "a.example.com",
+				text: "hello from federation",
+				ts: NOW,
+				lobby: true,
+			};
+			const signature = createChatFederationService(chatService).sign(
+				payload as any,
+			);
+
+			const res = await request(app)
+				.post("/api/chat/federated/inbound")
+				.set("Content-Type", "application/json")
+				.set("X-Chat-Signature", signature)
+				.send(payload);
+
+			expect(res.status).toBe(403);
+			// The point is that nothing was ingested, not merely that the status changed.
+			expect(spy).not.toHaveBeenCalled();
+		});
+
 		it("accepts a valid signed lobby message and relays it locally", async () => {
 			const { app, chatService } = buildApp();
 			const spy = jest
@@ -231,6 +266,9 @@ describe("Chat federation routes", () => {
 				"/api/chat/federated",
 				createChatFederationRoutes({
 					database: { db, getSetting: (k: string) => mockDbInstance.getSetting(k) } as any,
+					// This case builds its own container rather than going through buildApp,
+					// so it has to declare the module enabled on its own too.
+					identity: { getSetting: (k: string) => (k === "peerChatEnabled" ? "true" : undefined) } as any,
 					chatService,
 					chatFederationService: federation,
 					config: {} as any,
