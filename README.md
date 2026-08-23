@@ -102,7 +102,8 @@ TuneCamp supports three distinct operating modes, selectable during the setup wi
 
 In addition to the core server, the TuneCamp ecosystem includes several companion projects:
 
-- [**sidecamp**](https://github.com/scobru/sidecamp): A standalone Electron desktop app that handles all P2P content acquisition — Soulseek search & download, BitTorrent, and yt-dlp audio ripping — plus peer file-sharing with any TuneCamp instance via a reverse WebSocket tunnel. Keeps the core server clean and compliant. npm-workspaces monorepo hosting Sidecamp + Graphofone + Sidecamp CLI + shared packages.
+- [**tunecamp-chat**](https://github.com/scobru/tunecamp-chat): Standalone PWA chat client ([tunecamp-chat.vercel.app](https://tunecamp-chat.vercel.app)) and `@tunecamp/chat` SDK with React hook (`useTuneCampChat`) for decentralized, end-to-end encrypted messaging, passphrase rooms, and cross-instance federation.
+- [**sidecamp**](https://github.com/scobru/sidecamp): A standalone Electron desktop & mobile Capacitor app that handles all P2P content acquisition — Soulseek search & download, BitTorrent, and yt-dlp audio ripping — plus peer file-sharing with any TuneCamp instance via a reverse WebSocket tunnel. Keeps the core server clean and compliant.
 - [**sidecamp-cli**](https://github.com/scobru/sidecamp/tree/main/apps/sidecamp-cli): Headless terminal client for the same Sidecamp functionality without Electron — multi-source search/download, track upload, and the P2P sharing daemon (`sidecamp share`). Published as global bin `sidecamp`.
 - [**tunecamp-website**](https://github.com/scobru/tunecamp-website): The landing page, global community directory, and web-based community audio player.
 - [**tunecamp-4-track-recorder**](https://github.com/scobru/tunecamp-4-track-recorder): A browser-based 4-track cassette recorder built with the Web Audio API and Svelte 5, featuring low-latency overdubbing and mixer capabilities.

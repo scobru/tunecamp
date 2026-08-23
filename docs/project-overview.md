@@ -230,7 +230,7 @@ Styling uses standard CSS with variables for theme support.
 | Repo | Description |
 | ------ | ------------- |
 | [tunecamp](https://github.com/scobru/tunecamp) | Main server + webapp |
-| [sidecamp](https://github.com/scobru/sidecamp) | Standalone Desktop App for Peer Sharing, Soulseek, and Torrents (npm-workspaces monorepo: Sidecamp + Graphofone + Sidecamp CLI) |
+| [sidecamp](https://github.com/scobru/sidecamp) | Standalone Desktop & Mobile App for Peer Sharing, Soulseek, and Torrents (npm-workspaces monorepo: Sidecamp + Sidecamp CLI) |
 | [tunecamp-chat](https://github.com/scobru/tunecamp-chat) | `@tunecamp/chat` — chat client library + React hook, shared by the webapp and Sidecamp |
 | [fid](https://github.com/scobru/fid) | FID (Fediverse-ID) — self-sovereign identity & SSO protocol, Zen SEA auth |
 | [tunecamp-4-track-recorder](https://github.com/scobru/tunecamp-4-track-recorder) | Browser-based 4-track recorder (Svelte 5 component), Lab app |
