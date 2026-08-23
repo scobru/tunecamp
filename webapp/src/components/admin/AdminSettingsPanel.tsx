@@ -340,6 +340,22 @@ export const AdminSettingsPanel = () => {
 
 
               <div className="form-control pt-4 border-t border-base-content/5 mt-4">
+                <label className="label">
+                  <span className="label-text font-medium">Instance Mode</span>
+                </label>
+                <select
+                  className="select select-bordered select-sm bg-base-300/50"
+                  value={settings.mode || "label"}
+                  onChange={(e) => setSettings({ ...settings, mode: e.target.value as any })}
+                >
+                  <option value="label">Record Label (Curated Storefront)</option>
+                  <option value="community">Community (Opt-in artist profiles)</option>
+                  <option value="single_artist">Single Artist (Portfolio)</option>
+                </select>
+                <p className="text-xs opacity-75 px-1 mt-1">Changes the fundamental structure of the site layout and community features.</p>
+              </div>
+
+              <div className="form-control pt-4 border-t border-base-content/5 mt-4">
                 <label className="label cursor-pointer justify-between">
                   <div className="flex items-center gap-2">
                     <Shield size={16} className="opacity-60" />

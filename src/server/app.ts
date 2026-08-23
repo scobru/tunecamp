@@ -240,7 +240,31 @@ export function setupStaticAndFallbackRoutes(app: express.Express, config: Serve
 
     app.get("*", (req, res) => {
         if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found" });
-        res.send(getCachedHtml());
+        let html = getCachedHtml();
+        try {
+            if (database.getSetting("mode") === "single_artist") {
+                const adminRow = database.db.prepare(`SELECT artist_id FROM admin WHERE artist_id IS NOT NULL ORDER BY id ASC LIMIT 1`).get() as any;
+                let artistId = adminRow?.artist_id;
+                if (!artistId) {
+                    const firstArtist = database.db.prepare(`SELECT id FROM artists ORDER BY id ASC LIMIT 1`).get() as any;
+                    artistId = firstArtist?.id;
+                }
+                if (artistId) {
+                    const artist = database.getArtist(artistId);
+                    if (artist) {
+                        const publicUrl = (database.getSetting("publicUrl") || config.publicUrl || `${req.protocol}://${req.get('host')}`).trim().replace(/\/$/, "");
+                        const title = artist.name || "Artist Profile";
+                        const description = artist.bio || `Listen to ${artist.name} on TuneCamp`;
+                        const image = `/api/artists/${artist.id}/cover`;
+                        const ogTags = `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><meta property="og:image" content="${publicUrl}${image}" />`;
+                        html = html.replace('<head>', '<head>' + ogTags);
+                    }
+                }
+            }
+        } catch (e) {
+            // fall through
+        }
+        res.send(html);
     });
 
     // Captures unhandled route errors to Sentry (no-op when SENTRY_DSN is unset),

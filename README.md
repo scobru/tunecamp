@@ -30,6 +30,12 @@ docker-compose up -d --build
 
 ## Features
 
+### Instance Modes
+TuneCamp supports three distinct operating modes, selectable during the setup wizard or from the Admin Settings:
+- 🎸 **Single Artist (Portfolio)**: A sovereign, Bandcamp-like mode optimized for a solo artist. The homepage acts as a beautiful portfolio, highlighting the latest release and discography. Community features (Chat, Board, Network) are stripped out to focus purely on the music and direct-to-fan sales.
+- 🏢 **Record Label**: A curated storefront where administrators manage a roster of artists. Sales are centralized, and the homepage surfaces the latest releases across the entire label.
+- 🌍 **Community**: An open community mode where listeners can sign up, interact, and (optionally) self-publish their own music. Features like the global chat, message boards, and federated network discovery are fully active.
+
 ### Core
 
 - 🎵 **Audio-first**: Automatically reads metadata, generates waveforms, and processes cover art from your audio files (MP3, FLAC, WAV, etc.).

@@ -729,6 +729,26 @@ export function createDatabase(dbPath: string): DatabaseService {
             created_at INTEGER NOT NULL
         );
 
+        -- Contact requests (friend requests)
+        CREATE TABLE IF NOT EXISTS contact_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender TEXT NOT NULL,
+            receiver TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'accepted', 'rejected'
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            UNIQUE(sender, receiver)
+        );
+
+        -- User blocklist for chat
+        CREATE TABLE IF NOT EXISTS user_blocks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            blocker TEXT NOT NULL,
+            blocked TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            UNIQUE(blocker, blocked)
+        );
+
         -- Chat rooms for multi-user conversations (first-class citizen of
         -- TuneCamp chat protocol, not just lobby broadcast).
         CREATE TABLE IF NOT EXISTS chat_rooms (
@@ -759,6 +779,16 @@ export function createDatabase(dbPath: string): DatabaseService {
             username TEXT NOT NULL,
             message TEXT NOT NULL,
             created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS chat_room_bans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_id INTEGER NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+            username TEXT NOT NULL,
+            banned_by TEXT NOT NULL,
+            reason TEXT,
+            created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+            UNIQUE(room_id, username)
         );
 
         CREATE INDEX IF NOT EXISTS idx_chat_room_messages_room

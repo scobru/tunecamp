@@ -10,6 +10,7 @@ import { useAuthStore } from "../stores/useAuthStore";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { Play, Pause, Shuffle, MessageSquare } from "lucide-react";
 import clsx from "clsx";
+import { HomeSingleArtist } from "./HomeSingleArtist";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ const Home = () => {
     queryKey: queryKeys.catalog,
     queryFn: () => API.getCatalog(),
   });
-  const { settings: siteSettings, fetchFlags, isModuleHidden } = useSiteSettingsStore();
+  const { settings: siteSettings, fetchFlags, isModuleHidden, isSingleArtist } = useSiteSettingsStore();
 
   const isCommunityMode = siteSettings?.mode === 'community' && truthy(siteSettings?.boardEnabled);
   const { data: boardHistory } = useQuery({
@@ -92,6 +93,10 @@ const Home = () => {
   useEffect(() => {
     fetchFlags();
   }, [fetchFlags]);
+
+  if (isSingleArtist) {
+    return <HomeSingleArtist />;
+  }
 
   if (loading) {
     return (

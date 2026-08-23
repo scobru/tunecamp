@@ -1,6 +1,6 @@
 # Project Status
 
-An honest snapshot of how production-ready each part of TuneCamp is. Updated 2026-07-08.
+An honest snapshot of how production-ready each part of TuneCamp is. Updated 2026-08-22.
 
 **Overall**: young, single-maintainer project. Solid for a self-hosted single artist or small label that can tolerate rough edges; not yet a drop-in replacement for a managed platform. 600+ automated tests, no external security audit.
 
@@ -10,6 +10,8 @@ An honest snapshot of how production-ready each part of TuneCamp is. Updated 202
 |------|--------|-------|
 | Library, scanning, streaming | **Stable** | Core since the beginning; worker-pool parsing, pre-transcoding of lossless, Subsonic/OpenSubsonic API. |
 | Web player & artist pages | **Stable** | |
+| Chat & real-time messaging | **Beta** | Community lobby, E2EE DMs, room-scoped moderation (`chat_room_bans`), and E2EE passphrase-locked rooms via Zen SEA. See [chat.md](chat.md). |
+| Single Artist portfolio mode | **New** | Third instance mode alongside Record Label and Community: sovereign homepage for a solo artist, community features stripped out. Selectable in setup wizard or Admin Settings. |
 | Stripe payments & unlock codes | **Beta** | Internally reviewed (see [security-review-payments.md](security-review-payments.md)); no external audit. Test with small amounts first. |
 | On-chain payments (Base, NFT) | **Beta / opt-in** | Disabled by default (`web3Enabled`). Trust assumptions documented in the security review. |
 | Federation (ActivityPub + catalog) | **Beta** | Followable from Mastodon/Funkwhale; peer catalogs cached with stale-while-revalidate. Expect interop quirks. |

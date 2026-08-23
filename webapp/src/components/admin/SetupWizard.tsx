@@ -38,7 +38,7 @@ interface ProfilePreset {
     hideChat: boolean;
     allowPublicRegistration: boolean;
     listenerSelfPublish: boolean;
-    mode: 'label' | 'community';
+    mode: 'label' | 'community' | 'single_artist';
   };
   taglineTemplate: string;
   descTemplate: string;
@@ -64,7 +64,7 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideChat: true,
       allowPublicRegistration: false,
       listenerSelfPublish: false,
-      mode: "label"
+      mode: "single_artist"
     },
     taglineTemplate: "[Artist Name]'s official site — Music & Contact",
     descTemplate: "Welcome to my independent music space. Listen to my latest releases, buy tracks in digital format and connect with me on social.",

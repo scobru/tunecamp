@@ -43,6 +43,7 @@ export interface ChatRoom {
 	name: string;
 	description: string | null;
 	is_private: number;
+	created_by?: string;
 }
 
 /**
@@ -180,6 +181,25 @@ export class ChatService {
 		}
 	}
 
+	broadcastRoomSystemMessage(roomId: number, text: string): void {
+		for (const client of this.clients.values()) {
+			if (client.ws.readyState === OPEN && client.rooms.has(roomId)) {
+				try {
+					client.ws.send(
+						JSON.stringify({
+							type: "system",
+							roomId,
+							text,
+							ts: Date.now(),
+						}),
+					);
+				} catch (err) {
+					console.error("[ChatService] error:", err);
+				}
+			}
+		}
+	}
+
 	kickUser(
 		adminUsername: string,
 		targetUsername: string,
@@ -268,6 +288,117 @@ export class ChatService {
 		return true;
 	}
 
+	// --- Contacts & Blocks ---
+
+	sendContactRequest(sender: string, receiver: string): boolean {
+		try {
+			this.database.db.prepare(`
+				INSERT INTO contact_requests (sender, receiver, status, created_at, updated_at)
+				VALUES (?, ?, 'pending', ?, ?)
+				ON CONFLICT(sender, receiver) DO UPDATE SET status = 'pending', updated_at = excluded.updated_at
+			`).run(sender, receiver, Date.now(), Date.now());
+			return true;
+		} catch (err) {
+			console.error("[ChatService] error in sendContactRequest:", err);
+			return false;
+		}
+	}
+
+	acceptContactRequest(receiver: string, sender: string): boolean {
+		try {
+			const res = this.database.db.prepare(`
+				UPDATE contact_requests SET status = 'accepted', updated_at = ?
+				WHERE LOWER(receiver) = LOWER(?) AND LOWER(sender) = LOWER(?)
+			`).run(Date.now(), receiver, sender);
+			
+			// Also auto-accept the reverse if it exists, or create it so it's a two-way street
+			this.database.db.prepare(`
+				INSERT INTO contact_requests (sender, receiver, status, created_at, updated_at)
+				VALUES (?, ?, 'accepted', ?, ?)
+				ON CONFLICT(sender, receiver) DO UPDATE SET status = 'accepted', updated_at = excluded.updated_at
+			`).run(receiver, sender, Date.now(), Date.now());
+			return res.changes > 0;
+		} catch (err) {
+			console.error("[ChatService] error in acceptContactRequest:", err);
+			return false;
+		}
+	}
+
+	rejectContactRequest(receiver: string, sender: string): boolean {
+		try {
+			const res = this.database.db.prepare(`
+				UPDATE contact_requests SET status = 'rejected', updated_at = ?
+				WHERE LOWER(receiver) = LOWER(?) AND LOWER(sender) = LOWER(?)
+			`).run(Date.now(), receiver, sender);
+			return res.changes > 0;
+		} catch (err) {
+			console.error("[ChatService] error in rejectContactRequest:", err);
+			return false;
+		}
+	}
+
+	getContactsAndRequests(username: string) {
+		try {
+			const contacts = this.database.db.prepare(`
+				SELECT receiver as peer FROM contact_requests WHERE LOWER(sender) = LOWER(?) AND status = 'accepted'
+			`).all(username) as { peer: string }[];
+			
+			const pendingIn = this.database.db.prepare(`
+				SELECT sender as peer FROM contact_requests WHERE LOWER(receiver) = LOWER(?) AND status = 'pending'
+			`).all(username) as { peer: string }[];
+			
+			const pendingOut = this.database.db.prepare(`
+				SELECT receiver as peer FROM contact_requests WHERE LOWER(sender) = LOWER(?) AND status = 'pending'
+			`).all(username) as { peer: string }[];
+
+			return {
+				contacts: contacts.map(c => c.peer),
+				pendingIn: pendingIn.map(c => c.peer),
+				pendingOut: pendingOut.map(c => c.peer),
+			};
+		} catch (err) {
+			console.error("[ChatService] error in getContactsAndRequests:", err);
+			return { contacts: [], pendingIn: [], pendingOut: [] };
+		}
+	}
+
+	blockUser(blocker: string, blocked: string): boolean {
+		try {
+			this.database.db.prepare(`
+				INSERT OR IGNORE INTO user_blocks (blocker, blocked, created_at)
+				VALUES (?, ?, ?)
+			`).run(blocker, blocked, Date.now());
+			return true;
+		} catch (err) {
+			console.error("[ChatService] error in blockUser:", err);
+			return false;
+		}
+	}
+
+	unblockUser(blocker: string, blocked: string): boolean {
+		try {
+			this.database.db.prepare(`
+				DELETE FROM user_blocks WHERE LOWER(blocker) = LOWER(?) AND LOWER(blocked) = LOWER(?)
+			`).run(blocker, blocked);
+			return true;
+		} catch (err) {
+			console.error("[ChatService] error in unblockUser:", err);
+			return false;
+		}
+	}
+
+	getBlocklist(username: string): string[] {
+		try {
+			const rows = this.database.db.prepare(`
+				SELECT blocked FROM user_blocks WHERE LOWER(blocker) = LOWER(?)
+			`).all(username) as { blocked: string }[];
+			return rows.map(r => r.blocked);
+		} catch (err) {
+			console.error("[ChatService] error in getBlocklist:", err);
+			return [];
+		}
+	}
+
 	muteUser(
 		adminUsername: string,
 		targetUsername: string,
@@ -339,6 +470,20 @@ export class ChatService {
 		);
 	}
 
+	isBlockedBy(userA: string, userB: string): boolean {
+		try {
+			const isBlocked = this.database.db.prepare(`
+				SELECT 1 FROM user_blocks 
+				WHERE (LOWER(blocker) = LOWER(?) AND LOWER(blocked) = LOWER(?))
+				   OR (LOWER(blocker) = LOWER(?) AND LOWER(blocked) = LOWER(?))
+			`).get(userA, userB, userB, userA);
+			return !!isBlocked;
+		} catch (err) {
+			console.error("[ChatService] Failed to check block status:", err);
+			return false;
+		}
+	}
+
 	// Relay a chat message. An empty toUsername broadcasts to every other live
 	// client (lobby); otherwise it's delivered only to clients of that username.
 	// Returns true if delivered to at least one socket.
@@ -372,6 +517,12 @@ export class ChatService {
 			return false;
 		}
 
+		if (!isLobby) {
+			if (this.isBlockedBy(toUsername, from.rawUsername)) {
+				return false;
+			}
+		}
+
 		// One timestamp for the whole message rather than one per recipient:
 		// otherwise every client is told a different `ts` for the same message,
 		// and none of them matches the row that was stored.
@@ -392,6 +543,8 @@ export class ChatService {
 				client.username === toUsername ||
 				client.rawUsername === toUsername
 			) {
+				if (isLobby && this.isBlockedBy(client.rawUsername, from.rawUsername)) continue;
+
 				client.ws.send(
 					JSON.stringify({
 						type: "chat",
@@ -510,14 +663,41 @@ export class ChatService {
 		}
 	}
 
-	getClients(): { username: string; pubkey: boolean }[] {
-		const map = new Map<string, boolean>();
+	getClients(): { username: string; pubkey: boolean; avatar?: string | null; alias?: string | null }[] {
+		const map = new Map<string, { pubkey: boolean; avatar?: string | null; alias?: string | null }>();
 		for (const client of this.clients.values()) {
 			if (!map.has(client.username) || client.pubkey) {
-				map.set(client.username, !!client.pubkey);
+				let avatar: string | null = null;
+				let alias: string | null = null;
+				try {
+					const lookupName = client.rawUsername || client.username;
+					const row = this.database.db
+						.prepare(
+							"SELECT alias, avatar FROM admin WHERE username = ? COLLATE NOCASE OR alias = ? COLLATE NOCASE",
+						)
+						.get(lookupName, lookupName) as
+						| { alias: string | null; avatar: string | null }
+						| undefined;
+					if (row) {
+						avatar = row.avatar ?? null;
+						alias = row.alias ?? null;
+					}
+				} catch {
+					/* database table may not exist in minimal mocks */
+				}
+				map.set(client.username, {
+					pubkey: !!client.pubkey,
+					avatar: avatar || null,
+					alias: alias || null,
+				});
 			}
 		}
-		return Array.from(map, ([username, pubkey]) => ({ username, pubkey }));
+		return Array.from(map, ([username, info]) => ({
+			username,
+			pubkey: info.pubkey,
+			avatar: info.avatar,
+			alias: info.alias,
+		}));
 	}
 
 	relayRtcSignal(
@@ -729,7 +909,7 @@ export class ChatService {
 		const column = typeof idOrGlobalId === "number" ? "id" : "global_id";
 		return this.database.db
 			.prepare(
-				`SELECT id, global_id, name, description, is_private FROM chat_rooms WHERE ${column} = ?`,
+				`SELECT id, global_id, name, description, is_private, created_by FROM chat_rooms WHERE ${column} = ?`,
 			)
 			.get(idOrGlobalId) as ChatRoom | undefined;
 	}
@@ -771,11 +951,25 @@ export class ChatService {
 		return this.leaveRoomByUser(client.username, roomId);
 	}
 
+	isRoomBanned(roomId: number, username: string): boolean {
+		try {
+			const ban = this.database.db
+				.prepare(
+					"SELECT id FROM chat_room_bans WHERE room_id = ? AND LOWER(username) = LOWER(?)",
+				)
+				.get(roomId, username.trim());
+			return !!ban;
+		} catch {
+			return false;
+		}
+	}
+
 	/** Membership is keyed by username, not by socket: a user joined from the
 	 * webapp stays a member for their Sidecamp daemon, and across reconnects.
 	 * Every live socket of that user is subscribed too, so delivery is immediate. */
 	joinRoomByUser(username: string, roomId: number): boolean {
 		if (!this.getRoom(roomId)) return false;
+		if (this.isRoomBanned(roomId, username)) return false;
 		try {
 			this.database.db
 				.prepare(
@@ -797,6 +991,153 @@ export class ChatService {
 			.run(roomId, username);
 		for (const client of this.clientsOf(username)) client.rooms.delete(roomId);
 		return true;
+	}
+
+	kickUserFromRoom(
+		adminOrOwnerUsername: string,
+		targetUsername: string,
+		roomId: number,
+		reason?: string,
+		isAdmin = false,
+	): boolean {
+		const room = this.getRoom(roomId);
+		if (!room) return false;
+		const isOwner = Boolean(
+			room.created_by &&
+				adminOrOwnerUsername &&
+				room.created_by.toLowerCase() === adminOrOwnerUsername.toLowerCase(),
+		);
+		if (!isOwner && !isAdmin) return false;
+
+		const targetClean = targetUsername.trim();
+		this.leaveRoomByUser(targetClean, roomId);
+
+		// Notify target user sockets that they were kicked from the room
+		for (const client of this.clientsOf(targetClean)) {
+			if (client.ws.readyState === OPEN) {
+				try {
+					client.ws.send(
+						JSON.stringify({
+							type: "room_kicked",
+							roomId,
+							reason: reason || `Kicked from ${room.name}`,
+						}),
+					);
+				} catch (err) {
+					console.error("[ChatService] error sending room_kicked:", err);
+				}
+			}
+		}
+
+		this.broadcastRoomSystemMessage(
+			roomId,
+			`[System] ${targetClean} was kicked from this room by ${adminOrOwnerUsername}${
+				reason ? ` (${reason})` : ""
+			}`,
+		);
+		return true;
+	}
+
+	banUserFromRoom(
+		adminOrOwnerUsername: string,
+		targetUsername: string,
+		roomId: number,
+		reason?: string,
+		isAdmin = false,
+	): boolean {
+		const room = this.getRoom(roomId);
+		if (!room) return false;
+		const isOwner = Boolean(
+			room.created_by &&
+				adminOrOwnerUsername &&
+				room.created_by.toLowerCase() === adminOrOwnerUsername.toLowerCase(),
+		);
+		if (!isOwner && !isAdmin) return false;
+
+		const targetClean = targetUsername.trim();
+		try {
+			this.database.db
+				.prepare(
+					"INSERT OR REPLACE INTO chat_room_bans (room_id, username, banned_by, reason, created_at) VALUES (?, ?, ?, ?, ?)",
+				)
+				.run(
+					roomId,
+					targetClean.toLowerCase(),
+					adminOrOwnerUsername,
+					reason || null,
+					Date.now(),
+				);
+		} catch (err) {
+			console.error("[ChatService] Failed to record room ban:", err);
+		}
+
+		this.kickUserFromRoom(
+			adminOrOwnerUsername,
+			targetClean,
+			roomId,
+			reason ? `Banned: ${reason}` : `Banned from ${room.name}`,
+			isAdmin,
+		);
+
+		this.broadcastRoomSystemMessage(
+			roomId,
+			`[System] ${targetClean} was banned from this room by ${adminOrOwnerUsername}${
+				reason ? ` (${reason})` : ""
+			}`,
+		);
+		return true;
+	}
+
+	unbanUserFromRoom(
+		adminOrOwnerUsername: string,
+		targetUsername: string,
+		roomId: number,
+		isAdmin = false,
+	): boolean {
+		const room = this.getRoom(roomId);
+		if (!room) return false;
+		const isOwner = Boolean(
+			room.created_by &&
+				adminOrOwnerUsername &&
+				room.created_by.toLowerCase() === adminOrOwnerUsername.toLowerCase(),
+		);
+		if (!isOwner && !isAdmin) return false;
+
+		const targetClean = targetUsername.trim();
+		try {
+			this.database.db
+				.prepare(
+					"DELETE FROM chat_room_bans WHERE room_id = ? AND LOWER(username) = LOWER(?)",
+				)
+				.run(roomId, targetClean);
+		} catch (err) {
+			console.error("[ChatService] Failed to remove room ban:", err);
+		}
+
+		this.broadcastRoomSystemMessage(
+			roomId,
+			`[System] ${targetClean} was unbanned from this room by ${adminOrOwnerUsername}`,
+		);
+		return true;
+	}
+
+	getRoomBans(
+		roomId: number,
+	): {
+		username: string;
+		banned_by: string;
+		reason: string | null;
+		created_at: number;
+	}[] {
+		try {
+			return this.database.db
+				.prepare(
+					"SELECT username, banned_by, reason, created_at FROM chat_room_bans WHERE room_id = ? ORDER BY created_at DESC",
+				)
+				.all(roomId) as any[];
+		} catch {
+			return [];
+		}
 	}
 
 	private *clientsOf(username: string): Iterable<ChatClient> {
@@ -909,6 +1250,9 @@ export class ChatService {
 				client.id === fromClientId
 			)
 				continue;
+			
+			if (this.isBlockedBy(client.rawUsername, from.rawUsername)) continue;
+
 			try {
 				client.ws.send(
 					JSON.stringify({

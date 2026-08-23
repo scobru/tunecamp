@@ -2,7 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [5.5.0] - 2026-08-22
+
+### Added
+
+- **Single Artist portfolio mode**: New third instance mode alongside Record Label and Community. A sovereign, Bandcamp-like homepage for a solo artist, highlighting the latest release and discography with community features (Chat, Board, Network) stripped out. Selectable in the setup wizard or Admin Settings.
+- **E2EE passphrase-encrypted chat rooms**: Rooms can be locked with a passphrase; the `UnlockRoomModal` lets members save/forget it locally and derives the room key via Zen SEA, so message content never leaves the client unencrypted.
+- **Room-scoped chat moderation**: `/kick`, `/ban`, and `/unban` inside chat rooms are now scoped to the active room. Room owners (`created_by`) and instance admins can moderate individual rooms without affecting users in the global lobby or other rooms.
+- **`chat_room_bans` table**: Tracks room-level bans in SQLite, automatically preventing banned users from joining specific rooms.
+- **Zen Admin global moderation commands**: Added `/zkick`, `/zban`, `/zunban`, `/zmute`, `/zunmute` (and `/zen*` aliases) allowing instance administrators to perform global server-wide kick/ban/mute actions.
+- **Updated `@tunecamp/chat` dependency**: Bumped to `v3.2.0`.
 
 ## [5.4.2] - 2026-08-20
 

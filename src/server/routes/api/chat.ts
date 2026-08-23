@@ -28,6 +28,105 @@ export function createChatRoutes(container: ServiceContainer): Router {
 		}),
 	);
 
+	// --- Contacts & Blocks ---
+
+	router.get(
+		"/contacts",
+		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+			if (!req.username) {
+				return res.status(401).json({ error: "Authentication required" });
+			}
+			const contactsData = container.chatService.getContactsAndRequests(req.username);
+			res.json(contactsData);
+		}),
+	);
+
+	router.post(
+		"/contacts/request",
+		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+			if (!req.username) {
+				return res.status(401).json({ error: "Authentication required" });
+			}
+			const { to } = req.body || {};
+			if (!to) return res.status(400).json({ error: "Target username required" });
+			
+			const ok = container.chatService.sendContactRequest(req.username, to);
+			if (!ok) return res.status(500).json({ error: "Failed to send request" });
+			res.json({ ok: true });
+		}),
+	);
+
+	router.post(
+		"/contacts/accept",
+		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+			if (!req.username) {
+				return res.status(401).json({ error: "Authentication required" });
+			}
+			const { from } = req.body || {};
+			if (!from) return res.status(400).json({ error: "Sender username required" });
+			
+			const ok = container.chatService.acceptContactRequest(req.username, from);
+			if (!ok) return res.status(404).json({ error: "Request not found" });
+			res.json({ ok: true });
+		}),
+	);
+
+	router.post(
+		"/contacts/reject",
+		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+			if (!req.username) {
+				return res.status(401).json({ error: "Authentication required" });
+			}
+			const { from } = req.body || {};
+			if (!from) return res.status(400).json({ error: "Sender username required" });
+			
+			const ok = container.chatService.rejectContactRequest(req.username, from);
+			if (!ok) return res.status(404).json({ error: "Request not found" });
+			res.json({ ok: true });
+		}),
+	);
+
+	router.get(
+		"/blocks",
+		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+			if (!req.username) {
+				return res.status(401).json({ error: "Authentication required" });
+			}
+			const blocks = container.chatService.getBlocklist(req.username);
+			res.json({ blocks });
+		}),
+	);
+
+	router.post(
+		"/blocks",
+		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+			if (!req.username) {
+				return res.status(401).json({ error: "Authentication required" });
+			}
+			const { username } = req.body || {};
+			if (!username) return res.status(400).json({ error: "Username to block required" });
+			
+			const ok = container.chatService.blockUser(req.username, username);
+			if (!ok) return res.status(500).json({ error: "Failed to block user" });
+			res.json({ ok: true });
+		}),
+	);
+
+	router.post(
+		"/blocks/remove",
+		wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+			if (!req.username) {
+				return res.status(401).json({ error: "Authentication required" });
+			}
+			const { username } = req.body || {};
+			if (!username) return res.status(400).json({ error: "Username to unblock required" });
+			
+			const ok = container.chatService.unblockUser(req.username, username);
+			if (!ok) return res.status(500).json({ error: "Failed to unblock user" });
+			res.json({ ok: true });
+		}),
+	);
+
 	/**
 	 * GET /api/chat/pubkey/:username
 	 *

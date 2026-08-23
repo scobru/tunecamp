@@ -230,9 +230,15 @@ Styling uses standard CSS with variables for theme support.
 | Repo | Description |
 | ------ | ------------- |
 | [tunecamp](https://github.com/scobru/tunecamp) | Main server + webapp |
-| [sidecamp](https://github.com/scobru/sidecamp) | Standalone Desktop App for Peer Sharing, Soulseek, and Torrents |
-| [tunecamp-4-track-recorder](https://github.com/scobru/tunecamp-4-track-recorder) | Browser-based 4-track recorder (Svelte 5 component) |
-| [tunecamp-website](https://github.com/scobru/tunecamp-website) | Landing page and community directory |
+| [sidecamp](https://github.com/scobru/sidecamp) | Standalone Desktop App for Peer Sharing, Soulseek, and Torrents (npm-workspaces monorepo: Sidecamp + Graphofone + Sidecamp CLI) |
+| [tunecamp-chat](https://github.com/scobru/tunecamp-chat) | `@tunecamp/chat` — chat client library + React hook, shared by the webapp and Sidecamp |
+| [fid](https://github.com/scobru/fid) | FID (Fediverse-ID) — self-sovereign identity & SSO protocol, Zen SEA auth |
+| [tunecamp-4-track-recorder](https://github.com/scobru/tunecamp-4-track-recorder) | Browser-based 4-track recorder (Svelte 5 component), Lab app |
+| [tunecamp-audiofabric](https://github.com/scobru/tunecamp-audiofabric) | Real-time 3D WebGL music visualizer, Lab app |
+| [tunecamp-iris](https://github.com/scobru/tunecamp-iris) | Air-gapped optical file transfer (fountain codes + WASM), Lab app |
+| [tunecamp-beam](https://github.com/scobru/tunecamp-beam) | Zero-server WebRTC P2P data drops via QR code, Lab app |
+| [tunecamp-website](https://github.com/scobru/tunecamp-website) | Landing page, community directory, and global FID identity portal |
+| [tunecamp-ecosystem](https://github.com/scobru/tunecamp-ecosystem) | Ecosystem overview doc — what exists, how the pieces talk |
 
 ## Related Documentation
 

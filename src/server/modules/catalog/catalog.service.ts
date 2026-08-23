@@ -421,7 +421,8 @@ export class CatalogService {
             "membershipMonthlyPrice", "peerEnabled", "peerAllowDownloads", "peerFederation",
             "peerChatEnabled", "peerChatGuestEnabled",
             "brandPrimary", "brandAccent", "instanceProfile",
-            "adminTreasuryAddress", "walletAddress", "adminFeePercentage", "web3Enabled"
+            "adminTreasuryAddress", "walletAddress", "adminFeePercentage", "web3Enabled",
+            "allowPublicRegistration", "listenerSelfPublish", "publicUrl"
         ];
         const res: any = {};
         settings.forEach(k => {
@@ -453,7 +454,43 @@ export class CatalogService {
                 }
             }
         });
+
+        if (this.isSingleArtist()) {
+            const primary = this.getPrimaryArtist();
+            if (primary) {
+                res.primaryArtistId = primary.id;
+                res.primaryArtistSlug = primary.slug;
+            }
+        }
+
         return res;
+    }
+
+    /**
+     * Whether the instance is running in single-artist portfolio mode.
+     * Used by routes, services, and middleware to skip community features.
+     */
+    isSingleArtist(): boolean {
+        const mode = this.database.getSetting('mode');
+        return mode === 'single_artist';
+    }
+
+    /**
+     * Returns the primary (and only) artist when `mode === 'single_artist'`.
+     * Falls back to the first artist linked to an admin account, or the first
+     * artist in the database.
+     */
+    getPrimaryArtist() {
+        // First try: artist linked to an admin account
+        const adminRow = this.database.db.prepare(
+            `SELECT artist_id FROM admin WHERE artist_id IS NOT NULL ORDER BY id ASC LIMIT 1`
+        ).get() as any;
+        if (adminRow?.artist_id) {
+            return this.database.getArtist(adminRow.artist_id);
+        }
+        // Fallback: first artist in the database
+        const artists = this.database.library.getArtists();
+        return artists.length > 0 ? artists[0] : null;
     }
 
     /**

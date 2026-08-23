@@ -52,6 +52,13 @@ export function createChatWsHandler(
 			);
 			if (url.pathname !== "/ws/chat") return;
 
+			// In single-artist mode the chat subsystem is entirely disabled.
+			if (container.identity.getSetting("mode") === "single_artist") {
+				socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
+				socket.destroy();
+				return;
+			}
+
 			if (container.identity.getSetting("peerChatEnabled") !== "true") {
 				socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
 				socket.destroy();
@@ -244,30 +251,63 @@ export function createChatWsHandler(
 								break;
 							}
 							case "admin_action": {
+								const { action, target, reason, duration, roomId } = message;
+								const targetRoomId = roomId ? Number(roomId) : undefined;
+
+								// Room-scoped moderation (kick/ban/unban from a specific room)
+								if (targetRoomId && (action === "kick" || action === "ban" || action === "unban")) {
+									const room = container.chatService.getRoom(targetRoomId);
+									const isRoomOwner = Boolean(
+										room?.created_by &&
+											username &&
+											room.created_by.toLowerCase() === username.toLowerCase(),
+									);
+									if (!isAdmin && !isRoomOwner) {
+										ws.send(
+											JSON.stringify({
+												type: "system",
+												roomId: targetRoomId,
+												text: "Error: Room owner or admin permissions required.",
+											}),
+										);
+										break;
+									}
+
+									if (action === "kick" && target) {
+										container.chatService.kickUserFromRoom(username, target, targetRoomId, reason, isAdmin);
+									} else if (action === "ban" && target) {
+										container.chatService.banUserFromRoom(username, target, targetRoomId, reason, isAdmin);
+									} else if (action === "unban" && target) {
+										container.chatService.unbanUserFromRoom(username, target, targetRoomId, isAdmin);
+									}
+									break;
+								}
+
+								// Global instance moderation (requires instance admin)
 								if (!isAdmin) {
 									ws.send(
 										JSON.stringify({
 											type: "system",
-											text: "Error: Admin permissions required.",
+											text: "Error: Admin permissions required for global moderation.",
 										}),
 									);
 									break;
 								}
-								const { action, target, reason, duration } = message;
-								if (action === "kick" && target) {
+
+								if ((action === "zkick" || action === "zenkick" || action === "kick") && target) {
 									container.chatService.kickUser(username, target, reason);
-								} else if (action === "ban" && target) {
+								} else if ((action === "zban" || action === "zenban" || action === "ban") && target) {
 									container.chatService.banUser(username, target, reason);
-								} else if (action === "unban" && target) {
+								} else if ((action === "zunban" || action === "zenunban" || action === "unban") && target) {
 									container.chatService.unbanUser(username, target);
-								} else if (action === "mute" && target) {
+								} else if ((action === "zmute" || action === "zenmute" || action === "mute") && target) {
 									container.chatService.muteUser(
 										username,
 										target,
 										duration ? Number(duration) : 15,
 										reason,
 									);
-								} else if (action === "unmute" && target) {
+								} else if ((action === "zunmute" || action === "zenunmute" || action === "unmute") && target) {
 									container.chatService.unmuteUser(username, target);
 								} else if (action === "clear") {
 									container.chatService.clearLobbyHistory(username);

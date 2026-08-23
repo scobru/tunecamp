@@ -62,6 +62,8 @@ For listeners and artists using a TuneCamp instance.
 | [Radio](./radio.md) | Broadcasting an always-on station from your library (playlists + genre mixes) |
 | [Subsonic Protocol](./subsonic.md) | Connecting external clients (DSub, Symfonium, Tempo, Substreamer) |
 | [Social & Community Features](./social-features.md) | Posts, comments, and fan interactions |
+| [Chat & Real-Time Messaging](./chat.md) | Community lobby, E2EE direct messages, and E2EE passphrase-locked rooms |
+| [Collab](./COLLAB.md) | Multi-artist collaborative track building: stems, version snapshots, no realtime |
 | [Becoming an Artist & Selling](./community-mode.md) | Artist request flow and the `can_sell` sales gate |
 | [Payments & Monetization](./payments.md) | Stripe checkout, crypto on-ramp, and on-chain purchases |
 
@@ -92,6 +94,7 @@ For contributors and people building on TuneCamp.
 | [Backend Architecture](./architecture-backend.md) | Express server, SQLite, ActivityPub, federated discovery, and the full data model / database schema |
 | [Webapp Architecture](./architecture-webapp.md) | React, Vite, Zustand, and instance discovery in the frontend |
 | [API Contracts](./api-contracts.md) | REST endpoints, authentication, and supported protocols |
+| [FID Identity](./FID-IDENTITY.md) | Self-sovereign identity and instance passports via FID + Zen SEA |
 | [Lab Apps](./LAB.md) | Creating and submitting experimental audio tools |
 | [Lab App: Audiofabric](./audiofabric.md) | Real-time 3D WebGL music visualizer built-in Lab app |
 | [Lab App: 4-Track Recorder](./4-track-recorder.md) | Browser-based 4-track cassette recorder companion package |
@@ -124,4 +127,4 @@ Optional third-party services you can connect to your instance.
 
 ---
 
-*Last updated: June 24, 2026*
+*Last updated: August 22, 2026*
