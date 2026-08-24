@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **Chat identity unlock, once per device**: `GET /api/auth/zen/keys` returns the caller's own Zen public key and the vault blob sealed under their password (the login response has always returned both; a session that did not just log in with a password — SSO, a restored token, a second browser — had no other way to get them). The chat page shows an unlock prompt when the account has a vault this device cannot open, and caches the pair locally afterwards.
+
+### Fixed
+
+- **Chat no longer asks peers to re-accept your fingerprint on every connect**: a device without the account's identity used to fall back to a random per-connection keypair. That key could not be held past the session and changed on every connect, so every peer who had pinned the real key got a key-change warning to clear each time. The client now stays identity-less instead: no key is announced, and DMs are refused ("chat identity locked on this device") rather than encrypted under a throwaway key. Requires `@tunecamp/chat` >= 3.3.0.
+
 ## [5.5.0] - 2026-08-22
 
 ### Added

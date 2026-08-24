@@ -40,7 +40,7 @@ const formatTime = (ts: number) =>
 
 export default function Chat() {
 	const { settings: siteSettings, fetchFlags } = useSiteSettingsStore();
-	const { role, user } = useAuthStore();
+	const { role, user, chatIdentityLocked, unlockChatIdentity } = useAuthStore();
 	const roleStr = String(role || "");
 	const isSiteAdmin =
 		roleStr === "admin" ||
@@ -218,6 +218,23 @@ export default function Chat() {
 	};
 
 	const pendingKeyChange = to.trim() ? keyChanges[to.trim()] : undefined;
+
+	// Unlocking the identity is per-device and one-off: the pair is cached
+	// locally afterwards, so this prompt appears once per browser, not per
+	// connection.
+	const [unlockPassword, setUnlockPassword] = useState("");
+	const [unlockError, setUnlockError] = useState(false);
+	const [unlocking, setUnlocking] = useState(false);
+
+	const handleUnlockIdentity = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!unlockPassword || unlocking) return;
+		setUnlocking(true);
+		const ok = await unlockChatIdentity(unlockPassword);
+		setUnlocking(false);
+		setUnlockError(!ok);
+		if (ok) setUnlockPassword("");
+	};
 
 	const handleAcceptKeyChange = (peerId: string) => {
 		const change = keyChanges[peerId];
@@ -554,6 +571,51 @@ export default function Chat() {
 					)}
 
 					<div className="border-t border-base-content/5 p-3 flex flex-col gap-2">
+						{chatIdentityLocked && (
+							<form
+								onSubmit={handleUnlockIdentity}
+								className="bg-info/10 border border-info/30 rounded-xl px-3 py-2 text-xs space-y-2"
+							>
+								<div className="flex items-start gap-2">
+									<Lock size={14} className="text-info shrink-0 mt-0.5" />
+									<div className="space-y-1">
+										<p className="font-semibold">Chat identity locked on this device.</p>
+										<p className="opacity-70">
+											Your encryption key is stored sealed with your password —
+											the server can't open it. Enter it once here and this
+											browser keeps the key; it stays the same everywhere, so
+											nobody has to re-accept your fingerprint. Direct messages
+											are on hold until then, never sent unencrypted.
+										</p>
+									</div>
+								</div>
+								<div className="flex gap-2">
+									<input
+										type="password"
+										autoComplete="current-password"
+										className="input input-xs input-bordered rounded-lg flex-1"
+										placeholder="Account password"
+										value={unlockPassword}
+										onChange={(e) => {
+											setUnlockPassword(e.target.value);
+											setUnlockError(false);
+										}}
+									/>
+									<button
+										type="submit"
+										className="btn btn-xs btn-info rounded-lg gap-1"
+										disabled={!unlockPassword || unlocking}
+									>
+										<Unlock size={12} /> Unlock
+									</button>
+								</div>
+								{unlockError && (
+									<p className="text-error">
+										That password doesn't open the vault.
+									</p>
+								)}
+							</form>
+						)}
 						{pendingKeyChange && (
 							<div className="bg-warning/10 border border-warning/30 rounded-xl px-3 py-2 text-xs space-y-2">
 								<div className="flex items-start gap-2">

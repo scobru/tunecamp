@@ -140,6 +140,18 @@ describe("Zen routes — supplementary tests", () => {
 					run: () => ({}),
 				};
 			}
+			if (query.includes("SELECT zen_pub, zen_priv FROM admin WHERE id")) {
+				return {
+					get: (id: number) => {
+						const u = usersById[id];
+						return u
+							? { zen_pub: u.zen_pub, zen_priv: u.zen_priv ?? null }
+							: undefined;
+					},
+					all: () => [],
+					run: () => ({}),
+				};
+			}
 			if (query.includes("SELECT zen_pub FROM admin WHERE id")) {
 				return {
 					get: (id: number) => {
@@ -206,6 +218,39 @@ describe("Zen routes — supplementary tests", () => {
 				};
 			}
 			return { get: () => null, all: () => [], run: () => ({}) };
+		});
+	});
+
+	// ── GET /keys ───────────────────────────────────────────────────────────
+
+	describe("GET /api/auth/zen/keys", () => {
+		test("requires authentication", async () => {
+			const res = await request(app).get("/api/auth/zen/keys");
+
+			expect(res.status).toBe(401);
+		});
+
+		test("returns the caller's own pub and sealed vault", async () => {
+			usersByUsername.alice.zen_priv = "tcv1:600000:abcd:sealed";
+
+			const res = await request(app)
+				.get("/api/auth/zen/keys")
+				.set("Authorization", "Bearer test-token");
+
+			expect(res.status).toBe(200);
+			expect(res.body.zenPub).toBe(baseKeys.pub);
+			expect(res.body.zenPriv).toBe("tcv1:600000:abcd:sealed");
+		});
+
+		test("returns nulls when the account has no vault", async () => {
+			usersByUsername.alice.zen_priv = null;
+
+			const res = await request(app)
+				.get("/api/auth/zen/keys")
+				.set("Authorization", "Bearer test-token");
+
+			expect(res.status).toBe(200);
+			expect(res.body.zenPriv).toBeNull();
 		});
 	});
 

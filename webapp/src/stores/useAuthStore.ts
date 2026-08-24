@@ -106,6 +106,13 @@ interface AuthState {
 		pub: string;
 		priv: string;
 	} | null;
+	/**
+	 * The account has an identity on the server that this device cannot open —
+	 * no password was in hand (SSO, restored token, another browser). DMs stay
+	 * unavailable until `unlockChatIdentity` runs; nothing is sent unencrypted
+	 * and no throwaway key is minted in its place.
+	 */
+	chatIdentityLocked: boolean;
 
 	// Actions
 	init: () => Promise<void>;
@@ -122,6 +129,11 @@ interface AuthState {
 	 * it out of every DM addressed to that key.
 	 */
 	resealChatIdentity: (newPassword: string) => Promise<void>;
+	/**
+	 * Open the server-held vault with the account password and cache the pair on
+	 * this device. Returns false when the password doesn't open it.
+	 */
+	unlockChatIdentity: (password: string) => Promise<boolean>;
 
 	// Compatibility (for existing components)
 	adminUser: User | null;
@@ -145,6 +157,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 	error: null,
 	isAuthenticating: false,
 	chatKeyPair: null,
+	chatIdentityLocked: false,
 
 	// Compat helpers
 	adminUser: null,
@@ -207,7 +220,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
 			if (status.authenticated && status.username && !get().chatKeyPair) {
 				const cached = loadChatKeyPair(status.username);
-				if (cached) set({ chatKeyPair: cached });
+				if (cached) {
+					set({ chatKeyPair: cached, chatIdentityLocked: false });
+				} else {
+					// No pair on this device. The password can fix that in two of the
+					// three cases: open the vault the server holds, or mint the
+					// identity for an account that never got one. The exception is a
+					// pub with no vault — identity bound from the FID portal, private
+					// half elsewhere — where no prompt here can help.
+					try {
+						const keys = await API.getZenKeys();
+						set({
+							chatIdentityLocked: !!keys?.zenPriv || !keys?.zenPub,
+						});
+					} catch {
+						set({ chatIdentityLocked: false });
+					}
+				}
 			}
 		} catch (e: any) {
 			console.error("Auth check failed:", e);
@@ -259,20 +288,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 						result.zenPub,
 						result.zenPriv,
 					);
-					set({ chatKeyPair });
+					set({ chatKeyPair, chatIdentityLocked: !chatKeyPair && !!result.zenPriv });
 					if (chatKeyPair) saveChatKeyPair(username, chatKeyPair);
 				} catch {
 					set({ chatKeyPair: null });
 				}
 			} else {
 				const cached = loadChatKeyPair(username);
-				if (cached) set({ chatKeyPair: cached });
+				if (cached) set({ chatKeyPair: cached, chatIdentityLocked: false });
 			}
 		} catch (e: any) {
 			set({ error: e.message, isLoading: false, isAuthenticating: false });
 			throw e;
 		} finally {
 			set({ isAuthenticating: false });
+		}
+	},
+
+	unlockChatIdentity: async (password) => {
+		const username = get().user?.username;
+		if (!username) return false;
+		try {
+			const keys = await API.getZenKeys();
+			// Handles all three shapes: open an existing vault, mint and publish a
+			// first identity, or refuse when the private half lives elsewhere.
+			const pair = await resolveChatIdentity(password, keys?.zenPub, keys?.zenPriv);
+			if (!pair) return false;
+			saveChatKeyPair(username, pair);
+			set({ chatKeyPair: pair, chatIdentityLocked: false });
+			return true;
+		} catch {
+			return false;
 		}
 	},
 
@@ -357,6 +403,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 			isInitializing: false,
 			role: null,
 			chatKeyPair: null,
+			chatIdentityLocked: false,
 		});
 	},
 }));

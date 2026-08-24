@@ -258,6 +258,45 @@ export function createZenRoutes(container: ServiceContainer): Router {
 	);
 
 	/**
+	 * GET /api/auth/zen/keys
+	 *
+	 * Hands the caller back *their own* sealed identity. `zenPriv` is the vault
+	 * blob — the pair encrypted client-side under the user's password — so the
+	 * server is passing along something it cannot read, to a session it already
+	 * authenticated; the login response has always returned the same two fields.
+	 *
+	 * Without this a session that did not just log in with a password (SSO, a
+	 * restored token, a second browser) can never recover the account's identity,
+	 * and chat is left keyless on that device.
+	 */
+	router.get(
+		"/keys",
+		authMiddleware.requireUser,
+		async (req: AuthenticatedRequest, res) => {
+			const username = req.username;
+			if (!username) {
+				return res.status(401).json({ error: "Authentication required" });
+			}
+
+			const user = authService.getUserByUsername(username);
+			if (!user) {
+				return res.status(404).json({ error: "User not found" });
+			}
+
+			const row = db
+				.prepare("SELECT zen_pub, zen_priv FROM admin WHERE id = ?")
+				.get(user.id) as
+				| { zen_pub: string | null; zen_priv: string | null }
+				| undefined;
+
+			return res.json({
+				zenPub: row?.zen_pub || null,
+				zenPriv: row?.zen_priv || null,
+			});
+		},
+	);
+
+	/**
 	 * POST /api/auth/zen/keys
 	 * Trustless E2EE: Allows the client to upload its auto-generated SEA pair.
 	 * The `encryptedZenPriv` is mathematically encrypted by the user's plaintext password

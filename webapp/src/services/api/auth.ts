@@ -38,6 +38,19 @@ export const authApi = {
 		),
 
 	/**
+	 * The account's own Zen identity: the public key and the vault blob sealed
+	 * under the user's password. Lets a session that did not log in with a
+	 * password (SSO, restored token, another browser) recover the same identity
+	 * instead of chatting keyless.
+	 */
+	getZenKeys: () =>
+		handleResponse(
+			api.get<{ zenPub: string | null; zenPriv: string | null }>(
+				"auth/zen/keys",
+			),
+		),
+
+	/**
 	 * Publish the account's Zen identity: `encryptedZenPriv` must already be
 	 * sealed with the user's password client-side — the server stores it as an
 	 * opaque blob and can never open it. Rejected with 409 if it would change an

@@ -42,6 +42,13 @@ const chatDefaults = {
 	hasRoomPassphrase: vi.fn(() => false),
 	keyChanges: {},
 	acceptKeyChange: vi.fn(),
+	contactsData: { contacts: [] as string[], pendingIn: [] as string[], pendingOut: [] as string[] },
+	blocklist: [] as string[],
+	sendContactRequest: vi.fn(async () => true),
+	acceptContactRequest: vi.fn(async () => true),
+	rejectContactRequest: vi.fn(async () => true),
+	blockUser: vi.fn(async () => true),
+	unblockUser: vi.fn(async () => true),
 	unreadCounts: {},
 	clearUnread: vi.fn(),
 	sendMessage: vi.fn(async () => true),
@@ -68,7 +75,11 @@ describe("Chat page", () => {
 			settings: { peerChatEnabled: "true" },
 			fetchFlags: vi.fn(),
 		} as any);
-		vi.mocked(useAuthStore).mockReturnValue({ role: "user" } as any);
+		vi.mocked(useAuthStore).mockReturnValue({
+			role: "user",
+			chatIdentityLocked: false,
+			unlockChatIdentity: vi.fn(async () => true),
+		} as any);
 	});
 
 	test("keeps the draft when the client refuses to send it unencrypted", async () => {

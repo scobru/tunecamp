@@ -10,6 +10,7 @@ vi.mock('../../services/api', () => ({
         registerUser: vi.fn(),
         setToken: vi.fn(),
         uploadZenKeys: vi.fn(),
+        getZenKeys: vi.fn(),
     },
     ApiError: class ApiError extends Error {
         status: number;
@@ -82,6 +83,7 @@ describe('useAuthStore', () => {
             isAdminLoading: false,
             isInitializing: false,
             chatKeyPair: null,
+            chatIdentityLocked: false,
         });
     });
 
@@ -362,6 +364,84 @@ describe('useAuthStore', () => {
         await store.checkAuth();
 
         expect(useAuthStore.getState().chatKeyPair).toEqual(inMemoryPair);
+    });
+
+    test('checkAuth marks the identity locked when this device holds no pair but the server holds a vault', async () => {
+        vi.mocked(API.getAuthStatus).mockResolvedValue({
+            authenticated: true,
+            role: 'user',
+            username: 'testuser',
+            firstRun: false,
+            mustChangePassword: false,
+        } as any);
+        vi.mocked(API.getZenKeys).mockResolvedValue({
+            zenPub: MINTED_PAIR.pub,
+            zenPriv: fakeVault(MINTED_PAIR, 'hunter2'),
+        });
+
+        await useAuthStore.getState().checkAuth();
+
+        expect(useAuthStore.getState().chatIdentityLocked).toBe(true);
+        expect(useAuthStore.getState().chatKeyPair).toBeNull();
+    });
+
+    test('checkAuth leaves it unlocked when the private half lives elsewhere', async () => {
+        vi.mocked(API.getAuthStatus).mockResolvedValue({
+            authenticated: true,
+            role: 'user',
+            username: 'testuser',
+            firstRun: false,
+            mustChangePassword: false,
+        } as any);
+        // Identity bound from the FID portal: a pub with no vault. No password
+        // prompt can recover it, so offering one would only mislead.
+        vi.mocked(API.getZenKeys).mockResolvedValue({
+            zenPub: MINTED_PAIR.pub,
+            zenPriv: null,
+        });
+
+        await useAuthStore.getState().checkAuth();
+
+        expect(useAuthStore.getState().chatIdentityLocked).toBe(false);
+    });
+
+    test('unlockChatIdentity opens the vault and caches the pair on this device', async () => {
+        useAuthStore.setState({
+            user: { username: 'testuser' } as any,
+            isAuthenticated: true,
+            chatIdentityLocked: true,
+        });
+        vi.mocked(API.getZenKeys).mockResolvedValue({
+            zenPub: MINTED_PAIR.pub,
+            zenPriv: fakeVault(MINTED_PAIR, 'hunter2'),
+        });
+
+        const ok = await useAuthStore.getState().unlockChatIdentity('hunter2');
+
+        expect(ok).toBe(true);
+        expect(useAuthStore.getState().chatKeyPair).toEqual(MINTED_PAIR);
+        expect(useAuthStore.getState().chatIdentityLocked).toBe(false);
+        expect(localStorage.getItem('tunecamp_chatkey_testuser')).toBe(
+            JSON.stringify(MINTED_PAIR),
+        );
+    });
+
+    test('unlockChatIdentity refuses the wrong password and stays locked', async () => {
+        useAuthStore.setState({
+            user: { username: 'testuser' } as any,
+            isAuthenticated: true,
+            chatIdentityLocked: true,
+        });
+        vi.mocked(API.getZenKeys).mockResolvedValue({
+            zenPub: MINTED_PAIR.pub,
+            zenPriv: fakeVault(MINTED_PAIR, 'hunter2'),
+        });
+
+        const ok = await useAuthStore.getState().unlockChatIdentity('wrong');
+
+        expect(ok).toBe(false);
+        expect(useAuthStore.getState().chatKeyPair).toBeNull();
+        expect(useAuthStore.getState().chatIdentityLocked).toBe(true);
     });
 
     test('logout removes the current user\'s chatKeyPair from localStorage and state', () => {
