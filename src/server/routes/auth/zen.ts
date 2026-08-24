@@ -359,6 +359,83 @@ export function createZenRoutes(container: ServiceContainer): Router {
 	);
 
 	/**
+	 * POST /api/auth/zen/keys/rotate
+	 *
+	 * Replace the account's Zen identity with a freshly minted one, for the case
+	 * the vault can no longer be opened.
+	 *
+	 * That case is reachable without anyone doing anything wrong: `zen_priv` is
+	 * sealed under the password that was current when it was written, and every
+	 * server-side password path (admin change, e-mail reset, security questions)
+	 * rewrites `password_hash` while leaving the vault as it was — the server
+	 * cannot re-seal a blob it cannot open. The old private key is then lost, and
+	 * `POST /keys` refuses anything but the existing `zen_pub`, so without this
+	 * the account is stuck with an identity nobody can use.
+	 *
+	 * The cost is real and falls on the user: DMs encrypted to the old key stay
+	 * unreadable, and every peer who pinned it gets one key-change warning to
+	 * accept. So it takes the account password (a session alone is not enough —
+	 * this discards a key) and is refused outright when the identity is not this
+	 * server's to replace: an account in `zen`/`hybrid` auth mode has its key from
+	 * the FID portal, which is where a rotation has to start.
+	 */
+	router.post(
+		"/keys/rotate",
+		rateLimit({ windowMs: 15 * 60 * 1000, max: 5 }),
+		authMiddleware.requireUser,
+		async (req: AuthenticatedRequest, res) => {
+			const { password, zenPubKey, encryptedZenPriv } = req.body;
+			const username = req.username;
+
+			if (!username) {
+				return res.status(401).json({ error: "Authentication required" });
+			}
+			if (!password || !zenPubKey || !encryptedZenPriv) {
+				return res.status(400).json({
+					error: "Missing password, zenPubKey or encryptedZenPriv",
+				});
+			}
+
+			const user = authService.getUserByUsername(username);
+			if (!user) {
+				return res.status(404).json({ error: "User not found" });
+			}
+
+			if (user.zen_auth_mode && user.zen_auth_mode !== "local") {
+				return res.status(409).json({
+					error:
+						"This account's Zen identity comes from the FID portal. Rotate it there, then re-link this instance.",
+				});
+			}
+
+			const row = db
+				.prepare("SELECT password_hash FROM admin WHERE id = ?")
+				.get(user.id) as { password_hash: string } | undefined;
+			if (
+				!row?.password_hash ||
+				!(await authService.verifyPassword(password, row.password_hash))
+			) {
+				return res.status(401).json({ error: "Password does not match" });
+			}
+
+			const taken = db
+				.prepare("SELECT id FROM admin WHERE zen_pub = ? AND id != ?")
+				.get(zenPubKey, user.id);
+			if (taken) {
+				return res.status(409).json({
+					error: "This Zen identity is already linked to a different account",
+				});
+			}
+
+			db.prepare(
+				"UPDATE admin SET zen_pub = ?, zen_priv = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+			).run(zenPubKey, encryptedZenPriv, user.id);
+
+			return res.json({ success: true, zenPub: zenPubKey });
+		},
+	);
+
+	/**
 	 * GET /api/auth/zen/user/:username/public
 	 * Returns ONLY public profile data and public releases/tracks for Zen identity aggregation.
 	 */

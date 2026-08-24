@@ -172,6 +172,14 @@ interface AuthState {
 	 * this device. Returns false when the password doesn't open it.
 	 */
 	unlockChatIdentity: (password: string) => Promise<boolean>;
+	/**
+	 * Mint a new Zen identity for an account whose vault can no longer be opened,
+	 * and publish it sealed under the current password. Destructive on purpose:
+	 * DMs encrypted to the old key stay unreadable and every peer that pinned it
+	 * has one key change to accept. Returns false when the server refuses —
+	 * wrong password, or an identity the FID portal owns.
+	 */
+	rotateChatIdentity: (password: string) => Promise<boolean>;
 
 	// Compatibility (for existing components)
 	adminUser: User | null;
@@ -374,6 +382,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 		} catch {
 			// Never got as far as opening anything: the request for the vault failed.
 			set({ chatUnlockError: "fetch-failed" });
+			return false;
+		}
+	},
+
+	rotateChatIdentity: async (password) => {
+		const username = get().user?.username;
+		if (!username) return false;
+		try {
+			const pair = (await generateKeyPair()) as ChatKeyPair;
+			const vault = await encryptPairVault(pair, password);
+			await API.rotateZenKeys(password, pair.pub, vault);
+			saveChatKeyPair(username, pair);
+			set({
+				chatKeyPair: pair,
+				chatIdentityLocked: false,
+				chatUnlockError: null,
+			});
+			return true;
+		} catch {
 			return false;
 		}
 	},

@@ -55,6 +55,7 @@ describe("Zen routes — supplementary tests", () => {
 		authMiddleware: mockAuthMiddleware,
 		authService: {
 			getUserByUsername: jest.fn(),
+			verifyPassword: jest.fn(),
 			getUserProfile: jest.fn(),
 			createUser: jest.fn(),
 			updateUserProfile: jest.fn(),
@@ -136,6 +137,13 @@ describe("Zen routes — supplementary tests", () => {
 						Object.values(usersByUsername).find(
 							(u: any) => u.zen_pub === pub,
 						) ?? null,
+					all: () => [],
+					run: () => ({}),
+				};
+			}
+			if (query.includes("SELECT password_hash FROM admin WHERE id")) {
+				return {
+					get: () => ({ password_hash: "hashed" }),
 					all: () => [],
 					run: () => ({}),
 				};
@@ -251,6 +259,87 @@ describe("Zen routes — supplementary tests", () => {
 
 			expect(res.status).toBe(200);
 			expect(res.body.zenPriv).toBeNull();
+		});
+	});
+
+	// ── POST /keys/rotate ────────────────────────────────────────────────────
+
+	describe("POST /api/auth/zen/keys/rotate", () => {
+		test("requires authentication", async () => {
+			const res = await request(app)
+				.post("/api/auth/zen/keys/rotate")
+				.send({ password: "pw", zenPubKey: altKeys.pub, encryptedZenPriv: "v" });
+
+			expect(res.status).toBe(401);
+		});
+
+		test("rejects a wrong password", async () => {
+			mockContainer.authService.verifyPassword.mockResolvedValue(false);
+
+			const res = await request(app)
+				.post("/api/auth/zen/keys/rotate")
+				.set("Authorization", "Bearer test-token")
+				.send({ password: "wrong", zenPubKey: altKeys.pub, encryptedZenPriv: "v" });
+
+			expect(res.status).toBe(401);
+			expect(res.body.error).toContain("Password");
+		});
+
+		test("replaces the identity when the password checks out", async () => {
+			mockContainer.authService.verifyPassword.mockResolvedValue(true);
+
+			const res = await request(app)
+				.post("/api/auth/zen/keys/rotate")
+				.set("Authorization", "Bearer test-token")
+				.send({
+					password: "right",
+					zenPubKey: altKeys.pub,
+					encryptedZenPriv: "tcv1:600000:ab:new-vault",
+				});
+
+			expect(res.status).toBe(200);
+			expect(res.body.zenPub).toBe(altKeys.pub);
+		});
+
+		test("refuses when the identity belongs to the FID portal", async () => {
+			mockContainer.authService.verifyPassword.mockResolvedValue(true);
+			usersByUsername.alice.zen_auth_mode = "zen";
+
+			const res = await request(app)
+				.post("/api/auth/zen/keys/rotate")
+				.set("Authorization", "Bearer test-token")
+				.send({
+					password: "right",
+					zenPubKey: altKeys.pub,
+					encryptedZenPriv: "tcv1:600000:ab:new-vault",
+				});
+
+			expect(res.status).toBe(409);
+			expect(res.body.error).toContain("FID portal");
+		});
+
+		test("refuses a key another account already owns", async () => {
+			mockContainer.authService.verifyPassword.mockResolvedValue(true);
+			usersByUsername.bob = {
+				id: 2,
+				username: "bob",
+				is_active: 1,
+				zen_pub: altKeys.pub,
+				role: "user",
+				token_version: 0,
+			};
+
+			const res = await request(app)
+				.post("/api/auth/zen/keys/rotate")
+				.set("Authorization", "Bearer test-token")
+				.send({
+					password: "right",
+					zenPubKey: altKeys.pub,
+					encryptedZenPriv: "tcv1:600000:ab:new-vault",
+				});
+
+			expect(res.status).toBe(409);
+			expect(res.body.error).toContain("already linked");
 		});
 	});
 

@@ -40,8 +40,14 @@ const formatTime = (ts: number) =>
 
 export default function Chat() {
 	const { settings: siteSettings, fetchFlags } = useSiteSettingsStore();
-	const { role, user, chatIdentityLocked, chatUnlockError, unlockChatIdentity } =
-		useAuthStore();
+	const {
+		role,
+		user,
+		chatIdentityLocked,
+		chatUnlockError,
+		unlockChatIdentity,
+		rotateChatIdentity,
+	} = useAuthStore();
 	const roleStr = String(role || "");
 	const isSiteAdmin =
 		roleStr === "admin" ||
@@ -232,6 +238,25 @@ export default function Chat() {
 		if (!unlockPassword || unlocking) return;
 		setUnlocking(true);
 		const ok = await unlockChatIdentity(unlockPassword);
+		setUnlocking(false);
+		setUnlockFailed(!ok);
+		if (ok) setUnlockPassword("");
+	};
+
+	// Offered only once unlocking has actually failed on a vault that exists:
+	// it throws the old key away, so it must never be the first thing tried.
+	const handleRotateIdentity = async () => {
+		if (!unlockPassword || unlocking) return;
+		const confirmed = confirm(
+			[
+				"Create a new encryption key for this account?",
+				"Direct messages already sent to your old key stay unreadable, and everyone you chat with has to accept your new fingerprint once.",
+				"Do this only if your vault can no longer be opened — usually after a password reset.",
+			].join("\n\n"),
+		);
+		if (!confirmed) return;
+		setUnlocking(true);
+		const ok = await rotateChatIdentity(unlockPassword);
 		setUnlocking(false);
 		setUnlockFailed(!ok);
 		if (ok) setUnlockPassword("");
@@ -625,9 +650,22 @@ export default function Chat() {
 									</button>
 								</div>
 								{unlockFailed && chatUnlockError && (
-									<p className="text-error">
-										{unlockErrorMessage[chatUnlockError]}
-									</p>
+									<div className="space-y-2">
+										<p className="text-error">
+											{unlockErrorMessage[chatUnlockError]}
+										</p>
+										{(chatUnlockError === "vault-locked" ||
+											chatUnlockError === "vault-mismatch") && (
+											<button
+												type="button"
+												className="btn btn-xs btn-outline btn-error rounded-lg gap-1"
+												onClick={handleRotateIdentity}
+												disabled={!unlockPassword || unlocking}
+											>
+												<Key size={12} /> Start over with a new key
+											</button>
+										)}
+									</div>
 								)}
 							</form>
 						)}

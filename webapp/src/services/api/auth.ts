@@ -51,6 +51,26 @@ export const authApi = {
 		),
 
 	/**
+	 * Replace the account's Zen identity with a new pair, for when the vault can
+	 * no longer be opened (a password reset leaves it sealed under the old one).
+	 * Takes the account password because it discards a key: DMs to the old one
+	 * stay unreadable and peers get one key-change warning to accept. Refused for
+	 * accounts whose identity comes from the FID portal.
+	 */
+	rotateZenKeys: (
+		password: string,
+		zenPubKey: string,
+		encryptedZenPriv: string,
+	) =>
+		handleResponse(
+			api.post<{ success: boolean; zenPub: string }>("auth/zen/keys/rotate", {
+				password,
+				zenPubKey,
+				encryptedZenPriv,
+			}),
+		),
+
+	/**
 	 * Publish the account's Zen identity: `encryptedZenPriv` must already be
 	 * sealed with the user's password client-side — the server stores it as an
 	 * opaque blob and can never open it. Rejected with 409 if it would change an

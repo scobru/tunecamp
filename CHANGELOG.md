@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Recovery for an unopenable chat vault**: `POST /api/auth/zen/keys/rotate` mints a replacement Zen identity for accounts whose vault no longer opens. `zen_priv` is sealed under whatever password was current when it was written, and every server-side password path (admin change, e-mail reset, security questions) rewrites the hash without re-sealing the vault — the server cannot open it — so the old private key is simply gone and `POST /keys` refuses any other public key. Rotation takes the account password, is rate-limited, and is refused for accounts whose identity comes from the FID portal. The chat unlock prompt offers it only after unlocking has actually failed, and warns that old DMs stay unreadable and peers get one fingerprint to re-accept.
 - **Chat identity unlock, once per device**: `GET /api/auth/zen/keys` returns the caller's own Zen public key and the vault blob sealed under their password (the login response has always returned both; a session that did not just log in with a password — SSO, a restored token, a second browser — had no other way to get them). The chat page shows an unlock prompt when the account has a vault this device cannot open, and caches the pair locally afterwards.
 
 ### Fixed
