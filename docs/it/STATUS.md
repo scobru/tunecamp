@@ -10,7 +10,6 @@ Un quadro sincero di quanto ciascuna parte di TuneCamp sia pronta per la produzi
 |------|--------|-------|
 | Libreria, scansione, streaming | **Stabile** | Funzionalità principale sin dall'inizio; analisi tramite pool di worker, pre-transcodifica dei formati lossless, API Subsonic/OpenSubsonic. |
 | Web player e pagine artista | **Stabile** | |
-| Chat e messaggistica in tempo reale | **Beta** | Lobby community, DM E2EE, moderazione per stanza (`chat_room_bans`) e stanze protette da passphrase E2EE tramite Zen SEA. Vedi [chat.md](./chat.md). |
 | Modalità portfolio Single Artist | **Nuovo** | Terza modalità istanza accanto a Record Label e Community: homepage sovrana per un artista solo, senza funzionalità community. Selezionabile nel setup wizard o in Admin Settings. |
 | Pagamenti Stripe e codici di sblocco | **Beta** | Revisionato internamente (vedi [security-review-payments.md](./security-review-payments.md)); nessun audit esterno. Si consiglia di testare inizialmente con piccoli importi. |
 | Pagamenti on-chain (Base, NFT) | **Beta / opzionale** | Disabilitati di default (`web3Enabled`). Le assunzioni di fiducia sono documentate nella revisione della sicurezza. |

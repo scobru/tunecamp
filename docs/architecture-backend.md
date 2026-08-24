@@ -40,9 +40,8 @@ Responsible for scanning and organizing local music.
 - Authentication via JWT (secret from env, `.jwt-secret` file, or generated at first startup).
 - Role-Based Access Control (RBAC): Instance Owner, Manager, Curator, Listener (see [ROLES.md](./ROLES.md)).
 
-### 5. Community: Chat & Live (`modules/chat/`, `modules/live/`)
+### 5. Community: Live (`modules/live/`)
 
-- **Chat**: Standalone instance chat with persistent history in SQLite.
 - **Live**: In-memory registry of live sessions (`live.service.ts`); media **passes through the server**. The artist's browser captures audio with `MediaRecorder` and sends webm chunks, which `HlsLiveService` (`hls.service.ts`) feeds to a persistent FFmpeg process. FFmpeg produces a rolling HLS playlist (AAC segments) served to all listeners: a single shared encoding, not a copy per listener as in the legacy WebRTC mesh.
 
 ### 6. Blockchain Integration (`modules/publishing/`, routes `api/payments.ts`)
@@ -76,13 +75,9 @@ TuneCamp uses **SQLite** as its relational database engine for managing music me
 - **`reports`**: Copyright and content abuse reports awaiting moderation in the admin panel.
 - **`bookmarks`**: Personal user bookmarks.
 
-### Real-Time Chat
+### Retired: chat tables
 
-- **`peer_chat_messages`**: Persistent community lobby messages (capped at 500 rows).
-- **`peer_chat_bans`** / **`peer_chat_mutes`**: Moderation records for chat bans and mutes.
-- **`chat_rooms`**: Named multi-user chat rooms carrying a persistent UUID `global_id`.
-- **`chat_room_members`**: Membership mapping for multi-user chat rooms.
-- **`chat_room_messages`**: Message history and backlog within chat rooms.
+Peer chat was removed; `peer_chat_messages`, `peer_chat_bans`, `peer_chat_mutes`, `chat_rooms`, `chat_room_members` and `chat_room_messages` are still created for rollback safety but nothing reads or writes them. Dropping them is a pending migration.
 
 ### P2P Peer Sharing (Sidecamp)
 
@@ -141,6 +136,6 @@ Endpoints are split into thematic routes in `src/server/routes/`:
 - `/api/tracks`, `/api/albums`, `/api/artists`: Library management.
 - `/api/admin`: Administration features.
 - `/api/ap`: Endpoints for ActivityPub federation.
-- `/api/chat`, `/api/live`: Community chat and live sessions.
+- `/api/live`: Live sessions.
 - `/rest`: Compatibility with the Subsonic/OpenSubsonic protocol.
 - `/health`: Health check.

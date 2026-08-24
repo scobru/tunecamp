@@ -62,7 +62,6 @@ For listeners and artists using a TuneCamp instance.
 | [Radio](./radio.md) | Broadcasting an always-on station from your library (playlists + genre mixes) |
 | [Subsonic Protocol](./subsonic.md) | Connecting external clients (DSub, Symfonium, Tempo, Substreamer) |
 | [Social & Community Features](./social-features.md) | Posts, comments, and fan interactions |
-| [Chat & Real-Time Messaging](./chat.md) | Community lobby, E2EE direct messages, and E2EE passphrase-locked rooms |
 | [Collab](./COLLAB.md) | Multi-artist collaborative track building: stems, version snapshots, no realtime |
 | [Becoming an Artist & Selling](./community-mode.md) | Artist request flow and the `can_sell` sales gate |
 | [Payments & Monetization](./payments.md) | Stripe checkout, crypto on-ramp, and on-chain purchases |

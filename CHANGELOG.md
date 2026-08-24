@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Removed
+
+- **Peer chat, in full.** TuneCamp is a music, federation and publishing platform; messaging moves to [linda-pear](https://github.com/scobru/linda-pear), a P2P messenger that does it properly instead of a second-best copy riding on a music instance. Gone: the `/ws/chat` socket, `/api/chat/*` and `/api/chat/federated/*`, the chat service and its federation transport, the lobby, rooms, contacts and blocks, the webapp Chat page and its nav entry, the `peerChatEnabled` / `peerChatGuestEnabled` settings and their admin toggles, and the `@tunecamp/chat` dependency. `/ws/peer` no longer registers into a chat roster and no longer relays `chat`, `pubkey` or `rtc_signal`; file sharing runs on PeerService's own session registry and is untouched.
+- **The Zen identity vault (`zen_priv`).** It existed so chat could derive a shared secret, and nothing else ever opened it: `zen_pub` stays, and every FID path that matters — `/link`, `/set`, `/sso`, `/verify` — is unchanged, because the portal holds the private half and the instance only verifies signatures against the public one. Login no longer returns `zenPriv`, `POST`/`GET /api/auth/zen/keys` and `POST /api/auth/zen/keys/rotate` are gone, and the webapp no longer mints a Zen identity at registration. Local accounts now get a `zen_pub` only by linking one from the FID portal.
+- The `peer_chat_messages`, `chat_rooms`, `chat_room_messages`, `peer_chat_bans` and contacts tables are **left in place** and simply go unused. Dropping them is a separate migration, so an instance can roll back to 5.5.0 without losing its history.
+
 ## [5.5.0] - 2026-08-22
 
 ### Added

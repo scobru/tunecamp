@@ -700,11 +700,9 @@ export function createDatabase(dbPath: string): DatabaseService {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
-        -- Real-time peer chat lobby backlog (/ws/peer + /ws/chat). Distinct from
-        -- board_messages, which is the asynchronous message board. Only lobby
-        -- traffic lands here: direct messages are end-to-end encrypted and the
-        -- server holds nothing but ciphertext, so storing them serves no one.
-        -- Trimmed to the most recent LOBBY_HISTORY_CAP rows on every insert.
+        -- Retired: peer chat was removed and nothing reads or writes this table
+        -- any more. Still created so an instance can roll back to 5.5.0 with its
+        -- backlog intact; dropping it is a pending migration.
         CREATE TABLE IF NOT EXISTS peer_chat_messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL,

@@ -124,22 +124,6 @@ export function createApp(config: ServerConfig): AppSetupResult {
         });
     });
 
-    // GET /api/chat/history, /api/chat/peers, and /api/chat/rooms are accessed by
-    // standalone and desktop chat clients (e.g. sidecamp, tunecamp-chat-client) from arbitrary origins.
-    // Auth is Bearer-only (no cookie sessions), so cross-origin requests carry no CSRF risk.
-    const chatCors = cors({ origin: '*', credentials: false, methods: ['GET', 'POST', 'DELETE', 'OPTIONS'] });
-    const chatCorsMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-        chatCors(req, res, (err?: any) => {
-            if (err) return next(err);
-            res.locals.skipStrictCors = true;
-            next();
-        });
-    };
-    app.use('/api/chat/history', chatCorsMiddleware);
-    app.use('/api/chat/peers', chatCorsMiddleware);
-    app.use('/api/chat/pubkey', chatCorsMiddleware);
-    app.use('/api/chat/rooms', chatCorsMiddleware);
-
     app.use((req, res, next) => {
         if (res.locals.skipStrictCors) {
             return next();

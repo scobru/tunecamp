@@ -32,9 +32,9 @@ docker-compose up -d --build
 
 ### Instance Modes
 TuneCamp supports three distinct operating modes, selectable during the setup wizard or from the Admin Settings:
-- 🎸 **Single Artist (Portfolio)**: A sovereign, Bandcamp-like mode optimized for a solo artist. The homepage acts as a beautiful portfolio, highlighting the latest release and discography. Community features (Chat, Board, Network) are stripped out to focus purely on the music and direct-to-fan sales.
+- 🎸 **Single Artist (Portfolio)**: A sovereign, Bandcamp-like mode optimized for a solo artist. The homepage acts as a beautiful portfolio, highlighting the latest release and discography. Community features (Board, Network) are stripped out to focus purely on the music and direct-to-fan sales.
 - 🏢 **Record Label**: A curated storefront where administrators manage a roster of artists. Sales are centralized, and the homepage surfaces the latest releases across the entire label.
-- 🌍 **Community**: An open community mode where listeners can sign up, interact, and (optionally) self-publish their own music. Features like the global chat, message boards, and federated network discovery are fully active.
+- 🌍 **Community**: An open community mode where listeners can sign up, interact, and (optionally) self-publish their own music. Features like message boards and federated network discovery are fully active.
 
 ### Core
 
@@ -63,7 +63,6 @@ TuneCamp supports three distinct operating modes, selectable during the setup wi
 - 📋 **Playlists**: Create and share playlists (public/private).
 - 🎙️ **Live Streaming (HLS)**: Artists broadcast live audio from the browser; the server transcodes it to HLS (AAC segments) with FFmpeg and serves a rolling playlist to all listeners.
 - 💬 **Social Interactions**: Add comments to tracks, write artist posts, and broadcast to the federated network via ActivityPub. See [social-features.md](docs/social-features.md).
-- 💬 **Chat & E2EE Direct Messaging**: Real-time instance community lobby and end-to-end encrypted 1-on-1 private messages via WebSockets (`/ws/chat`) and `@tunecamp/chat`. See [chat.md](docs/chat.md).
 
 ### Web3 & Monetization
 
@@ -102,7 +101,7 @@ TuneCamp supports three distinct operating modes, selectable during the setup wi
 
 In addition to the core server, the TuneCamp ecosystem includes several companion projects:
 
-- [**sidecamp**](https://github.com/scobru/sidecamp): A standalone Electron desktop app that handles all P2P content acquisition — Soulseek search & download, BitTorrent, and yt-dlp audio ripping — plus peer file-sharing with any TuneCamp instance via a reverse WebSocket tunnel. Keeps the core server clean and compliant. npm-workspaces monorepo hosting Sidecamp + Graphofone + Sidecamp CLI + shared packages.
+- [**sidecamp**](https://github.com/scobru/sidecamp): A standalone Electron desktop & mobile Capacitor app that handles all P2P content acquisition — Soulseek search & download, BitTorrent, and yt-dlp audio ripping — plus peer file-sharing with any TuneCamp instance via a reverse WebSocket tunnel. Keeps the core server clean and compliant.
 - [**sidecamp-cli**](https://github.com/scobru/sidecamp/tree/main/apps/sidecamp-cli): Headless terminal client for the same Sidecamp functionality without Electron — multi-source search/download, track upload, and the P2P sharing daemon (`sidecamp share`). Published as global bin `sidecamp`.
 - [**tunecamp-website**](https://github.com/scobru/tunecamp-website): The landing page, global community directory, and web-based community audio player.
 - [**tunecamp-4-track-recorder**](https://github.com/scobru/tunecamp-4-track-recorder): A browser-based 4-track cassette recorder built with the Web Audio API and Svelte 5, featuring low-latency overdubbing and mixer capabilities.

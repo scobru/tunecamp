@@ -599,8 +599,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 				peerEnabled,
 				peerAllowDownloads,
 				peerFederation,
-				peerChatEnabled,
-				peerChatGuestEnabled,
 				brandPrimary,
 				brandAccent,
 				instanceProfile,
@@ -626,20 +624,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 				identity.setSetting(
 					"peerFederation",
 					isTrue(peerFederation) ? "true" : "false",
-				);
-			}
-
-			if (peerChatEnabled !== undefined) {
-				identity.setSetting(
-					"peerChatEnabled",
-					isTrue(peerChatEnabled) ? "true" : "false",
-				);
-			}
-
-			if (peerChatGuestEnabled !== undefined) {
-				identity.setSetting(
-					"peerChatGuestEnabled",
-					isTrue(peerChatGuestEnabled) ? "true" : "false",
 				);
 			}
 

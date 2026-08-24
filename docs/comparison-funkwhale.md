@@ -15,7 +15,7 @@ This document provides an honest and detailed comparison between **Funkwhale** a
 | **Monetization** | None | **Integrated**: NFT (ERC-1155 on Base) + Stripe (Fiat) |
 | **Mobile Compatibility** | Subsonic API | Subsonic / OpenSubsonic API |
 | **Ingestion Methods** | Web upload, local import, YouTube | Web upload, Telegram Bot; Soulseek/BitTorrent via the companion [Sidecamp](./sidecamp.md) desktop app |
-| **Social Features** | Comments, favorites, user profiles | Fediverse posts, integrated chat, live stream (server-side HLS) |
+| **Social Features** | Comments, favorites, user profiles | Fediverse posts, live stream (server-side HLS) |
 | **Management Difficulty** | Medium/High (multiple services running) | Low (single Node process or lightweight Docker Compose) |
 
 ---

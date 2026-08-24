@@ -55,6 +55,7 @@ describe("Zen routes — supplementary tests", () => {
 		authMiddleware: mockAuthMiddleware,
 		authService: {
 			getUserByUsername: jest.fn(),
+			verifyPassword: jest.fn(),
 			getUserProfile: jest.fn(),
 			createUser: jest.fn(),
 			updateUserProfile: jest.fn(),
@@ -140,6 +141,25 @@ describe("Zen routes — supplementary tests", () => {
 					run: () => ({}),
 				};
 			}
+			if (query.includes("SELECT password_hash FROM admin WHERE id")) {
+				return {
+					get: () => ({ password_hash: "hashed" }),
+					all: () => [],
+					run: () => ({}),
+				};
+			}
+			if (query.includes("SELECT zen_pub, zen_priv FROM admin WHERE id")) {
+				return {
+					get: (id: number) => {
+						const u = usersById[id];
+						return u
+							? { zen_pub: u.zen_pub, zen_priv: u.zen_priv ?? null }
+							: undefined;
+					},
+					all: () => [],
+					run: () => ({}),
+				};
+			}
 			if (query.includes("SELECT zen_pub FROM admin WHERE id")) {
 				return {
 					get: (id: number) => {
@@ -209,70 +229,11 @@ describe("Zen routes — supplementary tests", () => {
 		});
 	});
 
+	// ── GET /keys ───────────────────────────────────────────────────────────
+
+	// ── POST /keys/rotate ────────────────────────────────────────────────────
+
 	// ── POST /keys ──────────────────────────────────────────────────────────
-
-	describe("POST /api/auth/zen/keys", () => {
-		test("requires authentication", async () => {
-			const res = await request(app)
-				.post("/api/auth/zen/keys")
-				.send({ zenPubKey: baseKeys.pub, encryptedZenPriv: "encrypted" });
-
-			expect(res.status).toBe(401);
-		});
-
-		test("rejects missing zenPubKey", async () => {
-			const res = await request(app)
-				.post("/api/auth/zen/keys")
-				.set("Authorization", "Bearer test-token")
-				.send({ encryptedZenPriv: "encrypted" });
-
-			expect(res.status).toBe(400);
-			expect(res.body.error).toContain("Missing");
-		});
-
-		test("rejects missing encryptedZenPriv", async () => {
-			const res = await request(app)
-				.post("/api/auth/zen/keys")
-				.set("Authorization", "Bearer test-token")
-				.send({ zenPubKey: baseKeys.pub });
-
-			expect(res.status).toBe(400);
-			expect(res.body.error).toContain("Missing");
-		});
-
-		test("accepts matching zenPubKey and stores vault", async () => {
-			const res = await request(app)
-				.post("/api/auth/zen/keys")
-				.set("Authorization", "Bearer test-token")
-				.send({ zenPubKey: baseKeys.pub, encryptedZenPriv: "new-encrypted-vault" });
-
-			expect(res.status).toBe(200);
-			expect(res.body.success).toBe(true);
-			expect(res.body.zenPub).toBe(baseKeys.pub);
-		});
-
-		test("rejects mismatched zenPubKey when user already has one (409)", async () => {
-			const res = await request(app)
-				.post("/api/auth/zen/keys")
-				.set("Authorization", "Bearer test-token")
-				.send({ zenPubKey: altKeys.pub, encryptedZenPriv: "different-vault" });
-
-			expect(res.status).toBe(409);
-			expect(res.body.error).toContain("does not match");
-		});
-
-		test("returns 404 for non-existent user", async () => {
-			mockContainer.authService.getUserByUsername.mockReturnValue(undefined);
-
-			const res = await request(app)
-				.post("/api/auth/zen/keys")
-				.set("Authorization", "Bearer test-token")
-				.send({ zenPubKey: baseKeys.pub, encryptedZenPriv: "vault" });
-
-			expect(res.status).toBe(404);
-			expect(res.body.error).toContain("User not found");
-		});
-	});
 
 	// ── POST /verify ────────────────────────────────────────────────────────
 

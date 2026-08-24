@@ -198,8 +198,7 @@ Lo stile grafico fa uso di fogli di stile CSS standard con variabili per il tema
 | Repo | Descrizione |
 | ------ | ------------- |
 | [tunecamp](https://github.com/scobru/tunecamp) | Server principale + webapp |
-| [sidecamp](https://github.com/scobru/sidecamp) | App Desktop autonoma per Condivisione Peer, Soulseek e Torrents (monorepo npm-workspaces: Sidecamp + Graphofone + Sidecamp CLI) |
-| [tunecamp-chat](https://github.com/scobru/tunecamp-chat) | `@tunecamp/chat` — libreria client chat + hook React, condivisa da webapp e Sidecamp |
+| [sidecamp](https://github.com/scobru/sidecamp) | App Desktop e Mobile per Condivisione Peer, Soulseek e Torrents (monorepo npm-workspaces: Sidecamp + Sidecamp CLI) |
 | [fid](https://github.com/scobru/fid) | FID (Fediverse-ID) — protocollo identità e SSO auto-sovrano, auth Zen SEA |
 | [tunecamp-4-track-recorder](https://github.com/scobru/tunecamp-4-track-recorder) | Registratore a 4 tracce basato su browser (componente Svelte 5), app Lab |
 | [tunecamp-audiofabric](https://github.com/scobru/tunecamp-audiofabric) | Visualizzatore musicale 3D WebGL in tempo reale, app Lab |
