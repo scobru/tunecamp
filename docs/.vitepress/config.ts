@@ -63,7 +63,6 @@ export default defineConfig({
 						text: "🎧 User Guide",
 						items: [
 							{ text: "Roles & Permissions", link: "/ROLES" },
-							{ text: "Karma System (Archived)", link: "/karma" },
 							{ text: "Radio", link: "/radio" },
 							{ text: "Subsonic Protocol", link: "/subsonic" },
 							{ text: "Social & Community", link: "/social-features" },
@@ -170,7 +169,6 @@ export default defineConfig({
 						text: "🎧 Guida Utente",
 						items: [
 							{ text: "Ruoli e Permessi", link: "/it/ROLES" },
-							{ text: "Sistema Karma (Archiviato)", link: "/it/karma" },
 							{ text: "Radio", link: "/it/radio" },
 							{ text: "Protocollo Subsonic", link: "/it/subsonic" },
 							{ text: "Social e Community", link: "/it/social-features" },
