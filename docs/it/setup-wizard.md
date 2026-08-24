@@ -21,23 +21,25 @@ Il passo 3 scrive tutti i flag in un'unica `POST` all'endpoint delle impostazion
 
 `mode` determina la forma della homepage (`single_artist`, `label`, `community`). I flag `hide*` rimuovono sezioni dalla navigazione e negano le relative rotte API a chi non è amministratore.
 
-| Profilo | Modalità | Store | Board | Network | Dig | Live | Samples | Collab | Lab | Registrazioni aperte | Autopubblicazione ascoltatori |
+| Profilo | Modalità | Store | Social | Network | Dig | Live | Samples | Collab | Lab | Registrazioni aperte | Autopubblicazione ascoltatori |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | **Solo Artist** | `single_artist` | ✅ | ✅ | — | — | — | — | — | — | — | — |
 | **Record Label** | `label` | ✅ | ✅ | ✅ | — | — | — | — | — | ✅ | — |
 | **Music Curator** | `community` | — | ✅ | ✅ | ✅ | — | — | — | — | ✅ | ✅ |
 | **Web Radio / Streamer** | `community` | — | ✅ | — | ✅ | ✅ | — | — | — | ✅ | — |
 | **Sound Designer** | `community` | — | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Listening Room** | `community` | — | — | ✅ | — | — | — | — | — | ✅ | — |
+| **Listening Room** | `community` | — | ✅ | ✅ | — | — | — | — | — | ✅ | — |
 
 ✅ = modulo attivo per quel profilo. Il trattino indica che il corrispondente flag `hide*` è impostato.
 
+"Social" è il feed Fediverso (`/social`, flag `hideSocial`) — **non** la bacheca. La bacheca ha un'impostazione sua, `boardEnabled`, che il wizard non tocca ed è spenta finché non la attivi da Admin Settings.
+
 - **Solo Artist** — un portfolio: le tue uscite, vendita diretta, presenza sul Fediverso. Le superfici di community sono spente.
 - **Record Label** — un roster: profili artista, catalogo, store centrale, scoperta di rete attiva.
-- **Music Curator** — playlist e scoperta: Dig per le fonti esterne, board attiva, gli ascoltatori possono autopubblicarsi.
+- **Music Curator** — playlist e scoperta: Dig per le fonti esterne, feed social attivo, gli ascoltatori possono autopubblicarsi.
 - **Web Radio / Streamer** — trasmissione dal vivo: moduli Live e Dig attivi, store spento.
 - **Sound Designer** — sample pack gratuiti: Samples, Collab e Lab attivi, autopubblicazione consentita.
-- **Listening Room** — libreria condivisa e cartelle Sidecamp, tutto il resto rimosso.
+- **Listening Room** — ascolto condiviso: libreria, cartelle Sidecamp e feed social, tutto il resto rimosso.
 
 ## Cambiare idea
 

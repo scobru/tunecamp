@@ -186,7 +186,7 @@ const PRESETS: Record<string, ProfilePreset> = {
     icon: MessageCircle,
     flags: {
       hideStore: true,
-      hideSocial: true,
+      hideSocial: false,
       hideNetwork: false,
       hideDig: true,
       hideLive: true,
@@ -202,7 +202,7 @@ const PRESETS: Record<string, ProfilePreset> = {
     nextSteps: [
       "Open registrations so people can join the room",
       "Point Sidecamp at this instance to share a private folder with the room",
-      "Turn the board on in Admin Settings if you want a place to talk"
+      "Turn the board on in Admin Settings if you want a threaded place to talk"
     ]
   }
 };

@@ -21,23 +21,25 @@ Step 3 writes every flag in one `POST` to the settings endpoint together with `i
 
 `mode` decides the shape of the homepage (`single_artist`, `label`, `community`). The `hide*` flags remove sections from the navigation and refuse their API routes for non-admins.
 
-| Profile | Mode | Store | Board | Network | Dig | Live | Samples | Collab | Lab | Public registration | Listener self-publish |
+| Profile | Mode | Store | Social | Network | Dig | Live | Samples | Collab | Lab | Public registration | Listener self-publish |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | **Solo Artist** | `single_artist` | ✅ | ✅ | — | — | — | — | — | — | — | — |
 | **Record Label** | `label` | ✅ | ✅ | ✅ | — | — | — | — | — | ✅ | — |
 | **Music Curator** | `community` | — | ✅ | ✅ | ✅ | — | — | — | — | ✅ | ✅ |
 | **Web Radio / Streamer** | `community` | — | ✅ | — | ✅ | ✅ | — | — | — | ✅ | — |
 | **Sound Designer** | `community` | — | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Listening Room** | `community` | — | — | ✅ | — | — | — | — | — | ✅ | — |
+| **Listening Room** | `community` | — | ✅ | ✅ | — | — | — | — | — | ✅ | — |
 
 ✅ = the module is on for that profile. A dash means the corresponding `hide*` flag is set.
 
+"Social" is the Fediverse feed (`/social`, flag `hideSocial`) — **not** the message board. The board has its own setting, `boardEnabled`, which the wizard does not touch and which is off unless you enable it in Admin Settings.
+
 - **Solo Artist** — a portfolio: your releases, direct sales, Fediverse presence. Community surfaces are off.
 - **Record Label** — a roster: artist profiles, catalog, central store, network discovery on.
-- **Music Curator** — playlists and discovery: Dig for external sources, board on, listeners may self-publish.
+- **Music Curator** — playlists and discovery: Dig for external sources, social feed on, listeners may self-publish.
 - **Web Radio / Streamer** — live broadcasting: the Live module and Dig on, store off.
 - **Sound Designer** — free sample packs: Samples, Collab and Lab on, listeners may self-publish.
-- **Listening Room** — a shared library and Sidecamp folder sharing, with everything else stripped out.
+- **Listening Room** — listening together: the shared library, Sidecamp folder sharing and the social feed, with everything else stripped out.
 
 ## Changing your mind
 
