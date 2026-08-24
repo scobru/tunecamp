@@ -307,8 +307,6 @@ export interface SiteSettings {
 	peerEnabled?: boolean | string;
 	peerAllowDownloads?: boolean | string;
 	peerFederation?: boolean | string;
-	peerChatEnabled?: boolean | string;
-	peerChatGuestEnabled?: boolean | string;
 	brandPrimary?: string;
 	brandAccent?: string;
 	/** Custom Terms of Service (Markdown). Empty = built-in template. */
