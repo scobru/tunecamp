@@ -53,6 +53,7 @@ export default defineConfig({
 						text: "🚀 Getting Started",
 						items: [
 							{ text: "Quick Start", link: "/getting-started" },
+							{ text: "Instance Setup Wizard", link: "/setup-wizard" },
 							{ text: "Deploy on Railway", link: "/railway" },
 							{ text: "API & Services Setup", link: "/api-setup-guide" },
 							{ text: "Nginx", link: "/NGINX" },
@@ -63,7 +64,6 @@ export default defineConfig({
 						text: "🎧 User Guide",
 						items: [
 							{ text: "Roles & Permissions", link: "/ROLES" },
-							{ text: "Karma System (Archived)", link: "/karma" },
 							{ text: "Radio", link: "/radio" },
 							{ text: "Subsonic Protocol", link: "/subsonic" },
 							{ text: "Social & Community", link: "/social-features" },
@@ -157,6 +157,7 @@ export default defineConfig({
 						text: "🚀 Per Iniziare",
 						items: [
 							{ text: "Avvio Rapido", link: "/it/getting-started" },
+							{ text: "Wizard di Configurazione", link: "/it/setup-wizard" },
 							{ text: "Deploy su Railway", link: "/it/railway" },
 							{
 								text: "Configurazione API e Servizi",
@@ -170,7 +171,6 @@ export default defineConfig({
 						text: "🎧 Guida Utente",
 						items: [
 							{ text: "Ruoli e Permessi", link: "/it/ROLES" },
-							{ text: "Sistema Karma (Archiviato)", link: "/it/karma" },
 							{ text: "Radio", link: "/it/radio" },
 							{ text: "Protocollo Subsonic", link: "/it/subsonic" },
 							{ text: "Social e Community", link: "/it/social-features" },

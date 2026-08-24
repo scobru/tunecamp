@@ -142,7 +142,7 @@ Catalogo dei principali componenti React dell'applicazione web (`webapp/src/`), 
 
 - **Elenchi di libreria**: `AdminArtistsList`, `AdminAlbumsList`, `AdminTracksList`, `AdminReleasesList`, `AdminAssetsList`, `AdminUsersList`.
 - **Pannelli**: `AdminSettingsPanel`, `IntegrationsPanel` (mostra una card per ogni plugin frontend registrato, vedi [architecture-webapp.md](architecture-webapp.md#3-sistema-di-plugin-frontend-coreplugins-plugins)), `StoragePanel`, `AdminFederationPanel`, `ActivityPubPanel`, `IdentityPanel`, `AdminMaintenancePanel`, `BackupPanel`, `AdminRadioPanel` (controlli della stazione radio), `AdminLabAppsPanel` (gestione delle app Lab sandboxed), `AdminReportsPanel` (coda segnalazioni release), `PeerSessionsPanel` (monitoraggio sessioni peer federate), `SystemPanel` (sparkline live di CPU/RAM/storage).
-- **`SetupWizard.tsx`**: Flusso di configurazione iniziale dell'istanza.
+- **`SetupWizard.tsx`**: Wizard di configurazione dell'istanza (Admin → Setup, solo root admin). Applica un preset di profilo — flag dei moduli più modalità del sito — e può essere rilanciato in qualsiasi momento. Vedi [Wizard di Configurazione Istanza](./setup-wizard.md).
 - **`CurationQueue.tsx`**: Coda di curatela per promuovere le bozze a pubblicazioni ufficiali.
 
 ### Modali (`components/modals/`)

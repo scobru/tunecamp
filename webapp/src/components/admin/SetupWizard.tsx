@@ -144,7 +144,7 @@ const PRESETS: Record<string, ProfilePreset> = {
       mode: "community"
     },
     taglineTemplate: "[Station Name] — Independent Radio Station",
-    descTemplate: "Non-stop live radio. Listen to our streaming broadcasts and join the board chat in real time.",
+    descTemplate: "Non-stop live radio. Listen to our streaming broadcasts and join the discussion on the board.",
     nextSteps: [
       "Set up your Icecast or RTMP credentials to start the audio stream",
       "Start your first DJ Set broadcast from the Radio panel",
@@ -181,12 +181,12 @@ const PRESETS: Record<string, ProfilePreset> = {
   listeningRoom: {
     id: "listeningRoom",
     name: "Listening Room",
-    description: "A chat room with a record player. Everything else is off: people talk in the lobby, listen to your library and connect their own Sidecamp folders.",
+    description: "A shared record player. Everything else is off: people listen to your library together and connect their own Sidecamp folders.",
     gradient: "from-rose-500/20 to-red-500/20 border-rose-500/30 hover:border-rose-500/60",
     icon: MessageCircle,
     flags: {
       hideStore: true,
-      hideSocial: true,
+      hideSocial: false,
       hideNetwork: false,
       hideDig: true,
       hideLive: true,
@@ -198,11 +198,11 @@ const PRESETS: Record<string, ProfilePreset> = {
       mode: "community"
     },
     taglineTemplate: "[Room Name] — Listening Room",
-    descTemplate: "A small room for listening together. Join the lobby, talk to whoever is around and play from the shared library.",
+    descTemplate: "A small room for listening together. Play from the shared library and bring your own.",
     nextSteps: [
-      "Open registrations so people can join the lobby",
+      "Open registrations so people can join the room",
       "Point Sidecamp at this instance to share a private folder with the room",
-      "Send direct messages: they are end-to-end encrypted and never stored here"
+      "Turn the board on in Admin Settings if you want a threaded place to talk"
     ]
   }
 };
