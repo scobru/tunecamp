@@ -33,9 +33,6 @@ interface ProfilePreset {
     hideSamples: boolean;
     hideCollab: boolean;
     hideLab: boolean;
-    // Inverted when saved: the stored setting is `peerChatEnabled`, but every
-    // other module in this wizard is expressed as `hide*`, so keep it uniform.
-    hideChat: boolean;
     allowPublicRegistration: boolean;
     listenerSelfPublish: boolean;
     mode: 'label' | 'community' | 'single_artist';
@@ -61,7 +58,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideSamples: true,
       hideCollab: true,
       hideLab: true,
-      hideChat: true,
       allowPublicRegistration: false,
       listenerSelfPublish: false,
       mode: "single_artist"
@@ -89,7 +85,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideSamples: true,
       hideCollab: true,
       hideLab: true,
-      hideChat: true,
       allowPublicRegistration: true,
       listenerSelfPublish: false,
       mode: "label"
@@ -117,7 +112,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideSamples: true,
       hideCollab: true,
       hideLab: true,
-      hideChat: false,
       allowPublicRegistration: true,
       listenerSelfPublish: true,
       mode: "community"
@@ -145,7 +139,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideSamples: true,
       hideCollab: true,
       hideLab: true,
-      hideChat: true,
       allowPublicRegistration: true,
       listenerSelfPublish: false,
       mode: "community"
@@ -173,7 +166,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideSamples: false,
       hideCollab: false,
       hideLab: false,
-      hideChat: true,
       allowPublicRegistration: true,
       listenerSelfPublish: true,
       mode: "community"
@@ -201,7 +193,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideSamples: true,
       hideCollab: true,
       hideLab: true,
-      hideChat: false,
       allowPublicRegistration: true,
       listenerSelfPublish: false,
       mode: "community"
@@ -303,10 +294,6 @@ export const SetupWizard = () => {
     if (flagsConfig.hideLab && !isTrue(currentSettings.hideLab)) {
       warnings.push("The Lab Apps section will be disabled.");
     }
-    // Chat is stored as an enable flag, so the comparison is inverted here.
-    if (flagsConfig.hideChat && isTrue(currentSettings.peerChatEnabled)) {
-      warnings.push("Peer Chat will be disabled (the lobby and direct messages go away).");
-    }
     if (!flagsConfig.allowPublicRegistration && isTrue(currentSettings.allowPublicRegistration)) {
       warnings.push("Public registrations will be disabled (only administrators can add users).");
     }
@@ -338,7 +325,6 @@ export const SetupWizard = () => {
         hideSamples: flagsConfig.hideSamples,
         hideCollab: flagsConfig.hideCollab,
         hideLab: flagsConfig.hideLab,
-        peerChatEnabled: !flagsConfig.hideChat,
         allowPublicRegistration: flagsConfig.allowPublicRegistration,
         listenerSelfPublish: flagsConfig.listenerSelfPublish,
         mode: flagsConfig.mode
@@ -589,21 +575,6 @@ export const SetupWizard = () => {
                     className="toggle toggle-primary toggle-sm"
                     checked={!flagsConfig.hideLab}
                     onChange={(e) => setFlagsConfig({ ...flagsConfig, hideLab: !e.target.checked })}
-                  />
-                </label>
-              </div>
-
-              <div className="form-control">
-                <label className="label cursor-pointer justify-between py-1.5">
-                  <div>
-                    <span className="label-text font-semibold text-sm">Peer Chat</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Real-time lobby plus end-to-end encrypted direct messages</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-primary toggle-sm"
-                    checked={!flagsConfig.hideChat}
-                    onChange={(e) => setFlagsConfig({ ...flagsConfig, hideChat: !e.target.checked })}
                   />
                 </label>
               </div>

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { KeyRound } from 'lucide-react';
 import API from '../../services/api';
 import { notify } from '../../utils/notify';
-import { useAuthStore } from '../../stores/useAuthStore';
 
 export const ChangePasswordCard = () => {
     const [currentPassword, setCurrentPassword] = useState('');
@@ -23,14 +22,6 @@ export const ChangePasswordCard = () => {
             const res: any = await API.changePassword(currentPassword, newPassword);
             // The server bumps the token version, so the old token is now invalid
             if (res?.token) API.setToken(res.token);
-            // The Zen identity vault is sealed with the old password until it is
-            // re-wrapped — skip this and the next login can't open it, taking the
-            // user's chat identity and every DM sent to it with it.
-            try {
-                await useAuthStore.getState().resealChatIdentity(newPassword);
-            } catch {
-                notify.error(null, 'Password changed, but re-encrypting your chat identity failed. Log out and back in before changing it again.');
-            }
             notify.success('Password changed successfully');
             setCurrentPassword('');
             setNewPassword('');

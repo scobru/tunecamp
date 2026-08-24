@@ -68,19 +68,6 @@ describe("Express App Bootstrap & Routing Setup", () => {
 			expect(res.headers["access-control-allow-origin"]).toBe("https://my-app.tunecamp.net");
 		});
 
-		test("chat polling routes allow wildcard CORS for desktop P2P clients", async () => {
-			const { app } = createApp(dummyConfig);
-			app.get("/api/chat/history", (req, res) => res.json({ messages: [] }));
-
-			const res = await request(app)
-				.get("/api/chat/history")
-				.set("Origin", "http://localhost:5173");
-
-			expect(res.status).toBe(200);
-			expect(res.headers["access-control-allow-origin"]).toBe("*");
-		});
-	});
-
 	// ── Static & Fallback Routes ────────────────────────────────────────────
 
 	describe("setupStaticAndFallbackRoutes", () => {

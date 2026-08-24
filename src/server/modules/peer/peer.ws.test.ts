@@ -3,7 +3,6 @@ import http from 'http';
 import { WebSocket as WSClient } from 'ws';
 import { canUsePeer, createPeerWsHandler } from './peer.ws.js';
 import { PeerService } from './peer.service.js';
-import { createChatService, ChatService } from '../chat/chat.service.js';
 import { UserRole } from '../../common/visibility.js';
 import type { DatabaseService } from '../../core/database.types.js';
 
@@ -67,7 +66,6 @@ function waitForUnexpectedResponse(ws: WSClient, timeoutMs = 2000): Promise<numb
 describe('createPeerWsHandler', () => {
     let server: http.Server;
     let peerService: PeerService;
-    let chatService: ChatService;
     let clients: WSClient[] = [];
 
     afterEach(async () => {
@@ -93,13 +91,11 @@ describe('createPeerWsHandler', () => {
 
         peerService = new PeerService(mockDatabase);
         peerService.stopHeartbeat(); // avoid interval leaking across tests
-        chatService = createChatService();
 
         const container = {
             identity: { getSetting: (key: string) => settings[key] },
             authService: { verifyToken: jest.fn(), getUserByUsername: jest.fn() },
             peerService,
-            chatService,
         } as any;
 
         server = http.createServer();
@@ -141,37 +137,3 @@ describe('createPeerWsHandler', () => {
             expect(status).toBe(503);
         });
     });
-
-    describe('pubkey relay', () => {
-        it('broadcasts a newly announced pubkey to other connected peers', async () => {
-            const port = await setup({ peerEnabled: 'true', peerGuestEnabled: 'true' });
-
-            const alice = connect(port, '?guestName=alice');
-            await nextMessage(alice, (m) => m.type === 'auth_ok');
-
-            const bob = connect(port, '?guestName=bob');
-            await nextMessage(bob, (m) => m.type === 'auth_ok');
-
-            alice.send(JSON.stringify({ type: 'pubkey', pubkey: 'alice-pub' }));
-            const relayed = await nextMessage(bob, (m) => m.type === 'pubkey');
-
-            expect(relayed.pubkey).toBe('alice-pub');
-            expect(relayed.from).toContain('alice');
-        });
-
-        it('sends the roster of already-known pubkeys back to the newly announcing peer', async () => {
-            const port = await setup({ peerEnabled: 'true', peerGuestEnabled: 'true' });
-
-            const alice = connect(port, '?guestName=alice');
-            await nextMessage(alice, (m) => m.type === 'auth_ok');
-            alice.send(JSON.stringify({ type: 'pubkey', pubkey: 'alice-pub' }));
-
-            const bob = connect(port, '?guestName=bob');
-            await nextMessage(bob, (m) => m.type === 'auth_ok');
-            bob.send(JSON.stringify({ type: 'pubkey', pubkey: 'bob-pub' }));
-
-            const rosterEntry = await nextMessage(bob, (m) => m.type === 'pubkey' && m.pubkey === 'alice-pub');
-            expect(rosterEntry.from).toContain('alice');
-        });
-    });
-});

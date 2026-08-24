@@ -4,15 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
+### Removed
 
-- **Recovery for an unopenable chat vault**: `POST /api/auth/zen/keys/rotate` mints a replacement Zen identity for accounts whose vault no longer opens. `zen_priv` is sealed under whatever password was current when it was written, and every server-side password path (admin change, e-mail reset, security questions) rewrites the hash without re-sealing the vault — the server cannot open it — so the old private key is simply gone and `POST /keys` refuses any other public key. Rotation takes the account password, is rate-limited, and is refused for accounts whose identity comes from the FID portal. The chat unlock prompt offers it only after unlocking has actually failed, and warns that old DMs stay unreadable and peers get one fingerprint to re-accept.
-- **Chat identity unlock, once per device**: `GET /api/auth/zen/keys` returns the caller's own Zen public key and the vault blob sealed under their password (the login response has always returned both; a session that did not just log in with a password — SSO, a restored token, a second browser — had no other way to get them). The chat page shows an unlock prompt when the account has a vault this device cannot open, and caches the pair locally afterwards.
-
-### Fixed
-
-- **The chat unlock prompt says which failure it hit** instead of reporting "that password doesn't open the vault" for all four. A vault sealed under an older password, a vault whose key no longer matches the account's published one, an identity whose private half lives in the FID portal, and a refused first publish each need a different answer from the user — and only the first is about the password being mistyped.
-- **Chat no longer asks peers to re-accept your fingerprint on every connect**: a device without the account's identity used to fall back to a random per-connection keypair. That key could not be held past the session and changed on every connect, so every peer who had pinned the real key got a key-change warning to clear each time. The client now stays identity-less instead: no key is announced, and DMs are refused ("chat identity locked on this device") rather than encrypted under a throwaway key. Requires `@tunecamp/chat` >= 3.3.0.
+- **Peer chat, in full.** TuneCamp is a music, federation and publishing platform; messaging moves to [linda-pear](https://github.com/scobru/linda-pear), a P2P messenger that does it properly instead of a second-best copy riding on a music instance. Gone: the `/ws/chat` socket, `/api/chat/*` and `/api/chat/federated/*`, the chat service and its federation transport, the lobby, rooms, contacts and blocks, the webapp Chat page and its nav entry, the `peerChatEnabled` / `peerChatGuestEnabled` settings and their admin toggles, and the `@tunecamp/chat` dependency. `/ws/peer` no longer registers into a chat roster and no longer relays `chat`, `pubkey` or `rtc_signal`; file sharing runs on PeerService's own session registry and is untouched.
+- **The Zen identity vault (`zen_priv`).** It existed so chat could derive a shared secret, and nothing else ever opened it: `zen_pub` stays, and every FID path that matters — `/link`, `/set`, `/sso`, `/verify` — is unchanged, because the portal holds the private half and the instance only verifies signatures against the public one. Login no longer returns `zenPriv`, `POST`/`GET /api/auth/zen/keys` and `POST /api/auth/zen/keys/rotate` are gone, and the webapp no longer mints a Zen identity at registration. Local accounts now get a `zen_pub` only by linking one from the FID portal.
+- The `peer_chat_messages`, `chat_rooms`, `chat_room_messages`, `peer_chat_bans` and contacts tables are **left in place** and simply go unused. Dropping them is a separate migration, so an instance can roll back to 5.5.0 without losing its history.
 
 ## [5.5.0] - 2026-08-22
 

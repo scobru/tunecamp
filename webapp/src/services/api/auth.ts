@@ -31,58 +31,10 @@ export const authApi = {
 				isActive?: boolean;
 				/** Zen identity public key, null for accounts that have none yet. */
 				zenPub?: string | null;
-				/** The pair sealed under the user's password. Opaque to the server. */
-				zenPriv?: string | null;
 				zenAuthMode?: string;
 			}>("auth/login", { username, password, pubKey, proof }),
 		),
 
-	/**
-	 * The account's own Zen identity: the public key and the vault blob sealed
-	 * under the user's password. Lets a session that did not log in with a
-	 * password (SSO, restored token, another browser) recover the same identity
-	 * instead of chatting keyless.
-	 */
-	getZenKeys: () =>
-		handleResponse(
-			api.get<{ zenPub: string | null; zenPriv: string | null }>(
-				"auth/zen/keys",
-			),
-		),
-
-	/**
-	 * Replace the account's Zen identity with a new pair, for when the vault can
-	 * no longer be opened (a password reset leaves it sealed under the old one).
-	 * Takes the account password because it discards a key: DMs to the old one
-	 * stay unreadable and peers get one key-change warning to accept. Refused for
-	 * accounts whose identity comes from the FID portal.
-	 */
-	rotateZenKeys: (
-		password: string,
-		zenPubKey: string,
-		encryptedZenPriv: string,
-	) =>
-		handleResponse(
-			api.post<{ success: boolean; zenPub: string }>("auth/zen/keys/rotate", {
-				password,
-				zenPubKey,
-				encryptedZenPriv,
-			}),
-		),
-
-	/**
-	 * Publish the account's Zen identity: `encryptedZenPriv` must already be
-	 * sealed with the user's password client-side — the server stores it as an
-	 * opaque blob and can never open it. Rejected with 409 if it would change an
-	 * existing `zen_pub` (that needs proof of key possession via `auth/zen/set`).
-	 */
-	uploadZenKeys: (zenPubKey: string, encryptedZenPriv: string) =>
-		handleResponse(
-			api.post<{ success: boolean; zenPub: string }>("auth/zen/keys", {
-				zenPubKey,
-				encryptedZenPriv,
-			}),
-		),
 	registerUser: (
 		username: string,
 		password: string,

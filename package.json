@@ -49,7 +49,6 @@
     "@js-temporal/polyfill": "^0.5.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@sentry/node": "^10.57.0",
-    "@tunecamp/chat": "github:scobru/tunecamp-chat#v3.3.0",
     "adm-zip": "^0.5.16",
     "archiver": "^7.0.1",
     "axios": "^1.15.0",

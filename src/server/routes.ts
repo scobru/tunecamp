@@ -41,9 +41,6 @@ import { createStorageRouter } from "./routes/library/storage.js";
 import { createTaskRoutes } from "./routes/admin/tasks.js";
 import { createRadioRoutes } from "./routes/api/radio.js";
 import { createPeerWsHandler } from "./modules/peer/peer.ws.js";
-import { createChatWsHandler } from "./modules/chat/chat.ws.js";
-import { createChatRoutes } from "./routes/api/chat.js";
-import { createChatFederationRoutes } from "./routes/network/chat-federation.js";
 import { createPeersRoutes } from "./routes/api/peers.js";
 import { createLabAppsRoutes } from "./routes/admin/lab-apps.js";
 import { createLifecycleRoutes } from "./routes/api/lifecycle.js";
@@ -60,7 +57,6 @@ export function registerRoutes(
 	const isSolo = container.catalogService.isSingleArtist();
 
 	createPeerWsHandler(server, container);
-	createChatWsHandler(server, container);
 
 	app.use(
 		"/api/admin/upload",
@@ -216,16 +212,6 @@ export function registerRoutes(
 			}),
 			createBoardRoutes(container),
 		);
-		app.use(
-			"/api/chat",
-			authMiddleware.optionalAuth,
-			requireModuleEnabled(container, "peerChatEnabled", {
-				invert: true,
-				allowAdmin: true,
-			}),
-			createChatRoutes(container),
-		);
-		app.use("/api/chat/federated", createChatFederationRoutes(container));
 	}
 	app.use(
 		"/api/live",

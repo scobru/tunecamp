@@ -132,67 +132,6 @@ describe("Zen SEA Routes — Supplementary", () => {
 
 	// --- /keys ---
 
-	describe("POST /api/auth/zen/keys", () => {
-		test("rejects unauthenticated requests", async () => {
-			const res = await request(app)
-				.post("/api/auth/zen/keys")
-				.send({ zenPubKey: keys.pub, encryptedZenPriv: "vault-data" });
-			expect(res.status).toBe(401);
-		});
-
-		test("rejects missing zenPubKey or encryptedZenPriv", async () => {
-			const res = await request(app)
-				.post("/api/auth/zen/keys")
-				.set("Authorization", "Bearer test-token")
-				.send({ zenPubKey: keys.pub });
-			expect(res.status).toBe(400);
-			expect(res.body.error).toContain("encryptedZenPriv");
-		});
-
-		test("accepts vault upload for matching zen_pub", async () => {
-			const res = await request(app)
-				.post("/api/auth/zen/keys")
-				.set("Authorization", "Bearer test-token")
-				.send({ zenPubKey: keys.pub, encryptedZenPriv: "encrypted-data-here" });
-			expect(res.status).toBe(200);
-			expect(res.body.success).toBe(true);
-		});
-
-		test("rejects pub-key mismatch when account already has a different zen_pub", async () => {
-			const res = await request(app)
-				.post("/api/auth/zen/keys")
-				.set("Authorization", "Bearer test-token")
-				.send({
-					zenPubKey: altKeys.pub,
-					encryptedZenPriv: "encrypted-data-here",
-				});
-			expect(res.status).toBe(409);
-			expect(res.body.error).toContain("does not match");
-		});
-
-		test("rejects if zen_pub is taken by another account during first-time binding", async () => {
-			// Account has no zen_pub yet
-			usersByUsername.alice.zen_pub = null;
-			// But another account owns it
-			usersByUsername.bob = {
-				id: 2,
-				username: "bob",
-				zen_pub: altKeys.pub,
-				is_active: 1,
-			};
-
-			const res = await request(app)
-				.post("/api/auth/zen/keys")
-				.set("Authorization", "Bearer test-token")
-				.send({
-					zenPubKey: altKeys.pub,
-					encryptedZenPriv: "encrypted-data-here",
-				});
-			expect(res.status).toBe(409);
-			expect(res.body.error).toContain("already linked");
-		});
-	});
-
 	// --- /verify ---
 
 	describe("POST /api/auth/zen/verify", () => {

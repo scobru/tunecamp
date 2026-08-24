@@ -95,11 +95,9 @@ export function createAuthRoutes(container: ServiceContainer): Router {
 						) {
 							result = false;
 						} else {
-							// populate zenPub and zenPriv for response payload
 							const fullUser = authService.getUserByUsername(userToAuth) as any;
 							if (fullUser) {
 								result.zenPub = zenPubKey;
-								result.zenPriv = fullUser.zen_priv;
 								result.zenAuthMode = fullUser.zen_auth_mode;
 							}
 						}
@@ -110,13 +108,7 @@ export function createAuthRoutes(container: ServiceContainer): Router {
 					if (result && result.success) {
 						const dbUser = authService.getUserByUsername(userToAuth) as any;
 						result.zenAuthMode = dbUser?.zen_auth_mode || "local";
-						// The Zen identity is what chat E2EE keys off, so a password
-						// login needs it too. `zen_priv` is a vault blob encrypted
-						// client-side under this same password: the server stores it
-						// opaquely and cannot open it, so returning it reveals nothing
-						// the caller did not already have to know.
 						result.zenPub = dbUser?.zen_pub || null;
-						result.zenPriv = dbUser?.zen_priv || null;
 					}
 				} else {
 					return res
@@ -154,7 +146,6 @@ export function createAuthRoutes(container: ServiceContainer): Router {
 					mustChangePassword: await authService.isDefaultPassword(userToAuth),
 					isActive: result.isActive,
 					zenPub: result.zenPub,
-					zenPriv: result.zenPriv,
 					zenAuthMode: result.zenAuthMode,
 				});
 			} catch (error) {

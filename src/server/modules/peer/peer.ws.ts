@@ -101,16 +101,6 @@ export function createPeerWsHandler(
 						allowDownloads,
 					);
 
-					// Join the shared chat registry so daemons and browser
-					// clients (/ws/chat) share one lobby.
-					container.chatService.register(
-						sessionId,
-						username,
-						ws,
-						false,
-						userId,
-					);
-
 					// Send auth_ok
 					ws.send(JSON.stringify({ type: "auth_ok", sessionId }));
 
@@ -152,37 +142,6 @@ export function createPeerWsHandler(
 								case "pong":
 									container.peerService.handlePong(sessionId);
 									break;
-								case "chat":
-									container.chatService.relayChat(
-										sessionId,
-										message.to,
-										message.text,
-										message.ref,
-									);
-									break;
-								case "pubkey": {
-									const roster = container.chatService.setPubkey(
-										sessionId,
-										message.pubkey,
-									);
-									for (const r of roster) {
-										ws.send(
-											JSON.stringify({
-												type: "pubkey",
-												from: r.username,
-												pubkey: r.pubkey,
-											}),
-										);
-									}
-									break;
-								}
-								case "rtc_signal":
-									container.chatService.relayRtcSignal(
-										sessionId,
-										message.to || message.toSessionId,
-										message.signal,
-									);
-									break;
 								default:
 									console.warn(
 										`[PeerWS] Unknown message type: ${message.type}`,
@@ -197,7 +156,6 @@ export function createPeerWsHandler(
 					});
 
 					ws.on("close", () => {
-						container.chatService.unregister(sessionId);
 						container.peerService.unregisterSession(sessionId);
 					});
 
@@ -206,7 +164,6 @@ export function createPeerWsHandler(
 							`[PeerWS] WebSocket error in session ${sessionId}:`,
 							err,
 						);
-						container.chatService.unregister(sessionId);
 						container.peerService.unregisterSession(sessionId);
 					});
 				});

@@ -42,8 +42,6 @@ import type { BoardService } from "../modules/board/board.service.js";
 import type { LiveService } from "../modules/live/live.service.js";
 import type { RadioService } from "../modules/radio/radio.service.js";
 import type { PeerService } from "../modules/peer/peer.service.js";
-import type { ChatService } from "../modules/chat/chat.service.js";
-import type { ChatFederationService } from "../modules/chat/chat-federation.service.js";
 import type { SampleRepository } from "../repositories/sample.repository.js";
 import type { SamplePackRepository } from "../repositories/sample-pack.repository.js";
 import type { CollabRepository } from "../repositories/collab.repository.js";
@@ -95,8 +93,6 @@ export interface ServiceContainer {
 	liveService: LiveService;
 	radioService: RadioService;
 	peerService: PeerService;
-	chatService: ChatService;
-	chatFederationService: ChatFederationService;
 	samplesRepository: SampleRepository;
 	samplePacksRepository: SamplePackRepository;
 	collabRepository: CollabRepository;

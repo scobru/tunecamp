@@ -42,9 +42,6 @@ export const SetupWizardModal = () => {
         setLoading(true);
         try {
             await API.changePassword(currentPassword, newPassword);
-            // Re-wrap the Zen identity vault under the new password, or the next
-            // login cannot open it and the chat identity is lost.
-            await useAuthStore.getState().resealChatIdentity(newPassword).catch(() => {});
             if (isRootAdmin) {
                 setStep(2);
             } else {
