@@ -444,6 +444,33 @@ describe('useAuthStore', () => {
         expect(useAuthStore.getState().chatIdentityLocked).toBe(true);
     });
 
+    test('unlockChatIdentity reports why it failed instead of always blaming the password', async () => {
+        useAuthStore.setState({
+            user: { username: 'testuser' } as any,
+            isAuthenticated: true,
+            chatIdentityLocked: true,
+        });
+        // Identity bound elsewhere: a pub with no vault. Retyping the password
+        // cannot fix this, so the reason must not read as "wrong password".
+        vi.mocked(API.getZenKeys).mockResolvedValue({
+            zenPub: MINTED_PAIR.pub,
+            zenPriv: null,
+        });
+
+        expect(await useAuthStore.getState().unlockChatIdentity('hunter2')).toBe(false);
+        expect(useAuthStore.getState().chatUnlockError).toBe('identity-elsewhere');
+
+        // A vault that exists but does not open under this password is the one
+        // case where retyping is worth suggesting.
+        vi.mocked(API.getZenKeys).mockResolvedValue({
+            zenPub: MINTED_PAIR.pub,
+            zenPriv: fakeVault(MINTED_PAIR, 'hunter2'),
+        });
+
+        expect(await useAuthStore.getState().unlockChatIdentity('wrong')).toBe(false);
+        expect(useAuthStore.getState().chatUnlockError).toBe('vault-locked');
+    });
+
     test('logout removes the current user\'s chatKeyPair from localStorage and state', () => {
         const pair = { pub: 'p', priv: 's', epub: 'ep', epriv: 'es' };
         localStorage.setItem('tunecamp_chatkey_testuser', JSON.stringify(pair));

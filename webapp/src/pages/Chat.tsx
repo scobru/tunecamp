@@ -40,7 +40,8 @@ const formatTime = (ts: number) =>
 
 export default function Chat() {
 	const { settings: siteSettings, fetchFlags } = useSiteSettingsStore();
-	const { role, user, chatIdentityLocked, unlockChatIdentity } = useAuthStore();
+	const { role, user, chatIdentityLocked, chatUnlockError, unlockChatIdentity } =
+		useAuthStore();
 	const roleStr = String(role || "");
 	const isSiteAdmin =
 		roleStr === "admin" ||
@@ -223,7 +224,7 @@ export default function Chat() {
 	// locally afterwards, so this prompt appears once per browser, not per
 	// connection.
 	const [unlockPassword, setUnlockPassword] = useState("");
-	const [unlockError, setUnlockError] = useState(false);
+	const [unlockFailed, setUnlockFailed] = useState(false);
 	const [unlocking, setUnlocking] = useState(false);
 
 	const handleUnlockIdentity = async (e: React.FormEvent) => {
@@ -232,9 +233,23 @@ export default function Chat() {
 		setUnlocking(true);
 		const ok = await unlockChatIdentity(unlockPassword);
 		setUnlocking(false);
-		setUnlockError(!ok);
+		setUnlockFailed(!ok);
 		if (ok) setUnlockPassword("");
 	};
+
+	// Four different failures used to read as "wrong password", which sent people
+	// retyping a password that was never the problem.
+	const unlockErrorMessage = {
+		"vault-locked":
+			"That password doesn't open the vault. If it is your current one, the vault is still sealed under an older password — a password change that never re-sealed it, or an identity created through the FID portal under its own password. Try the password you had when the identity was created.",
+		"vault-mismatch":
+			"The vault opened but holds a different key than this account's published one. The identity was re-pointed without replacing the vault; it has to be re-linked from the FID portal.",
+		"identity-elsewhere":
+			"This account's key was bound from the FID portal and its private half was never stored here, so no password typed here can recover it. Link this instance from the portal instead.",
+		"publish-failed":
+			"Couldn't publish a new identity for this account — the server refused it. That key may already be linked to a different account.",
+		"fetch-failed": "Couldn't reach the server to fetch your sealed identity.",
+	} as const;
 
 	const handleAcceptKeyChange = (peerId: string) => {
 		const change = keyChanges[peerId];
@@ -598,7 +613,7 @@ export default function Chat() {
 										value={unlockPassword}
 										onChange={(e) => {
 											setUnlockPassword(e.target.value);
-											setUnlockError(false);
+											setUnlockFailed(false);
 										}}
 									/>
 									<button
@@ -609,9 +624,9 @@ export default function Chat() {
 										<Unlock size={12} /> Unlock
 									</button>
 								</div>
-								{unlockError && (
+								{unlockFailed && chatUnlockError && (
 									<p className="text-error">
-										That password doesn't open the vault.
+										{unlockErrorMessage[chatUnlockError]}
 									</p>
 								)}
 							</form>

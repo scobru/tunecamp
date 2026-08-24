@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **The chat unlock prompt says which failure it hit** instead of reporting "that password doesn't open the vault" for all four. A vault sealed under an older password, a vault whose key no longer matches the account's published one, an identity whose private half lives in the FID portal, and a refused first publish each need a different answer from the user — and only the first is about the password being mistyped.
 - **Chat no longer asks peers to re-accept your fingerprint on every connect**: a device without the account's identity used to fall back to a random per-connection keypair. That key could not be held past the session and changed on every connect, so every peer who had pinned the real key got a key-change warning to clear each time. The client now stays identity-less instead: no key is announced, and DMs are refused ("chat identity locked on this device") rather than encrypted under a throwaway key. Requires `@tunecamp/chat` >= 3.3.0.
 
 ## [5.5.0] - 2026-08-22

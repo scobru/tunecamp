@@ -49,19 +49,41 @@ function saveChatKeyPair(username: string, pair: ChatKeyPair): void {
  * from it: a derived pair would silently become a different identity the moment
  * the user changed their password.
  *
- * Returns null when this client cannot hold the key — the caller degrades to no
- * E2EE rather than minting a second identity for the same account.
+ * Returns a reason instead of the pair when this client cannot hold the key —
+ * the caller degrades to no E2EE rather than minting a second identity for the
+ * same account. The reasons are distinct because they need different answers
+ * from the user: a wrong password can be retyped, a vault sealed under an older
+ * password cannot, and an identity whose private half lives elsewhere is not
+ * something any password typed here can recover.
  */
+type ChatIdentityFailure =
+	/** The blob did not open. Either the password is wrong, or the vault was
+	 *  sealed under a previous one (a password change that never re-sealed it,
+	 *  or an identity provisioned through the FID portal under its password). */
+	| "vault-locked"
+	/** The vault opened but holds a different key than the account's zen_pub. */
+	| "vault-mismatch"
+	/** The account has a public key but no vault: the private half was never
+	 *  uploaded here, so it lives in the FID portal or another client. */
+	| "identity-elsewhere"
+	/** No identity yet and publishing a fresh one was refused by the server. */
+	| "publish-failed";
+
+type ChatIdentityResult =
+	| { pair: ChatKeyPair; reason?: undefined }
+	| { pair: null; reason: ChatIdentityFailure };
+
 async function resolveChatIdentity(
 	password: string,
 	zenPub?: string | null,
 	zenPriv?: string | null,
-): Promise<ChatKeyPair | null> {
+): Promise<ChatIdentityResult> {
 	// Existing identity, vault present: open it.
 	if (zenPriv) {
 		const pair = await decryptPairVault(zenPriv, password);
-		if (!pair?.pub) return null; // sealed under a different password
-		if (zenPub && pair.pub !== zenPub) return null; // vault/identity mismatch
+		if (!pair?.pub) return { pair: null, reason: "vault-locked" };
+		if (zenPub && pair.pub !== zenPub)
+			return { pair: null, reason: "vault-mismatch" };
 
 		// Vaults sealed before the PBKDF2 envelope stretch the password with a
 		// single SHA-256, so the copy the server holds is cheap to crack offline.
@@ -77,19 +99,23 @@ async function resolveChatIdentity(
 				/* keep the session; the next login retries the upgrade */
 			}
 		}
-		return pair as ChatKeyPair;
+		return { pair: pair as ChatKeyPair };
 	}
 
 	// Identity exists but its private half lives elsewhere (bound from the FID
 	// portal, vault never uploaded). Minting a pair here would fork the account
 	// into two identities, and the upload would be refused anyway.
-	if (zenPub) return null;
+	if (zenPub) return { pair: null, reason: "identity-elsewhere" };
 
 	// No identity yet: mint one and publish the sealed pair.
 	const pair = (await generateKeyPair()) as ChatKeyPair;
 	const vault = await encryptPairVault(pair, password);
-	await API.uploadZenKeys(pair.pub, vault);
-	return pair;
+	try {
+		await API.uploadZenKeys(pair.pub, vault);
+	} catch {
+		return { pair: null, reason: "publish-failed" };
+	}
+	return { pair };
 }
 
 interface AuthState {
@@ -113,6 +139,18 @@ interface AuthState {
 	 * and no throwaway key is minted in its place.
 	 */
 	chatIdentityLocked: boolean;
+	/**
+	 * Why the last attempt to hold the identity failed, so the UI can say which
+	 * of the four it was instead of blaming the password every time. Null when
+	 * the identity is held, or nothing has been tried yet.
+	 */
+	chatUnlockError:
+		| "vault-locked"
+		| "vault-mismatch"
+		| "identity-elsewhere"
+		| "publish-failed"
+		| "fetch-failed"
+		| null;
 
 	// Actions
 	init: () => Promise<void>;
@@ -158,6 +196,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 	isAuthenticating: false,
 	chatKeyPair: null,
 	chatIdentityLocked: false,
+	chatUnlockError: null,
 
 	// Compat helpers
 	adminUser: null,
@@ -221,7 +260,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 			if (status.authenticated && status.username && !get().chatKeyPair) {
 				const cached = loadChatKeyPair(status.username);
 				if (cached) {
-					set({ chatKeyPair: cached, chatIdentityLocked: false });
+					set({ chatKeyPair: cached, chatIdentityLocked: false, chatUnlockError: null });
 				} else {
 					// No pair on this device. The password can fix that in two of the
 					// three cases: open the vault the server holds, or mint the
@@ -283,13 +322,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
 			if (password) {
 				try {
-					const chatKeyPair = await resolveChatIdentity(
+					const { pair, reason } = await resolveChatIdentity(
 						password,
 						result.zenPub,
 						result.zenPriv,
 					);
-					set({ chatKeyPair, chatIdentityLocked: !chatKeyPair && !!result.zenPriv });
-					if (chatKeyPair) saveChatKeyPair(username, chatKeyPair);
+					set({
+						chatKeyPair: pair,
+						// "vault-locked" here means the vault is sealed under some
+						// older password, since this one just authenticated. The
+						// prompt still shows, because it is the only place that can
+						// say so.
+						chatIdentityLocked: !pair && reason !== "identity-elsewhere",
+						chatUnlockError: pair ? null : (reason ?? null),
+					});
+					if (pair) saveChatKeyPair(username, pair);
 				} catch {
 					set({ chatKeyPair: null });
 				}
@@ -312,12 +359,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 			const keys = await API.getZenKeys();
 			// Handles all three shapes: open an existing vault, mint and publish a
 			// first identity, or refuse when the private half lives elsewhere.
-			const pair = await resolveChatIdentity(password, keys?.zenPub, keys?.zenPriv);
-			if (!pair) return false;
+			const { pair, reason } = await resolveChatIdentity(
+				password,
+				keys?.zenPub,
+				keys?.zenPriv,
+			);
+			if (!pair) {
+				set({ chatUnlockError: reason });
+				return false;
+			}
 			saveChatKeyPair(username, pair);
-			set({ chatKeyPair: pair, chatIdentityLocked: false });
+			set({ chatKeyPair: pair, chatIdentityLocked: false, chatUnlockError: null });
 			return true;
 		} catch {
+			// Never got as far as opening anything: the request for the vault failed.
+			set({ chatUnlockError: "fetch-failed" });
 			return false;
 		}
 	},
@@ -361,9 +417,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 			try {
 				// Fresh account: no Zen identity yet, so this mints one and
 				// publishes the sealed pair.
-				const chatKeyPair = await resolveChatIdentity(password);
-				set({ chatKeyPair });
-				if (chatKeyPair) saveChatKeyPair(username, chatKeyPair);
+				const { pair } = await resolveChatIdentity(password);
+				set({ chatKeyPair: pair });
+				if (pair) saveChatKeyPair(username, pair);
 			} catch {
 				set({ chatKeyPair: null });
 			}
@@ -404,6 +460,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 			role: null,
 			chatKeyPair: null,
 			chatIdentityLocked: false,
+			chatUnlockError: null,
 		});
 	},
 }));
