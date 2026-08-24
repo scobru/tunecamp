@@ -40,9 +40,8 @@ Responsabile della scansione e dell'organizzazione della musica locale.
 - Autenticazione tramite token JWT (segreto letto dalle variabili d'ambiente, dal file `.jwt-secret` o generato al primo avvio).
 - Controllo dell'accesso basato sui ruoli (RBAC): Proprietario Istanza (Owner), Gestore (Manager), Curatore (Curator), Ascoltatore (Listener) (vedi [ROLES.md](./ROLES.md)).
 
-### 5. Community: Chat e Live (`modules/chat/`, `modules/live/`)
+### 5. Community: Live (`modules/live/`)
 
-- **Chat**: Chat autonoma di istanza con cronologia persistente in SQLite.
 - **Live**: Registro in memoria delle sessioni live (`live.service.ts`); il flusso multimediale **passa attraverso il server**. Il browser dell'artista cattura l'audio tramite `MediaRecorder` e invia segmenti webm, che il servizio `HlsLiveService` (`hls.service.ts`) invia a un processo FFmpeg persistente. FFmpeg produce una playlist HLS dinamica (segmenti AAC) distribuita a tutti gli ascoltatori: una singola codifica condivisa, a differenza della copia per singolo ascoltatore della precedente mesh WebRTC.
 
 ### 6. Integrazione Blockchain (`modules/publishing/`, rotte `api/payments.ts`)
@@ -76,13 +75,9 @@ TuneCamp utilizza **SQLite** come motore di database relazionale per la gestione
 - **`reports`**: Segnalazioni di copyright o contenuti inappropriati in attesa di moderazione.
 - **`bookmarks`**: Segnalibri personali degli utenti.
 
-### Chat in Tempo Reale
+### Ritirate: tabelle della chat
 
-- **`peer_chat_messages`**: Messaggi persistenti della lobby di community (limitati a 500 righe).
-- **`peer_chat_bans`** / **`peer_chat_mutes`**: Record di moderazione per ban e mute della chat.
-- **`chat_rooms`**: Stanze chat multi-utente dotate di un identificativo UUID persistente `global_id`.
-- **`chat_room_members`**: Mappatura dei membri delle stanze chat.
-- **`chat_room_messages`**: Cronologia e backlog dei messaggi all'interno delle stanze chat.
+La chat peer è stata rimossa; `peer_chat_messages`, `peer_chat_bans`, `peer_chat_mutes`, `chat_rooms`, `chat_room_members` e `chat_room_messages` vengono ancora create per sicurezza in caso di rollback, ma nessuno le legge o le scrive. Eliminarle è una migrazione ancora da scrivere.
 
 ### Condivisione P2P Peer Sharing (Sidecamp)
 
@@ -141,6 +136,6 @@ Gli endpoint sono suddivisi in rotte tematiche in `src/server/routes/`:
 - `/api/tracks`, `/api/albums`, `/api/artists`: Gestione della libreria.
 - `/api/admin`: Funzionalità amministrative.
 - `/api/ap`: Endpoint per la federazione ActivityPub.
-- `/api/chat`, `/api/live`: Chat di community e sessioni live.
+- `/api/live`: Sessioni live.
 - `/rest`: Compatibilità con il protocollo Subsonic/OpenSubsonic.
 - `/health`: Controllo dello stato del server (health check).

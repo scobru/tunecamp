@@ -67,7 +67,6 @@ export default defineConfig({
 							{ text: "Radio", link: "/radio" },
 							{ text: "Subsonic Protocol", link: "/subsonic" },
 							{ text: "Social & Community", link: "/social-features" },
-							{ text: "Chat & Real-time Messaging", link: "/chat" },
 							{ text: "Becoming an Artist & Selling", link: "/community-mode" },
 							{ text: "Payments & Monetization", link: "/payments" },
 						],
@@ -175,7 +174,6 @@ export default defineConfig({
 							{ text: "Radio", link: "/it/radio" },
 							{ text: "Protocollo Subsonic", link: "/it/subsonic" },
 							{ text: "Social e Community", link: "/it/social-features" },
-							{ text: "Chat e Messaggistica", link: "/it/chat" },
 							{
 								text: "Diventare Artista e Vendere",
 								link: "/it/community-mode",
