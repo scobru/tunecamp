@@ -28,6 +28,10 @@ import {
 	VolumeX,
 	Trash2,
 	HelpCircle,
+	UserPlus,
+	Ban,
+	Check,
+	X,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -87,6 +91,13 @@ export default function Chat() {
 		sendAdminAction,
 		formatUser,
 		client,
+		contactsData,
+		blocklist,
+		sendContactRequest,
+		acceptContactRequest,
+		rejectContactRequest,
+		blockUser,
+		unblockUser,
 	} = usePeerChat(isChatEnabled, to, activeRoomId);
 
 	const activeRoom = rooms.find((r: RoomInfo) => r.id === activeRoomId);
@@ -822,6 +833,37 @@ export default function Chat() {
 							);
 						})}
 
+						{contactsData.pendingIn.length > 0 && (
+							<>
+								<div className="flex items-center gap-2 text-xs font-semibold opacity-60 mt-3 mb-1 px-1">
+									<UserPlus size={14} />
+									Contact requests ({contactsData.pendingIn.length})
+								</div>
+								{contactsData.pendingIn.map((from: string) => (
+									<div
+										key={from}
+										className="flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg text-xs"
+									>
+										<span className="truncate font-medium flex-1">{formatUser(from)}</span>
+										<button
+											onClick={() => acceptContactRequest(from)}
+											className="btn btn-ghost btn-xs btn-square text-success"
+											title="Accept"
+										>
+											<Check size={12} />
+										</button>
+										<button
+											onClick={() => rejectContactRequest(from)}
+											className="btn btn-ghost btn-xs btn-square opacity-70 hover:opacity-100"
+											title="Reject"
+										>
+											<X size={12} />
+										</button>
+									</div>
+								))}
+							</>
+						)}
+
 						<div className="flex items-center gap-2 text-xs font-semibold opacity-60 mt-3 mb-1 px-1">
 							<Users size={14} />
 							Connected ({peers.length})
@@ -835,6 +877,9 @@ export default function Chat() {
 						{peers.map((peer: PeerInfo) => {
 							const isSelf = peer.username === username;
 							const unread = unreadCounts[peer.username] || 0;
+							const isContact = contactsData.contacts.includes(peer.username);
+							const isPendingOut = contactsData.pendingOut.includes(peer.username);
+							const isBlocked = blocklist.includes(peer.username);
 							return (
 								<div
 									key={peer.username}
@@ -886,6 +931,36 @@ export default function Chat() {
 										<span className="badge badge-sm badge-error text-white font-bold shrink-0">
 											{unread}
 										</span>
+									)}
+									{!isSelf && (
+										<div className="hidden group-hover:flex items-center gap-1 shrink-0">
+											{!isContact && !isPendingOut && (
+												<button
+													onClick={(e) => {
+														e.stopPropagation();
+														sendContactRequest(peer.username);
+													}}
+													className="btn btn-ghost btn-xs btn-square opacity-70 hover:opacity-100"
+													title="Add contact"
+												>
+													<UserPlus size={12} />
+												</button>
+											)}
+											<button
+												onClick={(e) => {
+													e.stopPropagation();
+													if (isBlocked) unblockUser(peer.username);
+													else blockUser(peer.username);
+												}}
+												className={clsx(
+													"btn btn-ghost btn-xs btn-square",
+													isBlocked ? "text-error" : "opacity-70 hover:opacity-100",
+												)}
+												title={isBlocked ? "Unblock" : "Block"}
+											>
+												<Ban size={12} />
+											</button>
+										</div>
 									)}
 									{canModerate && !isSelf && (
 										<div className="hidden group-hover:flex items-center gap-1 shrink-0">
