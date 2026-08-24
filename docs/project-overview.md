@@ -150,7 +150,7 @@ directory. For the overall frontend design see [architecture-webapp.md](./archit
   controls), `AdminLabAppsPanel` (manage sandboxed Lab apps), `AdminReportsPanel`
   (release reports queue), `PeerSessionsPanel` (federated peer session
   monitoring), `SystemPanel` (live CPU/RAM/storage sparklines).
-- **`SetupWizard.tsx`**: First-run instance setup flow.
+- **`SetupWizard.tsx`**: Instance setup wizard (Admin → Setup, root admin only). Applies a profile preset — module flags plus site mode — and can be re-run at any time. See [Instance Setup Wizard](./setup-wizard.md).
 - **`CurationQueue.tsx`**: Curation queue for promoting drafts to releases.
 
 ### Modals (`components/modals/`)
