@@ -149,6 +149,46 @@ describe("AuthService", () => {
 		});
 	});
 
+	describe("updateAdmin and outstanding tokens", () => {
+		/**
+		 * A token carries the role it was issued with. Without this, demoting an
+		 * account leaves its existing token spending the old privilege until it
+		 * expires — up to seven days.
+		 */
+		test("changing a role invalidates that account's existing tokens", async () => {
+			const { id } = await authService.createUser("mover", "pw", null);
+			const user = db.prepare("SELECT * FROM admin WHERE id = ?").get(id);
+			const token = authService.generateToken({
+				username: user.username,
+				userId: id,
+				role: user.role,
+				tokenVersion: user.token_version,
+			});
+			expect(await authService.verifyToken(token)).not.toBeNull();
+
+			authService.updateAdmin(id, null, "super_user");
+
+			expect(await authService.verifyToken(token)).toBeNull();
+		});
+
+		test("editing the artist link or quota leaves tokens alone", async () => {
+			const { id } = await authService.createUser("stayer", "pw", null);
+			const user = db.prepare("SELECT * FROM admin WHERE id = ?").get(id);
+			const token = authService.generateToken({
+				username: user.username,
+				userId: id,
+				role: user.role,
+				tokenVersion: user.token_version,
+			});
+
+			// Same role passed back in, plus an unrelated quota change: nobody
+			// should be logged out for having their storage adjusted.
+			authService.updateAdmin(id, null, user.role, 5_000_000);
+
+			expect(await authService.verifyToken(token)).not.toBeNull();
+		});
+	});
+
 	describe("encryptZenPrivHelper", () => {
 		const TEST_SECRET = "super-secret-key-12345";
 		const TEST_DATA = { user: "test", id: 42 };

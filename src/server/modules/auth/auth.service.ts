@@ -985,6 +985,18 @@ export function createAuthService(
 			];
 			const params: any[] = [artistId, artistId === null ? 1 : 0];
 
+			// Outstanding tokens carry the role they were issued with, so a
+			// demotion has to invalidate them or the old privilege survives
+			// until the token expires. Compared before the write, and only for
+			// an actual change: this method also edits artist links and storage
+			// quotas, and those must not log anyone out.
+			const previousRole = (
+				db.prepare("SELECT role FROM admin WHERE id = ?").get(id) as
+					| { role: UserRole }
+					| undefined
+			)?.role;
+			const roleChanged = !!role && !!previousRole && role !== previousRole;
+
 			if (role) {
 				if (id === 1 && role !== "admin" && role !== "root_admin") {
 					throw new Error("Cannot demote the primary admin");
@@ -1002,6 +1014,8 @@ export function createAuthService(
 			db.prepare(`UPDATE admin SET ${updates.join(", ")} WHERE id = ?`).run(
 				...params,
 			);
+
+			if (roleChanged) this.revokeTokens(id);
 		},
 
 		updateStorageUsed(userId: number, bytesUsed: number): void {

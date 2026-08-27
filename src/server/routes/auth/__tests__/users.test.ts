@@ -27,6 +27,10 @@ describe('Users Routes', () => {
             verifyToken: jest.fn<any>().mockResolvedValue({ username: 'testuser', role: UserRole.NORMAL_USER, isActive: true, userId: 10 }),
             isRootAdmin: jest.fn().mockReturnValue(false)
         };
+        // The guards resolve the account by id now; these tests describe it by
+        // username. Delegate so every existing mockReturnValue keeps working.
+        mockAuthService.getAdminById = jest.fn((...a: any[]) =>
+            mockAuthService.getUserByUsername(...a));
 
         mockAPService = {
             ensureUserKeys: (jest.fn() as any).mockResolvedValue(undefined),

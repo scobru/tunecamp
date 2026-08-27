@@ -16,7 +16,7 @@ const PAYLOAD: TokenPayload = {
 
 function makeAuthService(overrides: Partial<AuthService> & { payload?: TokenPayload | null } = {}): AuthService {
     const payload = overrides.payload !== undefined ? overrides.payload : PAYLOAD;
-    return {
+    const svc: any = {
         verifyToken: jest.fn(async (token: string) =>
             token === 'valid-token' ? payload : null
         ),
@@ -24,7 +24,13 @@ function makeAuthService(overrides: Partial<AuthService> & { payload?: TokenPayl
         getUserByZenPubKey: jest.fn(() => undefined),
         isRootAdmin: jest.fn(() => false),
         ...overrides,
-    } as unknown as AuthService;
+    } as any;
+    // The derivation resolves the account by id; these tests describe it by
+    // username. Route one to the other so the assertions keep their meaning.
+    if (!svc.getAdminById) {
+        svc.getAdminById = jest.fn((...a: any[]) => svc.getUserByUsername(...a));
+    }
+    return svc as unknown as AuthService;
 }
 
 function makeReq(originalUrl: string, opts: { queryToken?: string; header?: string } = {}): AuthenticatedRequest {
@@ -193,7 +199,36 @@ describe('auth middleware requireAdmin', () => {
         expect(req.isRootAdmin).toBe(false);
     });
 
-    test('DB user overrides token role and isActive', async () => {
+    test('DB user overrides token role', async () => {
+        const middleware = createAuthMiddleware(makeAuthService({
+            payload: { ...PAYLOAD, role: UserRole.NORMAL_USER },
+            getUserByUsername: jest.fn(() => ({
+                id: 42, username: 'listener', artist_id: null, artist_name: null,
+                role: UserRole.SUPER_USER, storage_quota: 0, is_active: 1,
+                created_at: '', is_root: false, can_peer: 0,
+            })),
+        }));
+        const req = makeReq('/api/admin/users', { header: 'Bearer valid-token' });
+        await middleware.requireAdmin(req, makeRes(), next);
+
+        expect(next).toHaveBeenCalled();
+        expect(req.role).toBe(UserRole.SUPER_USER);
+        expect(req.isActive).toBe(true);
+    });
+
+    /**
+     * CHANGED by the identity extraction, and not a change that was planned.
+     *
+     * The old derivation took the role from the account row but isActive from
+     * the token, so a deactivated account was flagged (req.isActive = false)
+     * yet still admitted, because the capability check ran against a context
+     * that believed it was active. The account row is now the source of both.
+     *
+     * Unreachable in production either way: verifyToken refuses a token whose
+     * account has is_active = 0 before a guard ever runs. This pins the safer
+     * behaviour so the two can never drift apart again.
+     */
+    test('CHANGED — an account inactive in the database is refused, not merely flagged', async () => {
         const middleware = createAuthMiddleware(makeAuthService({
             payload: { ...PAYLOAD, role: UserRole.NORMAL_USER },
             getUserByUsername: jest.fn(() => ({
@@ -203,27 +238,34 @@ describe('auth middleware requireAdmin', () => {
             })),
         }));
         const req = makeReq('/api/admin/users', { header: 'Bearer valid-token' });
-        await middleware.requireAdmin(req, makeRes(), next);
+        const res = makeRes();
+        await middleware.requireAdmin(req, res, next);
 
-        expect(next).toHaveBeenCalled();
-        expect(req.role).toBe(UserRole.SUPER_USER);
-        expect(req.isActive).toBe(false);
+        expect(next).not.toHaveBeenCalled();
     });
 
-    test('isRootAdmin comes from authService.isRootAdmin when a DB user exists', async () => {
-        const middleware = createAuthMiddleware(makeAuthService({
+    /**
+     * CHANGED (Q6) — isRootAdmin used to come from a second lookup,
+     * authService.isRootAdmin(username), which re-resolved the account by name
+     * with the same COLLATE NOCASE / alias ambiguity the derivation was moved
+     * off. The account row already reports is_root, so it is read from there.
+     */
+    test('CHANGED — isRootAdmin comes from the account row, not a second lookup by username', async () => {
+        const auth = makeAuthService({
             payload: { ...PAYLOAD, role: UserRole.ADMIN },
             getUserByUsername: jest.fn(() => ({
-                id: 42, username: 'listener', artist_id: null, artist_name: null,
+                id: 1, username: 'listener', artist_id: null, artist_name: null,
                 role: UserRole.ADMIN, storage_quota: 0, is_active: 1,
-                created_at: '', is_root: false, can_peer: 0,
+                created_at: '', is_root: true, can_peer: 0,
             })),
-            isRootAdmin: jest.fn(() => true),
-        }));
+            isRootAdmin: jest.fn(() => false),
+        });
+        const middleware = createAuthMiddleware(auth);
         const req = makeReq('/api/admin/users', { header: 'Bearer valid-token' });
         await middleware.requireAdmin(req, makeRes(), next);
 
         expect(req.isRootAdmin).toBe(true);
+        expect(auth.isRootAdmin).not.toHaveBeenCalled();
     });
 });
 
