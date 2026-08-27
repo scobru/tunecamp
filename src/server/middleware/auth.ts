@@ -31,6 +31,13 @@ function allowsQueryToken(req: Request): boolean {
 }
 
 /**
+ * The only endpoints reachable by a session whose account still has a default
+ * password: reading its own auth state, and setting a new password. Everything
+ * else is refused by `requirePasswordChanged`.
+ */
+const PASSWORD_LOCKDOWN_ALLOWLIST = /^\/api\/auth\/(password|status|login|setup)$/;
+
+/**
  * Creates auth middleware that validates JWT tokens
  */
 export function createAuthMiddleware(authService: AuthService) {
@@ -52,6 +59,51 @@ export function createAuthMiddleware(authService: AuthService) {
     }
 
     return {
+        /**
+         * Instance lockdown while an account still has a built-in default
+         * password (`admin` / the `tunecamp` reset sentinel).
+         *
+         * The frontend already shows a non-dismissable setup wizard, but that
+         * is cosmetic: the login endpoint hands out a fully-privileged 7-day
+         * JWT regardless, so anyone who skips the React app and posts straight
+         * to /api/auth/login owns the instance. This guard is the server-side
+         * half — a session authenticated with a default password may only
+         * reach the endpoints needed to change that password.
+         *
+         * Deliberately scoped to *authenticated* requests: anonymous public
+         * browsing, streaming and federation are unaffected, so a locked-down
+         * instance still serves its listeners while the admin is locked out of
+         * everything except fixing the credential.
+         */
+        async requirePasswordChanged(
+            req: AuthenticatedRequest,
+            res: Response,
+            next: NextFunction
+        ) {
+            const payload = await extractPayload(req);
+            const path = (req.originalUrl || req.url || "").split("?")[0];
+            // Subsonic authenticates by `u`/`p` query params rather than a JWT,
+            // so fall back to the username it claims; a default password there
+            // is refused outright (you cannot fix it over the Subsonic API).
+            // Scoped to /rest: on /api a `u` param means whatever that route
+            // wants it to mean, and must not be read as an identity claim.
+            const username = payload?.username
+                ?? (path.startsWith("/rest") && typeof req.query.u === "string"
+                    ? req.query.u
+                    : undefined);
+            if (!username) return next();
+
+            if (!(await authService.isDefaultPassword(username))) return next();
+
+            if (PASSWORD_LOCKDOWN_ALLOWLIST.test(path)) return next();
+
+            return res.status(403).json({
+                error: "Account is still using a default password. Change it before using this instance.",
+                code: "DEFAULT_PASSWORD_LOCKDOWN",
+                mustChangePassword: true,
+            });
+        },
+
         /**
          * Middleware that requires valid admin authentication (role='admin')
          */

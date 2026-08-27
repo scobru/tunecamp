@@ -137,9 +137,22 @@ The companion `listenerSelfPublishQuota` sets the default physical-upload quota 
 
 ## First Login: Setup Wizard
 
-When a user logs in and their account password is the temporary sentinel `tunecamp`, the web app blocks access behind a setup wizard until the password is changed. The backend signals this via the `mustChangePassword` flag returned by `POST /api/auth/login` (computed by `isDefaultPassword` in `auth.service.ts`, which checks for the `tunecamp` sentinel).
+When a user logs in and their account password is a built-in default, the web app blocks access behind a setup wizard until the password is changed. Two values count as defaults, both checked by `isDefaultPassword` in `auth.service.ts`: `admin`, the initial password of the bootstrap admin (`TUNECAMP_ADMIN_PASS`), and `tunecamp`, the sentinel an admin leaves behind when resetting someone's password. The backend signals it via the `mustChangePassword` flag on `POST /api/auth/login` and `/api/auth/status`.
 
-> Note: the bootstrap admin created on first run uses `admin`/`admin` (or `TUNECAMP_ADMIN_USER`/`TUNECAMP_ADMIN_PASS`), **not** `tunecamp` — so that account is not forced through the wizard automatically; change its password manually after the first login. The wizard fires for accounts an admin has reset to `tunecamp` (see below).
+**The wizard is not the security boundary — the server is.** A frontend modal only governs the frontend: login returns a full-privilege 7-day JWT whether or not the password is a default, so an unenforced wizard is bypassed by anyone who talks to the API directly, and the Subsonic endpoint at `/rest` never shows a wizard in the first place. The `requirePasswordChanged` middleware (`middleware/auth.ts`), mounted ahead of the entire route table, refuses such a session with `403 DEFAULT_PASSWORD_LOCKDOWN` everywhere except:
+
+| Allowed while locked down | Why |
+| --- | --- |
+| `POST /api/auth/password` | The way out — sets the new password. |
+| `GET /api/auth/status` | The wizard reads `mustChangePassword` from it. |
+| `POST /api/auth/login` | You must be able to authenticate to fix it. |
+| `POST /api/auth/setup` | First-run initial password. |
+
+`/rest` is refused with no exceptions: a Subsonic client cannot change a password, so there is nothing to allow. This holds even when the client authenticates with a Subsonic app password or a `tc_` API token — the account password is still the weak one, so the account is still locked.
+
+The lockdown applies only to *authenticated* requests. Anonymous browsing, streaming and federation are unaffected, so listeners keep working while the admin is confined to fixing the credential. The status code is `403` rather than `401` on purpose: the web app's API client treats `401` as a dead session and logs out, which would trap the admin in a login loop with no way to reach the wizard.
+
+Accounts with a real password never enter any of this — the check is memoised per username and cleared on any password write, so the cost is one bcrypt comparison per username per process. FID/Zen-only accounts store an empty `password_hash` and are never matched.
 
 What the wizard shows depends on the role:
 

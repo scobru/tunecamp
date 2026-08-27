@@ -56,6 +56,12 @@ export function registerRoutes(
 	const { authMiddleware } = container;
 	const isSolo = container.catalogService.isSingleArtist();
 
+	// Mounted before every router: an account still on a built-in default
+	// password may not use the instance beyond changing that password. Must stay
+	// ahead of the route table so no endpoint can be added outside its reach.
+	app.use("/api", authMiddleware.requirePasswordChanged);
+	app.use("/rest", authMiddleware.requirePasswordChanged);
+
 	createPeerWsHandler(server, container);
 
 	app.use(
