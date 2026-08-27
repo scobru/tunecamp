@@ -122,6 +122,36 @@ cd tunecamp
 docker-compose up -d --build
 ```
 
+#### Public URL without a domain
+
+If the machine is behind a router with no port forwarding and no domain, start
+the optional `tunnel` profile to get a free `https://<id>.srv.us` address over
+an SSH reverse tunnel:
+
+```bash
+docker compose --profile tunnel up -d
+```
+
+The address is printed in the tunnel container's logs:
+
+```bash
+docker compose --profile tunnel logs tunnel
+```
+
+It stays the same across restarts because it is derived from an SSH key kept in
+the `tunecamp_data` volume — losing that volume changes the address and breaks
+every link already shared. Federation is not configured automatically: paste the
+URL into Settings if you want this instance to federate.
+
+**Limits, from srv.us's own documentation.** The service does not record your
+traffic, but it does log IPs and ports, SSH usernames and keys, connections,
+tunnels and byte counts for up to a day, and reserves the right to reach your
+endpoint when handling abuse reports. Bandwidth you use is consumed twice on
+their side, and heavy usage may be throttled unless you contribute financially.
+Streaming a music library is the heavy case: this is fine for a handful of
+listeners, not for a public music site. Use a real domain and the reverse-proxy
+setup in `install.sh` before you get there.
+
 ### Using Node.js (Development)
 
 **Prerequisites**: Node.js 18+, npm 9+, FFmpeg installed

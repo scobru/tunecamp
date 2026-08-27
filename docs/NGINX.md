@@ -2,6 +2,8 @@
 
 To run Tunecamp in a production environment, it is highly recommended to use a reverse proxy like Nginx. This allows for SSL/TLS termination (required for ActivityPub federation) and better performance for serving static assets.
 
+> This guide assumes you have a domain and a machine reachable from the internet. If you are running from home behind a router, none of it applies — Nginx has nothing to terminate and Certbot has no domain to validate. Start the `tunnel` profile instead (`docker compose --profile tunnel up -d`) to get an `https://<id>.srv.us` address with no domain and no port forwarding, and come back here when you outgrow it.
+
 ## Recommended Nginx Configuration
 
 Below is a standard configuration template. Replace `your-domain.com` with your actual domain and ensure your SSL certificates are correctly pointed.

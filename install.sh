@@ -15,12 +15,17 @@ ADMIN_USER="admin"
 ADMIN_PASS=""
 MUSIC_DIR="/opt/tunecamp/music"
 INTERACTIVE=true
+TUNNEL=false
 
 # Parse flags
 while [[ $# -gt 0 ]]; do
   case $1 in
     -y|--non-interactive)
       INTERACTIVE=false
+      shift
+      ;;
+    --tunnel)
+      TUNNEL=true
       shift
       ;;
     *)
@@ -46,6 +51,19 @@ if [ "$INTERACTIVE" = true ] && [ -t 0 ]; then
   if [ -n "$DOMAIN" ]; then
     read -rp "Email for SSL notifications (Certbot): " input_email
     [ -n "$input_email" ] && EMAIL="$input_email"
+  else
+    # No domain: on a home machine behind NAT there is nothing to reach, and an
+    # IP-only setup is useless there. srv.us gives a free https URL over an SSH
+    # reverse tunnel with no account and no port forwarding.
+    echo ""
+    echo "No domain given. TuneCamp can expose a free public URL through srv.us,"
+    echo "an SSH reverse tunnel - useful if this machine is behind a router."
+    echo "It is a free relay for hobby traffic, not a CDN: fine for a handful of"
+    echo "listeners, not for a public music site."
+    read -rp "Enable the srv.us public URL? [y/N]: " input_tunnel
+    case "$input_tunnel" in
+      [yY]*) TUNNEL=true ;;
+    esac
   fi
 
   read -rp "Admin username [$ADMIN_USER]: " input_user
@@ -154,7 +172,12 @@ mkdir -p "$MUSIC_DIR"
 sed -i "s|- \${TUNECAMP_MUSIC_PATH:-./music}:|- $MUSIC_DIR:|g" "$INSTALL_DIR/docker-compose.yml" 2>/dev/null || true
 sed -i "s|- /path/to/your/music:|- $MUSIC_DIR:|g" "$INSTALL_DIR/docker-compose.yml" 2>/dev/null || true
 
-# Setup Nginx
+# Setup Nginx — skipped entirely in tunnel mode: srv.us terminates TLS and
+# forwards straight into the container, so a local reverse proxy would only add
+# a hop, and Certbot has no reachable domain to validate against.
+if [ "$TUNNEL" = true ]; then
+  echo "Tunnel mode: skipping Nginx and Certbot."
+else
 echo "Installing Nginx..."
 if [ "$PACKAGE_MANAGER" = "apt" ]; then
   apt-get install -y nginx
@@ -229,17 +252,43 @@ if [ -n "$DOMAIN" ]; then
     echo "Warning: Certbot SSL setup failed. Running on HTTP only."
   fi
 fi
+fi
 
 # Start Docker Compose
 echo "Starting TuneCamp..."
 cd "$INSTALL_DIR"
-$DOCKER_COMPOSE_CMD up -d --build
+COMPOSE_PROFILE_ARGS=""
+[ "$TUNNEL" = true ] && COMPOSE_PROFILE_ARGS="--profile tunnel"
+$DOCKER_COMPOSE_CMD $COMPOSE_PROFILE_ARGS up -d --build
+
+# The tunnel prints its assigned address once srv.us accepts the connection.
+TUNNEL_URL=""
+if [ "$TUNNEL" = true ]; then
+  echo "Waiting for the srv.us tunnel to come up..."
+  for _ in $(seq 1 30); do
+    TUNNEL_URL=$($DOCKER_COMPOSE_CMD $COMPOSE_PROFILE_ARGS logs tunnel 2>/dev/null \
+      | grep -oE 'https://[a-zA-Z0-9._-]+\.srv\.us' | head -n1 || true)
+    [ -n "$TUNNEL_URL" ] && break
+    sleep 2
+  done
+fi
 
 echo "========================================="
 echo "       TuneCamp Setup Complete!          "
 echo "========================================="
 if [ -n "$DOMAIN" ]; then
   echo "Access URL:     https://$DOMAIN"
+elif [ "$TUNNEL" = true ]; then
+  if [ -n "$TUNNEL_URL" ]; then
+    echo "Access URL:     $TUNNEL_URL"
+  else
+    echo "Access URL:     (tunnel still connecting)"
+    echo "                Run: $DOCKER_COMPOSE_CMD --profile tunnel logs tunnel"
+  fi
+  echo ""
+  echo "The URL stays the same across restarts because it is derived from the"
+  echo "SSH key kept in the tunecamp_data volume. Losing that volume changes"
+  echo "the address and breaks every link you shared."
 else
   VPS_IP=$(curl -s https://ifconfig.me || curl -s https://api.ipify.org || echo "your-vps-ip")
   echo "Access URL:     http://$VPS_IP"

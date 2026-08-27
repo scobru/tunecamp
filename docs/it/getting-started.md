@@ -62,7 +62,7 @@ Al primo avvio, TuneCamp crea un account amministratore predefinito:
 
 **Modifica la password dell'amministratore immediatamente** dopo il primo accesso, andando su **Admin → Settings**. All'avvio, il server registra un avviso di sicurezza se l'account admin, le impostazioni CORS o il segreto JWT generato automaticamente sono rimasti a quelli predefiniti — consulta il [riferimento per la configurazione](https://github.com/scobru/tunecamp/blob/main/README.md#configuration) per proteggere la tua istanza.
 
-> Una procedura guidata integrata forza la modifica della password per qualsiasi account che utilizzi ancora credenziali predefinite. I dettagli sono disponibili in [Ruoli e Permessi](./ROLES.md#first-login-setup-wizard).
+> Una procedura guidata integrata forza la modifica della password per qualsiasi account che utilizzi ancora credenziali predefinite, e il server la fa rispettare: finché la password non viene cambiata, quell'account riceve `403` su ogni endpoint tranne quelli necessari a cambiarla, e Subsonic (`/rest`) viene rifiutato del tutto. Gli ascoltatori anonimi non sono toccati. I dettagli sono disponibili in [Ruoli e Permessi](./ROLES.md#primo-accesso-procedura-guidata-di-configurazione).
 
 ## 4. Aggiungi la tua musica
 
@@ -84,6 +84,7 @@ Ora disponi di un'istanza funzionante. Scegli il percorso che più si adatta all
 | Se vuoi… | Leggi |
 |---|---|
 | Configurare un dominio reale con SSL | [Configurazione Nginx](./NGINX.md) |
+| Condividerla da un computer di casa, senza dominio | `docker compose --profile tunnel up -d` — vedi [README](https://github.com/scobru/tunecamp#public-url-without-a-domain) |
 | Collegare pagamenti Stripe o crypto | [Configurazione API e Servizi](./api-setup-guide.md) → [Pagamenti](./payments.md) |
 | Unirti alla rete federata | [Federazione](./FEDERATION.md) |
 | Capire cosa può fare ciascun utente | [Ruoli e Permessi](./ROLES.md) |

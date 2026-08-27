@@ -136,9 +136,22 @@ L'impostazione collegata `listenerSelfPublishQuota` definisce la quota di upload
 
 ## Primo Accesso: Procedura Guidata di Configurazione
 
-Quando un utente effettua l'accesso e la password del suo account è quella temporanea sentinella `tunecamp`, l'applicazione web ne blocca l'accesso dietro una procedura guidata (setup wizard) fino a quando la password non viene modificata. Il backend lo segnala tramite il flag `mustChangePassword` restituito da `POST /api/auth/login` (calcolato da `isDefaultPassword` in `auth.service.ts`, che verifica la presenza della sentinella `tunecamp`).
+Quando un utente effettua l'accesso e la password del suo account è una di quelle predefinite, l'applicazione web ne blocca l'accesso dietro una procedura guidata (setup wizard) fino a quando la password non viene modificata. I valori considerati predefiniti sono due, entrambi verificati da `isDefaultPassword` in `auth.service.ts`: `admin`, la password iniziale dell'amministratore di bootstrap (`TUNECAMP_ADMIN_PASS`), e `tunecamp`, la sentinella lasciata quando un amministratore reimposta la password di qualcun altro. Il backend lo segnala tramite il flag `mustChangePassword` su `POST /api/auth/login` e `/api/auth/status`.
 
-> Nota: l'amministratore di bootstrap creato al primo avvio utilizza `admin`/`admin` (o `TUNECAMP_ADMIN_USER`/`TUNECAMP_ADMIN_PASS`), **non** `tunecamp` — pertanto tale account non viene forzato a passare automaticamente attraverso la procedura guidata; modifica la sua password manualmente dopo il primo accesso. La procedura guidata viene attivata per gli account per i quali un amministratore ha ripristinato la password a `tunecamp` (vedi sotto).
+**La procedura guidata non è il confine di sicurezza — lo è il server.** Un modale del frontend governa solo il frontend: il login restituisce un JWT con pieni poteri valido 7 giorni indipendentemente dalla password, quindi una procedura guidata non applicata lato server viene aggirata da chiunque parli direttamente con l'API, e l'endpoint Subsonic su `/rest` non mostra alcuna procedura guidata. Il middleware `requirePasswordChanged` (`middleware/auth.ts`), montato prima dell'intera tabella delle rotte, rifiuta tali sessioni con `403 DEFAULT_PASSWORD_LOCKDOWN` ovunque tranne che su:
+
+| Consentito durante il blocco | Perché |
+| --- | --- |
+| `POST /api/auth/password` | La via d'uscita — imposta la nuova password. |
+| `GET /api/auth/status` | La procedura guidata vi legge `mustChangePassword`. |
+| `POST /api/auth/login` | Devi poterti autenticare per risolvere. |
+| `POST /api/auth/setup` | Password iniziale al primo avvio. |
+
+`/rest` viene rifiutato senza eccezioni: un client Subsonic non può cambiare una password, quindi non c'è nulla da consentire. Questo vale anche quando il client si autentica con una app password Subsonic o un token API `tc_` — la password dell'account resta quella debole, quindi l'account resta bloccato.
+
+Il blocco si applica solo alle richieste *autenticate*. Navigazione anonima, streaming e federazione non sono toccati, quindi gli ascoltatori continuano a funzionare mentre l'amministratore è confinato alla correzione della credenziale. Il codice è `403` e non `401` di proposito: il client API dell'applicazione web tratta il `401` come sessione morta ed esegue il logout, il che intrappolerebbe l'amministratore in un ciclo di login senza mai raggiungere la procedura guidata.
+
+Gli account con una password vera non entrano mai in questo percorso — il controllo è memoizzato per username e invalidato a ogni scrittura della password, quindi il costo è un confronto bcrypt per username per processo. Gli account FID/Zen-only hanno `password_hash` vuoto e non vengono mai intercettati.
 
 Ciò che la procedura guidata mostra dipende dal ruolo:
 

@@ -457,6 +457,16 @@ export function createAuthService(
 				| undefined
 		)?.zen_auth_mode === "zen";
 
+	/**
+	 * Whether an account still uses a built-in default password. Consulted on
+	 * every authenticated request by the lockdown guard, so the bcrypt compares
+	 * are memoised; any write to `password_hash` clears the whole map so the
+	 * next check recomputes from the database.
+	 * ponytail: in-process map, correct only while the app is a single process.
+	 */
+	const defaultPasswordCache = new Map<string, boolean>();
+	const clearDefaultPasswordCache = () => defaultPasswordCache.clear();
+
 	return {
 		isFidOnlyAccount,
 
@@ -495,6 +505,8 @@ export function createAuthService(
 		},
 
 		async isDefaultPassword(username: string): Promise<boolean> {
+			const cached = defaultPasswordCache.get(username);
+			if (cached !== undefined) return cached;
 			const user = db
 				.prepare("SELECT password_hash FROM admin WHERE username = ?")
 				.get(username) as { password_hash: string } | undefined;
@@ -504,8 +516,12 @@ export function createAuthService(
 			// - "admin": the built-in initial admin password (TUNECAMP_ADMIN_PASS default)
 			// Matching either forces the "change your password" setup wizard on login.
 			for (const weak of ["tunecamp", "admin"]) {
-				if (await this.verifyPassword(weak, user.password_hash)) return true;
+				if (await this.verifyPassword(weak, user.password_hash)) {
+					defaultPasswordCache.set(username, true);
+					return true;
+				}
 			}
+			defaultPasswordCache.set(username, false);
 			return false;
 		},
 
@@ -969,6 +985,18 @@ export function createAuthService(
 			];
 			const params: any[] = [artistId, artistId === null ? 1 : 0];
 
+			// Outstanding tokens carry the role they were issued with, so a
+			// demotion has to invalidate them or the old privilege survives
+			// until the token expires. Compared before the write, and only for
+			// an actual change: this method also edits artist links and storage
+			// quotas, and those must not log anyone out.
+			const previousRole = (
+				db.prepare("SELECT role FROM admin WHERE id = ?").get(id) as
+					| { role: UserRole }
+					| undefined
+			)?.role;
+			const roleChanged = !!role && !!previousRole && role !== previousRole;
+
 			if (role) {
 				if (id === 1 && role !== "admin" && role !== "root_admin") {
 					throw new Error("Cannot demote the primary admin");
@@ -986,6 +1014,8 @@ export function createAuthService(
 			db.prepare(`UPDATE admin SET ${updates.join(", ")} WHERE id = ?`).run(
 				...params,
 			);
+
+			if (roleChanged) this.revokeTokens(id);
 		},
 
 		updateStorageUsed(userId: number, bytesUsed: number): void {
@@ -1345,6 +1375,7 @@ export function createAuthService(
 			db.prepare(
 				"UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ? COLLATE NOCASE",
 			).run(hash, username);
+			clearDefaultPasswordCache();
 		},
 
 		setEmail(username: string, email: string | null): void {
@@ -1396,6 +1427,7 @@ export function createAuthService(
 			db.prepare(
 				"UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
 			).run(hash, row.admin_id);
+			clearDefaultPasswordCache();
 			db.prepare(
 				"UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?",
 			).run(row.id);
@@ -1490,6 +1522,7 @@ export function createAuthService(
 			db.prepare(
 				"UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
 			).run(hash, user.id);
+			clearDefaultPasswordCache();
 			this.revokeTokens(user.id);
 			return true;
 		},
