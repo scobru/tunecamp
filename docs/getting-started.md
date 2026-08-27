@@ -62,7 +62,7 @@ TuneCamp creates a default admin account on first run:
 
 **Change the admin password immediately** after logging in, from **Admin → Settings**. The server logs a security warning at startup while the admin account, open CORS, or an auto-generated JWT secret are left at defaults — see the [Configuration reference](https://github.com/scobru/tunecamp/blob/main/README.md#configuration) to harden these.
 
-> A built-in setup wizard forces a password change for any account still using a default password. Details in [Roles & Permissions](./ROLES.md#first-login-setup-wizard).
+> A built-in setup wizard forces a password change for any account still using a default password, and the server enforces it: until the password is changed, that account gets `403` on every endpoint except the ones needed to change it, and Subsonic (`/rest`) is refused entirely. Anonymous listeners are unaffected. Details in [Roles & Permissions](./ROLES.md#first-login-setup-wizard).
 
 ## 4. Add your music
 
@@ -84,6 +84,7 @@ You now have a working instance. Pick the path that matches what you want to do:
 | If you want to… | Read |
 |-----------------|------|
 | Put it on a real domain with SSL | [Nginx Configuration](./NGINX.md) |
+| Share it from a home machine, with no domain | `docker compose --profile tunnel up -d` — see [README](https://github.com/scobru/tunecamp#public-url-without-a-domain) |
 | Connect Stripe / crypto payments | [API & Services Setup](./api-setup-guide.md) → [Payments](./payments.md) |
 | Join the federated network | [Federation](./FEDERATION.md) |
 | Understand who can do what | [Roles & Permissions](./ROLES.md) |

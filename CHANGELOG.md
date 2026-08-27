@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+
+- **The default-password setup wizard is now enforced by the server.** It was a frontend modal only: `POST /api/auth/login` handed out a full-privilege 7-day JWT regardless, so anyone who skipped the web app and posted straight to the API owned an instance still on `admin`/`admin`, and the Subsonic endpoint accepted the same credentials with no wizard at all. A session whose account password is a built-in default (`admin`, or the `tunecamp` reset sentinel) now gets `403 DEFAULT_PASSWORD_LOCKDOWN` on everything except `POST /api/auth/password`, `/api/auth/status`, `/api/auth/login` and `/api/auth/setup`; `/rest` (Subsonic) is refused outright, since a password cannot be changed over it. The guard is mounted ahead of the whole route table, so no endpoint can be added outside its reach. Unauthenticated traffic is untouched — anonymous browsing, streaming and federation keep working while the admin is locked down to fixing the credential. Instances on a real password are unaffected: the check is memoised per username and invalidated on any password write. FID/Zen-only accounts, whose `password_hash` is an empty string, are never matched.
+
+### Added
+
+- **Optional public URL with no domain and no port forwarding**, for instances on a home machine behind NAT. `docker compose --profile tunnel up -d` starts an SSH reverse tunnel to [srv.us](https://docs.srv.us/) and reports an `https://<id>.srv.us` address in the tunnel container's logs; `install.sh` offers it (or `--tunnel`) when no domain is given, and skips Nginx and Certbot in that mode. The address is derived from an SSH key kept in the `tunecamp_data` volume, so it survives restarts — losing that volume changes the URL and breaks links already shared. `TUNECAMP_PUBLIC_URL` is deliberately not set from it: the per-request fallback already covers OG tags and links, and federation stays an explicit choice. srv.us is a free relay whose docs warn that bandwidth counts twice and heavy use may be throttled, so it suits a handful of listeners, not a public music site.
+
 ### Removed
 
 - **Peer chat, in full.** TuneCamp is a music, federation and publishing platform; messaging moves to [linda-pear](https://github.com/scobru/linda-pear), a P2P messenger that does it properly instead of a second-best copy riding on a music instance. Gone: the `/ws/chat` socket, `/api/chat/*` and `/api/chat/federated/*`, the chat service and its federation transport, the lobby, rooms, contacts and blocks, the webapp Chat page and its nav entry, the `peerChatEnabled` / `peerChatGuestEnabled` settings and their admin toggles, and the `@tunecamp/chat` dependency. `/ws/peer` no longer registers into a chat roster and no longer relays `chat`, `pubkey` or `rtc_signal`; file sharing runs on PeerService's own session registry and is untouched.

@@ -66,6 +66,50 @@ services:
       retries: 3
       start_period: 45s
 
+  # Optional public URL for instances with no domain and no port forwarding
+  # (a home machine behind NAT). Opt in with:
+  #   docker compose --profile tunnel up -d
+  # srv.us is a free, signup-free SSH reverse tunnel: it answers the connection
+  # with an https://<id>.srv.us address that forwards here. The address is
+  # derived from the SSH key, so keeping the key in the data volume keeps the
+  # URL stable across restarts — which matters, because federation identity and
+  # any link shared with a listener are tied to it.
+  #
+  # Per srv.us's own docs: traffic is not recorded, but the bandwidth you use is
+  # consumed twice on their side, and heavy usage may be throttled unless you
+  # contribute financially. A music library is exactly the heavy case — fine for
+  # a handful of listeners, not for a public music site. Get a real domain
+  # before that point.
+  tunnel:
+    profiles: ["tunnel"]
+    image: alpine:3.20
+    container_name: tunecamp-tunnel
+    depends_on:
+      - tunecamp
+    volumes:
+      - tunecamp_data:/data
+    # ExitOnForwardFailure turns a refused forward into a container restart
+    # instead of an idle connection that looks alive but tunnels nothing.
+    # Literal block (|), not folded (>): a folded scalar keeps the line breaks of
+    # more-indented lines, which silently splits a wrapped command into separate
+    # ones. Every continuation below is an explicit backslash.
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        apk add --no-cache openssh-client >/dev/null
+        mkdir -p /data/ssh
+        [ -f /data/ssh/id_ed25519 ] || ssh-keygen -q -t ed25519 -N '' -f /data/ssh/id_ed25519
+        exec ssh -i /data/ssh/id_ed25519 \
+          -o UserKnownHostsFile=/data/ssh/known_hosts \
+          -o StrictHostKeyChecking=accept-new \
+          -o ExitOnForwardFailure=yes \
+          -o ServerAliveInterval=30 \
+          -o ServerAliveCountMax=3 \
+          -N -R 1:tunecamp:1970 srv.us
+    restart: unless-stopped
+
 volumes:
   tunecamp_data:
     driver: local
