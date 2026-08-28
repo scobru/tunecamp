@@ -42,7 +42,6 @@ import { createTaskRoutes } from "./routes/admin/tasks.js";
 import { createRadioRoutes } from "./routes/api/radio.js";
 import { createPeerWsHandler } from "./modules/peer/peer.ws.js";
 import { createPeersRoutes } from "./routes/api/peers.js";
-import { createLabAppsRoutes } from "./routes/admin/lab-apps.js";
 import { createLifecycleRoutes } from "./routes/api/lifecycle.js";
 import { requireModuleEnabled } from "./middleware/moduleGuard.js";
 
@@ -251,14 +250,4 @@ export function registerRoutes(
 		createSearchRoutes(container),
 	);
 	app.use("/api/peers", createPeersRoutes(container));
-	app.use(
-		"/api/lab-apps",
-		requireModuleEnabled(container, "hideLab", { allowAdmin: true }),
-		createLabAppsRoutes(container),
-	);
-	app.use(
-		"/api/admin/lab-apps",
-		authMiddleware.requireUser,
-		createLabAppsRoutes(container),
-	);
 }

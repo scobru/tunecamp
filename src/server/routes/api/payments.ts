@@ -757,7 +757,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
      */
     router.post("/verify", async (req, res) => {
         try {
-            const { txHash, feeTxHash, trackId } = req.body;
+            const { txHash, feeTxHash, trackId, signature } = req.body;
 
             if (!txHash || !trackId) {
                 return res.status(400).json({ error: "Missing required fields" });
@@ -823,6 +823,27 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
 
             // Verify Label Fee for Direct Payments if split is enabled
             const isDirectPayment = !web3CheckoutAddr || toAddress !== web3CheckoutAddr.toLowerCase();
+
+            // For direct wallet-to-wallet payments there's no contract enforcing
+            // who claims the unlock code, so anyone who spots the tx on a block
+            // explorer could submit its hash before the real buyer does. Require
+            // proof the caller controls the wallet that actually sent the tx.
+            if (isDirectPayment) {
+                if (!signature) {
+                    return res.status(400).json({ error: "Signature required to prove ownership of the paying wallet." });
+                }
+                const challenge = `TuneCamp download unlock for track ${trackId} (tx ${txHash})`;
+                let recovered: string;
+                try {
+                    recovered = ethers.verifyMessage(challenge, signature);
+                } catch (e) {
+                    return res.status(400).json({ error: "Invalid signature." });
+                }
+                if (recovered.toLowerCase() !== tx.from.toLowerCase()) {
+                    return res.status(403).json({ error: "Signature does not match the wallet that sent the transaction." });
+                }
+            }
+
             if (isDirectPayment && adminFeePct > 0 && adminTreasury) {
                 if (!feeTxHash) {
                     console.warn(`[Verify] Missing feeTxHash for split payment to artist ${artistWallet}`);

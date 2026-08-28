@@ -14,7 +14,6 @@ TuneCamp è una piattaforma musicale federata e self-hosted che combina un serve
 
 - **Radio**: una stazione HLS sempre attiva trasmessa a partire dalla libreria dell'istanza — gli amministratori possono combinare playlist personalizzate e mix dinamici per genere. Vedi [radio.md](./radio.md).
 - **Accesso tramite IA (MCP)**: un server basato su Model Context Protocol che consente ai client IA (es. Claude Desktop) di effettuare ricerche nel catalogo e avviare azioni tramite un canale sicuro protetto da token. Vedi [mcp-setup-guide.md](./mcp-setup-guide.md).
-- **Lab**: incorpora strumenti audio sperimentali basati su browser in iFrame sandbox isolati, senza toccare la base di codice principale. Vedi [LAB.md](./LAB.md).
 - **Pannello di Sistema Amministratore**: metriche in tempo reale di CPU/RAM/archiviazione/attività in background per rilevare eventuali perdite di memoria (memory leak). Vedi [monitoring.md](./monitoring.md).
 - **Estensibilità**: provider backend integrati (metadati, streaming, archiviazione, …) dietro registry per-provider. L'acquisizione (ricerca/download da sorgenti esterne) vive in Sidecamp, l'app desktop companion.
 
@@ -70,9 +69,9 @@ tunecamp/
 │   ├── public/         # Asset statici e file WASM
 │   └── src/            # Sorgenti React
 │       ├── components/ # Componenti UI organizzati per dominio
-│       ├── data/       # Configurazione statica del client (labApps.ts contiene solo etichette/colori delle categorie — le app sono su DB, vedi LAB.md)
+│       ├── data/       # Configurazione statica del client
 │       ├── hooks/      # Hook React personalizzati
-│       ├── pages/      # Componenti pagina (punti di ingresso delle rotte, inclusi Radio e Lab)
+│       ├── pages/      # Componenti pagina (punti di ingresso delle rotte, incluso Radio)
 │       ├── services/   # Servizi API client e webapp
 │       └── stores/     # Gestione dello stato (Zustand)
 └── docker-compose.yml  # Configurazione per la distribuzione containerizzata
@@ -141,7 +140,7 @@ Catalogo dei principali componenti React dell'applicazione web (`webapp/src/`), 
 ### Amministrazione (`components/admin/`)
 
 - **Elenchi di libreria**: `AdminArtistsList`, `AdminAlbumsList`, `AdminTracksList`, `AdminReleasesList`, `AdminAssetsList`, `AdminUsersList`.
-- **Pannelli**: `AdminSettingsPanel`, `IntegrationsPanel` (mostra una card per ogni plugin frontend registrato, vedi [architecture-webapp.md](architecture-webapp.md#3-sistema-di-plugin-frontend-coreplugins-plugins)), `StoragePanel`, `AdminFederationPanel`, `ActivityPubPanel`, `IdentityPanel`, `AdminMaintenancePanel`, `BackupPanel`, `AdminRadioPanel` (controlli della stazione radio), `AdminLabAppsPanel` (gestione delle app Lab sandboxed), `AdminReportsPanel` (coda segnalazioni release), `PeerSessionsPanel` (monitoraggio sessioni peer federate), `SystemPanel` (sparkline live di CPU/RAM/storage).
+- **Pannelli**: `AdminSettingsPanel`, `IntegrationsPanel` (mostra una card per ogni plugin frontend registrato, vedi [architecture-webapp.md](architecture-webapp.md#3-sistema-di-plugin-frontend-coreplugins-plugins)), `StoragePanel`, `AdminFederationPanel`, `ActivityPubPanel`, `IdentityPanel`, `AdminMaintenancePanel`, `BackupPanel`, `AdminRadioPanel` (controlli della stazione radio), `AdminReportsPanel` (coda segnalazioni release), `PeerSessionsPanel` (monitoraggio sessioni peer federate), `SystemPanel` (sparkline live di CPU/RAM/storage).
 - **`SetupWizard.tsx`**: Wizard di configurazione dell'istanza (Admin → Setup, solo root admin). Applica un preset di profilo — flag dei moduli più modalità del sito — e può essere rilanciato in qualsiasi momento. Vedi [Wizard di Configurazione Istanza](./setup-wizard.md).
 - **`CurationQueue.tsx`**: Coda di curatela per promuovere le bozze a pubblicazioni ufficiali.
 
@@ -183,9 +182,9 @@ Non sono componenti in senso tradizionale, ma fanno parte della superficie UI: o
 
 ### Pagine (`pages/`)
 
-Ogni file è generalmente collegato a una rotta in `App.tsx`. Pagine principali: `Home`, `Library` (navigazione unificata di tracce/preferiti/playlist — `/tracks`, `/favorites`, `/playlists` e `/my-playlists` reindirizzano qui), `Releases` (serve anche `/albums`), `AlbumDetails`, `Artists`, `ArtistDetails`, `Store`, `PlaylistDetails`, `MyMusic`, `Search` (copre anche ciò che prima era la pagina separata `ContentSearch`), `Network`, `Social`, `Post`, `Board`, `Dig` (crate digging), `Live` (streaming live HLS), `Radio`, `NowListening`, `Stats`, `Profile`, `UserProfile`, `Wallet`, `Support`, `Tools`, `About`, `Legal`, `Changelog`, `Guide`, `SharePage`, `Files` (file browser riservato al root-admin), `Archive` (riservata a manager/root), `Publish`, `Admin`, `AdminReleaseEditor`, `Lab` / `LabApp` (strumenti audio sandboxed nel browser), `ResetPassword` / `ResetPasswordSecurity`.
+Ogni file è generalmente collegato a una rotta in `App.tsx`. Pagine principali: `Home`, `Library` (navigazione unificata di tracce/preferiti/playlist — `/tracks`, `/favorites`, `/playlists` e `/my-playlists` reindirizzano qui), `Releases` (serve anche `/albums`), `AlbumDetails`, `Artists`, `ArtistDetails`, `Store`, `PlaylistDetails`, `MyMusic`, `Search` (copre anche ciò che prima era la pagina separata `ContentSearch`), `Network`, `Social`, `Post`, `Board`, `Dig` (crate digging), `Live` (streaming live HLS), `Radio`, `NowListening`, `Stats`, `Profile`, `UserProfile`, `Wallet`, `Support`, `Tools`, `About`, `Legal`, `Changelog`, `Guide`, `SharePage`, `Files` (file browser riservato al root-admin), `Archive` (riservata a manager/root), `Publish`, `Admin`, `AdminReleaseEditor`, `ResetPassword` / `ResetPasswordSecurity`.
 
-Diverse rotte sono protette da componenti wrapper piuttosto che da logica interna alla pagina: `AdminGuard`, `EditorGuard`, `RootAdminGuard`, `ManagerOrRootGuard` (basati sul ruolo) e `ModuleGuard` (feature flag dell'istanza `hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideSamples`, `hideCollab`, `hideLab` da `useSiteSettingsStore`).
+Diverse rotte sono protette da componenti wrapper piuttosto che da logica interna alla pagina: `AdminGuard`, `EditorGuard`, `RootAdminGuard`, `ManagerOrRootGuard` (basati sul ruolo) e `ModuleGuard` (feature flag dell'istanza `hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideSamples`, `hideCollab` da `useSiteSettingsStore`).
 
 ### Note sullo Sviluppo
 
@@ -200,10 +199,7 @@ Lo stile grafico fa uso di fogli di stile CSS standard con variabili per il tema
 | [tunecamp](https://github.com/scobru/tunecamp) | Server principale + webapp |
 | [sidecamp](https://github.com/scobru/sidecamp) | App Desktop e Mobile per Condivisione Peer, Soulseek e Torrents (monorepo npm-workspaces: Sidecamp + Sidecamp CLI) |
 | [fid](https://github.com/scobru/fid) | FID (Fediverse-ID) — protocollo identità e SSO auto-sovrano, auth Zen SEA |
-| [tunecamp-4-track-recorder](https://github.com/scobru/tunecamp-4-track-recorder) | Registratore a 4 tracce basato su browser (componente Svelte 5), app Lab |
-| [tunecamp-audiofabric](https://github.com/scobru/tunecamp-audiofabric) | Visualizzatore musicale 3D WebGL in tempo reale, app Lab |
-| [tunecamp-iris](https://github.com/scobru/tunecamp-iris) | Trasferimento file ottico air-gapped (fountain codes + WASM), app Lab |
-| [tunecamp-beam](https://github.com/scobru/tunecamp-beam) | Trasferimento dati P2P WebRTC zero-server via QR code, app Lab |
+| [tunecamp-iris](https://github.com/scobru/tunecamp-iris) | Trasferimento file ottico air-gapped (fountain codes + WASM), standalone |
 | [tunecamp-website](https://github.com/scobru/tunecamp-website) | Landing page, directory community e portale identità FID globale |
 | [tunecamp-ecosystem](https://github.com/scobru/tunecamp-ecosystem) | Documento overview dell'ecosistema — cosa esiste, come dialogano i pezzi |
 

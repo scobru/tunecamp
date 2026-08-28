@@ -326,6 +326,13 @@ export const CheckoutModal = () => {
 
       let code: string | undefined;
       try {
+        let signature: string | undefined;
+        if (isDirectPayment) {
+          // Proves we control the wallet that sent the tx, so no one else
+          // can front-run the unlock code by replaying the public tx hash.
+          const challenge = `TuneCamp download unlock for track ${track.id} (tx ${receipt.hash})`;
+          signature = await activeSigner.signMessage(challenge);
+        }
         const verifyRes = await fetch("/api/payments/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -333,6 +340,7 @@ export const CheckoutModal = () => {
             txHash: receipt.hash,
             feeTxHash: feeReceipt?.hash,
             trackId: track.id,
+            signature,
           }),
         });
         const verifyData = await verifyRes.json();

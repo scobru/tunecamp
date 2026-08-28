@@ -29,7 +29,6 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
-  FlaskConical,
   Info,
   Scale,
   Sparkles,
@@ -58,7 +57,6 @@ export const Sidebar = () => {
   const hideSamples = isModuleHidden("hideSamples");
   const hideDig = isModuleHidden("hideDig");
   const hideCollab = isModuleHidden("hideCollab");
-  const hideLab = isModuleHidden("hideLab");
 
   const isRoot = user?.isRootAdmin || role === 'root_admin';
   const isAdmin = role === 'admin' || isRoot || role === 'super_user';
@@ -182,7 +180,6 @@ export const Sidebar = () => {
             {!hideStore && <NavItem to="/store" icon={ShoppingBag} label="Store" />}
             {!hideSamples && <NavItem to="/samples" icon={Music2} label="Samples" />}
             {!hideDig && <NavItem to="/dig" icon={Shovel} label="Dig" />}
-            {!hideLab && <NavItem to="/lab" icon={FlaskConical} label="Lab" />}
             {!hideCollab && <NavItem to="/collab" icon={Users} label="Collab" />}
           </ul>
         </div>

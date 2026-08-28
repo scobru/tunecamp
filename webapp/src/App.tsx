@@ -45,8 +45,6 @@ const Store = lazy(() => import("./pages/Store"));
 const Samples = lazy(() => import("./pages/Samples"));
 const SamplePackDetail = lazy(() => import("./pages/SamplePackDetail"));
 const Dig = lazy(() => import("./pages/Dig"));
-const Lab = lazy(() => import("./pages/Lab"));
-const LabApp = lazy(() => import("./pages/LabApp"));
 const Live = lazy(() => import("./pages/Live"));
 const RadioPage = lazy(() => import("./pages/Radio"));
 const NowListening = lazy(() => import("./pages/NowListening"));
@@ -278,10 +276,6 @@ function App() {
             <Route path="/samples/pack/:id" element={<SingleArtistGuard><ModuleGuard flag="hideSamples"><SamplePackDetail /></ModuleGuard></SingleArtistGuard>} />
             <Route path="/dig" element={<SingleArtistGuard><ModuleGuard flag="hideDig"><Dig /></ModuleGuard></SingleArtistGuard>} />
 
-
-            {/* Lab */}
-            <Route path="/lab" element={<ModuleGuard flag="hideLab"><Lab /></ModuleGuard>} />
-            <Route path="/lab/:appId" element={<ModuleGuard flag="hideLab"><LabApp /></ModuleGuard>} />
 
             {/* Collab */}
             <Route path="/collab" element={<SingleArtistGuard><ModuleGuard flag="hideCollab"><Collab /></ModuleGuard></SingleArtistGuard>} />

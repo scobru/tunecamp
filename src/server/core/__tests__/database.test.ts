@@ -53,7 +53,7 @@ describe('Database core: schema, views, triggers & utilities', () => {
 			'peer_chat_mutes', 'chat_rooms', 'chat_room_members',
 			'chat_room_messages', 'dig_sessions', 'dig_crate_items',
 			'dig_history', 'dig_cache', 'peer_sessions', 'peer_tracks',
-			'lab_apps', 'collab_projects', 'collab_versions', 'collab_stems',
+			'collab_projects', 'collab_versions', 'collab_stems',
 			'album_ownership', 'track_ownership', 'fid_registry',
 			'password_reset_tokens', 'artist_events', 'ap_notes',
 			'track_stats', 'release_stats', 'ap_interactions', 'ap_replies',
@@ -263,48 +263,6 @@ describe('Database core: schema, views, triggers & utilities', () => {
 		test('site actor has default photo_path pointing to logo endpoint', () => {
 			const siteActor = db.db.prepare('SELECT photo_path FROM artists WHERE id = -1').get();
 			expect(siteActor.photo_path).toBe('/api/settings/logo');
-		});
-	});
-
-	// ── Lab Apps Seeding ────────────────────────────────────────────────────
-
-	describe('Lab Apps seeding', () => {
-		test('4 lab apps are seeded by default', () => {
-			const apps = db.db.prepare('SELECT * FROM lab_apps ORDER BY id').all();
-			expect(apps.length).toBeGreaterThanOrEqual(4);
-		});
-
-		test('4-Track Recorder is seeded with correct URL', () => {
-			const app = db.db.prepare('SELECT * FROM lab_apps WHERE id = 1').get();
-			expect(app).toBeDefined();
-			expect(app.name).toBe('4-Track Recorder');
-			expect(app.src).toBe('https://tunecamp-4-track-recorder.vercel.app');
-		});
-
-		test('Audiofabric is seeded with correct URL', () => {
-			const app = db.db.prepare('SELECT * FROM lab_apps WHERE id = 2').get();
-			expect(app).toBeDefined();
-			expect(app.name).toBe('Audiofabric');
-			expect(app.src).toBe('https://tunecamp-audiofabric.vercel.app');
-		});
-
-		test('Iris is seeded with correct URL', () => {
-			const app = db.db.prepare('SELECT * FROM lab_apps WHERE id = 3').get();
-			expect(app).toBeDefined();
-			expect(app.name).toBe('Iris');
-			expect(app.src).toBe('https://tunecamp-iris.vercel.app');
-		});
-
-		test('Wormhole is seeded with correct URL', () => {
-			const app = db.db.prepare('SELECT * FROM lab_apps WHERE id = 5').get();
-			expect(app).toBeDefined();
-			expect(app.name).toBe('Wormhole');
-			expect(app.src).toBe('https://wormhole.scobrudot.dev');
-		});
-
-		test('Beam (id=4) has been removed', () => {
-			const app = db.db.prepare('SELECT * FROM lab_apps WHERE id = 4').get();
-			expect(app).toBeUndefined();
 		});
 	});
 

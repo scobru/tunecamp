@@ -2,9 +2,9 @@
 
 **Collab** lets multiple artists on the same instance build a track together: upload stems, save version snapshots, and iterate — no separate app, no realtime, no ZEN.
 
-## Why native, not a Lab app
+## Why native
 
-Collab needs rich relational data (projects, versions, permissions) and dedicated pages (list, detail, version history) — the [Lab SDK](LAB.md) is designed for stateless one-shot tools embedded via iFrame, not this. Collab is a first-class TuneCamp feature with its own tables and routes.
+Collab needs rich relational data (projects, versions, permissions) and dedicated pages (list, detail, version history) — not a one-shot tool embedded via iFrame. Collab is a first-class TuneCamp feature with its own tables and routes.
 
 ## Data model
 

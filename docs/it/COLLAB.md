@@ -2,9 +2,9 @@
 
 **Collab** consente a più artisti sulla stessa istanza di creare un brano insieme: caricare stem, salvare snapshot delle versioni ed effettuare iterazioni — senza app separate, senza tempo reale e senza ZEN.
 
-## Perché nativo e non app Lab
+## Perché nativo
 
-Collab necessita di ricchi dati relazionali (progetti, versioni, permessi) e pagine dedicate (elenco, dettaglio, cronologia versioni) — l'[SDK Lab](LAB.md) è progettato per strumenti monouso senza stato incorporati via iFrame, non per questo scopo. Collab è una funzionalità di primo livello di TuneCamp con tabelle e rotte proprie.
+Collab necessita di ricchi dati relazionali (progetti, versioni, permessi) e pagine dedicate (elenco, dettaglio, cronologia versioni) — non uno strumento monouso incorporato via iFrame. Collab è una funzionalità di primo livello di TuneCamp con tabelle e rotte proprie.
 
 ## Modello Dati
 

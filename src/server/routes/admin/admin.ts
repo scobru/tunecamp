@@ -592,7 +592,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 				hideDig,
 				hideSamples,
 				hideCollab,
-				hideLab,
 				membershipMonthlyPrice,
 				trackcapTopupPriceUsd,
 				trackcapTopupTracksGranted,
@@ -665,10 +664,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 					"hideCollab",
 					isTrue(hideCollab) ? "true" : "false",
 				);
-			}
-
-			if (hideLab !== undefined) {
-				identity.setSetting("hideLab", isTrue(hideLab) ? "true" : "false");
 			}
 
 			if (web3Enabled !== undefined) {

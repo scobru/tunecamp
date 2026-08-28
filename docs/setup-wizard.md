@@ -21,14 +21,14 @@ Step 3 writes every flag in one `POST` to the settings endpoint together with `i
 
 `mode` decides the shape of the homepage (`single_artist`, `label`, `community`). The `hide*` flags remove sections from the navigation and refuse their API routes for non-admins.
 
-| Profile | Mode | Store | Social | Network | Dig | Live | Samples | Collab | Lab | Public registration | Listener self-publish |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Solo Artist** | `single_artist` | ✅ | ✅ | — | — | — | — | — | — | — | — |
-| **Record Label** | `label` | ✅ | ✅ | ✅ | — | — | — | — | — | ✅ | — |
-| **Music Curator** | `community` | — | ✅ | ✅ | ✅ | — | — | — | — | ✅ | ✅ |
-| **Web Radio / Streamer** | `community` | — | ✅ | — | ✅ | ✅ | — | — | — | ✅ | — |
-| **Sound Designer** | `community` | — | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Listening Room** | `community` | — | ✅ | ✅ | — | — | — | — | — | ✅ | — |
+| Profile | Mode | Store | Social | Network | Dig | Live | Samples | Collab | Public registration | Listener self-publish |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Solo Artist** | `single_artist` | ✅ | ✅ | — | — | — | — | — | — | — |
+| **Record Label** | `label` | ✅ | ✅ | ✅ | — | — | — | — | ✅ | — |
+| **Music Curator** | `community` | — | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ |
+| **Web Radio / Streamer** | `community` | — | ✅ | — | ✅ | ✅ | — | — | ✅ | — |
+| **Sound Designer** | `community` | — | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ |
+| **Listening Room** | `community` | — | ✅ | ✅ | — | — | — | — | ✅ | — |
 
 ✅ = the module is on for that profile. A dash means the corresponding `hide*` flag is set.
 
@@ -38,7 +38,7 @@ Step 3 writes every flag in one `POST` to the settings endpoint together with `i
 - **Record Label** — a roster: artist profiles, catalog, central store, network discovery on.
 - **Music Curator** — playlists and discovery: Dig for external sources, social feed on, listeners may self-publish.
 - **Web Radio / Streamer** — live broadcasting: the Live module and Dig on, store off.
-- **Sound Designer** — free sample packs: Samples, Collab and Lab on, listeners may self-publish.
+- **Sound Designer** — free sample packs: Samples and Collab on, listeners may self-publish.
 - **Listening Room** — listening together: the shared library, Sidecamp folder sharing and the social feed, with everything else stripped out.
 
 ## Changing your mind

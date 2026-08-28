@@ -21,14 +21,14 @@ Il passo 3 scrive tutti i flag in un'unica `POST` all'endpoint delle impostazion
 
 `mode` determina la forma della homepage (`single_artist`, `label`, `community`). I flag `hide*` rimuovono sezioni dalla navigazione e negano le relative rotte API a chi non è amministratore.
 
-| Profilo | Modalità | Store | Social | Network | Dig | Live | Samples | Collab | Lab | Registrazioni aperte | Autopubblicazione ascoltatori |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Solo Artist** | `single_artist` | ✅ | ✅ | — | — | — | — | — | — | — | — |
-| **Record Label** | `label` | ✅ | ✅ | ✅ | — | — | — | — | — | ✅ | — |
-| **Music Curator** | `community` | — | ✅ | ✅ | ✅ | — | — | — | — | ✅ | ✅ |
-| **Web Radio / Streamer** | `community` | — | ✅ | — | ✅ | ✅ | — | — | — | ✅ | — |
-| **Sound Designer** | `community` | — | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Listening Room** | `community` | — | ✅ | ✅ | — | — | — | — | — | ✅ | — |
+| Profilo | Modalità | Store | Social | Network | Dig | Live | Samples | Collab | Registrazioni aperte | Autopubblicazione ascoltatori |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Solo Artist** | `single_artist` | ✅ | ✅ | — | — | — | — | — | — | — |
+| **Record Label** | `label` | ✅ | ✅ | ✅ | — | — | — | — | ✅ | — |
+| **Music Curator** | `community` | — | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ |
+| **Web Radio / Streamer** | `community` | — | ✅ | — | ✅ | ✅ | — | — | ✅ | — |
+| **Sound Designer** | `community` | — | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ |
+| **Listening Room** | `community` | — | ✅ | ✅ | — | — | — | — | ✅ | — |
 
 ✅ = modulo attivo per quel profilo. Il trattino indica che il corrispondente flag `hide*` è impostato.
 
@@ -38,7 +38,7 @@ Il passo 3 scrive tutti i flag in un'unica `POST` all'endpoint delle impostazion
 - **Record Label** — un roster: profili artista, catalogo, store centrale, scoperta di rete attiva.
 - **Music Curator** — playlist e scoperta: Dig per le fonti esterne, feed social attivo, gli ascoltatori possono autopubblicarsi.
 - **Web Radio / Streamer** — trasmissione dal vivo: moduli Live e Dig attivi, store spento.
-- **Sound Designer** — sample pack gratuiti: Samples, Collab e Lab attivi, autopubblicazione consentita.
+- **Sound Designer** — sample pack gratuiti: Samples e Collab attivi, autopubblicazione consentita.
 - **Listening Room** — ascolto condiviso: libreria, cartelle Sidecamp e feed social, tutto il resto rimosso.
 
 ## Cambiare idea

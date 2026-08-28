@@ -92,7 +92,7 @@ La chat peer è stata rimossa; `peer_chat_messages`, `peer_chat_bans`, `peer_cha
 - **`ap_interactions`** / **`ap_replies`** / **`ap_following`** / **`ap_delivery_queue`** / **`fedify_kv`**: Stato di ActivityPub, firme degli attori e coda di consegna dei messaggi in uscita.
 - **`federated_instances`**: Peer scoperti nella rete tramite il servizio di gossip discovery HTTP.
 
-### Funzionalità Avanzate & App Lab
+### Funzionalità Avanzate
 
 - **`playlists`** / **`playlist_tracks`**: Gestione delle playlist degli utenti e ordine delle tracce.
 - **`play_history`**: Registro degli ascolti per statistiche, scrobbling e raccomandazioni.
@@ -106,7 +106,6 @@ La chat peer è stata rimossa; `peer_chat_messages`, `peer_chat_bans`, `peer_cha
 - **`system_plugins`**: Stato (abilitato/disabilitato) dei provider di plugin.
 - **`samples`** / **`sample_packs`**: Upload di sample gratuiti (non in store) — BPM, tonalità, licenza, moderazione. Un sample può appartenere a un pack tramite `samples.pack_id`.
 - **`collab_projects`** / **`collab_versions`** / **`collab_stems`**: Creazione collaborativa di tracce multi-artista con snapshot di versioni append-only e caricamento stem.
-- **`lab_apps`**: Strumenti audio ed esperimenti web in iFrame sandbox (4-Track Recorder, Audiofabric, Iris, Wormhole).
 
 ### Relazioni Chiave
 
