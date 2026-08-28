@@ -23,7 +23,6 @@ import { SystemPanel } from "../components/admin/SystemPanel";
 import { AdminAssetsList } from "../components/admin/AdminAssetsList";
 import { AdminRadioPanel } from "../components/admin/AdminRadioPanel";
 import { PeerSessionsPanel } from "../components/admin/PeerSessionsPanel";
-import { AdminLabAppsPanel } from "../components/admin/AdminLabAppsPanel";
 import { AdminReportsPanel } from "../components/admin/AdminReportsPanel";
 
 const Admin = () => {
@@ -280,15 +279,6 @@ const Admin = () => {
             Peer Sessions
           </a>
         )}
-        {isRootAdmin && (
-          <a
-            role="tab"
-            className={`tab ${activeTab === "lab" ? "tab-active" : ""}`}
-            onClick={() => setActiveTab("lab")}
-          >
-            Lab Apps
-          </a>
-        )}
       </div>
 
       <div className="bg-base-100 p-4 sm:p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px] glass-effect overflow-x-hidden">
@@ -346,7 +336,6 @@ const Admin = () => {
         {activeTab === "store" && <AdminAssetsList />}
         {activeTab === "radio" && (isRootAdmin || isManager) && <AdminRadioPanel />}
         {activeTab === "peers" && (isRootAdmin || isManager) && <PeerSessionsPanel />}
-        {activeTab === "lab" && isRootAdmin && <AdminLabAppsPanel />}
       </div>
 
       <AdminUserModal

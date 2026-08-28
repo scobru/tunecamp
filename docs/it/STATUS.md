@@ -12,13 +12,12 @@ Un quadro sincero di quanto ciascuna parte di TuneCamp sia pronta per la produzi
 | Web player e pagine artista | **Stabile** | |
 | Modalità portfolio Single Artist | **Nuovo** | Terza modalità istanza accanto a Record Label e Community: homepage sovrana per un artista solo, senza funzionalità community. Selezionabile nel setup wizard o in Admin Settings. |
 | Pagamenti Stripe e codici di sblocco | **Beta** | Revisionato internamente (vedi [security-review-payments.md](./security-review-payments.md)); nessun audit esterno. Si consiglia di testare inizialmente con piccoli importi. |
-| Pagamenti on-chain (Base, NFT) | **Beta / opzionale** | Disabilitati di default (`web3Enabled`). Le assunzioni di fiducia sono documentate nella revisione della sicurezza. |
+| Pagamenti on-chain (Base, NFT) | **Beta / opzionale** | Disabilitati di default (`web3Enabled`). Nessun audit esterno; le assunzioni di fiducia sono documentate nella [revisione di sicurezza](./security-review-payments.md). Usa importi piccoli, considerala sperimentale. |
 | Federazione (ActivityPub + catalogo) | **Beta** | Segue istanze da Mastodon/Funkwhale; cataloghi dei peer memorizzati in cache con stale-while-revalidate. Possibili piccoli problemi di interoperabilità. |
 | Sidecamp (Peer Sharing) | **Beta** | Condivisione peer transitoria tramite tunnel WebSocket, importazione locale. Vedi [sidecamp.md](./sidecamp.md). |
 | Live streaming (HLS) | **Nuovo** | Migrato di recente da mesh WebRTC a HLS lato server; testato in contesti reali limitati. |
 | Radio (stazione HLS) | **Nuovo** | Stazione sempre attiva da playlist + mix dinamici per genere; loop di concatenazione FFmpeg. Vedi [radio.md](./radio.md). |
 | Server MCP | **Nuovo / opzionale** | Espone il catalogo ai client IA (ricerca, statistiche, scansione) tramite SSE, protetto da token. Vedi [mcp-setup-guide.md](./mcp-setup-guide.md). |
-| App Lab | **Sperimentale** | Strumenti audio per browser protetti da iFrame sandbox; bridge PostMessage implementato (getUser/getLibrary/getNowPlaying/exportAudio). Vedi [LAB.md](./LAB.md). |
 | Collab | **Nuovo** | Costruzione collaborativa di brani multi-artista su una istanza: progetti condivisi/privati, cronologia versioni append-only, upload stem. Collaborazione aperta (ogni artista può contribuire), solo versioning — nessun realtime. Vedi [COLLAB.md](./COLLAB.md). |
 | Pannello di sistema amministratore | **Nuovo** | Metriche in tempo reale di CPU/RAM/archiviazione/attività per il rilevamento di leak. Vedi [monitoring.md](./monitoring.md). |
 | Bot Telegram, archiviazione Google Drive | **Beta** | Funzionali, copertura dei test più limitata. |

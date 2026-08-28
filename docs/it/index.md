@@ -94,9 +94,6 @@ Per contributori e sviluppatori su TuneCamp.
 | [Architettura Webapp](./architecture-webapp.md) | React, Vite, Zustand e scoperta dell'istanza nel frontend |
 | [Contratti API](./api-contracts.md) | Endpoint REST, autenticazione e protocolli supportati |
 | [Identità FID](./FID-IDENTITY.md) | Identità auto-sovrana e passaporti d'istanza tramite FID + Zen SEA |
-| [Applicazioni Lab](./LAB.md) | Creazione e invio di strumenti audio sperimentali |
-| [App Lab: Audiofabric](./audiofabric.md) | Visualizzatore musicale 3D WebGL in tempo reale integrato in Lab |
-| [App Lab: Registratore a 4 Tracce](./4-track-recorder.md) | Pacchetto companion registratore a cassette a 4 tracce basato su browser |
 
 ---
 

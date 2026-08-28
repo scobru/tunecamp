@@ -13,6 +13,7 @@ Scope: `src/server/routes/api/payments.ts` (Stripe checkout, webhook, on-chain v
 | 7 | Low | `successUrl`/`cancelUrl` for Stripe sessions were taken from the client unvalidated — a crafted link could bounce a paying user to an attacker URL after checkout (phishing vector, no funds at risk). | Both URLs must now match the instance origin (`publicUrl` setting or request host) on both session-creation routes. |
 | 8 | Low | `/verify` and `/subscription/verify` are unauthenticated and each call triggers two RPC lookups — a cheap amplification target for RPC-quota exhaustion. | Dedicated rate limiter on both routes: 30 requests / 15 min per IP (global limiter is 1000 / 15 min). |
 | 6 | Low | Session JWT accepted via query string (`?token=`) and request body. Tokens in URLs end up in server logs, proxies and browser history; a leaked download link was a leaked session. | Session tokens are now header-only. Download routes accept a purpose-scoped token (`?dt=`, 5-minute expiry) minted via `POST /api/payments/download-token`; download tokens are rejected on every other authenticated route, so a leaked link expires in minutes and grants nothing beyond downloads. |
+| 11 | Medium | Direct payment paths (B/C) verified recipient and amount but not the sender: anyone who spotted a qualifying tx on a block explorer could submit its hash to `/verify` before the real buyer and claim the download code. | `/verify` now requires a wallet signature over a challenge that binds the trackId and txHash (`ethers.verifyMessage`), checked against `tx.from`. Only the wallet that actually sent the transaction can claim its unlock code; the checkout frontend (`CheckoutModal.tsx`) prompts for this signature right after the on-chain tx confirms. |
 
 ## Open findings (accepted or needing follow-up)
 
@@ -24,5 +25,4 @@ Scope: `src/server/routes/api/payments.ts` (Stripe checkout, webhook, on-chain v
 
 ## Trust model notes
 
-- The on-chain "direct payment" paths (B/C) verify recipient + amount but **not the sender**: anyone who can point at a qualifying transaction (e.g. found on a block explorer) can claim the unlock code before the real buyer does, since the code is returned to whoever submits the hash first. This is inherent to hash-presentation schemes; the replay table at least guarantees only one claim per tx. A signed-message challenge (buyer proves control of the sending address) would close it.
 - A self-hosted single-artist instance (artist = admin = treasury) is unaffected by findings 3–5, which only matter in multi-tenant label setups.

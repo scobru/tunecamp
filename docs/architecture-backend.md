@@ -92,7 +92,7 @@ Peer chat was removed; `peer_chat_messages`, `peer_chat_bans`, `peer_chat_mutes`
 - **`ap_interactions`** / **`ap_replies`** / **`ap_following`** / **`ap_delivery_queue`** / **`fedify_kv`**: ActivityPub state, actor signatures, and outbound delivery queue.
 - **`federated_instances`**: Discovered network peers tracked by the HTTP gossip discovery service.
 
-### Advanced Features & Lab Apps
+### Advanced Features
 
 - **`playlists`** / **`playlist_tracks`**: User playlist management and track order.
 - **`play_history`**: Listens log for stats, scrobbling, and recommendations.
@@ -106,7 +106,6 @@ Peer chat was removed; `peer_chat_messages`, `peer_chat_bans`, `peer_chat_mutes`
 - **`system_plugins`**: State (enabled/disabled) of modular plugin providers.
 - **`samples`** / **`sample_packs`**: Free (non-store) sample uploads — BPM, key, license, moderation status. A sample optionally belongs to a pack via `samples.pack_id`.
 - **`collab_projects`** / **`collab_versions`** / **`collab_stems`**: Multi-artist collaborative track building with append-only versions and audio stem uploads.
-- **`lab_apps`**: Sandboxed iFrame audio tools and web experiments (4-Track Recorder, Audiofabric, Iris, Wormhole).
 
 ### Key Relationships
 

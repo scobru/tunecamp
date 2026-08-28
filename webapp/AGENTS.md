@@ -20,7 +20,7 @@ Inherits root [../AGENTS.md](../AGENTS.md). Webapp-specific:
 
 - Plugin folders under `plugins/*/index.{ts,tsx}` are auto-loaded via `import.meta.glob` — a white-label build drops a provider by deleting its directory, no other file changes.
 - Plugin registry (`core/plugins/registry.tsx`) is presentation-only (status badges, config forms); search/download logic lives in the backend, not here.
-- Route/module visibility flags (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideSamples`, `hideCollab`, `hideLab`) come from `useSiteSettingsStore` and are enforced by `ModuleGuard` — don't hardcode visibility checks elsewhere.
+- Route/module visibility flags (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideSamples`, `hideCollab`) come from `useSiteSettingsStore` and are enforced by `ModuleGuard` — don't hardcode visibility checks elsewhere.
 - Playlists are members-only; don't gate them above the `user` role.
 
 ## Work Guidance

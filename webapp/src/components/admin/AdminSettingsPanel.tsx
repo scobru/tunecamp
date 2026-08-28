@@ -227,7 +227,6 @@ export const AdminSettingsPanel = () => {
   const isDigEnabled = settings.hideDig !== true && settings.hideDig !== "true";
   const isSamplesEnabled = settings.hideSamples !== true && settings.hideSamples !== "true";
   const isCollabEnabled = settings.hideCollab !== true && settings.hideCollab !== "true";
-  const isLabEnabled = settings.hideLab !== true && settings.hideLab !== "true";
 
   return (
     <form onSubmit={handleSave} className="space-y-6 w-full">
@@ -562,21 +561,6 @@ export const AdminSettingsPanel = () => {
                     className="toggle toggle-primary toggle-md shrink-0"
                     checked={isCollabEnabled}
                     onChange={(e) => setSettings({ ...settings, hideCollab: !e.target.checked })}
-                  />
-                </label>
-              </div>
-
-              <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer flex items-center justify-between gap-4 w-full p-0">
-                  <div className="flex-1 min-w-0 pr-2">
-                    <span className="label-text font-bold">Show Lab Apps</span>
-                    <p className="text-xs opacity-75 mt-0.5">Display the Lab section with its collection of standalone tools/apps.</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0"
-                    checked={isLabEnabled}
-                    onChange={(e) => setSettings({ ...settings, hideLab: !e.target.checked })}
                   />
                 </label>
               </div>

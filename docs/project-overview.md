@@ -14,7 +14,6 @@ TuneCamp is a federated, self-hosted music platform that combines a personal mus
 
 - **Radio**: an always-on HLS station broadcast from the instance's library — admins mix custom playlists and dynamic per-genre playlists. See [radio.md](./radio.md).
 - **AI access (MCP)**: a Model Context Protocol server lets AI clients (e.g. Claude Desktop) search the catalog and run actions over a token-gated channel. See [mcp-setup-guide.md](./mcp-setup-guide.md).
-- **Lab**: embed experimental browser-based audio tools in sandboxed iFrames without touching core. See [LAB.md](./LAB.md).
 - **Admin System panel**: live CPU/RAM/storage/background-task metrics for spotting memory leaks. See [monitoring.md](./monitoring.md).
 - **Extensibility**: built-in backend providers (metadata, streaming, storage, …) behind per-provider registries. Acquisition (search/download from external sources) lives in Sidecamp, the desktop companion app.
 
@@ -70,9 +69,9 @@ tunecamp/
 │   ├── public/         # Static assets and WASM files
 │   └── src/            # React sources
 │       ├── components/ # UI Components organized by domain
-│       ├── data/       # Static client config (labApps.ts holds only category labels/colors — apps are DB-backed, see LAB.md)
+│       ├── data/       # Static client config
 │       ├── hooks/      # Custom React Hooks
-│       ├── pages/      # Page Components (Route entry points, incl. Radio, Lab)
+│       ├── pages/      # Page Components (Route entry points, incl. Radio)
 │       ├── services/   # Client API and webapp services
 │       └── stores/     # State management (Zustand)
 └── docker-compose.yml  # Configuration for containerized deployment
@@ -147,7 +146,7 @@ directory. For the overall frontend design see [architecture-webapp.md](./archit
   registered frontend plugin, see [architecture-webapp.md](./architecture-webapp.md#3-frontend-plugin-system-coreplugins-plugins)),
   `StoragePanel`, `AdminFederationPanel`, `ActivityPubPanel`, `IdentityPanel`,
   `AdminMaintenancePanel`, `BackupPanel`, `AdminRadioPanel` (radio station
-  controls), `AdminLabAppsPanel` (manage sandboxed Lab apps), `AdminReportsPanel`
+  controls), `AdminReportsPanel`
   (release reports queue), `PeerSessionsPanel` (federated peer session
   monitoring), `SystemPanel` (live CPU/RAM/storage sparklines).
 - **`SetupWizard.tsx`**: Instance setup wizard (Admin → Setup, root admin only). Applies a profile preset — module flags plus site mode — and can be re-run at any time. See [Instance Setup Wizard](./setup-wizard.md).
@@ -210,14 +209,14 @@ separate `ContentSearch` page), `Network`, `Social`, `Post`, `Board`, `Dig`
 `Stats`, `Profile`, `UserProfile`, `Wallet`, `Support`, `Tools`, `About`,
 `Legal`, `Changelog`, `Guide`, `SharePage`, `Files` (root-admin file
 browser), `Archive` (manager/root-only), `Publish`, `Admin`,
-`AdminReleaseEditor`, `Lab` / `LabApp` (sandboxed browser audio tools),
+`AdminReleaseEditor`,
 `ResetPassword` / `ResetPasswordSecurity`.
 
 Several routes are gated by wrapper components rather than logic inside the
 page itself: `AdminGuard`, `EditorGuard`, `RootAdminGuard`,
 `ManagerOrRootGuard` (role-based), and `ModuleGuard` (instance feature flags
 `hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`,
-`hideSamples`, `hideCollab`, `hideLab` from `useSiteSettingsStore`).
+`hideSamples`, `hideCollab` from `useSiteSettingsStore`).
 
 ### Development Notes
 
@@ -232,10 +231,7 @@ Styling uses standard CSS with variables for theme support.
 | [tunecamp](https://github.com/scobru/tunecamp) | Main server + webapp |
 | [sidecamp](https://github.com/scobru/sidecamp) | Standalone Desktop & Mobile App for Peer Sharing, Soulseek, and Torrents (npm-workspaces monorepo: Sidecamp + Sidecamp CLI) |
 | [fid](https://github.com/scobru/fid) | FID (Fediverse-ID) — self-sovereign identity & SSO protocol, Zen SEA auth |
-| [tunecamp-4-track-recorder](https://github.com/scobru/tunecamp-4-track-recorder) | Browser-based 4-track recorder (Svelte 5 component), Lab app |
-| [tunecamp-audiofabric](https://github.com/scobru/tunecamp-audiofabric) | Real-time 3D WebGL music visualizer, Lab app |
-| [tunecamp-iris](https://github.com/scobru/tunecamp-iris) | Air-gapped optical file transfer (fountain codes + WASM), Lab app |
-| [tunecamp-beam](https://github.com/scobru/tunecamp-beam) | Zero-server WebRTC P2P data drops via QR code, Lab app |
+| [tunecamp-iris](https://github.com/scobru/tunecamp-iris) | Air-gapped optical file transfer (fountain codes + WASM), standalone |
 | [tunecamp-website](https://github.com/scobru/tunecamp-website) | Landing page, community directory, and global FID identity portal |
 | [tunecamp-ecosystem](https://github.com/scobru/tunecamp-ecosystem) | Ecosystem overview doc — what exists, how the pieces talk |
 

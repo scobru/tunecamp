@@ -302,7 +302,6 @@ export interface SiteSettings {
 	hideDig?: boolean | string;
 	hideSamples?: boolean | string;
 	hideCollab?: boolean | string;
-	hideLab?: boolean | string;
 	membershipMonthlyPrice?: number | string;
 	peerEnabled?: boolean | string;
 	peerAllowDownloads?: boolean | string;
@@ -706,21 +705,6 @@ export interface DigHistoryItem {
 	id: number;
 	query: string;
 	source: string;
-	created_at: string;
-}
-
-export interface LabAppRecord {
-	id: number;
-	name: string;
-	description: string | null;
-	src: string;
-	category: "recording" | "synthesis" | "composition" | "effects" | "other";
-	author: string | null;
-	sourceUrl: string | null;
-	permissions: string[];
-	sandbox: string[];
-	allow: string[];
-	enabled: boolean;
 	created_at: string;
 }
 

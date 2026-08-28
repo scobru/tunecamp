@@ -12,13 +12,12 @@ An honest snapshot of how production-ready each part of TuneCamp is. Updated 202
 | Web player & artist pages | **Stable** | |
 | Single Artist portfolio mode | **New** | Third instance mode alongside Record Label and Community: sovereign homepage for a solo artist, community features stripped out. Selectable in setup wizard or Admin Settings. |
 | Stripe payments & unlock codes | **Beta** | Internally reviewed (see [security-review-payments.md](security-review-payments.md)); no external audit. Test with small amounts first. |
-| On-chain payments (Base, NFT) | **Beta / opt-in** | Disabled by default (`web3Enabled`). Trust assumptions documented in the security review. |
+| On-chain payments (Base, NFT) | **Beta / opt-in** | Disabled by default (`web3Enabled`). No external audit; trust assumptions documented in the [security review](security-review-payments.md). Use small amounts, treat as experimental. |
 | Federation (ActivityPub + catalog) | **Beta** | Followable from Mastodon/Funkwhale; peer catalogs cached with stale-while-revalidate. Expect interop quirks. |
 | Sidecamp (Peer Sharing) | **Beta** | Transient peer sharing over WebSocket tunnel, local import. See [sidecamp.md](sidecamp.md). |
 | Live streaming (HLS) | **New** | Recently migrated from WebRTC mesh to server-side HLS; lightly battle-tested. |
 | Radio (HLS station) | **New** | Always-on station from playlists + dynamic genre mixes; FFmpeg concat loop. See [radio.md](radio.md). |
 | MCP server | **New / opt-in** | Exposes the catalog to AI clients (search, stats, scan) over SSE, token-gated. See [mcp-setup-guide.md](mcp-setup-guide.md). |
-| Lab apps | **Experimental** | Sandboxed-iFrame browser audio tools; PostMessage bridge implemented (getUser/getLibrary/getNowPlaying/exportAudio). See [LAB.md](LAB.md). |
 | Collab | **New** | Multi-artist collaborative track building on one instance: shared/private projects, append-only version history, stem uploads. Open collaboration (any artist can contribute), versioning only — no realtime. See [COLLAB.md](COLLAB.md). |
 | Admin System panel | **New** | Live CPU/RAM/storage/task metrics for leak hunting. See [monitoring.md](monitoring.md). |
 | Telegram bot, Google Drive storage | **Beta** | Functional, less test coverage. |

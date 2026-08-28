@@ -32,7 +32,6 @@ interface ProfilePreset {
     hideLive: boolean;
     hideSamples: boolean;
     hideCollab: boolean;
-    hideLab: boolean;
     allowPublicRegistration: boolean;
     listenerSelfPublish: boolean;
     mode: 'label' | 'community' | 'single_artist';
@@ -57,7 +56,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideLive: true,
       hideSamples: true,
       hideCollab: true,
-      hideLab: true,
       allowPublicRegistration: false,
       listenerSelfPublish: false,
       mode: "single_artist"
@@ -84,7 +82,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideLive: true,
       hideSamples: true,
       hideCollab: true,
-      hideLab: true,
       allowPublicRegistration: true,
       listenerSelfPublish: false,
       mode: "label"
@@ -111,7 +108,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideLive: true,
       hideSamples: true,
       hideCollab: true,
-      hideLab: true,
       allowPublicRegistration: true,
       listenerSelfPublish: true,
       mode: "community"
@@ -138,7 +134,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideLive: false,
       hideSamples: true,
       hideCollab: true,
-      hideLab: true,
       allowPublicRegistration: true,
       listenerSelfPublish: false,
       mode: "community"
@@ -165,7 +160,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideLive: true,
       hideSamples: false,
       hideCollab: false,
-      hideLab: false,
       allowPublicRegistration: true,
       listenerSelfPublish: true,
       mode: "community"
@@ -192,7 +186,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideLive: true,
       hideSamples: true,
       hideCollab: true,
-      hideLab: true,
       allowPublicRegistration: true,
       listenerSelfPublish: false,
       mode: "community"
@@ -291,9 +284,6 @@ export const SetupWizard = () => {
     if (flagsConfig.hideCollab && !isTrue(currentSettings.hideCollab)) {
       warnings.push("The Collab workspace will be disabled.");
     }
-    if (flagsConfig.hideLab && !isTrue(currentSettings.hideLab)) {
-      warnings.push("The Lab Apps section will be disabled.");
-    }
     if (!flagsConfig.allowPublicRegistration && isTrue(currentSettings.allowPublicRegistration)) {
       warnings.push("Public registrations will be disabled (only administrators can add users).");
     }
@@ -324,7 +314,6 @@ export const SetupWizard = () => {
         hideLive: flagsConfig.hideLive,
         hideSamples: flagsConfig.hideSamples,
         hideCollab: flagsConfig.hideCollab,
-        hideLab: flagsConfig.hideLab,
         allowPublicRegistration: flagsConfig.allowPublicRegistration,
         listenerSelfPublish: flagsConfig.listenerSelfPublish,
         mode: flagsConfig.mode
@@ -560,21 +549,6 @@ export const SetupWizard = () => {
                     className="toggle toggle-primary toggle-sm"
                     checked={!flagsConfig.hideCollab}
                     onChange={(e) => setFlagsConfig({ ...flagsConfig, hideCollab: !e.target.checked })}
-                  />
-                </label>
-              </div>
-
-              <div className="form-control">
-                <label className="label cursor-pointer justify-between py-1.5">
-                  <div>
-                    <span className="label-text font-semibold text-sm">Lab Apps</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Standalone tools and experiments in the Lab section</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-primary toggle-sm"
-                    checked={!flagsConfig.hideLab}
-                    onChange={(e) => setFlagsConfig({ ...flagsConfig, hideLab: !e.target.checked })}
                   />
                 </label>
               </div>
