@@ -23,7 +23,11 @@ services:
       # Persistent data (SQLite database, downloaded content, uploads)
       - tunecamp_data:/data
     env_file:
-      - .env
+      # A fresh clone has no .env and every value below already has a default,
+      # so a missing file must not abort the first start. Long syntax needs
+      # Compose v2.24+.
+      - path: .env
+        required: false
     environment:
       # Core Paths & Port
       - NODE_ENV=production
