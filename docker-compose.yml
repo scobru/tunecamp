@@ -102,9 +102,24 @@ services:
       - -c
       - |
         set -e
-        apk add --no-cache openssh-client >/dev/null
+        echo "[tunnel] Installing openssh-client..."
+        apk add --no-cache openssh-client
         mkdir -p /data/ssh
-        [ -f /data/ssh/id_ed25519 ] || ssh-keygen -q -t ed25519 -N '' -f /data/ssh/id_ed25519
+        if [ ! -f /data/ssh/id_ed25519 ]; then
+          echo "[tunnel] Generating SSH key..."
+          ssh-keygen -t ed25519 -N '' -f /data/ssh/id_ed25519
+          echo "[tunnel] Key generated."
+        else
+          echo "[tunnel] SSH key already exists."
+        fi
+        # Verify the key is valid before connecting
+        if [ ! -s /data/ssh/id_ed25519 ]; then
+          echo "[tunnel] ERROR: key file is empty or missing!" >&2
+          exit 1
+        fi
+        echo "[tunnel] Key fingerprint:"
+        ssh-keygen -l -f /data/ssh/id_ed25519
+        echo "[tunnel] Connecting to srv.us..."
         exec ssh -i /data/ssh/id_ed25519 \
           -o UserKnownHostsFile=/data/ssh/known_hosts \
           -o StrictHostKeyChecking=accept-new \
