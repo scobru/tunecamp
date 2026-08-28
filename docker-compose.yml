@@ -120,13 +120,13 @@ services:
         echo "[tunnel] Key fingerprint:"
         ssh-keygen -l -f /data/ssh/id_ed25519
         echo "[tunnel] Connecting to srv.us..."
-        exec ssh -i /data/ssh/id_ed25519 \
+        exec ssh -v -i /data/ssh/id_ed25519 \
           -o UserKnownHostsFile=/data/ssh/known_hosts \
           -o StrictHostKeyChecking=accept-new \
           -o ExitOnForwardFailure=yes \
           -o ServerAliveInterval=30 \
           -o ServerAliveCountMax=3 \
-          -N -R 1:tunecamp:1970 srv.us
+          -R 1:tunecamp:1970 srv.us 2>&1
     restart: unless-stopped
 
 volumes:
