@@ -120,7 +120,7 @@ services:
         echo "[tunnel] Key fingerprint:"
         ssh-keygen -l -f /data/ssh/id_ed25519
         echo "[tunnel] Connecting to srv.us..."
-        exec ssh -v -i /data/ssh/id_ed25519 \
+        exec ssh -i /data/ssh/id_ed25519 \
           -o UserKnownHostsFile=/data/ssh/known_hosts \
           -o StrictHostKeyChecking=accept-new \
           -o ExitOnForwardFailure=yes \
