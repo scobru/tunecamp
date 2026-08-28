@@ -160,7 +160,6 @@ describe('Payments Routes', () => {
                 undefined
             );
         });
-    });
 
         test('is idempotent for a duplicate item-purchase webhook delivery', async () => {
             mockDatabase.getUnlockCodeByTxHash.mockReturnValue({ code: 'ALREADY-GRANTED' });
