@@ -48,18 +48,41 @@ export function createDigRoutes(container: ServiceContainer): Router {
         res.json(results);
     }));
 
-    /** POST /api/dig/run { releaseUrl, strategy } — run the collector-graph dig. */
+    /** POST /api/dig/run — run the collector-graph dig.
+     *  { releaseUrl, strategy } (default) digs Bandcamp's fan collections from a Bandcamp URL.
+     *  { source: "network", albumId | trackId } digs this TuneCamp network's own users' stars
+     *  instead, seeded from a release already in your own library (strategy is ignored). */
     router.post("/run", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const userId = requireUserId(req);
-        const { releaseUrl, strategy } = req.body || {};
-        if (!releaseUrl || typeof releaseUrl !== "string") {
-            throw new BadRequestError("Missing releaseUrl");
-        }
-        const chosen: DigStrategy = VALID_STRATEGIES.includes(strategy) ? strategy : "balanced";
+        const { releaseUrl, strategy, source, albumId, trackId } = req.body || {};
 
         if (inFlight.has(userId)) {
             return res.status(429).json({ error: "A dig is already running. Please wait for it to finish." });
         }
+
+        if (source === "network") {
+            const parsedAlbumId = Number(albumId);
+            const parsedTrackId = Number(trackId);
+            if (!Number.isFinite(parsedAlbumId) && !Number.isFinite(parsedTrackId)) {
+                throw new BadRequestError("Missing albumId or trackId");
+            }
+            inFlight.add(userId);
+            try {
+                const result = await digService.digNetwork({
+                    albumId: Number.isFinite(parsedAlbumId) ? parsedAlbumId : undefined,
+                    trackId: Number.isFinite(parsedTrackId) ? parsedTrackId : undefined
+                });
+                res.json(result);
+            } finally {
+                inFlight.delete(userId);
+            }
+            return;
+        }
+
+        if (!releaseUrl || typeof releaseUrl !== "string") {
+            throw new BadRequestError("Missing releaseUrl");
+        }
+        const chosen: DigStrategy = VALID_STRATEGIES.includes(strategy) ? strategy : "balanced";
         if (chosen === "deep" && !checkDeepQuota(userId)) {
             return res.status(429).json({ error: `Deep dig limit reached (${MAX_DEEP_PER_HOUR}/hour). Try a faster strategy.` });
         }

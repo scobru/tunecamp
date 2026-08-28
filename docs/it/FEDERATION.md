@@ -56,6 +56,46 @@ L'endpoint è pubblico (nessuna autenticazione richiesta) e abilitato a livello 
 
 ---
 
+## Network DIG: Scoperta Cross-Istanza
+
+"Dig" (crate digging) normalmente incrocia il grafo dei collezionisti di **Bandcamp**: da una release seme, trova chi la colleziona e cos'altro possiedono quei collezionisti. **Network DIG** esegue lo stesso incrocio, ma sugli utenti *di questo network TuneCamp* — "chi qui ha messo like a questa release, e cos'altro ha messo like" — usando l'elenco dei peer federati sopra descritto per estendere la query a ogni istanza conosciuta. Implementato in `src/server/modules/catalog/dig.service.ts`.
+
+### Come funziona la correlazione
+
+Due istanze non possono confrontare gli id di riga del proprio database, quindi l'identità cross-istanza di una release è:
+
+1. Il suo `external_id`, quando la release è stata associata a una fonte esterna (Bandcamp, MusicBrainz, ...) tramite match/autofill dei metadati — corrispondenza esatta.
+2. In alternativa, una chiave normalizzata `titolo + artista` (accenti e punteggiatura rimossi) — un fallback fuzzy, unica opzione per una release che esiste solo su TuneCamp, senza controparte esterna.
+
+Il seme stesso è una release della *tua* libreria (`albumId` o `trackId`) — non un URL Bandcamp — così anche una release esclusiva TuneCamp può essere usata come punto di partenza.
+
+### Privacy
+
+- Le risposte **non includono mai username** — solo conteggi aggregati.
+- Una release co-starrata viene restituita solo se **almeno 2 utenti distinti** hanno messo like sia a essa sia al seme (`MIN_CO_STARRERS`), così il like di un singolo utente non può essere isolato dalla risposta aggregata di un'istanza piccola.
+- Quando si risponde a un **peer**, vengono considerate solo le voci di catalogo con `is_release = 1 AND status = 'released' AND visibility = 'public'`: release private/bozza/non pubblicate e i relativi conteggi di like non escono mai dall'istanza, anche se qualcuno le ha messe like.
+- Ogni istanza fa **opt-in esplicito** (impostazione `digNetworkOptIn`, disattivata di default) prima di rispondere alle richieste di altre istanze. La disattivazione impedisce solo di *rispondere* — l'istanza può comunque eseguire dig di rete in locale e interrogare i peer che hanno fatto opt-in.
+
+### Endpoint Pubblico
+
+- `POST /api/community/dig-lookup` — `{ externalId?, title, artist }` → `{ results: [{ externalId, title, artist, coverUrl, score }] }`. Pubblico, protetto da opt-in (404 se l'istanza non ha attivato la funzione), rate-limited a 30 richieste/minuto/IP.
+
+### Avviare un network dig
+
+`POST /api/dig/run` (autenticato) accetta:
+
+```json
+{ "source": "network", "albumId": 123 }
+```
+
+oppure `"trackId"` al posto di `"albumId"`. Il server risolve l'identità del seme, aggrega localmente i propri `starred_items`, estende la query `dig-lookup` a ogni peer conosciuto (concorrenza limitata, protetta da SSRF, timeout 5s — un peer irraggiungibile o non opt-in contribuisce semplicemente con zero risultati) e unisce tutto in un'unica classifica. Confronta con `{ "releaseUrl": "https://...bandcamp.com/album/...", "strategy": "fast" | "balanced" | "deep" }` per il dig originale sui collezionisti Bandcamp.
+
+### Configurazione
+
+- `digNetworkOptIn` (impostazione istanza, via `PUT /api/admin/settings`): se questa istanza risponde alle richieste `dig-lookup` di altre istanze. Disattivata di default.
+
+---
+
 ## ActivityPub: Integrazione con il Fediverso
 
 ActivityPub consente a TuneCamp di comunicare con altre piattaforme quali Mastodon, Pleroma, Funkwhale e Lemmy.
@@ -139,5 +179,6 @@ Quando un client Subsonic registra la riproduzione di una traccia (`scrobble.vie
 | Notifiche delle Release | ActivityPub | Esterno (Mastodon, ecc.) |
 | Federazione Funkwhale | ActivityPub | Esterno (Funkwhale) |
 | Scoperta delle Istanze | Gossip HTTP / NodeInfo federato | Interno (Nodi TuneCamp) |
+| Network DIG (crate digging sugli utenti del network) | HTTP federato (`/api/community/dig-lookup`), opt-in | Interno (Nodi TuneCamp) |
 | Streaming su Dispositivi Mobili | API Subsonic | Esterno (Qualsiasi client) |
 | Stellati / Preferiti | API Subsonic | Locale (per utente) |

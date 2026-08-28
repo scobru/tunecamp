@@ -3,6 +3,7 @@ import express from 'express';
 import request from 'supertest';
 import Database from 'better-sqlite3';
 import { createCommunityRoutes } from './community.js';
+import { DigService } from '../../modules/catalog/dig.service.js';
 
 /**
  * /api/community/activity — public feed built from real SQL over an in-memory DB.
@@ -109,4 +110,95 @@ describe('Community activity feed', () => {
         expect(res.body.events).toHaveLength(2);
     });
 
+});
+
+/**
+ * POST /api/community/dig-lookup — the peer-facing half of network DIG (dig.service.ts).
+ * Gated behind the digNetworkOptIn setting, and must never leak usernames — only aggregate
+ * counts for co-starred releases above the MIN_CO_STARRERS privacy floor.
+ */
+describe('Community dig-lookup', () => {
+    const SEED_URL = 'https://seedartist.bandcamp.com/album/seed';
+    const CO_STAR_URL = 'https://otherartist.bandcamp.com/album/hit';
+    const LONE_URL = 'https://otherartist.bandcamp.com/album/rare';
+    const RELEASED = "is_release, status, visibility";
+
+    function buildApp(optedIn: boolean) {
+        const db = new Database(':memory:');
+        db.exec(`
+            CREATE TABLE artists (id INTEGER PRIMARY KEY, name TEXT);
+            CREATE TABLE albums (
+                id INTEGER PRIMARY KEY, title TEXT, slug TEXT, artist_id INTEGER,
+                album_artist TEXT, cover_path TEXT, external_id TEXT,
+                is_release INTEGER DEFAULT 0, status TEXT DEFAULT 'draft', visibility TEXT DEFAULT 'private'
+            );
+            CREATE TABLE tracks (id INTEGER PRIMARY KEY, title TEXT, album_id INTEGER, artist_name TEXT, artist_id INTEGER, external_id TEXT);
+            CREATE TABLE starred_items (id INTEGER PRIMARY KEY, username TEXT, item_type TEXT, item_id TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+        `);
+        db.exec(`
+            INSERT INTO albums (id, title, slug, album_artist, external_id, ${RELEASED}) VALUES (1, 'Seed', 'seed', 'Seed Artist', '${SEED_URL}', 1, 'released', 'public');
+            INSERT INTO albums (id, title, slug, album_artist, external_id, ${RELEASED}) VALUES (2, 'Hit', 'hit', 'Other Artist', '${CO_STAR_URL}', 1, 'released', 'public');
+            INSERT INTO albums (id, title, slug, album_artist, external_id, ${RELEASED}) VALUES (3, 'Rare', 'rare', 'Other Artist', '${LONE_URL}', 1, 'released', 'public');
+            -- TuneCamp-only release: no external_id at all, must still be matchable by title+artist
+            INSERT INTO albums (id, title, slug, album_artist, ${RELEASED}) VALUES (4, 'Native Gem', 'native-gem', 'Other Artist', 1, 'released', 'public');
+            -- unreleased/private album, starred but must never appear in a peer-facing response
+            INSERT INTO albums (id, title, slug, album_artist) VALUES (5, 'Secret Demo', 'secret-demo', 'Other Artist');
+            -- three users starred the seed; two of them also starred "Hit" and "Native Gem"
+            -- (crosses the floor of 2), only one starred "Rare"/"Secret Demo" (below the floor)
+            INSERT INTO starred_items (username, item_type, item_id) VALUES ('alice', 'album', '1');
+            INSERT INTO starred_items (username, item_type, item_id) VALUES ('bob', 'album', '1');
+            INSERT INTO starred_items (username, item_type, item_id) VALUES ('carol', 'album', '1');
+            INSERT INTO starred_items (username, item_type, item_id) VALUES ('alice', 'album', '2');
+            INSERT INTO starred_items (username, item_type, item_id) VALUES ('bob', 'album', '2');
+            INSERT INTO starred_items (username, item_type, item_id) VALUES ('carol', 'album', '3');
+            INSERT INTO starred_items (username, item_type, item_id) VALUES ('alice', 'album', '4');
+            INSERT INTO starred_items (username, item_type, item_id) VALUES ('bob', 'album', '4');
+            INSERT INTO starred_items (username, item_type, item_id) VALUES ('carol', 'album', '5');
+        `);
+
+        const settings: Record<string, string> = { digNetworkOptIn: optedIn ? 'true' : 'false', publicUrl: 'https://peer.example.com' };
+        const container: any = {
+            database: { db, getSetting: (k: string) => settings[k] },
+            config: {},
+            federatedDiscoveryService: { getPeers: () => [] },
+            digService: new DigService({ db, getSetting: (k: string) => settings[k] } as any, { getPublicUrl: () => settings.publicUrl }),
+        };
+        const app = express();
+        app.use('/api/community', createCommunityRoutes(container));
+        return app;
+    }
+
+    test('404s when the instance has not opted in', async () => {
+        const res = await request(buildApp(false)).post('/api/community/dig-lookup').send({ externalId: SEED_URL, title: 'Seed', artist: 'Seed Artist' });
+        expect(res.status).toBe(404);
+    });
+
+    test('returns co-starred releases above the privacy floor — Bandcamp-matched and TuneCamp-only alike — excludes the seed and singletons, never leaks usernames or private catalog items', async () => {
+        const res = await request(buildApp(true)).post('/api/community/dig-lookup').send({ externalId: SEED_URL, title: 'Seed', artist: 'Seed Artist' });
+        expect(res.status).toBe(200);
+        expect(res.body.results).toEqual(expect.arrayContaining([
+            { externalId: CO_STAR_URL, title: 'Hit', artist: 'Other Artist', coverUrl: null, score: 2 },
+            { externalId: null, title: 'Native Gem', artist: 'Other Artist', coverUrl: null, score: 2 },
+        ]));
+        expect(res.body.results).toHaveLength(2);
+        const text = JSON.stringify(res.body);
+        expect(text).not.toMatch(/alice|bob|carol/);
+        expect(text).not.toMatch(/Secret Demo/); // private/unreleased — must never leave the instance
+    });
+
+    test('a TuneCamp-only release (no external_id) can itself be the seed, matched by title+artist', async () => {
+        // alice and bob starred Native Gem plus both Seed and Hit — both come back as co-stars.
+        const res = await request(buildApp(true)).post('/api/community/dig-lookup').send({ title: 'Native Gem', artist: 'Other Artist' });
+        expect(res.status).toBe(200);
+        expect(res.body.results).toEqual(expect.arrayContaining([
+            { externalId: SEED_URL, title: 'Seed', artist: 'Seed Artist', coverUrl: null, score: 2 },
+            { externalId: CO_STAR_URL, title: 'Hit', artist: 'Other Artist', coverUrl: null, score: 2 },
+        ]));
+        expect(res.body.results).toHaveLength(2);
+    });
+
+    test('400s without title/artist', async () => {
+        const res = await request(buildApp(true)).post('/api/community/dig-lookup').send({ externalId: SEED_URL });
+        expect(res.status).toBe(400);
+    });
 });
