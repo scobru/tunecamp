@@ -322,6 +322,7 @@ describe('Payments Routes', () => {
         test('verifies direct ETH payment successfully', async () => {
             mockProvider.getTransaction.mockResolvedValue({
                 to: '0xArtistWallet',
+                from: '0xBuyer',
                 value: 1.0
             });
             mockProvider.getTransactionReceipt.mockResolvedValue({
@@ -333,10 +334,11 @@ describe('Payments Routes', () => {
                 price: 1.0,
                 currency: 'ETH'
             });
+            (ethers.verifyMessage as jest.Mock).mockReturnValue('0xBuyer');
 
             const res = await request(app)
                 .post('/api/payments/verify')
-                .send({ txHash: '0x123', trackId: '5' });
+                .send({ txHash: '0x123', trackId: '5', signature: 'sig' });
 
             expect(res.status).toBe(200);
             expect(res.body.success).toBe(true);
@@ -347,6 +349,7 @@ describe('Payments Routes', () => {
         test('enforces per-release price override over the track-level price', async () => {
             mockProvider.getTransaction.mockResolvedValue({
                 to: '0xArtistWallet',
+                from: '0xBuyer',
                 value: 1.0 // pays the (lower) track-level price
             });
             mockProvider.getTransactionReceipt.mockResolvedValue({ status: 1 });
@@ -360,10 +363,11 @@ describe('Payments Routes', () => {
             mockDatabase.getTrackPriceFromRelease.mockReturnValue({
                 price: 2.0, price_usdc: 0, currency: 'ETH', title: 'T'
             });
+            (ethers.verifyMessage as jest.Mock).mockReturnValue('0xBuyer');
 
             const res = await request(app)
                 .post('/api/payments/verify')
-                .send({ txHash: '0x123', trackId: '5' });
+                .send({ txHash: '0x123', trackId: '5', signature: 'sig' });
 
             expect(res.status).toBe(400);
             expect(res.body.error).toMatch(/Underpayment/);
@@ -378,7 +382,7 @@ describe('Payments Routes', () => {
             });
             mockProvider.getTransaction.mockImplementation((hash: string) => {
                 if (hash === '0xfee') return Promise.resolve({ to: '0xTreasury', value: 0.0001, data: '0x' });
-                return Promise.resolve({ to: '0xArtistWallet', value: 0.85, data: '0x' });
+                return Promise.resolve({ to: '0xArtistWallet', from: '0xBuyer', value: 0.85, data: '0x' });
             });
             mockProvider.getTransactionReceipt.mockResolvedValue({ status: 1 });
             mockDatabase.getTrack.mockReturnValue({
@@ -387,10 +391,11 @@ describe('Payments Routes', () => {
                 price: 1.0,
                 currency: 'ETH'
             });
+            (ethers.verifyMessage as jest.Mock).mockReturnValue('0xBuyer');
 
             const res = await request(app)
                 .post('/api/payments/verify')
-                .send({ txHash: '0x123', feeTxHash: '0xfee', trackId: '5' });
+                .send({ txHash: '0x123', feeTxHash: '0xfee', trackId: '5', signature: 'sig' });
 
             expect(res.status).toBe(400);
             expect(res.body.error).toMatch(/Label fee underpayment/);
@@ -405,7 +410,7 @@ describe('Payments Routes', () => {
             });
             mockProvider.getTransaction.mockImplementation((hash: string) => {
                 if (hash === '0xfee') return Promise.resolve({ to: '0xTreasury', value: 0.15, data: '0x' });
-                return Promise.resolve({ to: '0xArtistWallet', value: 0.85, data: '0x' });
+                return Promise.resolve({ to: '0xArtistWallet', from: '0xBuyer', value: 0.85, data: '0x' });
             });
             mockProvider.getTransactionReceipt.mockResolvedValue({ status: 1 });
             mockDatabase.getTrack.mockReturnValue({
@@ -414,10 +419,11 @@ describe('Payments Routes', () => {
                 price: 1.0,
                 currency: 'ETH'
             });
+            (ethers.verifyMessage as jest.Mock).mockReturnValue('0xBuyer');
 
             const res = await request(app)
                 .post('/api/payments/verify')
-                .send({ txHash: '0x123', feeTxHash: '0xfee', trackId: '5' });
+                .send({ txHash: '0x123', feeTxHash: '0xfee', trackId: '5', signature: 'sig' });
 
             expect(res.status).toBe(200);
             expect(res.body.success).toBe(true);

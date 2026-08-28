@@ -13,5 +13,6 @@ export const ethers = {
     JsonRpcProvider: jest.fn().mockImplementation(() => mockProviderInstance),
     Interface: jest.fn().mockImplementation(() => mockInterfaceInstance),
     formatEther: jest.fn().mockImplementation((val: any) => String(val)),
-    formatUnits: jest.fn().mockImplementation((val: any) => String(val))
+    formatUnits: jest.fn().mockImplementation((val: any) => String(val)),
+    verifyMessage: jest.fn()
 };
