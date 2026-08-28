@@ -162,6 +162,78 @@ describe('Payments Routes', () => {
         });
     });
 
+        test('is idempotent for a duplicate item-purchase webhook delivery', async () => {
+            mockDatabase.getUnlockCodeByTxHash.mockReturnValue({ code: 'ALREADY-GRANTED' });
+            const mockEvent = {
+                type: 'checkout.session.completed',
+                data: {
+                    object: {
+                        id: 'cs_test_dupe',
+                        metadata: { itemId: '5', type: 'track', albumId: '10' }
+                    }
+                }
+            };
+            mockStripe.webhooks.constructEvent.mockReturnValue(mockEvent);
+
+            const res = await request(app)
+                .post('/api/payments/stripe/webhook')
+                .set('stripe-signature', 'valid-sig')
+                .send({ id: 'evt_dupe' });
+
+            expect(res.status).toBe(200);
+            expect(mockDatabase.createUnlockCode).not.toHaveBeenCalled();
+        });
+
+        describe('account.updated (Stripe Connect can_sell sync)', () => {
+            const buildAccountUpdatedEvent = (charges_enabled: boolean) => ({
+                type: 'account.updated',
+                data: { object: { id: 'acct_artist7', charges_enabled } }
+            });
+
+            test('enables can_sell when a connected artist account gains charges_enabled', async () => {
+                mockDatabase.getArtistByStripeAccountId = jest.fn().mockReturnValue({ id: 7 });
+                mockDatabase.setArtistCanSell = jest.fn();
+                mockStripe.webhooks.constructEvent.mockReturnValue(buildAccountUpdatedEvent(true));
+
+                const res = await request(app)
+                    .post('/api/payments/stripe/webhook')
+                    .set('stripe-signature', 'valid-sig')
+                    .send({ id: 'evt_acct_1' });
+
+                expect(res.status).toBe(200);
+                expect(mockDatabase.setArtistCanSell).toHaveBeenCalledWith(7, true);
+            });
+
+            test('disables can_sell when a connected artist account loses charges_enabled', async () => {
+                mockDatabase.getArtistByStripeAccountId = jest.fn().mockReturnValue({ id: 7 });
+                mockDatabase.setArtistCanSell = jest.fn();
+                mockStripe.webhooks.constructEvent.mockReturnValue(buildAccountUpdatedEvent(false));
+
+                const res = await request(app)
+                    .post('/api/payments/stripe/webhook')
+                    .set('stripe-signature', 'valid-sig')
+                    .send({ id: 'evt_acct_2' });
+
+                expect(res.status).toBe(200);
+                expect(mockDatabase.setArtistCanSell).toHaveBeenCalledWith(7, false);
+            });
+
+            test('is a no-op when the connected account is not linked to any artist', async () => {
+                mockDatabase.getArtistByStripeAccountId = jest.fn().mockReturnValue(null);
+                mockDatabase.setArtistCanSell = jest.fn();
+                mockStripe.webhooks.constructEvent.mockReturnValue(buildAccountUpdatedEvent(true));
+
+                const res = await request(app)
+                    .post('/api/payments/stripe/webhook')
+                    .set('stripe-signature', 'valid-sig')
+                    .send({ id: 'evt_acct_3' });
+
+                expect(res.status).toBe(200);
+                expect(mockDatabase.setArtistCanSell).not.toHaveBeenCalled();
+            });
+        });
+    });
+
     describe('GET /api/payments/onramp-config', () => {
         test('returns configured onramp providers', async () => {
             const res = await request(app).get('/api/payments/onramp-config');
@@ -283,6 +355,43 @@ describe('Payments Routes', () => {
             expect(res.status).toBe(200);
             const [, opts] = mockStripe.checkout.sessions.create.mock.calls[0];
             expect(opts).toBeUndefined();
+        });
+
+        test('refuses checkout when the artist has sales disabled (can_sell: 0)', async () => {
+            mockDatabase.getTrack.mockReturnValue({ id: 5, title: 'Track Five', price: 10, currency: 'USD', artist_id: 7 });
+            mockDatabase.getArtistSimple = jest.fn().mockReturnValue({ id: 7, can_sell: 0 });
+
+            const res = await request(app)
+                .post('/api/payments/stripe/create-session')
+                .send({ itemId: 5, type: 'track', successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no' });
+
+            expect(res.status).toBe(403);
+            expect(res.body.error).toBe('Sales are not enabled for this artist.');
+            expect(mockStripe.checkout.sessions.create).not.toHaveBeenCalled();
+        });
+
+        test('allows checkout once can_sell is enabled for the same artist', async () => {
+            mockDatabase.getTrack.mockReturnValue({ id: 5, title: 'Track Five', price: 10, currency: 'USD', artist_id: 7 });
+            mockDatabase.getArtistSimple = jest.fn().mockReturnValue({ id: 7, can_sell: 1 });
+            mockStripe.checkout.sessions.create.mockResolvedValue({ id: 'sess_ok', url: 'https://checkout.stripe.com/sess_ok' });
+
+            const res = await request(app)
+                .post('/api/payments/stripe/create-session')
+                .send({ itemId: 5, type: 'track', successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no' });
+
+            expect(res.status).toBe(200);
+        });
+
+        test('rejects a zero/unset price instead of creating an unpayable Stripe session', async () => {
+            mockDatabase.getTrack.mockReturnValue({ id: 5, title: 'Free Track', price: 0, currency: 'USD' });
+
+            const res = await request(app)
+                .post('/api/payments/stripe/create-session')
+                .send({ itemId: 5, type: 'track', successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no' });
+
+            expect(res.status).toBe(400);
+            expect(res.body.error).toMatch(/must be greater than zero/);
+            expect(mockStripe.checkout.sessions.create).not.toHaveBeenCalled();
         });
     });
 
