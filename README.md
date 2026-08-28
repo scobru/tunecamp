@@ -15,12 +15,16 @@ The fastest way to run Tunecamp is using Docker Compose.
 git clone https://github.com/scobru/tunecamp.git
 cd tunecamp
 
-# 2. Start the server (works out-of-the-box, defaults music to ./music)
+# 2. Optional: create your .env for secrets and integrations
+#    (the server starts without it — every value has a default)
+cp .env.example .env
+
+# 3. Start the server (works out-of-the-box, defaults music to ./music)
 docker-compose up -d --build
 
 # (Optional: customize music path via TUNECAMP_MUSIC_PATH in .env or docker-compose.yml)
 
-# 3. Access the dashboard
+# 4. Access the dashboard
 # Open http://localhost:1970 in your browser (Login: admin / admin)
 ```
 
@@ -109,13 +113,13 @@ In addition to the core server, the TuneCamp ecosystem includes several companio
 
 ### Using Docker Compose (Production)
 
-**Prerequisites**: Docker 20+, Docker Compose
+**Prerequisites**: Docker 20+, Docker Compose v2.24+ (the compose file marks `.env` optional, which needs the long `env_file` syntax)
 
 ```bash
 git clone https://github.com/scobru/tunecamp.git
 cd tunecamp
 
-# Edit docker-compose.yml to configure your music path and environment
+# Set TUNECAMP_MUSIC_PATH and any integration keys in .env (see .env.example)
 docker-compose up -d --build
 ```
 

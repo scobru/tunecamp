@@ -56,6 +56,46 @@ The endpoint is public (no auth required) and CORS-enabled, so the [community we
 
 ---
 
+## Network DIG: Cross-Instance Discovery
+
+"Dig" (crate digging) normally cross-references **Bandcamp**'s fan-collector graph: from a seed release, find who collects it and what else those collectors own. **Network DIG** runs the same cross-reference over this TuneCamp network's *own* users' stars instead — "who here starred this, and what else did they star" — using the federated peer list above to fan the query out across every known instance. Implemented in `src/server/modules/catalog/dig.service.ts`.
+
+### How correlation works
+
+Two instances can't compare database row IDs, so a release's cross-instance identity is:
+
+1. Its `external_id` when the release has been matched to an external source (Bandcamp, MusicBrainz, ...) via metadata match/autofill — an exact match.
+2. Otherwise, a normalized `title + artist` key (accents and punctuation stripped) — a fuzzy fallback that's the only option for a release that only exists on TuneCamp, with no external counterpart.
+
+The seed itself is one of *your own* library releases (`albumId` or `trackId`) — not a Bandcamp URL — so a TuneCamp-only release can be dug from directly.
+
+### Privacy
+
+- Responses **never include usernames** — only aggregate counts.
+- A co-starred release is only returned once **at least 2 distinct users** starred both it and the seed (`MIN_CO_STARRERS`), so a single user's star can't be singled out from a small instance's response.
+- When answering a **peer's** request, only `is_release = 1 AND status = 'released' AND visibility = 'public'` catalog items are ever considered — private/draft/unreleased releases and their star counts never leave the instance, even if starred.
+- Each instance **opts in explicitly** (`digNetworkOptIn` setting, off by default) before it will answer other instances' lookups at all. Opting out only stops the instance from *answering* — it can still run its own network digs locally and query opted-in peers.
+
+### Public endpoint
+
+- `POST /api/community/dig-lookup` — `{ externalId?, title, artist }` → `{ results: [{ externalId, title, artist, coverUrl, score }] }`. Public, opt-in gated (404 when the instance hasn't opted in), rate-limited to 30 requests/minute/IP.
+
+### Running a network dig
+
+`POST /api/dig/run` (authenticated) accepts:
+
+```json
+{ "source": "network", "albumId": 123 }
+```
+
+or `"trackId"` instead of `"albumId"`. The server resolves the seed's identity, aggregates its own starred_items locally, fans out `dig-lookup` to every known peer (bounded concurrency, SSRF-guarded, 5s timeout — an unreachable or opted-out peer just contributes nothing), and merges everything into one ranked list. Compare with `{ "releaseUrl": "https://...bandcamp.com/album/..." , "strategy": "fast" | "balanced" | "deep" }` for the original Bandcamp-collector dig.
+
+### Configuration
+
+- `digNetworkOptIn` (instance setting, via `PUT /api/admin/settings`): whether this instance answers other instances' `dig-lookup` requests. Off by default.
+
+---
+
 ## ActivityPub: Fediverse Integration
 
 ActivityPub allows Tunecamp to communicate with other platforms like Mastodon, Pleroma, Funkwhale, and Lemmy.
@@ -151,5 +191,6 @@ When a Subsonic client scrobbles a track (`scrobble.view`), Tunecamp records the
 | Release Notification | ActivityPub  | External (Mastodon, etc)  |
 | Funkwhale Federation | ActivityPub  | External (Funkwhale)      |
 | Instance Discovery   | Federated HTTP / NodeInfo gossip | Internal (Tunecamp Nodes) |
+| Network DIG (crate digging over network stars) | Federated HTTP (`/api/community/dig-lookup`), opt-in | Internal (Tunecamp Nodes) |
 | Mobile Streaming     | Subsonic API | External (Any client)     |
 | Starred / Favorites  | Subsonic API | Local (per user)          |

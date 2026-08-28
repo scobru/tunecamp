@@ -300,7 +300,10 @@ export async function bootstrapServices(
 		openRouterService,
 		metadataService,
 	);
-	const digService = new DigService(database);
+	const digService = new DigService(database, {
+		getPeers: () => federatedDiscoveryService.getPeers(),
+		getPublicUrl: () => database.getSetting("publicUrl") || config.publicUrl,
+	});
 
 	if (config.gdriveClientId && config.gdriveClientSecret) {
 		const dbPublicUrl = database.getSetting("publicUrl");

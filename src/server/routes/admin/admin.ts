@@ -590,6 +590,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 				hideSocial,
 				hideNetwork,
 				hideDig,
+				digNetworkOptIn,
 				hideSamples,
 				hideCollab,
 				membershipMonthlyPrice,
@@ -650,6 +651,13 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
 			if (hideDig !== undefined) {
 				identity.setSetting("hideDig", isTrue(hideDig) ? "true" : "false");
+			}
+
+			// Opt-in: whether this instance answers other instances' network-dig queries
+			// (POST /api/community/dig-lookup) with its own users' star aggregates.
+			// Off by default — never expose star data cross-instance without explicit consent.
+			if (digNetworkOptIn !== undefined) {
+				identity.setSetting("digNetworkOptIn", isTrue(digNetworkOptIn) ? "true" : "false");
 			}
 
 			if (hideSamples !== undefined) {

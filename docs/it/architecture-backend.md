@@ -98,7 +98,7 @@ La chat peer è stata rimossa; `peer_chat_messages`, `peer_chat_bans`, `peer_cha
 - **`play_history`**: Registro degli ascolti per statistiche, scrobbling e raccomandazioni.
 - **`unlock_codes`**: Codici di sblocco per l'accesso a contenuti protetti o a pagamento.
 - **`torrents`**: Integrazioni di condivisione file per il recupero di contenuti (l'acquisizione P2P vive in [Sidecamp](./sidecamp.md)).
-- **`dig_sessions`** / **`dig_crate_items`** / **`dig_history`** / **`dig_cache`**: Stato e cache della modalità "Dig" (scoperta musicale / crate digging).
+- **`dig_sessions`** / **`dig_crate_items`** / **`dig_history`** / **`dig_cache`**: Stato e cache della modalità "Dig" (scoperta musicale / crate digging — sul grafo collezionisti Bandcamp, oppure, opt-in, sugli utenti di questo network; vedi [FEDERATION.md](./FEDERATION.md#network-dig-scoperta-cross-istanza)).
 - **`assets`** / **`storage_accounts`**: Memorizzazione di asset e account di archiviazione cloud connessi (es. Google Drive).
 - **`track_stats`** / **`release_stats`**: Contatori aggregati degli ascolti e statistiche sul tempo di riproduzione.
 - **`settings`**: Configurazione chiave/valore dell'istanza.
