@@ -20,7 +20,6 @@ import {
   Upload,
   MessageSquare,
   Library,
-  Wrench,
   ShoppingBag,
   Shovel,
   Radio,
@@ -280,7 +279,6 @@ export const Sidebar = () => {
 
               <li className="menu-title mt-2 text-[11px]">Settings</li>
               <li><Link to="/profile"><User size={16} /> Profile</Link></li>
-              <li><Link to="/tools"><Wrench size={16} /> Tools</Link></li>
 
               <div className="divider my-1 opacity-10"></div>
               <li className="menu-title mt-2 text-[11px]">Resources</li>
