@@ -204,8 +204,7 @@ Each file is generally wired to a route in `App.tsx`. Main ones: `Home`,
 `/favorites`, `/playlists` and `/my-playlists` redirect here), `Releases`
 (also serves `/albums`), `AlbumDetails`, `Artists`, `ArtistDetails`, `Store`,
 `PlaylistDetails`, `MyMusic`, `Search` (also covers what used to be the
-separate `ContentSearch` page), `Network`, `Social`, `Post`, `Board`, `Dig`
-(crate digging), `Live` (live streaming HLS), `Radio`, `NowListening`,
+separate `ContentSearch` page), `Network`, `Social`, `Post`, `Board`, `Live` (live streaming HLS), `Radio`, `NowListening`,
 `Stats`, `Profile`, `UserProfile`, `Wallet`, `Support`, `Tools`, `About`,
 `Legal`, `Changelog`, `Guide`, `SharePage`, `Files` (root-admin file
 browser), `Archive` (manager/root-only), `Publish`, `Admin`,
@@ -215,8 +214,7 @@ browser), `Archive` (manager/root-only), `Publish`, `Admin`,
 Several routes are gated by wrapper components rather than logic inside the
 page itself: `AdminGuard`, `EditorGuard`, `RootAdminGuard`,
 `ManagerOrRootGuard` (role-based), and `ModuleGuard` (instance feature flags
-`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`,
-`hideSamples`, `hideCollab` from `useSiteSettingsStore`).
+`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideSamples`, `hideCollab` from `useSiteSettingsStore`).
 
 ### Development Notes
 

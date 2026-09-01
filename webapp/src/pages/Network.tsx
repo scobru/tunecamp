@@ -2,12 +2,11 @@ import { confirm } from '@/utils/confirm';
 import React, { useState, useEffect, useCallback, memo } from "react";
 import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
-import { Globe, Server, Music, ExternalLink, Play, ChevronDown, Users, FileText, Library, Loader2, Magnet } from "lucide-react";
+import { Globe, Server, Music, ExternalLink, Play, ChevronDown, FileText, Library, Loader2, Magnet } from "lucide-react";
 
-type NetworkTab = "peers" | "releases" | "my-instance" | "posts" | "instances" | "tunecamp-network" | "other-networks";
+type NetworkTab = "releases" | "my-instance" | "posts" | "instances" | "tunecamp-network" | "other-networks";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { PageHeader } from "../components/ui/PageHeader";
-import { PeerSessionCard } from "../components/network/PeerSessionCard";
 import { StringUtils } from "../utils/stringUtils";
 import { formatDuration } from "../utils/format";
 import { notify } from "../utils/notify";
@@ -492,24 +491,21 @@ const Network = () => {
   const [tracks, setTracks] = useState<NetworkTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const { playTrack, currentTrack } = usePlayerStore();
-  const { isAdminAuthenticated, isAuthenticated } = useAuthStore();
+  const { isAdminAuthenticated } = useAuthStore();
   const [hiddenTracks, setHiddenTracks] = useState<string[]>([]);
   const [showHidden, setShowHidden] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState<NetworkStatus | null>(null);
-  const [peerStatus, setPeerStatus] = useState<{ enabled: boolean; allowDownloads: boolean } | null>(null);
-  const [peerSessions, setPeerSessions] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<NetworkTab>("tunecamp-network");
 
   useEffect(() => {
     const loadData = async () => {
       try {
         // Module gating (hideNetwork) is enforced by ModuleGuard on the route.
-        const [sitesData, tracksData, statusData, pStatus] = await Promise.all([
+        const [sitesData, tracksData, statusData] = await Promise.all([
           API.getNetworkSites(),
           API.getNetworkTracks(),
           API.getNetworkStatus().catch(() => null),
-          API.getPeerStatus().catch(() => null),
         ]);
         setStatus(statusData);
 
@@ -556,15 +552,6 @@ const Network = () => {
         const finalTracks = Array.from(uniqueContent.values());
         setSites(sites);
         setTracks(finalTracks);
-        setPeerStatus(pStatus);
-        if (pStatus?.enabled && isAuthenticated) {
-          try {
-            const pSessions = await API.getPeerSessions();
-            setPeerSessions(pSessions);
-          } catch (err) {
-            console.error("Failed to load peer sessions:", err);
-          }
-        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -775,10 +762,8 @@ const Network = () => {
 
       {/* Tab Bar */}
       {(() => {
-        const showPeers = peerStatus?.enabled && isAuthenticated;
         const showPosts = allPosts.length > 0;
         const tabs: { id: NetworkTab; label: string; icon: React.ElementType; count: number }[] = [
-          ...(showPeers ? [{ id: "peers" as NetworkTab, label: "Live Peers", icon: Users, count: peerSessions.length }] : []),
           { id: "tunecamp-network", label: "TuneCamp Network", icon: Globe, count: tunecampGroups.length },
           { id: "other-networks", label: "Other Networks", icon: ExternalLink, count: otherGroups.length },
           { id: "my-instance", label: "My Instance", icon: Music, count: localReleases.length },
@@ -814,27 +799,6 @@ const Network = () => {
 
             {/* Tab content */}
             <div className="pt-4">
-
-              {/* Live Peers */}
-              {currentTab === "peers" && showPeers && (
-                <section className="space-y-6">
-                  {peerSessions.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {peerSessions.map((session) => (
-                        <PeerSessionCard
-                          key={session.id}
-                          session={session}
-                          allowDownloadsGlobal={peerStatus!.allowDownloads}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
-                      No live peer channels currently online. Start a CLI daemon to share yours!
-                    </div>
-                  )}
-                </section>
-              )}
 
               {/* TuneCamp Network */}
               {currentTab === "tunecamp-network" && (

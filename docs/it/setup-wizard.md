@@ -21,25 +21,23 @@ Il passo 3 scrive tutti i flag in un'unica `POST` all'endpoint delle impostazion
 
 `mode` determina la forma della homepage (`single_artist`, `label`, `community`). I flag `hide*` rimuovono sezioni dalla navigazione e negano le relative rotte API a chi non è amministratore.
 
-| Profilo | Modalità | Store | Social | Network | Dig | Live | Samples | Collab | Registrazioni aperte | Autopubblicazione ascoltatori |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Solo Artist** | `single_artist` | ✅ | ✅ | — | — | — | — | — | — | — |
-| **Record Label** | `label` | ✅ | ✅ | ✅ | — | — | — | — | ✅ | — |
-| **Music Curator** | `community` | — | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ |
-| **Web Radio / Streamer** | `community` | — | ✅ | — | ✅ | ✅ | — | — | ✅ | — |
-| **Sound Designer** | `community` | — | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ |
-| **Listening Room** | `community` | — | ✅ | ✅ | — | — | — | — | ✅ | — |
+| Profilo | Modalità | Store | Social | Network | Live | Samples | Collab | Registrazioni aperte | Autopubblicazione ascoltatori |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Solo Artist** | `single_artist` | ✅ | ✅ | — | — | — | — | — | — |
+| **Record Label** | `label` | ✅ | ✅ | ✅ | — | — | — | ✅ | — |
+| **Music Curator** | `community` | — | ✅ | ✅ | — | — | — | ✅ | ✅ |
+| **Web Radio / Streamer** | `community` | — | ✅ | — | ✅ | — | — | ✅ | — |
+| **Sound Designer** | `community` | — | ✅ | — | — | ✅ | ✅ | ✅ | ✅ |
+| **Listening Room** | `community` | — | ✅ | ✅ | — | — | — | ✅ | — |
 
-✅ = modulo attivo per quel profilo. Il trattino indica che il corrispondente flag `hide*` è impostato.
+✅ = il modulo è attivo per quel profilo. Il trattino indica che il relativo flag `hide*` è impostato.
 
-"Social" è il feed Fediverso (`/social`, flag `hideSocial`) — **non** la bacheca. La bacheca ha un'impostazione sua, `boardEnabled`, che il wizard non tocca ed è spenta finché non la attivi da Admin Settings.
-
-- **Solo Artist** — un portfolio: le tue uscite, vendita diretta, presenza sul Fediverso. Le superfici di community sono spente.
-- **Record Label** — un roster: profili artista, catalogo, store centrale, scoperta di rete attiva.
-- **Music Curator** — playlist e scoperta: Dig per le fonti esterne, feed social attivo, gli ascoltatori possono autopubblicarsi.
-- **Web Radio / Streamer** — trasmissione dal vivo: moduli Live e Dig attivi, store spento.
-- **Sound Designer** — sample pack gratuiti: Samples e Collab attivi, autopubblicazione consentita.
-- **Listening Room** — ascolto condiviso: libreria, cartelle Sidecamp e feed social, tutto il resto rimosso.
+- **Solo Artist** — portfolio: le tue release, vendite dirette, presenza Fediverso. Le superfici comunitarie sono disattivate.
+- **Record Label** — catalogo di etichetta: profili artisti, catalogo, store centrale, scoperta del network attiva.
+- **Music Curator** — playlist e scoperta: feed social attivo, gli ascoltatori possono autopubblicarsi.
+- **Web Radio / Streamer** — trasmissione dal vivo: modulo Live attivo, store spento.
+- **Sound Designer** — campioni audio gratuiti: Sample e Collab attivi, gli ascoltatori possono autopubblicarsi.
+- **Listening Room** — ascolto condiviso: libreria condivisa, condivisione cartelle Sidecamp e feed social., tutto il resto rimosso.
 
 ## Cambiare idea
 

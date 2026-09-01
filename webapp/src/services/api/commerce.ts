@@ -1,7 +1,6 @@
 import { api, handleResponse } from './client';
 import type {
-    UnlockCode, DigStrategy, DigSearchResult, DigResult,
-    DigSession, DigCrateItem, DigCrateInput, DigHistoryItem,
+    UnlockCode,
     Report
 } from '../../types';
 
@@ -21,21 +20,6 @@ export const commerceApi = {
     // --- Generic Download Provider ---
     searchProvider: (providerId: string, query: string) => handleResponse(api.get<any[]>(`search/content/provider/${providerId}?q=${encodeURIComponent(query)}`)),
     downloadFromProvider: (providerId: string, result: any) => handleResponse(api.post(`search/content/provider/${providerId}/download`, { result })),
-
-    // --- Dig (crate-digging) ---
-    digSearch: (q: string, source = 'bandcamp') =>
-        handleResponse(api.get<DigSearchResult[]>(`dig/search?q=${encodeURIComponent(q)}&source=${source}`)),
-    digRun: (releaseUrl: string, strategy: DigStrategy = 'balanced') =>
-        handleResponse(api.post<DigResult>('dig/run', { releaseUrl, strategy })),
-    digGetSessions: () => handleResponse(api.get<DigSession[]>('dig/sessions')),
-    digCreateSession: (name: string) => handleResponse(api.post<DigSession>('dig/sessions', { name })),
-    digDeleteSession: (id: number) => handleResponse(api.delete(`dig/sessions/${id}`)),
-    digGetCrate: (sessionId: number) => handleResponse(api.get<DigCrateItem[]>(`dig/sessions/${sessionId}/crate`)),
-    digAddToCrate: (sessionId: number, item: DigCrateInput) =>
-        handleResponse(api.post<DigCrateItem>(`dig/sessions/${sessionId}/crate`, item)),
-    digRemoveFromCrate: (sessionId: number, itemId: number) =>
-        handleResponse(api.delete(`dig/sessions/${sessionId}/crate/${itemId}`)),
-    digGetHistory: () => handleResponse(api.get<DigHistoryItem[]>('dig/history')),
 
     // --- Release Reporting ---
     reportRelease: (releaseId: number | string, reason: string, details: string | null, name?: string | null, email?: string | null) =>

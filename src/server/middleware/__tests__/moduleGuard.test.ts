@@ -35,18 +35,18 @@ describe('moduleGuard middleware', () => {
     describe('default polarity (invert: false)', () => {
         test('allows request if setting is not "true" (not hidden)', () => {
             mockGetSetting.mockReturnValue('false');
-            const middleware = requireModuleEnabled(mockContainer, 'hideDig');
+            const middleware = requireModuleEnabled(mockContainer, 'hideLive');
             const res = createRes();
             middleware(createReq(), res, mockNext);
 
-            expect(mockGetSetting).toHaveBeenCalledWith('hideDig');
+            expect(mockGetSetting).toHaveBeenCalledWith('hideLive');
             expect(mockNext).toHaveBeenCalled();
             expect(res.statusCode).toBe(0);
         });
 
         test('blocks request if setting is "true" (hidden)', () => {
             mockGetSetting.mockReturnValue('true');
-            const middleware = requireModuleEnabled(mockContainer, 'hideDig');
+            const middleware = requireModuleEnabled(mockContainer, 'hideLive');
             const res = createRes();
             middleware(createReq(), res, mockNext);
 
