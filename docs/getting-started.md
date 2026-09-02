@@ -18,7 +18,10 @@ See the full [Railway deployment guide](./railway.md) for environment variables,
 
 The fastest path uses Docker. You need:
 
-- **Docker 20+** and **Docker Compose**
+- **Docker 20+** and **Docker Compose v2.24+** (the compose file marks `.env`
+  optional, which needs the long `env_file` syntax). Use `docker compose`, the
+  v2 subcommand — the standalone `docker-compose` binary has been end-of-life
+  since 2023.
 - A folder of audio files (MP3, FLAC, WAV, …)
 
 > Prefer running from source for development instead? See the [Development Guide](./development-guide.md).
@@ -42,13 +45,25 @@ If you want to manage prerequisites and configuration yourself:
 git clone https://github.com/scobru/tunecamp.git
 cd tunecamp
 
-# 2. Build and start in the background (defaults music to ./music)
-docker-compose up -d --build
+# 2. Optional: drop your audio in now — the first scan will pick it up
+mkdir -p music && cp -r ~/Albums/* music/
 
-# (Optional: set TUNECAMP_MUSIC_PATH=/path/to/music in .env or docker-compose.yml)
+# 3. Build and start in the background
+docker compose up -d --build
 ```
 
 When the container is healthy, open `http://localhost:1970` (or your domain) in your browser.
+
+**Your music lives elsewhere?** Set `TUNECAMP_MUSIC_PATH=/path/to/music` in
+`.env` — that is the host folder Compose mounts into the container. Don't set
+`TUNECAMP_MUSIC_DIR` under Docker; the compose file already pins it to the
+mount point. [Adding Music](./adding-music.md) explains the difference.
+
+**Need to change the deployment itself** — container name, extra networks,
+proxy labels, more volumes? Don't edit `docker-compose.yml`. Copy
+`docker-compose.override.yml.example` to `docker-compose.override.yml`:
+Compose merges it automatically, and it is gitignored, so `git pull` never
+conflicts with your setup.
 
 ## 3. First login & secure your instance
 
@@ -66,9 +81,26 @@ TuneCamp creates a default admin account on first run:
 
 ## 4. Add your music
 
-1. Go to **Admin → Library** and trigger a **Scan**.
+Copy your files into the music folder (`./music` by default, one folder per
+album), then:
+
+1. Go to **`/admin` → Maintenance tab** and press **`Rescan Library`**. Scanning
+   is not automatic on startup; `/admin` → Settings → *Scheduled Library Scan*
+   makes it run daily at an hour you pick.
 2. TuneCamp reads tags, generates waveforms, and processes cover art.
-3. Scanned albums land in **Draft** mode — they're in your library but not publicly visible until you promote them to a **Formal Release** from the Admin dashboard.
+3. Scanned folders become **private draft albums**, listed at **`/my-music`**.
+   They're in your library and invisible to the public until you promote them:
+   `Promote` at `/my-music` turns an album into a *formal release*, then
+   **`/admin` → Releases tab** is where you fill in its metadata and
+   **Publish** it.
+
+To upload instead of scanning, **`/admin/release/new`** creates a release and
+uploads its audio in one pass, filling the title, artist, year and track list
+from the files' own tags.
+
+**[Adding Music](./adding-music.md) is the full reference** — library layout on
+disk, what each folder under `music/` is for, and how to edit the library
+without confusing the database.
 
 You can also ingest music via the [Telegram bot](./telegram.md), [Sidecamp desktop app](./sidecamp.md) (Soulseek, torrents, yt-dlp), or [Google Drive](./google-drive.md).
 

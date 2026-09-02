@@ -5,7 +5,25 @@ import type {
     RecomputeStorageResult, SystemResources, UpdateCheck
 } from '../../types';
 
+/**
+ * How much of each end of a file is sent for tag inspection. Comfortably
+ * covers ID3v2 tags with embedded artwork and FLAC/Ogg comment blocks, while
+ * keeping a dropped album's inspection in the low megabytes rather than
+ * uploading the whole thing twice.
+ */
+const INSPECT_CHUNK_BYTES = 1024 * 1024;
 
+/** Embedded tags as read by the server, with every field optional. */
+export interface AudioTags {
+    title?: string | null;
+    artist?: string | null;
+    albumArtist?: string | null;
+    album?: string | null;
+    year?: number | null;
+    genre?: string | null;
+    trackNo?: number | null;
+    discNo?: number | null;
+}
 
 export const adminApi = {
     // --- Admin: Releases & Content ---
@@ -89,6 +107,24 @@ export const adminApi = {
     fetchLyricsMetadata: (artist: string, title: string) => handleResponse(api.get<{ lyrics: string, source: string }>(`metadata/lyrics?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`)),
 
     // --- Admin: Uploads ---
+    /**
+     * Read the embedded tags of one audio file, without uploading it.
+     *
+     * Only two slices leave the browser: the head, where ID3v2 and the
+     * FLAC/Ogg comment blocks live, and the tail, which is where an MP4/M4A
+     * written without faststart keeps its `moov` atom. The server splices them
+     * back at their real offsets using `size`, reads the tags and throws the
+     * slices away. Tags it cannot find come back as an empty object.
+     */
+    inspectAudioTags: (file: File) => {
+        const formData = new FormData();
+        formData.append('size', String(file.size));
+        formData.append('head', file.slice(0, INSPECT_CHUNK_BYTES), file.name);
+        if (file.size > INSPECT_CHUNK_BYTES * 2) {
+            formData.append('tail', file.slice(file.size - INSPECT_CHUNK_BYTES), file.name);
+        }
+        return handleResponse(api.post<{ tags: AudioTags }>('admin/upload/inspect', formData));
+    },
     uploadTracks: (files: File[], options: { releaseSlug?: string, artistId?: string | number, artist?: string, album?: string, onProgress?: (percent: number) => void } = {}) => {
         const formData = new FormData();
         if (options.releaseSlug) {

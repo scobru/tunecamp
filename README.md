@@ -19,18 +19,35 @@ cd tunecamp
 #    (the server starts without it — every value has a default)
 cp .env.example .env
 
-# 3. Start the server (works out-of-the-box, defaults music to ./music)
-docker-compose up -d --build
+# 3. Optional: drop your audio in now — the first scan will pick it up
+#    (or point TUNECAMP_MUSIC_PATH at a folder elsewhere, in .env)
+mkdir -p music && cp -r ~/Albums/* music/
 
-# (Optional: customize music path via TUNECAMP_MUSIC_PATH in .env or docker-compose.yml)
+# 4. Start the server
+docker compose up -d --build
 
-# 4. Access the dashboard
+# 5. Access the dashboard
 # Open http://localhost:1970 in your browser (Login: admin / admin)
 ```
 
 > **First Run**: Tunecamp creates a default admin account (`admin`/`admin`, configurable via `TUNECAMP_ADMIN_USER` / `TUNECAMP_ADMIN_PASS`). Change the password right after logging in, from the admin settings.
 >
 > The forced "change your password" setup wizard triggers for any account still using a built-in default password — the temporary sentinel `tunecamp` (set after an admin resets a user's password, see [docs/ROLES.md](docs/ROLES.md)) or the initial `admin` password. The server also logs a security warning at startup while the admin account, open CORS, or an auto-generated JWT secret are left at their defaults.
+
+## Adding Your Music
+
+Put your audio in the music folder — one folder per album, before or after the
+first start — then go to **`/admin` → Maintenance tab** and press
+**`Rescan Library`**. Scanned folders arrive as **private draft albums** at
+**`/my-music`**; `Promote` there turns one into a formal release, which you
+then fill in and publish from **`/admin` → Releases tab**. To upload instead,
+**`/admin/release/new`** creates a release and imports its audio in one pass,
+reading the release and track fields off the files' own tags.
+
+**[docs/adding-music.md](docs/adding-music.md) is the reference** for all of it:
+the two music path variables, the layout the scanner expects, what every folder
+under `music/` is for, and how to edit the library on disk without confusing the
+database.
 
 ## Features
 
@@ -120,8 +137,23 @@ git clone https://github.com/scobru/tunecamp.git
 cd tunecamp
 
 # Set TUNECAMP_MUSIC_PATH and any integration keys in .env (see .env.example)
-docker-compose up -d --build
+docker compose up -d --build
 ```
+
+#### Per-instance Compose tweaks
+
+`docker-compose.yml` is repo-owned: editing it in place means every `git pull`
+is a merge conflict. Values belong in `.env`; anything `.env` cannot express —
+a different container name, an external reverse-proxy network, Traefik labels,
+extra read-only library mounts, resource limits — belongs in an override file:
+
+```bash
+cp docker-compose.override.yml.example docker-compose.override.yml
+```
+
+Compose merges `docker-compose.override.yml` on top of `docker-compose.yml`
+automatically; no `-f` flags. It is gitignored, and the example file documents
+the blocks people reach for most.
 
 #### Public URL without a domain
 
@@ -212,7 +244,8 @@ Configuration is managed via environment variables (or an `.env` file).
 | Variable                | Description                                            | Default                                                  |
 | :---------------------- | :----------------------------------------------------- | :------------------------------------------------------- |
 | `TUNECAMP_PORT`         | Server listen port                                     | `1970`                                                   |
-| `TUNECAMP_MUSIC_DIR`    | Path to the music library                              | `./music`                                                |
+| `TUNECAMP_MUSIC_DIR`    | Path the **server** reads the music library from. Under Docker the compose file pins this to `/music`; set it yourself only when running from source | `./music`                                                |
+| `TUNECAMP_MUSIC_PATH`   | **Docker Compose only.** Folder on the **host** to mount as the library. This is the one to set in a Docker deployment | `./music`                                                |
 | `TUNECAMP_DB_PATH`      | Path to the SQLite database                            | `./tunecamp.db`                                          |
 | `TUNECAMP_JWT_SECRET`   | JWT signing secret (auto-generated if not set)         | _auto_                                                   |
 | `TUNECAMP_ADMIN_USER`   | Default admin username                                 | `admin`                                                  |

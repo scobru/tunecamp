@@ -74,7 +74,8 @@ tunecamp/
 │       ├── pages/      # Componenti pagina (punti di ingresso delle rotte, incluso Radio)
 │       ├── services/   # Servizi API client e webapp
 │       └── stores/     # Gestione dello stato (Zustand)
-└── docker-compose.yml  # Configurazione per la distribuzione containerizzata
+├── docker-compose.yml  # Configurazione per la distribuzione containerizzata
+└── docker-compose.override.yml.example  # Modello per le personalizzazioni per istanza
 ```
 
 ## Directory Critiche e loro Scopo

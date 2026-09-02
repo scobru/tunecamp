@@ -48,6 +48,14 @@ coverage/
 .env.local
 .jwt-secret
 
+# Per-instance Docker Compose tweaks (Compose merges this automatically).
+# Copy docker-compose.override.yml.example to start one.
+docker-compose.override.yml
+
+# Default music library mount (docker-compose.yml maps ./music into the
+# container unless TUNECAMP_MUSIC_PATH points somewhere else).
+/music/
+
 # Generated sites
 /public/
 test-output/
