@@ -426,6 +426,40 @@ export const AdminSettingsPanel = () => {
               </div>
 
               <div className="form-control pt-4 border-t border-base-content/5 mt-4">
+                <label className="label cursor-pointer justify-start gap-4">
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary"
+                    checked={
+                      settings.watchLibraryEnabled === undefined ||
+                      settings.watchLibraryEnabled === true ||
+                      settings.watchLibraryEnabled === "true"
+                    }
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        watchLibraryEnabled: e.target.checked,
+                      })
+                    }
+                  />
+                  <div>
+                    <span className="label-text font-medium block">
+                      Live Library Folder Watcher
+                    </span>
+                    <span className="text-xs opacity-75 block mt-0.5">
+                      Automatically detect, extract tags, and import new audio files and album folders dropped into the music directory in real time.
+                    </span>
+                    <div className="flex items-center gap-1.5 mt-1.5 text-xs opacity-80">
+                      <span className="opacity-70">Watched folder:</span>
+                      <code className="badge badge-sm badge-ghost font-mono text-[11px] px-2 py-0.5">
+                        {settings.musicDir || "./music"}
+                      </code>
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              <div className="form-control pt-4 border-t border-base-content/5 mt-4">
                 <label className="label">
                   <span className="label-text font-medium">Scheduled Library Scan</span>
                 </label>
