@@ -146,6 +146,26 @@ sembri misterioso.
 | `playlists/covers/` | Copertine delle playlist |
 | `assets/` | Branding del sito e immagini varie caricate |
 
+### `releases/` e `tracks/`: la differenza
+
+Sono le due che creano più confusione, perché contengono lo stesso tipo di file
+— l'audio. La differenza non è cosa c'è dentro, è se quell'audio appartiene a
+qualcosa:
+
+- **`releases/<slug>/`** contiene i file di una release, tenuti insieme sotto lo
+  slug di quella release.
+- **`tracks/`** è dove finisce un caricamento che non era collegato ad alcuna
+  release.
+
+Quindi `tracks/` va letto come *il mucchio non archiviato*, non come "tutte le
+tracce": una traccia che appartiene a una release lì dentro non c'è, sta sotto
+`releases/`. In quale delle due finisce un file si decide una volta sola, quando
+arriva: promuovere un album a release formale ne cambia lo stato nel database e
+non sposta nulla su disco.
+
+Se stai mettendo i file a mano e vuoi che siano trattati come una release,
+mettili tu in `releases/<slug>/` invece che in `tracks/`.
+
 ## 7. Modificare la libreria su disco
 
 I file restano file normali: rinominali, ritagga o riorganizzali con gli
