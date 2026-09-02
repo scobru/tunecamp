@@ -142,9 +142,14 @@ const About = () => {
           >
             GitHub
           </a>
-          <Link to="/changelog" className="btn btn-secondary">
+          <a
+            href="https://github.com/scobru/tunecamp/blob/main/CHANGELOG.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary"
+          >
             Changelog
-          </Link>
+          </a>
           <Link to="/" className="btn btn-ghost">
             Back to Home
           </Link>

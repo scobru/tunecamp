@@ -11,7 +11,6 @@ export const catalogApi = {
     getCatalog: () => handleResponse(api.get<any>('catalog')),
     getSiteSettings: () => handleResponse(api.get<SiteSettings>('catalog/settings')),
     getLegalPages: () => handleResponse(api.get<LegalPages>('catalog/legal')),
-    getChangelog: () => handleResponse(api.get<{ changelog: string }>('changelog')),
     getGenres: () => handleResponse(api.get<string[]>('catalog/genres')),
     search: (query: string) => handleResponse(api.get<any>(`catalog/search?q=${encodeURIComponent(query)}`)),
     globalSearch: (query: string) => handleResponse(api.get<any>(`search/global?q=${encodeURIComponent(query)}`)),

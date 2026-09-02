@@ -255,7 +255,13 @@ export class ArtistRepository {
         this.db.transaction(() => {
             this.db.prepare("UPDATE albums SET artist_id = NULL WHERE artist_id = ?").run(id);
             this.db.prepare("UPDATE tracks SET artist_id = NULL WHERE artist_id = ?").run(id);
+            this.db.prepare("UPDATE samples SET artist_id = NULL WHERE artist_id = ?").run(id);
+            this.db.prepare("UPDATE sample_packs SET artist_id = NULL WHERE artist_id = ?").run(id);
+            this.db.prepare("UPDATE assets SET artist_id = NULL WHERE artist_id = ?").run(id);
+            this.db.prepare("DELETE FROM fid_registry WHERE artist_id = ?").run(id);
+            this.db.prepare("UPDATE admin SET artist_id = NULL WHERE artist_id = ?").run(id);
             this.db.prepare("DELETE FROM followers WHERE artist_id = ?").run(id);
+            this.db.prepare("DELETE FROM following WHERE artist_id = ?").run(id);
             this.db.prepare("DELETE FROM artists WHERE id = ?").run(id);
         })();
     }
@@ -271,7 +277,13 @@ export class ArtistRepository {
 
                 this.db.prepare(`UPDATE albums SET artist_id = NULL WHERE artist_id IN (${placeholders})`).run(...chunk);
                 this.db.prepare(`UPDATE tracks SET artist_id = NULL WHERE artist_id IN (${placeholders})`).run(...chunk);
+                this.db.prepare(`UPDATE samples SET artist_id = NULL WHERE artist_id IN (${placeholders})`).run(...chunk);
+                this.db.prepare(`UPDATE sample_packs SET artist_id = NULL WHERE artist_id IN (${placeholders})`).run(...chunk);
+                this.db.prepare(`UPDATE assets SET artist_id = NULL WHERE artist_id IN (${placeholders})`).run(...chunk);
+                this.db.prepare(`DELETE FROM fid_registry WHERE artist_id IN (${placeholders})`).run(...chunk);
+                this.db.prepare(`UPDATE admin SET artist_id = NULL WHERE artist_id IN (${placeholders})`).run(...chunk);
                 this.db.prepare(`DELETE FROM followers WHERE artist_id IN (${placeholders})`).run(...chunk);
+                this.db.prepare(`DELETE FROM following WHERE artist_id IN (${placeholders})`).run(...chunk);
                 this.db.prepare(`DELETE FROM artists WHERE id IN (${placeholders})`).run(...chunk);
             }
         })();

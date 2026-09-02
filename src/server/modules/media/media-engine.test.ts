@@ -174,6 +174,16 @@ describe('MediaEngine.getStream — local format routing', () => {
     expect(transcode.mock.calls[0][1]).toBe('ogg');
     expect(result.contentType).toBe('audio/ogg');
   });
+
+  it('serves directly without transcoding when format=raw or format=original is requested', async () => {
+    const engine = makeEngine(track('flac', 'flac'));
+    const result = await engine.getStream({ trackId: 152, format: 'raw' });
+
+    expect(transcode).not.toHaveBeenCalled();
+    expect(mockFs.createReadStream).toHaveBeenCalledTimes(1);
+    expect(result.contentType).toBe('audio/flac');
+    expect(result.statusCode).toBe(200);
+  });
 });
 
 describe('sendStreamResult', () => {
