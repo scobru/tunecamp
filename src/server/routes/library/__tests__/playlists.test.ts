@@ -48,6 +48,104 @@ describe('Playlists Routes', () => {
         } as any));
     });
 
+    describe('GET /api/playlists/:id/public', () => {
+        // The anonymous surface: no session, so a second app whose middleware
+        // sets no username, mirroring how a remote player reaches it.
+        let anonApp: express.Express;
+
+        beforeEach(() => {
+            // canConsumeTrack reaches for these; the shared mock predates it.
+            mockDatabase.getRelease = jest.fn();
+            mockDatabase.isTrackInPublicPlaylist = jest.fn().mockReturnValue(true);
+
+            anonApp = express();
+            anonApp.use(express.json());
+            anonApp.use((req: any, _res, next) => {
+                req.context = { role: 'guest' };
+                next();
+            });
+            anonApp.use('/api/playlists', createPlaylistsRoutes({
+                config: { musicDir: "/test/music" },
+                database: mockDatabase,
+                library: mockDatabase
+            } as any));
+        });
+
+        test('returns a public playlist and its tracks without a session', async () => {
+            mockDatabase.getPlaylist.mockReturnValue({
+                id: 2, name: 'Public Playlist', username: 'otheruser', isPublic: true, description: 'desc'
+            });
+            mockDatabase.getPlaylistTracks.mockReturnValue([
+                { id: 10, title: 'Track One', artist_name: 'A Band', album_id: 5, album_title: 'An Album', duration: 200 }
+            ]);
+
+            const response = await request(anonApp).get('/api/playlists/2/public');
+
+            expect(response.status).toBe(200);
+            expect(response.body.name).toBe('Public Playlist');
+            expect(response.body.trackCount).toBe(1);
+            expect(response.body.tracks[0]).toEqual({
+                id: 10,
+                title: 'Track One',
+                artistName: 'A Band',
+                albumId: 5,
+                albumTitle: 'An Album',
+                duration: 200,
+                coverUrl: '/api/albums/5/cover',
+                streamUrl: '/api/tracks/10/stream'
+            });
+        });
+
+        test('never exposes the internal row: no file paths, no per-user fields', async () => {
+            mockDatabase.getPlaylist.mockReturnValue({ id: 2, name: 'Public', username: 'u', isPublic: true });
+            mockDatabase.getPlaylistTracks.mockReturnValue([
+                { id: 11, title: 'T', artist_name: 'A', album_id: 1, file_path: '/srv/music/secret/T.flac', lossless_path: '/srv/lossless/T.flac' }
+            ]);
+
+            const response = await request(anonApp).get('/api/playlists/2/public');
+
+            expect(response.status).toBe(200);
+            const body = JSON.stringify(response.body);
+            expect(body).not.toContain('/srv/music');
+            expect(body).not.toContain('lossless');
+            expect(response.body.tracks[0]).not.toHaveProperty('starred');
+            expect(response.body.tracks[0]).not.toHaveProperty('path');
+        });
+
+        test('a private playlist is indistinguishable from a missing one', async () => {
+            mockDatabase.getPlaylist.mockReturnValue({ id: 1, name: 'Mine', username: 'testuser', isPublic: false });
+            const priv = await request(anonApp).get('/api/playlists/1/public');
+
+            mockDatabase.getPlaylist.mockReturnValue(undefined);
+            const missing = await request(anonApp).get('/api/playlists/999/public');
+
+            expect(priv.status).toBe(404);
+            expect(missing.status).toBe(404);
+            expect(priv.body).toEqual(missing.body);
+        });
+
+        test('drops a track a guest may not consume', async () => {
+            mockDatabase.getPlaylist.mockReturnValue({ id: 2, name: 'Public', username: 'u', isPublic: true });
+            mockDatabase.getPlaylistTracks.mockReturnValue([
+                { id: 12, title: 'Allowed', artist_name: 'A', album_id: 1 },
+                // an orphan local file is only consumable through a public playlist
+                { id: 13, title: 'Orphan', artist_name: 'B', album_id: null, file_path: '/srv/music/orphan.flac' }
+            ]);
+            mockDatabase.getAlbum.mockReturnValue({ id: 1, visibility: 'public' });
+            mockDatabase.isTrackInPublicPlaylist = jest.fn().mockReturnValue(false);
+
+            const response = await request(anonApp).get('/api/playlists/2/public');
+
+            expect(response.status).toBe(200);
+            expect(response.body.tracks.map((t: any) => t.title)).toEqual(['Allowed']);
+        });
+
+        test('rejects a non-numeric id', async () => {
+            const response = await request(anonApp).get('/api/playlists/abc/public');
+            expect(response.status).toBe(400);
+        });
+    });
+
     describe('GET /api/playlists', () => {
         test('returns combined playlists for user', async () => {
             const response = await request(app)

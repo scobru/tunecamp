@@ -71,6 +71,20 @@ export function createApp(config: ServerConfig): AppSetupResult {
     app.use('/api/auth/zen/user', publicFederationCors);
     app.use('/api/auth/zen/verify', publicFederationCors);
     
+    // GET /api/playlists/:id/public is the one anonymous read in an otherwise
+    // members-only router, so it opts in by path rather than mounting the whole
+    // prefix: every other playlist request keeps strict CORS, and a request that
+    // carries credentials is never handled here.
+    app.use('/api/playlists', (req, res, next) => {
+        const isPublicRead = /^\/[^/]+\/public\/?$/.test(req.path);
+        if (!isPublicRead || !!req.headers.cookie || !!req.headers.authorization) return next();
+        publicCors(req, res, (err?: any) => {
+            if (err) return next(err);
+            res.locals.skipStrictCors = true;
+            next();
+        });
+    });
+
     // Subsonic API must be accessible to cross-origin web clients (third-party Subsonic apps)
     app.use('/rest', publicFederationCors);
 
