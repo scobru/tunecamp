@@ -1,6 +1,20 @@
 
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import chokidar from 'chokidar';
 import { Scanner, isArtworkOrAvatar } from '../scanner.js';
+
+// Mock chokidar to test watcher logic
+const mockWatcher = {
+    on: jest.fn<any>().mockReturnThis(),
+    close: jest.fn<any>().mockResolvedValue(undefined as never),
+};
+
+jest.mock('chokidar', () => ({
+    default: {
+        watch: jest.fn(() => mockWatcher),
+    },
+    watch: jest.fn(() => mockWatcher),
+}));
 
 // Mock fs-extra to avoid file system operations
 jest.mock('fs-extra', () => ({
@@ -193,3 +207,76 @@ describe('isArtworkOrAvatar helper', () => {
         expect(isArtworkOrAvatar('music/random_image.png')).toBe(false);
     });
 });
+
+describe('Library Watcher (startWatching / stopWatching)', () => {
+    let scanner: Scanner;
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockWatcher.on.mockReturnThis();
+        mockWatcher.close.mockResolvedValue(undefined as never);
+        (chokidar.watch as any).mockReturnValue(mockWatcher);
+        scanner = new Scanner(mockDbService as any, mockStorageEngine as any);
+    });
+
+    test('startWatching should initialize chokidar with awaitWriteFinish and proper ignore rules', () => {
+        scanner.startWatching('/test/music');
+
+        expect(chokidar.watch).toHaveBeenCalledWith('/test/music', expect.objectContaining({
+            persistent: true,
+            ignoreInitial: true,
+            awaitWriteFinish: expect.objectContaining({
+                stabilityThreshold: 2000,
+                pollInterval: 250,
+            }),
+        }));
+        expect(mockWatcher.on).toHaveBeenCalledWith('add', expect.any(Function));
+        expect(mockWatcher.on).toHaveBeenCalledWith('change', expect.any(Function));
+        expect(mockWatcher.on).toHaveBeenCalledWith('error', expect.any(Function));
+    });
+
+    test('startWatching should close existing watcher before opening a new one', () => {
+        scanner.startWatching('/test/music1');
+        scanner.startWatching('/test/music2');
+
+        expect(mockWatcher.close).toHaveBeenCalledTimes(1);
+    });
+
+    test('stopWatching should close active watcher', () => {
+        scanner.startWatching('/test/music');
+        scanner.stopWatching();
+
+        expect(mockWatcher.close).toHaveBeenCalledTimes(1);
+    });
+
+    test('stopWatching should safely no-op if no watcher is active', () => {
+        expect(() => scanner.stopWatching()).not.toThrow();
+    });
+
+    test('watcher add callback should invoke processAudioFile for audio tracks and skip artwork', async () => {
+        const processSpy = jest.spyOn(scanner, 'processAudioFile').mockResolvedValue(null);
+        let addHandler: ((file: string) => void) | undefined;
+
+        mockWatcher.on.mockImplementation((event: string, handler: any) => {
+            if (event === 'add') addHandler = handler;
+            return mockWatcher;
+        });
+
+        scanner.startWatching('/test/music');
+        expect(addHandler).toBeDefined();
+
+        // 1. Artwork should be skipped
+        addHandler!('/test/music/cover.jpg');
+        expect(processSpy).not.toHaveBeenCalled();
+
+        // 2. Audio track should trigger processAudioFile
+        addHandler!('/test/music/song.flac');
+        expect(processSpy).toHaveBeenCalledWith(
+            '/test/music/song.flac',
+            '/test/music',
+            undefined,
+            undefined
+        );
+    });
+});
+

@@ -81,28 +81,18 @@ TuneCamp creates a default admin account on first run:
 
 ## 4. Add your music
 
-Copy your files into the music folder (`./music` by default, one folder per
-album), then:
+Copy your files into the music folder (`./music` by default, one folder per album):
 
-1. Go to **`/admin` → Maintenance tab** and press **`Rescan Library`**. Scanning
-   is not automatic on startup; `/admin` → Settings → *Scheduled Library Scan*
-   makes it run daily at an hour you pick.
-2. TuneCamp reads tags, generates waveforms, and processes cover art.
-3. Scanned folders become **private draft albums**, listed at **`/my-music`**.
-   They're in your library and invisible to the public until you promote them:
-   `Promote` at `/my-music` turns an album into a *formal release*, then
-   **`/admin` → Releases tab** is where you fill in its metadata and
-   **Publish** it.
+- **Automatic Live Watcher (Drop & Auto-Import)**: TuneCamp watches your music directory (`TUNECAMP_MUSIC_PATH` / `./music`) in real time. Dropped audio files and folders are automatically imported into your library as **private draft albums** once writes settle.
+- **Manual Scan**: You can also go to **`/admin` → Maintenance tab** and press **`Rescan Library`** to reconcile existing files on demand. `/admin` → Settings → *Scheduled Library Scan* makes it run daily at an hour you pick.
 
-To upload instead of scanning, **`/admin/release/new`** creates a release and
-uploads its audio in one pass, filling the title, artist, year and track list
-from the files' own tags.
+TuneCamp reads tags, generates waveforms, and processes cover art. Scanned folders become **private draft albums**, listed at **`/my-music`**. They're in your library and invisible to the public until you promote them: `Promote` at `/my-music` turns an album into a *formal release*, then **`/admin` → Releases tab** is where you fill in its metadata and **Publish** it.
 
-**[Adding Music](./adding-music.md) is the full reference** — library layout on
-disk, what each folder under `music/` is for, and how to edit the library
-without confusing the database.
+To upload via browser instead of dropping files, **`/admin/release/new`** creates a release and uploads its audio in one pass, filling the title, artist, year and track list from the files' own tags.
 
 You can also ingest music via the [Telegram bot](./telegram.md), [Sidecamp desktop app](./sidecamp.md) (Soulseek, torrents, yt-dlp), or [Google Drive](./google-drive.md).
+
+**[Adding Music](./adding-music.md) is the full reference** — library layout on disk, what each folder under `music/` is for, and how to edit the library without confusing the database.
 
 ## 5. Listen
 
