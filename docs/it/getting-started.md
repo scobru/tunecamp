@@ -18,7 +18,10 @@ Vedi la [guida completa al deploy su Railway](../railway.md) per variabili d'amb
 
 Il percorso più rapido prevede l'uso di Docker. Avrai bisogno di:
 
-- **Docker 20+** e **Docker Compose**
+- **Docker 20+** e **Docker Compose v2.24+** (il compose file segna `.env` come
+  opzionale, cosa che richiede la sintassi lunga di `env_file`). Usa
+  `docker compose`, il sottocomando v2 — il binario separato `docker-compose` è
+  a fine vita dal 2023.
 - Una cartella di file audio (MP3, FLAC, WAV, …)
 
 > Preferisci eseguire il codice sorgente per scopi di sviluppo? Consulta la [Guida allo Sviluppo](./development-guide.md).
@@ -42,13 +45,25 @@ Se preferisci gestire autonomamente i prerequisiti e la configurazione:
 git clone https://github.com/scobru/tunecamp.git
 cd tunecamp
 
-# 2. Avvia in background (la cartella musica punta a ./music di default)
-docker-compose up -d --build
+# 2. Opzionale: metti qui l'audio adesso — la prima scansione lo raccoglierà
+mkdir -p music && cp -r ~/Album/* music/
 
-# (Opzionale: imposta TUNECAMP_MUSIC_PATH=/percorso/musica in .env o docker-compose.yml)
+# 3. Avvia in background
+docker compose up -d --build
 ```
 
 Quando il container è avviato correttamente, apri `http://localhost:1970` (o il tuo dominio) nel browser.
+
+**La tua musica sta altrove?** Imposta `TUNECAMP_MUSIC_PATH=/percorso/musica` in
+`.env` — è la cartella dell'host che Compose monta nel container. Con Docker non
+impostare `TUNECAMP_MUSIC_DIR`: il compose file lo fissa già al punto di
+montaggio. [Aggiungere Musica](./adding-music.md) spiega la differenza.
+
+**Devi modificare il deploy stesso** — nome del container, reti aggiuntive,
+label del proxy, altri volumi? Non toccare `docker-compose.yml`. Copia
+`docker-compose.override.yml.example` in `docker-compose.override.yml`: Compose
+lo unisce automaticamente ed è in `.gitignore`, così `git pull` non entra mai in
+conflitto con la tua configurazione.
 
 ## 3. Primo accesso e messa in sicurezza dell'istanza
 
@@ -66,9 +81,26 @@ Al primo avvio, TuneCamp crea un account amministratore predefinito:
 
 ## 4. Aggiungi la tua musica
 
-1. Vai su **Admin → Library** e avvia una **Scansione (Scan)**.
+Copia i file nella cartella musicale (`./music` di default, una cartella per
+album), poi:
+
+1. Vai su **`/admin` → scheda Maintenance** e premi **`Rescan Library`**. La
+   scansione non è automatica all'avvio; `/admin` → Settings → *Scheduled
+   Library Scan* la fa girare ogni giorno all'ora che scegli.
 2. TuneCamp leggerà i tag dei metadati, genererà le forme d'onda e caricherà le copertine.
-3. Gli album scansionati finiranno nello stato di **Bozza (Draft)** — sono visibili nella tua libreria ma non pubblicamente, fino a quando non li promuoverai a **Formal Release** dal pannello di amministrazione.
+3. Le cartelle scansionate diventano **album privati in bozza**, elencati in
+   **`/my-music`**. Sono nella tua libreria e invisibili al pubblico finché non
+   li promuovi: `Promote` in `/my-music` trasforma un album in una *release
+   formale*, poi la **scheda Releases di `/admin`** è dove ne compili i metadati
+   e la **pubblichi**.
+
+Per caricare invece di scansionare, **`/admin/release/new`** crea una release e
+ne carica l'audio in un colpo solo, compilando titolo, artista, anno ed elenco
+tracce dai tag dei file stessi.
+
+**[Aggiungere Musica](./adding-music.md) è il riferimento completo** — struttura
+della libreria su disco, a cosa serve ogni cartella sotto `music/` e come
+modificare la libreria senza confondere il database.
 
 Puoi anche importare file musicali tramite il [bot Telegram](./telegram.md), l'[app desktop Sidecamp](./sidecamp.md) (Soulseek, torrent, yt-dlp) o [Google Drive](./google-drive.md).
 

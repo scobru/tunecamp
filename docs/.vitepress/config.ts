@@ -53,6 +53,7 @@ export default defineConfig({
 						text: "🚀 Getting Started",
 						items: [
 							{ text: "Quick Start", link: "/getting-started" },
+							{ text: "Adding Music", link: "/adding-music" },
 							{ text: "Instance Setup Wizard", link: "/setup-wizard" },
 							{ text: "Deploy on Railway", link: "/railway" },
 							{ text: "API & Services Setup", link: "/api-setup-guide" },
@@ -154,6 +155,7 @@ export default defineConfig({
 						text: "🚀 Per Iniziare",
 						items: [
 							{ text: "Avvio Rapido", link: "/it/getting-started" },
+							{ text: "Aggiungere Musica", link: "/it/adding-music" },
 							{ text: "Wizard di Configurazione", link: "/it/setup-wizard" },
 							{ text: "Deploy su Railway", link: "/it/railway" },
 							{

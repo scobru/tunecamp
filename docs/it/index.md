@@ -45,6 +45,7 @@ Una volta avviato, le guide qui sotto ti permetteranno di approfondire.
 | Documento | Descrizione |
 | ----- | ------------- |
 | [Inizia](./getting-started.md) | **Installazione → primo accesso → aggiunta musica → ascolto** (inizia da qui) |
+| [Aggiungere Musica](./adding-music.md) | Struttura della libreria su disco, scansione e passaggio da bozza a release pubblica |
 | [Deploy su Railway](./railway.md) | Deploy con un solo click su Railway — nessuna VPS richiesta, HTTPS incluso |
 | [Configurazione API e Servizi](./api-setup-guide.md) | Configurazione passo-passo per Stripe, Google Drive, IA e altre integrazioni |
 | [Configurazione Nginx](./NGINX.md) | Configurazione del reverse proxy per SSL, WebSocket e HLS |
