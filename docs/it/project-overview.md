@@ -74,7 +74,8 @@ tunecamp/
 │       ├── pages/      # Componenti pagina (punti di ingresso delle rotte, incluso Radio)
 │       ├── services/   # Servizi API client e webapp
 │       └── stores/     # Gestione dello stato (Zustand)
-└── docker-compose.yml  # Configurazione per la distribuzione containerizzata
+├── docker-compose.yml  # Configurazione per la distribuzione containerizzata
+└── docker-compose.override.yml.example  # Modello per le personalizzazioni per istanza
 ```
 
 ## Directory Critiche e loro Scopo
@@ -182,9 +183,9 @@ Non sono componenti in senso tradizionale, ma fanno parte della superficie UI: o
 
 ### Pagine (`pages/`)
 
-Ogni file è generalmente collegato a una rotta in `App.tsx`. Pagine principali: `Home`, `Library` (navigazione unificata di tracce/preferiti/playlist — `/tracks`, `/favorites`, `/playlists` e `/my-playlists` reindirizzano qui), `Releases` (serve anche `/albums`), `AlbumDetails`, `Artists`, `ArtistDetails`, `Store`, `PlaylistDetails`, `MyMusic`, `Search` (copre anche ciò che prima era la pagina separata `ContentSearch`), `Network`, `Social`, `Post`, `Board`, `Dig` (crate digging), `Live` (streaming live HLS), `Radio`, `NowListening`, `Stats`, `Profile`, `UserProfile`, `Wallet`, `Support`, `Tools`, `About`, `Legal`, `Changelog`, `Guide`, `SharePage`, `Files` (file browser riservato al root-admin), `Archive` (riservata a manager/root), `Publish`, `Admin`, `AdminReleaseEditor`, `ResetPassword` / `ResetPasswordSecurity`.
+Ogni file è generalmente collegato a una rotta in `App.tsx`. Pagine principali: `Home`, `Library` (navigazione unificata di tracce/preferiti/playlist — `/tracks`, `/favorites`, `/playlists` e `/my-playlists` reindirizzano qui), `Releases` (serve anche `/albums`), `AlbumDetails`, `Artists`, `ArtistDetails`, `Store`, `PlaylistDetails`, `MyMusic`, `Search` (copre anche ciò che prima era la pagina separata `ContentSearch`), `Network`, `Social`, `Post`, `Board`, `Live` (streaming live HLS), `Radio`, `NowListening`, `Stats`, `Profile`, `UserProfile`, `Wallet`, `Support`, `Tools`, `About`, `Legal`, `Changelog`, `Guide`, `SharePage`, `Files` (file browser riservato al root-admin), `Archive` (riservata a manager/root), `Publish`, `Admin`, `AdminReleaseEditor`, `ResetPassword` / `ResetPasswordSecurity`.
 
-Diverse rotte sono protette da componenti wrapper piuttosto che da logica interna alla pagina: `AdminGuard`, `EditorGuard`, `RootAdminGuard`, `ManagerOrRootGuard` (basati sul ruolo) e `ModuleGuard` (feature flag dell'istanza `hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideSamples`, `hideCollab` da `useSiteSettingsStore`).
+Diverse rotte sono protette da componenti wrapper piuttosto che da logica interna alla pagina: `AdminGuard`, `EditorGuard`, `RootAdminGuard`, `ManagerOrRootGuard` (basati sul ruolo) e `ModuleGuard` (feature flag dell'istanza `hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideSamples`, `hideCollab` da `useSiteSettingsStore`).
 
 ### Note sullo Sviluppo
 

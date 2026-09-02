@@ -20,9 +20,7 @@ import {
   Upload,
   MessageSquare,
   Library,
-  Wrench,
   ShoppingBag,
-  Shovel,
   Radio,
   Headphones,
   Rss,
@@ -55,7 +53,6 @@ export const Sidebar = () => {
   const hideSocial = isModuleHidden("hideSocial");
   const hideNetwork = isModuleHidden("hideNetwork");
   const hideSamples = isModuleHidden("hideSamples");
-  const hideDig = isModuleHidden("hideDig");
   const hideCollab = isModuleHidden("hideCollab");
 
   const isRoot = user?.isRootAdmin || role === 'root_admin';
@@ -179,7 +176,6 @@ export const Sidebar = () => {
             {!hideLive && <NavItem to="/live" icon={Radio} label="Live" />}
             {!hideStore && <NavItem to="/store" icon={ShoppingBag} label="Store" />}
             {!hideSamples && <NavItem to="/samples" icon={Music2} label="Samples" />}
-            {!hideDig && <NavItem to="/dig" icon={Shovel} label="Dig" />}
             {!hideCollab && <NavItem to="/collab" icon={Users} label="Collab" />}
           </ul>
         </div>
@@ -280,7 +276,6 @@ export const Sidebar = () => {
 
               <li className="menu-title mt-2 text-[11px]">Settings</li>
               <li><Link to="/profile"><User size={16} /> Profile</Link></li>
-              <li><Link to="/tools"><Wrench size={16} /> Tools</Link></li>
 
               <div className="divider my-1 opacity-10"></div>
               <li className="menu-title mt-2 text-[11px]">Resources</li>

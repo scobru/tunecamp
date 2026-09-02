@@ -15,6 +15,7 @@ import { useUIStore } from "../../stores/useUIStore";
 import { useConfigStore } from "../../stores/useConfigStore";
 import { useSiteSettingsStore } from "../../stores/useSiteSettingsStore";
 import { applyThemeFont } from "../../utils/themeFont";
+import { applyFavicon } from "../../utils/favicon";
 
 /**
  * Apply brand color overrides as CSS custom properties on :root.
@@ -41,6 +42,7 @@ export const MainLayout = () => {
   const dominantColor = usePlayerStore(state => state.dominantColor);
   const theme = useUIStore(state => state.theme);
   const bumpCacheBuster = useConfigStore(state => state.bumpCacheBuster);
+  const cacheBuster = useConfigStore(state => state.cacheBuster);
 
   useEffect(() => {
     // Apply theme on mount and when it changes
@@ -72,7 +74,11 @@ export const MainLayout = () => {
 
     // Apply brand color overrides
     applyBrandColors(siteSettings.brandPrimary, siteSettings.brandAccent);
-  }, [siteSettings]);
+
+    // Tab icon follows the instance's own logo, so several instances open at
+    // once are told apart by their favicons.
+    applyFavicon(siteSettings.siteLogo, cacheBuster);
+  }, [siteSettings, cacheBuster]);
 
   const hasBgImage = !!siteSettings?.backgroundImage;
 

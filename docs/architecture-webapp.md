@@ -32,7 +32,7 @@ See [project-overview.md](./project-overview.md#webapp-component-catalog) for th
 
 ### 2. Pages (`pages/`)
 
-Each file is generally a route target wired up in `App.tsx`. Some legacy paths (`/tracks`, `/favorites`, `/playlists`, `/my-playlists`) now redirect into the merged `Library` page rather than rendering a dedicated component — the standalone `ContentSearch` page has been removed and folded into `Search.tsx`. Routes are wrapped with guard components (`AdminGuard`, `EditorGuard`, `RootAdminGuard`, `ManagerOrRootGuard`, `ModuleGuard`) that gate access by role or by instance feature flag (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideSamples`, `hideCollab`).
+Each file is generally a route target wired up in `App.tsx`. Some legacy paths (`/tracks`, `/favorites`, `/playlists`, `/my-playlists`) now redirect into the merged `Library` page rather than rendering a dedicated component — the standalone `ContentSearch` page has been removed and folded into `Search.tsx`. Routes are wrapped with guard components (`AdminGuard`, `EditorGuard`, `RootAdminGuard`, `ManagerOrRootGuard`, `ModuleGuard`) that gate access by role or by instance feature flag (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideSamples`, `hideCollab`).
 
 ### 3. Frontend Plugin System (`core/plugins/`, `plugins/`)
 
@@ -49,13 +49,12 @@ Zustand stores, one per concern:
 
 - `useAuthStore`: logged-in user, JWT/session state, role.
 - `useConfigStore`: backend integration health (Soulseek, iTunes, MusicBrainz, Discogs, Telegram, OpenRouter, Stripe, MoonPay, Google Drive, YouTube, Spotify, …) used to drive plugin status badges.
-- `useSiteSettingsStore`: public site settings and per-module visibility flags (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideDig`, `hideSamples`, `hideCollab`) consumed by `ModuleGuard`.
+- `useSiteSettingsStore`: public site settings and per-module visibility flags (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideSamples`, `hideCollab`) consumed by `ModuleGuard`.
 - `usePlayerStore`: playback state — current track, queue, shuffle/original queue, volume, progress (persisted).
 - `useNowPlayingStore`: the user's "now listening" presence opt-in, kept in sync with the player heartbeat.
 - `useWalletStore`: connected wallet (provider, signer, address, ETH/USDC balances).
 - `useUIStore`: theme and sidebar open/collapsed state (persisted).
 - `useConfirmStore`: promise-based confirmation dialog (replaces `window.confirm`).
-- `useDigStore`: state for the "Dig" crate-digging/discovery flow (search, strategy, results, session).
 
 ### 5. Data fetching (`hooks/`, `lib/`)
 

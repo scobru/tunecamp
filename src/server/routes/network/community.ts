@@ -15,18 +15,7 @@ try {
 const registerRateLimit = new Map<string, number>();
 const REGISTER_COOLDOWN_MS = 60 * 60 * 1000;
 
-// ponytail: in-memory sliding-window rate limit for /dig-lookup, 30 requests/min per IP —
-// it's cheap local reads but still real (aggregate) user behavior data, so throttle scraping.
-const digLookupRateLimit = new Map<string, number[]>();
-const DIG_LOOKUP_LIMIT = 30;
-const DIG_LOOKUP_WINDOW_MS = 60 * 1000;
-function checkDigLookupRate(ip: string): boolean {
-    const now = Date.now();
-    const recent = (digLookupRateLimit.get(ip) || []).filter(ts => now - ts < DIG_LOOKUP_WINDOW_MS);
-    recent.push(now);
-    digLookupRateLimit.set(ip, recent);
-    return recent.length <= DIG_LOOKUP_LIMIT;
-}
+
 
 /**
  * Public `/api/community/*` endpoints — the federated discovery surface.
@@ -212,43 +201,6 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
         } catch (error) {
             console.error("Error registering community instance:", error);
             res.status(500).json({ error: "Registration failed" });
-        }
-    });
-
-    /**
-     * POST /api/community/dig-lookup { externalId?, title, artist }
-     * Peer-facing half of network DIG (see dig.service.ts). The seed release is identified by
-     * `externalId` when the caller has one (an exact match, e.g. a shared Bandcamp URL), else by
-     * `title`+`artist` (fuzzy — the only option for a release that only exists on TuneCamp).
-     * Returns the releases this instance's users co-starred alongside it — aggregate counts
-     * only, never usernames, only public/released catalog items, and only opted-in instances
-     * answer at all.
-     */
-    router.post("/dig-lookup", express.json(), (req, res) => {
-        if (dbService.getSetting("digNetworkOptIn") !== "true") {
-            res.status(404).json({ error: "Network dig is not enabled on this instance" });
-            return;
-        }
-
-        const ip = req.ip || "unknown";
-        if (!checkDigLookupRate(ip)) {
-            res.status(429).json({ error: "Too many requests" });
-            return;
-        }
-
-        const { externalId, title, artist } = req.body || {};
-        if (!title || typeof title !== "string" || !artist || typeof artist !== "string") {
-            res.status(400).json({ error: "title and artist are required" });
-            return;
-        }
-
-        try {
-            const seed = { externalId: typeof externalId === "string" ? externalId : null, title, artist };
-            const results = container.digService.aggregateNetworkCoStars(seed, 50, { publicOnly: true });
-            res.json({ results });
-        } catch (error) {
-            console.error("Error running dig-lookup:", error);
-            res.status(500).json({ error: "Lookup failed" });
         }
     });
 

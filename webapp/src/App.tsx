@@ -40,11 +40,9 @@ const SharePage = lazy(() => import("./pages/SharePage"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AdminReleaseEditor = lazy(() => import("./pages/AdminReleaseEditor"));
 const Files = lazy(() => import("./pages/Files"));
-const Tools = lazy(() => import("./pages/Tools"));
 const Store = lazy(() => import("./pages/Store"));
 const Samples = lazy(() => import("./pages/Samples"));
 const SamplePackDetail = lazy(() => import("./pages/SamplePackDetail"));
-const Dig = lazy(() => import("./pages/Dig"));
 const Live = lazy(() => import("./pages/Live"));
 const RadioPage = lazy(() => import("./pages/Radio"));
 const NowListening = lazy(() => import("./pages/NowListening"));
@@ -274,7 +272,6 @@ function App() {
             <Route path="/store" element={<ModuleGuard flag="hideStore"><Store /></ModuleGuard>} />
             <Route path="/samples" element={<SingleArtistGuard><ModuleGuard flag="hideSamples"><Samples /></ModuleGuard></SingleArtistGuard>} />
             <Route path="/samples/pack/:id" element={<SingleArtistGuard><ModuleGuard flag="hideSamples"><SamplePackDetail /></ModuleGuard></SingleArtistGuard>} />
-            <Route path="/dig" element={<SingleArtistGuard><ModuleGuard flag="hideDig"><Dig /></ModuleGuard></SingleArtistGuard>} />
 
 
             {/* Collab */}
@@ -283,7 +280,6 @@ function App() {
 
             {/* Other */}
             <Route path="/support" element={<Support />} />
-            <Route path="/tools" element={<Tools />} />
             
             <Route path="/auth/sso/callback" element={<SsoCallback />} />
 

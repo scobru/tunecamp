@@ -1,0 +1,62 @@
+# TuneCamp — per-instance Compose overrides
+#
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+#
+# Compose merges docker-compose.override.yml on top of docker-compose.yml
+# automatically — no -f flags, no extra commands. The override file is
+# gitignored, so `git pull` never touches your local deployment choices and
+# never conflicts with them.
+#
+# Use .env for values (ports, secrets, paths). Use this file for everything
+# .env cannot express: extra services, networks, container names, labels,
+# additional volumes, resource limits.
+#
+# Every block below is commented out. Uncomment only what you need — a key you
+# leave out keeps the value from docker-compose.yml.
+
+services:
+  tunecamp:
+    # Run more than one instance on the same host, or just avoid the generic
+    # name in `docker ps`.
+    # container_name: tunecamp-label
+
+    # Attach to an existing reverse-proxy network (see `networks:` below).
+    # networks:
+    #   - web
+    #   - default
+
+    # Traefik / nginx-proxy style routing labels.
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.tunecamp.rule=Host(`music.example.com`)"
+    #   - "traefik.http.services.tunecamp.loadbalancer.server.port=1970"
+
+    # Bind only to loopback when a reverse proxy on the host terminates TLS,
+    # so the container port is not reachable from the LAN.
+    # ports:
+    #   - "127.0.0.1:1970:1970"
+
+    # Mount extra libraries read-only, or keep /data on a real disk instead of
+    # a named volume. The app only ever reads and writes below /music and /data.
+    # volumes:
+    #   - /mnt/nas/archive:/music/archive:ro
+    #   - /srv/tunecamp/data:/data
+
+    # Anything you would rather not put in .env, or that .env has no key for.
+    # environment:
+    #   - TUNECAMP_CORS_ORIGINS=https://player.example.com
+
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 2g
+
+    # logging:
+    #   driver: json-file
+    #   options:
+    #     max-size: "10m"
+    #     max-file: "3"
+
+# networks:
+#   web:
+#     external: true

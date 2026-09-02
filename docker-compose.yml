@@ -1,8 +1,16 @@
 # TuneCamp Docker Compose Configuration
 # Quick start:
-#   docker-compose up -d --build
+#   docker compose up -d --build
 #
 # Default web UI: http://localhost:1970 (Admin: admin / admin)
+#
+# Don't edit this file to fit your server. Two seams keep your deployment
+# separate from the repo, so `git pull` never conflicts with it:
+#   .env                        — values (ports, paths, secrets, API keys)
+#   docker-compose.override.yml — structure (extra services, networks,
+#                                 container names, labels, volumes). Compose
+#                                 merges it automatically; it is gitignored.
+#                                 Start from docker-compose.override.yml.example.
 
 services:
   tunecamp:
@@ -18,7 +26,11 @@ services:
     ports:
       - "${TUNECAMP_PORT:-1970}:1970"
     volumes:
-      # Map your music library (defaults to ./music in current directory or set TUNECAMP_MUSIC_PATH)
+      # TUNECAMP_MUSIC_PATH is the folder ON THE HOST holding your audio files.
+      # It is a Compose-only variable: it decides what gets mounted, nothing
+      # more. Inside the container that folder is always /music, which is what
+      # TUNECAMP_MUSIC_DIR below points the server at. Set MUSIC_PATH, not
+      # MUSIC_DIR, when running under Docker.
       - ${TUNECAMP_MUSIC_PATH:-./music}:/music
       # Persistent data (SQLite database, downloaded content, uploads)
       - tunecamp_data:/data
@@ -32,6 +44,7 @@ services:
       # Core Paths & Port
       - NODE_ENV=production
       - TUNECAMP_PORT=1970
+      # In-container library path. Fixed: it is the mount target above.
       - TUNECAMP_MUSIC_DIR=/music
       - TUNECAMP_DB_PATH=/data/tunecamp.db
       - TUNECAMP_DOWNLOAD_DIR=${TUNECAMP_DOWNLOAD_DIR:-/data/downloads}

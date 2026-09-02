@@ -24,7 +24,6 @@ import { createPublishingService } from "./modules/publishing/publishing.service
 import { LifecycleService } from "./modules/catalog/lifecycle.service.js";
 import { CatalogService } from "./modules/catalog/catalog.service.js";
 import { DiscoveryService } from "./modules/catalog/discovery.service.js";
-import { DigService } from "./modules/catalog/dig.service.js";
 import { GoogleDriveService } from "./modules/storage/google-drive.service.js";
 import { initStorageService } from "./modules/storage/storage.service.js";
 import { AutoTaggerService } from "./modules/catalog/autotagger.service.js";
@@ -300,10 +299,6 @@ export async function bootstrapServices(
 		openRouterService,
 		metadataService,
 	);
-	const digService = new DigService(database, {
-		getPeers: () => federatedDiscoveryService.getPeers(),
-		getPublicUrl: () => database.getSetting("publicUrl") || config.publicUrl,
-	});
 
 	if (config.gdriveClientId && config.gdriveClientSecret) {
 		const dbPublicUrl = database.getSetting("publicUrl");
@@ -409,7 +404,6 @@ export async function bootstrapServices(
 		scannerService,
 		catalogService,
 		discoveryService,
-		digService,
 		metadataService,
 		maintenanceService,
 		ytdlpService,
