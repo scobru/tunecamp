@@ -98,7 +98,6 @@ Peer chat was removed; `peer_chat_messages`, `peer_chat_bans`, `peer_chat_mutes`
 - **`play_history`**: Listens log for stats, scrobbling, and recommendations.
 - **`unlock_codes`**: Access codes for protected or paid content.
 - **`torrents`**: File sharing integrations for retrieving content (P2P acquisition itself lives in the companion [Sidecamp](./sidecamp.md) app).
-- **`dig_sessions`** / **`dig_crate_items`** / **`dig_history`** / **`dig_cache`**: State and cache of "Dig" mode (crate digging / music discovery — either Bandcamp's fan-collector graph, or, opt-in, this network's own users' stars; see [FEDERATION.md](./FEDERATION.md#network-dig-cross-instance-discovery)).
 - **`assets`** / **`storage_accounts`**: Store assets and connected cloud storage accounts (e.g., Google Drive).
 - **`track_stats`** / **`release_stats`**: Aggregated play counters and listening time analytics.
 - **`settings`**: Instance configuration key/value store.

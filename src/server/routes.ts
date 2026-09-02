@@ -10,7 +10,6 @@ import { createTracksRoutes } from "./routes/library/tracks.js";
 import { createSamplesRoutes } from "./routes/library/samples.js";
 import { createSamplePacksRoutes } from "./routes/library/sample-packs.js";
 import { createCollabRoutes } from "./routes/library/collab.js";
-import { createDigRoutes } from "./routes/library/dig.js";
 import { createArtistsRoutes } from "./routes/library/artists.js";
 import { createPlaylistsRoutes } from "./routes/library/playlists.js";
 import { createUploadRoutes } from "./routes/library/upload.js";
@@ -154,14 +153,6 @@ export function registerRoutes(
 			authMiddleware.optionalAuth,
 			requireModuleEnabled(container, "hideSamples", { allowAdmin: true }),
 			createSamplePacksRoutes(container),
-		);
-	}
-	if (!isSolo) {
-		app.use(
-			"/api/dig",
-			authMiddleware.requireUser,
-			requireModuleEnabled(container, "hideDig"),
-			createDigRoutes(container),
 		);
 	}
 	app.use(

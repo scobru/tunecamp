@@ -22,6 +22,7 @@ export default {
 		"^fluent-ffmpeg$": "<rootDir>/__mocks__/fluent-ffmpeg.ts",
 		"^stripe$": "<rootDir>/__mocks__/stripe.ts",
 		"^ethers$": "<rootDir>/__mocks__/ethers.ts",
+		"^fid$": "<rootDir>/__mocks__/fid.ts",
 		"^telegraf$": "<rootDir>/__mocks__/telegraf.ts",
 		"^(.*[/\\\\]workers[/\\\\]worker-pool)\\.js$":
 			"<rootDir>/__mocks__/worker-pool.ts",

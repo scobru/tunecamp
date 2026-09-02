@@ -28,7 +28,6 @@ interface ProfilePreset {
     hideStore: boolean;
     hideSocial: boolean;
     hideNetwork: boolean;
-    hideDig: boolean;
     hideLive: boolean;
     hideSamples: boolean;
     hideCollab: boolean;
@@ -52,7 +51,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideStore: false,
       hideSocial: false,
       hideNetwork: true,
-      hideDig: true,
       hideLive: true,
       hideSamples: true,
       hideCollab: true,
@@ -78,7 +76,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideStore: false,
       hideSocial: false,
       hideNetwork: false,
-      hideDig: true,
       hideLive: true,
       hideSamples: true,
       hideCollab: true,
@@ -97,14 +94,13 @@ const PRESETS: Record<string, ProfilePreset> = {
   curator: {
     id: "curator",
     name: "Music Curator",
-    description: "Find music from external sources (Dig), organize playlists, and interact with the community on the board.",
+    description: "Organize playlists and interact with the community on the board.",
     gradient: "from-amber-500/20 to-orange-500/20 border-amber-500/30 hover:border-amber-500/60",
     icon: Compass,
     flags: {
       hideStore: true,
       hideSocial: false,
       hideNetwork: false,
-      hideDig: false,
       hideLive: true,
       hideSamples: true,
       hideCollab: true,
@@ -112,11 +108,10 @@ const PRESETS: Record<string, ProfilePreset> = {
       listenerSelfPublish: true,
       mode: "community"
     },
-    taglineTemplate: "[Curator Name] — Playlists, Discoveries & Recommendations",
+    taglineTemplate: "[Curator Name] — Playlists & Recommendations",
     descTemplate: "A space for sharing and discovering music curated by [Curator Name]. Discover new independent tracks and join the discussion on the board.",
     nextSteps: [
       "Open registrations and invite users to sign up",
-      "Explore external archives with the Dig feature and import recommended tracks",
       "Start putting together your first public playlists"
     ]
   },
@@ -130,7 +125,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideStore: true,
       hideSocial: false,
       hideNetwork: true,
-      hideDig: false,
       hideLive: false,
       hideSamples: true,
       hideCollab: true,
@@ -156,7 +150,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideStore: true,
       hideSocial: false,
       hideNetwork: true,
-      hideDig: true,
       hideLive: true,
       hideSamples: false,
       hideCollab: false,
@@ -182,7 +175,6 @@ const PRESETS: Record<string, ProfilePreset> = {
       hideStore: true,
       hideSocial: false,
       hideNetwork: false,
-      hideDig: true,
       hideLive: true,
       hideSamples: true,
       hideCollab: true,
@@ -275,9 +267,6 @@ export const SetupWizard = () => {
     if (flagsConfig.hideNetwork && !isTrue(currentSettings.hideNetwork)) {
       warnings.push("Network/Federation features will be disabled.");
     }
-    if (flagsConfig.hideDig && !isTrue(currentSettings.hideDig)) {
-      warnings.push("The Dig section (audio crate-digging) will be disabled.");
-    }
     if (flagsConfig.hideSamples && !isTrue(currentSettings.hideSamples)) {
       warnings.push("The Free Samples showcase will be disabled.");
     }
@@ -310,7 +299,6 @@ export const SetupWizard = () => {
         hideStore: flagsConfig.hideStore,
         hideSocial: flagsConfig.hideSocial,
         hideNetwork: flagsConfig.hideNetwork,
-        hideDig: flagsConfig.hideDig,
         hideLive: flagsConfig.hideLive,
         hideSamples: flagsConfig.hideSamples,
         hideCollab: flagsConfig.hideCollab,
@@ -523,20 +511,7 @@ export const SetupWizard = () => {
                 </label>
               </div>
 
-              <div className="form-control">
-                <label className="label cursor-pointer justify-between py-1.5">
-                  <div>
-                    <span className="label-text font-semibold text-sm">Dig (External Crate-Digging)</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Import tracks from external databases or shared archives</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-primary toggle-sm"
-                    checked={!flagsConfig.hideDig}
-                    onChange={(e) => setFlagsConfig({ ...flagsConfig, hideDig: !e.target.checked })}
-                  />
-                </label>
-              </div>
+
 
               <div className="form-control">
                 <label className="label cursor-pointer justify-between py-1.5">
