@@ -582,6 +582,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 				chatEnabled,
 				boardEnabled,
 				scheduledScanHour,
+				watchLibraryEnabled,
 				listenerSelfPublish,
 				listenerSelfPublishQuota,
 				listenerTrackCap,
@@ -713,6 +714,16 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 						});
 				}
 				identity.setSetting("scheduledScanHour", hour);
+			}
+
+			if (watchLibraryEnabled !== undefined) {
+				const enabled = isTrue(watchLibraryEnabled);
+				identity.setSetting("watchLibraryEnabled", enabled ? "true" : "false");
+				if (enabled) {
+					container.scanner.startWatching(container.musicDir);
+				} else {
+					container.scanner.stopWatching();
+				}
 			}
 
 			if (siteName !== undefined) {

@@ -961,17 +961,51 @@ export class Scanner implements ScannerService {
 
     public startWatching(dir: string): void {
         this.musicDirectory = dir;
-        if (this.watcher) this.watcher.close();
-        this.watcher = chokidar.watch(dir, { ignored: /(^|[\/\\])\../, persistent: true, ignoreInitial: true });
-        this.watcher.on("add", (f) => {
-            if (!isArtworkOrAvatar(f)) {
-                this.processAudioFile(f, dir, undefined, this.primaryAdminId || undefined);
-            }
+        if (this.watcher) {
+            this.watcher.close();
+            this.watcher = null;
+        }
+
+        console.log(`[Watcher] 👁️ Starting library watcher on: ${dir}`);
+
+        this.watcher = chokidar.watch(dir, {
+            ignored: [
+                /(^|[\/\\])\../, // Hidden files/folders (.git, .DS_Store, .jwt-secret)
+                /(^|[\/\\])(cache|\.transcode-cache)[\/\\]/, // Transcode cache
+                /(^|[\/\\])(temp|tmp|\.tmp)[\/\\]/, // Temporary uploads
+            ],
+            persistent: true,
+            ignoreInitial: true,
+            awaitWriteFinish: {
+                stabilityThreshold: 2000,
+                pollInterval: 250,
+            },
+        });
+
+        const handleFile = (filePath: string, eventType: string) => {
+            const ext = path.extname(filePath).toLowerCase();
+            if (isArtworkOrAvatar(filePath)) return;
+            if (!AUDIO_EXTENSIONS.includes(ext) && !GENERIC_EXTENSIONS.includes(ext)) return;
+
+            console.log(`[Watcher] 📥 ${eventType === 'add' ? 'New' : 'Modified'} file detected: ${filePath}`);
+            this.processAudioFile(filePath, dir, undefined, this.primaryAdminId || undefined).catch((err) => {
+                console.warn(`[Watcher] Error processing file ${filePath}:`, err?.message || err);
+            });
+        };
+
+        this.watcher.on("add", (f) => handleFile(f, "add"));
+        this.watcher.on("change", (f) => handleFile(f, "change"));
+        this.watcher.on("error", (err) => {
+            console.warn(`[Watcher] ⚠️ Watcher error:`, (err as any)?.message || err);
         });
     }
 
     public stopWatching(): void {
-        if (this.watcher) { this.watcher.close(); this.watcher = null; }
+        if (this.watcher) {
+            console.log(`[Watcher] 🛑 Stopping library watcher`);
+            this.watcher.close();
+            this.watcher = null;
+        }
     }
 }
 

@@ -62,6 +62,14 @@ export class ScannerService {
         return this.getLocalScanner().processAudioFile(filePath, musicDir, overrideArtistId, ownerId, overrideAlbumId, suggestedCoverPath, metadataHints);
     }
 
+    startWatching(dir: string): void {
+        this.getLocalScanner().startWatching(dir);
+    }
+
+    stopWatching(): void {
+        this.getLocalScanner().stopWatching();
+    }
+
     getRegistry(): ProviderRegistry<ScannerProvider> {
         return this.registry;
     }
