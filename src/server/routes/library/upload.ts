@@ -558,6 +558,9 @@ export function createUploadRoutes(container: ServiceContainer): Router {
                 return res.status(400).json({ error: "No audio slice uploaded" });
             }
 
+            /** Empty unless the parse below succeeds — see the catch. */
+            let tags: Record<string, string | number | null> = {};
+
             try {
                 const declaredSize = Number(req.body?.size);
                 // MAX_UPLOAD_BYTES: a size larger than anything /tracks would
@@ -590,18 +593,16 @@ export function createUploadRoutes(container: ServiceContainer): Router {
                 const metadata = await parseFile(head.path, { skipCovers: true });
                 const common = metadata.common;
 
-                res.json({
-                    tags: {
-                        title: common.title || null,
-                        artist: common.artist || null,
-                        albumArtist: common.albumartist || null,
-                        album: common.album || null,
-                        year: common.year ?? null,
-                        genre: common.genre?.[0] || null,
-                        trackNo: common.track?.no ?? null,
-                        discNo: common.disk?.no ?? null,
-                    },
-                });
+                tags = {
+                    title: common.title || null,
+                    artist: common.artist || null,
+                    albumArtist: common.albumartist || null,
+                    album: common.album || null,
+                    year: common.year ?? null,
+                    genre: common.genre?.[0] || null,
+                    trackNo: common.track?.no ?? null,
+                    discNo: common.disk?.no ?? null,
+                };
             } catch (error) {
                 // Unreadable tags are an everyday outcome here (an untagged
                 // file, a container whose metadata falls outside both slices),
@@ -611,10 +612,14 @@ export function createUploadRoutes(container: ServiceContainer): Router {
                     `🏷️  Could not read tags from ${head.originalname}:`,
                     error instanceof Error ? error.message : error,
                 );
-                res.json({ tags: {} });
             } finally {
                 await cleanup();
             }
+
+            // Answering only once the slices are gone is what lets the route
+            // promise it stores nothing: a caller that has the response in hand
+            // knows the temp files are already deleted.
+            res.json({ tags });
         },
     );
 

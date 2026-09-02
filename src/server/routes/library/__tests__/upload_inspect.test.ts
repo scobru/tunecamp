@@ -1,15 +1,40 @@
-import { createUploadRoutes } from '../upload.js';
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
+import { pathToFileURL } from 'url';
 import type { DatabaseService } from '../../../core/database.js';
 import type { ScannerService } from '../../../modules/catalog/scanner.js';
 import type { PublishingService } from '../../../modules/publishing/publishing.service.js';
 import type { AuthService } from '../../../modules/auth/auth.service.js';
 import { UserRole } from '../../../common/visibility.js';
+
+/**
+ * Give this suite the real music-metadata.
+ *
+ * jest.config.js maps the package to `__mocks__/music-metadata.ts`, a stub that
+ * answers `{ common: {} }` for every file — right for the scanner suites, which
+ * only care that a file was visited, and useless here, where the whole point is
+ * that the route reads real tags out of a real file.
+ *
+ * Loading it by absolute path sidesteps both that mapper (it matches the bare
+ * specifier) and the package's own exports map (which publishes no deep
+ * subpaths); jest runs with the repo root as cwd. Registering the result under
+ * the bare specifier is what the route's `await import("music-metadata")` then
+ * resolves to.
+ */
+jest.unstable_mockModule('music-metadata', async () =>
+    import(
+        pathToFileURL(
+            path.join(process.cwd(), 'node_modules', 'music-metadata', 'lib', 'index.js'),
+        ).href
+    ),
+);
+
+// Imported after the mock is registered, per the convention in the sibling suites.
+let createUploadRoutes: typeof import('../upload.js')['createUploadRoutes'];
 
 /**
  * Smallest file music-metadata will read Vorbis comments from: the FLAC magic,
@@ -87,6 +112,10 @@ describe('Upload Routes - POST /upload/inspect', () => {
     let tempMusicDir: string;
     let flacPath: string;
 
+    beforeAll(async () => {
+        ({ createUploadRoutes } = await import('../upload.js'));
+    });
+
     beforeEach(async () => {
         jest.clearAllMocks();
 
@@ -112,7 +141,10 @@ describe('Upload Routes - POST /upload/inspect', () => {
             pathExists: jest.fn().mockResolvedValue(true as never),
             readdir: jest.fn().mockResolvedValue([] as never),
             readFile: jest.fn().mockResolvedValue('' as never),
-            remove: jest.fn(),
+            // The real LocalDiskStorage.remove deletes the path; a jest.fn() that
+            // only records the call would let a route that leaks its temp slices
+            // pass "leaves no temp slices behind".
+            remove: jest.fn((p: string) => fs.remove(p)),
             move: jest.fn(),
             ensureDir: jest.fn(),
             writeFile: jest.fn(),
