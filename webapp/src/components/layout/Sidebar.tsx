@@ -29,7 +29,6 @@ import {
   ChevronRight,
   Info,
   Scale,
-  Sparkles,
   Music2,
   Users,
 } from "lucide-react";
@@ -283,7 +282,6 @@ export const Sidebar = () => {
               <li><Link to="/support"><LifeBuoy size={16} /> Support</Link></li>
               <li><Link to="/terms"><Scale size={16} /> Legal</Link></li>
               <li><Link to="/about"><Info size={16} /> About</Link></li>
-              <li><Link to="/changelog"><Sparkles size={16} /> Changelog</Link></li>
               <li><a href="/feed.xml" target="_blank" rel="noopener noreferrer"><Rss size={16} /> RSS Feed</a></li>
               {communityLink && (
                 <li><a href={communityLink} target="_blank" rel="noopener noreferrer"><MessageSquare size={16} /> Community</a></li>

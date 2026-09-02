@@ -186,18 +186,22 @@ export function transcode(inputPath: string, format: string = 'mp3', bitrate?: n
         command.seekInput(seek);
     }
 
-    if (format === 'mp3') {
+    const fmt = (format || 'mp3').toLowerCase();
+    if (fmt === 'mp3') {
         command.toFormat('mp3').audioCodec('libmp3lame');
-    } else if (format === 'flac') {
+    } else if (fmt === 'flac') {
         command.toFormat('flac');
-    } else if (format === 'ogg') {
+    } else if (fmt === 'ogg') {
         command.toFormat('ogg').audioCodec('libvorbis');
-    } else if (format === 'wav') {
+    } else if (fmt === 'wav') {
         command.toFormat('wav');
-    } else if (format === 'aac') {
+    } else if (fmt === 'aac') {
         command.toFormat('adts').audioCodec('aac');
-    } else if (format === 'opus') {
+    } else if (fmt === 'opus') {
         command.toFormat('opus').audioCodec('libopus');
+    } else {
+        // Fallback to mp3 so ffmpeg always specifies an explicit container format on stdout (pipe:1)
+        command.toFormat('mp3').audioCodec('libmp3lame');
     }
 
     if (bitrate) {

@@ -137,14 +137,68 @@ describe('Subsonic Scrobbling', () => {
         expect(response.body['subsonic-response'].status).toBe('ok');
     });
 
-    it('should return 404 error in JSON for unknown endpoints', async () => {
+    it('should return OpenSubsonic extensions', async () => {
         const authQuery = 'u=user&p=password&v=1.16.1&c=test';
         const response = await request(app)
-            .get(`/rest/unknown.view?${authQuery}&f=json`);
+            .get(`/rest/getOpenSubsonicExtensions.view?${authQuery}&f=json`);
 
-        expect(response.status).toBe(200); // Subsonic often returns 200 with error inside
-        expect(response.body['subsonic-response'].status).toBe('failed');
-        expect(response.body['subsonic-response'].error.code).toBe('0');
+        expect(response.status).toBe(200);
+        expect(response.body['subsonic-response'].status).toBe('ok');
+        expect(response.body['subsonic-response'].openSubsonicExtensions).toBeDefined();
+        const extensions = response.body['subsonic-response'].openSubsonicExtensions.extension;
+        expect(extensions.some((e: any) => e.name === 'openSubsonic')).toBe(true);
+    });
+
+    it('should manage bookmarks (create, get, delete)', async () => {
+        const authQuery = 'u=user&p=password&v=1.16.1&c=test';
+        
+        // 1. Create bookmark
+        const createRes = await request(app)
+            .get(`/rest/createBookmark.view?${authQuery}&id=tr_1&position=45000&comment=GoodPart&f=json`);
+        expect(createRes.status).toBe(200);
+        expect(createRes.body['subsonic-response'].status).toBe('ok');
+
+        // 2. Get bookmarks
+        const getRes = await request(app)
+            .get(`/rest/getBookmarks.view?${authQuery}&f=json`);
+        expect(getRes.status).toBe(200);
+        expect(getRes.body['subsonic-response'].status).toBe('ok');
+        const bookmarks = getRes.body['subsonic-response'].bookmarks.bookmark;
+        expect(bookmarks).toBeDefined();
+
+        // 3. Delete bookmark
+        const delRes = await request(app)
+            .get(`/rest/deleteBookmark.view?${authQuery}&id=tr_1&f=json`);
+        expect(delRes.status).toBe(200);
+        expect(delRes.body['subsonic-response'].status).toBe('ok');
+    });
+
+    it('should manage play queue (save and get)', async () => {
+        const authQuery = 'u=user&p=password&v=1.16.1&c=test';
+        
+        // 1. Save play queue
+        const saveRes = await request(app)
+            .get(`/rest/savePlayQueue.view?${authQuery}&id=tr_1&current=tr_1&position=15000&f=json`);
+        expect(saveRes.status).toBe(200);
+        expect(saveRes.body['subsonic-response'].status).toBe('ok');
+
+        // 2. Get play queue
+        const getRes = await request(app)
+            .get(`/rest/getPlayQueue.view?${authQuery}&f=json`);
+        expect(getRes.status).toBe(200);
+        expect(getRes.body['subsonic-response'].status).toBe('ok');
+        expect(getRes.body['subsonic-response'].playQueue).toBeDefined();
+        expect(getRes.body['subsonic-response'].playQueue.current).toBe('tr_1');
+        expect(getRes.body['subsonic-response'].playQueue.position).toBe(15000);
+    });
+
+    it('should return avatar SVG fallback when no image file exists', async () => {
+        const authQuery = 'u=user&p=password&v=1.16.1&c=test';
+        const response = await request(app)
+            .get(`/rest/getAvatar.view?${authQuery}&username=user`);
+
+        expect(response.status).toBe(200);
+        expect(response.headers['content-type']).toContain('image/svg+xml');
     });
 });
 
