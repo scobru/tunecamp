@@ -359,6 +359,14 @@ export async function bootstrapServices(
 	);
 	const scannerService = await initScannerService(database, scanner);
 
+	// Automatic library directory watcher (#1197)
+	const isWatcherEnabled =
+		config.watchLibrary &&
+		database.getSetting("watchLibraryEnabled") !== "false";
+	if (isWatcherEnabled) {
+		scanner.startWatching(config.musicDir);
+	}
+
 	const downloadService = initDownloadService(database);
 
 	// Dynamically register optional P2P providers
@@ -375,6 +383,8 @@ export async function bootstrapServices(
 		catalogService,
 		streamingService,
 	});
+
+	pluginCleanups.push(() => scanner.stopWatching());
 
 	const boardService = new BoardService(database);
 	const liveService = new LiveService();

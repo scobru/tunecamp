@@ -280,6 +280,8 @@ export interface SiteSettings {
 	chatEnabled?: boolean | string;
 	boardEnabled?: boolean | string;
 	scheduledScanHour?: string;
+	watchLibraryEnabled?: boolean | string;
+	musicDir?: string;
 	adminFeePercentage?: string | number;
 	adminTreasuryAddress?: string;
 	openrouter_api_key?: string;

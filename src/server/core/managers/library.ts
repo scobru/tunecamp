@@ -606,9 +606,19 @@ export function createLibraryManager(
             db.transaction(() => {
                 db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL) AND is_release = 0").run();
                 db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL) AND is_release = 1").run();
-                // Never prune an artist profile linked to a user account: a self-published
-                // (or freshly created) artist may legitimately have no tracks/albums yet.
-                db.prepare("DELETE FROM artists WHERE id != -1 AND id NOT IN (SELECT DISTINCT artist_id FROM albums WHERE artist_id IS NOT NULL) AND id NOT IN (SELECT DISTINCT artist_id FROM tracks WHERE artist_id IS NOT NULL) AND id NOT IN (SELECT artist_id FROM admin WHERE artist_id IS NOT NULL)").run();
+                // Never prune an artist profile linked to a user account, site actor, or content (samples/packs/assets/fid):
+                db.prepare(`
+                    DELETE FROM artists 
+                    WHERE id != -1 
+                      AND slug != '@site'
+                      AND id NOT IN (SELECT DISTINCT artist_id FROM albums WHERE artist_id IS NOT NULL) 
+                      AND id NOT IN (SELECT DISTINCT artist_id FROM tracks WHERE artist_id IS NOT NULL) 
+                      AND id NOT IN (SELECT artist_id FROM admin WHERE artist_id IS NOT NULL)
+                      AND id NOT IN (SELECT artist_id FROM samples WHERE artist_id IS NOT NULL)
+                      AND id NOT IN (SELECT artist_id FROM sample_packs WHERE artist_id IS NOT NULL)
+                      AND id NOT IN (SELECT artist_id FROM assets WHERE artist_id IS NOT NULL)
+                      AND id NOT IN (SELECT artist_id FROM fid_registry WHERE artist_id IS NOT NULL)
+                `).run();
             })();
         },
         pruneOrphans(): void {
@@ -669,8 +679,19 @@ export function createLibraryManager(
                 db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL) AND is_release = 0").run();
                 db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT release_id FROM release_tracks WHERE release_id IS NOT NULL) AND is_release = 1").run();
                 // 3. Remove artists with no albums and no tracks — but keep any artist
-                // linked to a user account (self-published profiles may have no tracks yet).
-                db.prepare("DELETE FROM artists WHERE id != -1 AND id NOT IN (SELECT artist_id FROM albums) AND id NOT IN (SELECT artist_id FROM tracks) AND id NOT IN (SELECT artist_id FROM admin WHERE artist_id IS NOT NULL)").run();
+                // linked to a user account, site actor, or other content.
+                db.prepare(`
+                    DELETE FROM artists 
+                    WHERE id != -1 
+                      AND slug != '@site'
+                      AND id NOT IN (SELECT DISTINCT artist_id FROM albums WHERE artist_id IS NOT NULL) 
+                      AND id NOT IN (SELECT DISTINCT artist_id FROM tracks WHERE artist_id IS NOT NULL) 
+                      AND id NOT IN (SELECT artist_id FROM admin WHERE artist_id IS NOT NULL)
+                      AND id NOT IN (SELECT artist_id FROM samples WHERE artist_id IS NOT NULL)
+                      AND id NOT IN (SELECT artist_id FROM sample_packs WHERE artist_id IS NOT NULL)
+                      AND id NOT IN (SELECT artist_id FROM assets WHERE artist_id IS NOT NULL)
+                      AND id NOT IN (SELECT artist_id FROM fid_registry WHERE artist_id IS NOT NULL)
+                `).run();
             })();
         },
     };

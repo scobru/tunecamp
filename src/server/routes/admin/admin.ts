@@ -523,7 +523,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 		try {
 			const settings = identity.getAllSettings();
 			// jwtSecret is never exposed to the client — it lives only server-side.
-			res.json(settings);
+			res.json({
+				...settings,
+				musicDir: container.musicDir,
+			});
 		} catch (error) {
 			console.error("Error getting settings:", error);
 			res.status(500).json({ error: "Failed to get settings" });
@@ -582,6 +585,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 				chatEnabled,
 				boardEnabled,
 				scheduledScanHour,
+				watchLibraryEnabled,
 				listenerSelfPublish,
 				listenerSelfPublishQuota,
 				listenerTrackCap,
@@ -713,6 +717,16 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 						});
 				}
 				identity.setSetting("scheduledScanHour", hour);
+			}
+
+			if (watchLibraryEnabled !== undefined) {
+				const enabled = isTrue(watchLibraryEnabled);
+				identity.setSetting("watchLibraryEnabled", enabled ? "true" : "false");
+				if (enabled) {
+					container.scanner.startWatching(container.musicDir);
+				} else {
+					container.scanner.stopWatching();
+				}
 			}
 
 			if (siteName !== undefined) {

@@ -254,7 +254,9 @@ export class MediaEngine {
     // audio/mpeg these fail with DEMUXER_ERROR_COULD_NOT_OPEN. ffmpeg reads
     // past the ID3 tag and decodes the real container.
     const directlyStreamable = new Set(["mp3", "ogg", "opus", "flac", "aac"]);
-    const targetFormat = options.format ||
+    const rawRequested = options.format === 'raw' || options.format === 'original';
+    const requestedFormat = rawRequested ? undefined : options.format;
+    const targetFormat = requestedFormat ||
       ((isLosslessFallback || !directlyStreamable.has(sourceFormat)) ? "mp3" : sourceFormat);
 
     const needsTranscode = options.seek! > 0 ||

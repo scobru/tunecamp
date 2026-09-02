@@ -81,28 +81,18 @@ Al primo avvio, TuneCamp crea un account amministratore predefinito:
 
 ## 4. Aggiungi la tua musica
 
-Copia i file nella cartella musicale (`./music` di default, una cartella per
-album), poi:
+Copia i file nella cartella musicale (`./music` di default, una cartella per album):
 
-1. Vai su **`/admin` → scheda Maintenance** e premi **`Rescan Library`**. La
-   scansione non è automatica all'avvio; `/admin` → Settings → *Scheduled
-   Library Scan* la fa girare ogni giorno all'ora che scegli.
-2. TuneCamp leggerà i tag dei metadati, genererà le forme d'onda e caricherà le copertine.
-3. Le cartelle scansionate diventano **album privati in bozza**, elencati in
-   **`/my-music`**. Sono nella tua libreria e invisibili al pubblico finché non
-   li promuovi: `Promote` in `/my-music` trasforma un album in una *release
-   formale*, poi la **scheda Releases di `/admin`** è dove ne compili i metadati
-   e la **pubblichi**.
+- **Watcher automatico in tempo reale (Drop & Auto-Import)**: TuneCamp monitora la tua cartella musica (`TUNECAMP_MUSIC_PATH` / `./music`) in tempo reale. I file audio e le cartelle rilasciati al suo interno vengono importati automaticamente nella libreria come **album privati in bozza** non appena la scrittura è completata.
+- **Scansione manuale**: Puoi anche andare su **`/admin` → scheda Maintenance** e premere **`Rescan Library`** per effettuare una riscansione su richiesta. `/admin` → Settings → *Scheduled Library Scan* la esegue ogni giorno all'ora configurata.
 
-Per caricare invece di scansionare, **`/admin/release/new`** crea una release e
-ne carica l'audio in un colpo solo, compilando titolo, artista, anno ed elenco
-tracce dai tag dei file stessi.
+TuneCamp leggerà i tag dei metadati, genererà le forme d'onda e caricherà le copertine. Le cartelle scansionate diventano **album privati in bozza**, elencati in **`/my-music`**. Sono nella tua libreria e invisibili al pubblico finché non li promuovi: `Promote` in `/my-music` trasforma un album in una *release formale*, poi la **scheda Releases di `/admin`** è dove ne compili i metadati e la **pubblichi**.
 
-**[Aggiungere Musica](./adding-music.md) è il riferimento completo** — struttura
-della libreria su disco, a cosa serve ogni cartella sotto `music/` e come
-modificare la libreria senza confondere il database.
+Per caricare invece tramite browser, **`/admin/release/new`** crea una release e ne carica l'audio in un colpo solo, compilando titolo, artista, anno ed elenco tracce dai tag dei file stessi.
 
 Puoi anche importare file musicali tramite il [bot Telegram](./telegram.md), l'[app desktop Sidecamp](./sidecamp.md) (Soulseek, torrent, yt-dlp) o [Google Drive](./google-drive.md).
+
+**[Aggiungere Musica](./adding-music.md) è il riferimento completo** — struttura della libreria su disco, a cosa serve ogni cartella sotto `music/` e come modificare la libreria senza confondere il database.
 
 ## 5. Ascolta
 

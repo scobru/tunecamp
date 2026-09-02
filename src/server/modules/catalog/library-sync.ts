@@ -411,14 +411,31 @@ export class LibrarySync {
         LEFT JOIN tracks t ON a.id = t.album_id
         WHERE t.id IS NULL AND a.is_release = 0
     `).all() as { id: number }[];
-    this.database.deleteAlbumsBatch(emptyAlbums.map(a => a.id));
+    if (emptyAlbums.length > 0) {
+      this.database.deleteAlbumsBatch(emptyAlbums.map(a => a.id));
+    }
 
     const emptyArtists = this.database.db.prepare(`
         SELECT ar.id FROM artists ar
         LEFT JOIN albums a ON ar.id = a.artist_id
         LEFT JOIN tracks t ON ar.id = t.artist_id
-        WHERE a.id IS NULL AND t.id IS NULL
+        LEFT JOIN admin adm ON ar.id = adm.artist_id
+        LEFT JOIN samples s ON ar.id = s.artist_id
+        LEFT JOIN sample_packs sp ON ar.id = sp.artist_id
+        LEFT JOIN assets ast ON ar.id = ast.artist_id
+        LEFT JOIN fid_registry fid ON ar.id = fid.artist_id
+        WHERE ar.id != -1
+          AND ar.slug != '@site'
+          AND a.id IS NULL
+          AND t.id IS NULL
+          AND adm.id IS NULL
+          AND s.id IS NULL
+          AND sp.id IS NULL
+          AND ast.id IS NULL
+          AND fid.id IS NULL
     `).all() as { id: number }[];
-    this.database.deleteArtistsBatch(emptyArtists.map(ar => ar.id));
+    if (emptyArtists.length > 0) {
+      this.database.deleteArtistsBatch(emptyArtists.map(ar => ar.id));
+    }
   }
 }

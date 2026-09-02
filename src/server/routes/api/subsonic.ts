@@ -7,8 +7,9 @@ import type { DatabaseService, Track } from '../../core/database.js';
 import type { AuthService } from '../../modules/auth/auth.service.js';
 import type { MediaEngine } from '../../modules/media/media-engine.js';
 import { sendStreamResult } from '../../modules/media/media-engine.js';
-import type { SubsonicService } from '../../modules/subsonic/subsonic.service.js';
+import { SubsonicService } from '../../modules/subsonic/subsonic.service.js';
 import { UserRole, VisibilityGuardian, VisibilityProfile } from '../../common/visibility.js';
+import { NotFoundError } from '../../common/errors.js';
 
 import type { ServiceContainer } from '../../core/container.js';
 
@@ -20,7 +21,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
     const db = container.database;
     const auth = container.authService;
     const scrobbleService = container.scrobbleService;
-    const subsonicService = container.subsonicService;
+    const subsonicService = container.subsonicService || (db ? new SubsonicService(db) : undefined);
     const mediaEngine = container.mediaEngine;
     const musicDir = container.musicDir;
 
@@ -339,8 +340,9 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         const format = ensureString(req.query.format);
         const maxBitRate = ensureString(req.query.maxBitRate);
         const timeOffset = ensureString(req.query.timeOffset);
-        if (!id || !id.startsWith('tr_')) return sendError(res, req, 10, 'Invalid id');
-        const trackId = parseInt(id.substring(3));
+        if (!id) return sendError(res, req, 10, 'Missing parameter id');
+        const trackId = parseInt(id.startsWith('tr_') ? id.substring(3) : id);
+        if (isNaN(trackId)) return sendError(res, req, 10, 'Invalid id');
         try {
             const result = await mediaEngine.getStream({
                 trackId, format, bitrate: maxBitRate, seek: timeOffset ? parseInt(timeOffset) : 0,
@@ -349,6 +351,9 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
             sendStreamResult(res, result);
         } catch (error: any) {
             if (error.message && error.message.startsWith("REDIRECT:")) return res.redirect(error.message.substring(9));
+            if (error instanceof NotFoundError || error.statusCode === 404 || error.code === 'NOT_FOUND') {
+                return sendError(res, req, 70, error.message || 'Track not found');
+            }
             console.error('[Subsonic] Streaming error:', error);
             sendError(res, req, 80, 'Streaming failed');
         }
@@ -648,6 +653,172 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
 
         const episodes = subsonicService.getNewestPodcasts(size, offset, context);
         sendResponse(res, req, { newestPodcasts: { episode: episodes } });
+    });
+
+    // --- OpenSubsonic Extensions ---
+
+    router.all(['/getOpenSubsonicExtensions.view', '/getOpenSubsonicExtensions'], (req, res) => {
+        sendResponse(res, req, {
+            openSubsonicExtensions: {
+                extension: [
+                    { '@name': 'openSubsonic', '@versions': '1' },
+                    { '@name': 'songList', '@versions': '1' },
+                    { '@name': 'formPost', '@versions': '1' },
+                    { '@name': 'playQueue', '@versions': '1' }
+                ]
+            }
+        });
+    });
+
+    // --- Bookmarks ---
+
+    router.all(['/getBookmarks.view', '/getBookmarks'], (req, res) => {
+        if (!subsonicService) return sendError(res, req, 80, 'Subsonic service not initialized');
+        const username = (req as any).user?.username || 'admin';
+        const bookmarks = db.getBookmarks(username);
+        const bookmarkEntries: any[] = [];
+        
+        if (bookmarks && bookmarks.length > 0) {
+            const trackIds = bookmarks.map((b: any) => {
+                const raw = String(b.track_id);
+                return parseInt(raw.startsWith('tr_') ? raw.substring(3) : raw);
+            }).filter((id: number) => !isNaN(id));
+            
+            const tracks = db.getTracksByIds(trackIds);
+            const trackMap = new Map<number, Track>(tracks.map((t: Track) => [t.id, t]));
+            
+            for (const b of bookmarks) {
+                const raw = String(b.track_id);
+                const trackId = parseInt(raw.startsWith('tr_') ? raw.substring(3) : raw);
+                const track = trackMap.get(trackId);
+                if (track) {
+                    bookmarkEntries.push({
+                        '@position': b.position_ms,
+                        '@username': b.username,
+                        '@comment': b.comment || '',
+                        '@created': b.created_at,
+                        '@changed': b.updated_at || b.created_at,
+                        entry: subsonicService.formatTrack(track, username)
+                    });
+                }
+            }
+        }
+        sendResponse(res, req, { bookmarks: { bookmark: bookmarkEntries } });
+    });
+
+    router.all(['/createBookmark.view', '/createBookmark'], (req, res) => {
+        const username = (req as any).user?.username || 'admin';
+        const idStr = ensureString(req.query.id);
+        const positionStr = ensureString(req.query.position);
+        const comment = ensureString(req.query.comment);
+        if (!idStr) return sendError(res, req, 10, 'Missing id parameter');
+        const position = positionStr ? parseInt(positionStr, 10) : 0;
+        const trackId = idStr.startsWith('tr_') ? idStr.substring(3) : idStr;
+        db.createBookmark(username, trackId, position, comment);
+        sendResponse(res, req, {});
+    });
+
+    router.all(['/deleteBookmark.view', '/deleteBookmark'], (req, res) => {
+        const username = (req as any).user?.username || 'admin';
+        const idStr = ensureString(req.query.id);
+        if (!idStr) return sendError(res, req, 10, 'Missing id parameter');
+        const trackId = idStr.startsWith('tr_') ? idStr.substring(3) : idStr;
+        db.deleteBookmark(username, trackId);
+        sendResponse(res, req, {});
+    });
+
+    // --- Play Queue ---
+
+    router.all(['/getPlayQueue.view', '/getPlayQueue'], (req, res) => {
+        if (!subsonicService) return sendError(res, req, 80, 'Subsonic service not initialized');
+        const username = (req as any).user?.username || 'admin';
+        const queue = db.getPlayQueue(username);
+        
+        if (!queue || !queue.trackIds || queue.trackIds.length === 0) {
+            return sendResponse(res, req, { playQueue: {} });
+        }
+
+        const trackIds = queue.trackIds.map((idStr: string) => {
+            const raw = String(idStr);
+            return parseInt(raw.startsWith('tr_') ? raw.substring(3) : raw);
+        }).filter((id: number) => !isNaN(id));
+
+        const tracks = db.getTracksByIds(trackIds);
+        const trackMap = new Map<number, Track>(tracks.map((t: Track) => [t.id, t]));
+        const entries: any[] = [];
+        for (const tid of trackIds) {
+            const t = trackMap.get(tid);
+            if (t) entries.push(subsonicService.formatTrack(t, username));
+        }
+
+        const currentId = queue.current ? (String(queue.current).startsWith('tr_') ? queue.current : `tr_${queue.current}`) : undefined;
+
+        sendResponse(res, req, {
+            playQueue: {
+                '@current': currentId,
+                '@position': queue.positionMs || 0,
+                '@username': username,
+                entry: entries
+            }
+        });
+    });
+
+    router.all(['/savePlayQueue.view', '/savePlayQueue'], (req, res) => {
+        const username = (req as any).user?.username || 'admin';
+        const current = ensureString(req.query.current) || null;
+        const positionStr = ensureString(req.query.position);
+        const position = positionStr ? parseInt(positionStr, 10) : 0;
+        
+        const idRaw = req.query.id;
+        const ids: string[] = (Array.isArray(idRaw) ? idRaw : (idRaw ? [idRaw] : [])).map(s => String(s));
+        
+        const trackIds = ids.map(idStr => idStr.startsWith('tr_') ? idStr.substring(3) : idStr);
+        const currentTrackId = current ? (current.startsWith('tr_') ? current.substring(3) : current) : null;
+        
+        db.savePlayQueue(username, trackIds, currentTrackId, position);
+        sendResponse(res, req, {});
+    });
+
+    // --- Avatar ---
+
+    router.all(['/getAvatar.view', '/getAvatar'], async (req, res) => {
+        const username = ensureString(req.query.username) || (req as any).user?.username || 'admin';
+        
+        const user = (db as any).db.prepare("SELECT avatar, artist_id FROM admin WHERE username = ? COLLATE NOCASE").get(username);
+        let avatarPath: string | null = user?.avatar || null;
+        
+        if (!avatarPath && user?.artist_id) {
+            const artist = db.getArtist(user.artist_id);
+            if (artist?.photo_path) avatarPath = artist.photo_path;
+        }
+
+        if (avatarPath) {
+            if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
+                try {
+                    const response = await fetch(avatarPath);
+                    if (response.ok) {
+                        const contentType = response.headers.get('content-type');
+                        if (contentType) res.setHeader('Content-Type', contentType);
+                        res.setHeader('Cache-Control', 'public, max-age=86400');
+                        if (response.body) { (response.body as any).pipe(res); return; }
+                    }
+                } catch (error) {
+                    console.error('Error proxying avatar:', error);
+                }
+            } else {
+                const sanitizedPath = avatarPath.replace(/^@@[a-z0-9]+\\?/, "").replace(/\\/g, "/").replace(/\/+/g, "/");
+                let fullPath = resolveSafePath(musicDir, sanitizedPath);
+                if (fullPath && await fileExists(fullPath)) {
+                    res.setHeader('Cache-Control', 'public, max-age=86400');
+                    return res.sendFile(fullPath);
+                }
+            }
+        }
+
+        const svg = getPlaceholderSVG(username);
+        res.setHeader("Content-Type", "image/svg+xml");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        return res.send(svg);
     });
 
     router.use((req, res) => {

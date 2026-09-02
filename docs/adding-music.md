@@ -142,6 +142,26 @@ looks mysterious.
 | `playlists/covers/` | Playlist cover images |
 | `assets/` | Site branding and miscellaneous uploaded images |
 
+### `releases/` vs `tracks/`
+
+These two are the pair that trips people up, because both hold the same kind of
+file — the audio itself. The difference is not what is in them, it is whether
+the audio belongs to something:
+
+- **`releases/<slug>/`** holds the files of one release, kept together under
+  that release's slug.
+- **`tracks/`** is where an upload lands when it was not attached to a release
+  at all.
+
+So read `tracks/` as *the unfiled pile*, not "all the tracks" — a track that
+belongs to a release is not in there, it is under `releases/`. Which of the two
+a file lands in is decided once, when it arrives: promoting an album to a
+formal release changes its status in the database and does not move anything on
+disk.
+
+If you are placing files by hand and want them treated as a release, put them
+in `releases/<slug>/` yourself rather than in `tracks/`.
+
 ## 7. Editing the library on disk
 
 The files stay ordinary files: rename, re-tag or re-organise them with whatever

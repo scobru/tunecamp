@@ -37,6 +37,10 @@ export interface ServerConfig {
 	// this is negligible. Opt-out via TUNECAMP_LIVE_ENABLED=false.
 	liveEnabled: boolean;
 
+	// Automatic library directory watcher (#1197). Auto-imports newly added audio files.
+	// Opt-out via TUNECAMP_WATCH_LIBRARY=false.
+	watchLibrary: boolean;
+
 	// Transcode cache (#2): on-the-fly transcodes are written here so repeat
 	// requests for the same (track, format, bitrate) are served as plain file reads.
 	transcodeCacheDir: string;
@@ -210,6 +214,10 @@ export async function loadConfig(
 			process.env.TUNECAMP_LIVE_ENABLED !== undefined
 				? process.env.TUNECAMP_LIVE_ENABLED !== "false"
 				: (overrides?.liveEnabled ?? true),
+		watchLibrary:
+			process.env.TUNECAMP_WATCH_LIBRARY !== undefined
+				? process.env.TUNECAMP_WATCH_LIBRARY !== "false"
+				: (overrides?.watchLibrary ?? true),
 		transcodeCacheDir,
 		transcodeCacheMaxBytes,
 		xaccelRedirect:
