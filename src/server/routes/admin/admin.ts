@@ -523,7 +523,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 		try {
 			const settings = identity.getAllSettings();
 			// jwtSecret is never exposed to the client — it lives only server-side.
-			res.json(settings);
+			res.json({
+				...settings,
+				musicDir: container.musicDir,
+			});
 		} catch (error) {
 			console.error("Error getting settings:", error);
 			res.status(500).json({ error: "Failed to get settings" });
