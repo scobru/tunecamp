@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/useAuthStore";
 import API from "../services/api";
+import type { AudioTags } from "../services/api/admin";
 import { genreDatalistOptions } from "../constants/genres";
 import { useWalletStore } from "../stores/useWalletStore";
 import { notify } from "../utils/notify";
@@ -61,6 +62,12 @@ interface LocalTrack {
   showPodcastFields?: boolean;
   track_id?: number;
 }
+
+/**
+ * Year a brand-new release starts on. Named so tag prefill can tell "the user
+ * chose this year" from "nobody has touched the field yet".
+ */
+const DEFAULT_RELEASE_YEAR = new Date().getFullYear();
 
 interface LocalRelease {
   id: number;
@@ -129,7 +136,7 @@ export default function AdminReleaseEditor() {
   const [metadata, setMetadata] = useState<Partial<LocalRelease>>({
     title: "",
     type: "album",
-    year: new Date().getFullYear(),
+    year: DEFAULT_RELEASE_YEAR,
     visibility: "private",
     description: "",
     credits: "",
@@ -160,6 +167,10 @@ export default function AdminReleaseEditor() {
   // Tracks State
   const [tracks, setTracks] = useState<LocalTrack[]>([]);
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+  // Tags read off the pending files, keyed by `${name}:${size}` so a file that
+  // is removed and re-added keeps its entry and duplicates don't collide.
+  const [pendingTags, setPendingTags] = useState<Record<string, AudioTags>>({});
+  const [isReadingTags, setIsReadingTags] = useState(false);
   const [uploadingFileIndex, setUploadingFileIndex] = useState<number | null>(
     null,
   );
@@ -527,6 +538,7 @@ export default function AdminReleaseEditor() {
         }
         // Reload
         setFilesToUpload([]);
+        setPendingTags({});
         // Reload release to get updated state (including new tracks if any were uploaded)
         setUploadingFileIndex(null);
         setCoverFile(null);
@@ -698,15 +710,117 @@ export default function AdminReleaseEditor() {
     }
   };
 
+  /** Stable key for a pending file — see `pendingTags`. */
+  const fileKey = (file: File) => `${file.name}:${file.size}`;
+
+  /**
+   * Queue audio for upload and read its tags straight away, so a well-tagged
+   * album fills in the release fields instead of asking the artist to retype
+   * what is already in the files.
+   *
+   * Only empty fields are filled: anything already typed, and anything loaded
+   * from an existing release, wins over a tag. The year counts as empty only
+   * while it still holds the "new release" default, which is why this is
+   * limited to `isNew`.
+   */
+  const addAudioFiles = async (files: File[]) => {
+    if (files.length === 0) return;
+    setFilesToUpload((prev) => [...prev, ...files]);
+
+    setIsReadingTags(true);
+    try {
+      const results = await Promise.all(
+        files.map(async (file) => {
+          try {
+            const { tags } = await API.inspectAudioTags(file);
+            return [file, tags || {}] as const;
+          } catch (e) {
+            // Never block the upload on tag reading: an unreadable file just
+            // keeps the fields the user would have filled in anyway.
+            console.warn(`Could not read tags from ${file.name}`, e);
+            return [file, {} as AudioTags] as const;
+          }
+        }),
+      );
+
+      setPendingTags((prev) => {
+        const next = { ...prev };
+        for (const [file, tags] of results) next[fileKey(file)] = tags;
+        return next;
+      });
+
+      applyTagsToMetadata(results.map(([, tags]) => tags));
+    } finally {
+      setIsReadingTags(false);
+    }
+  };
+
+  /**
+   * Fill still-empty release fields from the first pending file that names
+   * each one. Tracks are not touched here: the server reads every file's tags
+   * as it stores it, so track titles and numbers arrive with the reload.
+   */
+  const applyTagsToMetadata = (tagList: AudioTags[]) => {
+    const firstOf = <K extends keyof AudioTags>(key: K) =>
+      tagList.find((t) => t?.[key] !== null && t?.[key] !== undefined)?.[key];
+
+    const album = firstOf("album");
+    const albumArtist = firstOf("albumArtist") || firstOf("artist");
+    const year = firstOf("year");
+    const genre = firstOf("genre");
+
+    setMetadata((prev) => {
+      const next = { ...prev };
+
+      if (album && !prev.title?.trim()) next.title = String(album);
+      if (albumArtist && !prev.album_artist?.trim())
+        next.album_artist = String(albumArtist);
+      if (genre && !prev.genre?.trim()) next.genre = String(genre);
+      if (year && isNew && prev.year === DEFAULT_RELEASE_YEAR)
+        next.year = Number(year);
+
+      // Point the release at the tagged artist when the roster already has one
+      // under that exact name. No match means no change — inventing artists
+      // from tags is the upload endpoint's job, not the editor's.
+      if (albumArtist && isNew) {
+        const wanted = String(albumArtist).trim().toLowerCase();
+        const match = artists.find(
+          (a: any) => String(a.name || "").trim().toLowerCase() === wanted,
+        );
+        if (match) next.artist_id = parseInt(String(match.id));
+      }
+
+      return next;
+    });
+  };
+
+  /**
+   * Drop one queued file. Its tags go with it, so re-adding the same file
+   * re-reads them rather than showing a stale title.
+   */
+  const removePendingFile = (idx: number) => {
+    const removed = filesToUpload[idx];
+    setFilesToUpload((prev) => prev.filter((_, i) => i !== idx));
+
+    const stillQueued = filesToUpload.some(
+      (f, i) => i !== idx && removed && fileKey(f) === fileKey(removed),
+    );
+    if (removed && !stillQueued) {
+      setPendingTags((tags) => {
+        const next = { ...tags };
+        delete next[fileKey(removed)];
+        return next;
+      });
+    }
+  };
+
   // Drag and Drop handlers for File Upload
   const handleDropAudio = (e: React.DragEvent) => {
     e.preventDefault();
     const files = Array.from(e.dataTransfer.files).filter((f) =>
       f.type.startsWith("audio/"),
     );
-    if (files.length > 0) {
-      setFilesToUpload((prev) => [...prev, ...files]);
-    }
+    void addAudioFiles(files);
   };
 
   const handleDropCover = (e: React.DragEvent) => {
@@ -1193,7 +1307,9 @@ export default function AdminReleaseEditor() {
                         type="file" multiple accept="audio/*" className="hidden"
                         onChange={(e) => {
                           if (e.target.files)
-                            setFilesToUpload((prev) => [...prev, ...Array.from(e.target.files!)]);
+                            void addAudioFiles(Array.from(e.target.files));
+                          // Let the same file be picked again after removing it.
+                          e.target.value = "";
                         }}
                       />
                     </label>
@@ -1324,7 +1440,8 @@ export default function AdminReleaseEditor() {
                                   <span className="loading loading-dots loading-xs opacity-20"></span>
                                 )}
                               </td>
-                            )}                            {metadata.download !== "external" && (
+                            )}
+                            {metadata.download !== "external" && (
                               <td>
                                 <div className="flex items-center gap-1 justify-center">
                                   <select
@@ -1505,7 +1622,9 @@ export default function AdminReleaseEditor() {
                       ))}
 
               {/* Pending Uploads */}
-              {filesToUpload.map((file, idx) => (
+              {filesToUpload.map((file, idx) => {
+                const tags = pendingTags[fileKey(file)];
+                return (
                 <div
                   key={`upload-${idx}`}
                   className="card card-compact bg-base-100/50 border border-dashed border-primary/30"
@@ -1514,22 +1633,27 @@ export default function AdminReleaseEditor() {
                     {uploadingFileIndex !== null && (
                       <div className="loading loading-spinner loading-xs text-primary"></div>
                     )}
-                    <div className="flex-1 truncate">{file.name}</div>
+                    {tags?.trackNo != null && (
+                      <div className="font-mono opacity-40 w-6 text-right">{tags.trackNo}</div>
+                    )}
+                    <div className="flex-1 truncate">
+                      {tags?.title || file.name}
+                      {tags?.title && (
+                        <span className="ml-2 text-xs opacity-40 truncate">{file.name}</span>
+                      )}
+                    </div>
                     <div className="badge badge-ghost">Pending Upload</div>
                     <button
                       className="btn btn-ghost btn-xs btn-circle"
-                      onClick={() =>
-                        setFilesToUpload((prev) =>
-                          prev.filter((_, i) => i !== idx),
-                        )
-                      }
+                      onClick={() => removePendingFile(idx)}
                       disabled={uploadingFileIndex !== null}
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
                     </tbody>
                   </table>
                 </div>
@@ -1539,13 +1663,19 @@ export default function AdminReleaseEditor() {
                   <div className="bg-primary/5 p-4 border-t border-primary/20 space-y-2">
                     <h4 className="text-xs font-bold tracking-normal text-primary flex items-center gap-2">
                       <Plus className="w-3 h-3" /> Pending Uploads
+                      {isReadingTags && (
+                        <span className="font-normal opacity-60 flex items-center gap-1">
+                          <span className="loading loading-spinner loading-xs"></span>
+                          Reading tags…
+                        </span>
+                      )}
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                       {filesToUpload.map((file, idx) => (
                         <div key={`upload-${idx}`} className="flex items-center gap-3 bg-base-100 p-2 rounded-lg text-xs border border-base-content/5">
                           {uploadingFileIndex !== null ? <span className="loading loading-spinner loading-xs text-primary"></span> : <Music className="w-3 h-3 opacity-30" />}
-                          <span className="flex-1 truncate opacity-70">{file.name}</span>
-                          <button className="btn btn-ghost btn-xs btn-circle text-error" onClick={() => setFilesToUpload(prev => prev.filter((_, i) => i !== idx))} disabled={uploadingFileIndex !== null}>
+                          <span className="flex-1 truncate opacity-70">{pendingTags[fileKey(file)]?.title || file.name}</span>
+                          <button className="btn btn-ghost btn-xs btn-circle text-error" onClick={() => removePendingFile(idx)} disabled={uploadingFileIndex !== null}>
                             <X className="w-3 h-3" />
                           </button>
                         </div>

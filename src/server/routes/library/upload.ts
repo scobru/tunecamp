@@ -3,6 +3,7 @@ import multer from "multer";
 import crypto from "crypto";
 import path from "path";
 import os from "os";
+import fsp from "fs/promises";
 import axios from "axios";
 import type { DatabaseService } from "../../core/database.js";
 import type { ScannerService } from "../../modules/catalog/scanner.js";
@@ -12,6 +13,9 @@ import { sanitizeFilename } from "../../../utils/audioUtils.js";
 import type { StorageEngine } from "../../modules/storage/storage.engine.js";
 import { createAuthMiddleware } from "../../middleware/auth.js";
 import { VisibilityGuardian } from "../../common/visibility.js";
+
+/** Ceiling for a single uploaded file, shared by the upload and inspect routes. */
+const MAX_UPLOAD_BYTES = 1024 * 1024 * 1024; // 1GB
 
 const AUDIO_EXTENSIONS = new Set([".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"]);
 const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"]);
@@ -57,6 +61,23 @@ function fileFilter(
     } else {
         console.warn(`❌ [Debug] Multer rejected file type: ${ext}`);
         cb(new Error(`Unsupported file type: ${ext}`));
+    }
+}
+
+/**
+ * File filter for audio only — used by tag inspection, which has no reason to
+ * accept the images and archives the general upload filter allows.
+ */
+function audioFileFilter(
+    _req: Express.Request,
+    file: Express.Multer.File,
+    cb: multer.FileFilterCallback
+) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (AUDIO_EXTENSIONS.has(ext)) {
+        cb(null, true);
+    } else {
+        cb(new Error(`Unsupported audio type: ${ext}`));
     }
 }
 
@@ -138,7 +159,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
     const upload = multer({
         storage: createTempStorage(),
         fileFilter,
-        limits: { fileSize: 1024 * 1024 * 1024 } // 1GB limit
+        limits: { fileSize: MAX_UPLOAD_BYTES }
     });
 
     // Memory storage for covers (small files, avoids disk I/O in middleware)
@@ -152,6 +173,15 @@ export function createUploadRoutes(container: ServiceContainer): Router {
         storage: createTempStorage(),
         fileFilter: imageFileFilter,
         limits: { fileSize: 25 * 1024 * 1024 }, // 25MB — high-res backgrounds/covers
+    });
+
+    // Tag inspection only ever receives slices of a file, never the file itself,
+    // so the ceiling is generous relative to INSPECT_CHUNK_BYTES on the client
+    // and still far below the 1GB upload limit.
+    const inspectUpload = multer({
+        storage: createTempStorage(),
+        fileFilter: audioFileFilter,
+        limits: { fileSize: 8 * 1024 * 1024 },
     });
 
     // Multer fileFilter/limit errors would otherwise bubble to the global 500 handler.
@@ -486,6 +516,107 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             res.status(500).json({ error: "Upload failed" });
         }
     });
+
+    /**
+     * POST /api/admin/upload/inspect
+     * Read the embedded tags of ONE audio file and return them. Nothing is
+     * stored: the temp slices are deleted before the response is sent.
+     *
+     * The release editor calls this the moment files are dropped in, so it can
+     * prefill the release and track fields instead of making the artist retype
+     * what is already in the files. Uploading whole albums twice — once to read
+     * tags, once to save — would be absurd, so the client sends only slices:
+     *   head  the first INSPECT_CHUNK_BYTES (ID3v2, FLAC/Ogg comment blocks)
+     *   tail  the last INSPECT_CHUNK_BYTES, for MP4/M4A written without
+     *         faststart, where the `moov` atom holding the tags sits at the end
+     *   size  the file's real length, so the tail is spliced back at its true
+     *         offset — the gap between the two slices stays a hole on any
+     *         filesystem with sparse files, and music-metadata seeks over it
+     *         exactly as it would in the real file
+     *
+     * A file whose tags cannot be read this way simply comes back empty; the
+     * editor then leaves its fields for the user, which is the old behaviour.
+     */
+    router.post(
+        "/inspect",
+        rejectAs400(inspectUpload.fields([
+            { name: "head", maxCount: 1 },
+            { name: "tail", maxCount: 1 },
+        ])),
+        async (req: any, res: any) => {
+            const parts = (req.files || {}) as Record<string, Express.Multer.File[]>;
+            const head = parts.head?.[0];
+            const tail = parts.tail?.[0];
+
+            const cleanup = async () => {
+                if (head) await safeRemove(head.path);
+                if (tail) await safeRemove(tail.path);
+            };
+
+            if (!head) {
+                await cleanup();
+                return res.status(400).json({ error: "No audio slice uploaded" });
+            }
+
+            try {
+                const declaredSize = Number(req.body?.size);
+                // MAX_UPLOAD_BYTES: a size larger than anything /tracks would
+                // accept is either a mistake or an attempt to make us extend a
+                // file to an absurd length, so the tail is simply skipped.
+                const canSplice =
+                    !!tail &&
+                    Number.isFinite(declaredSize) &&
+                    declaredSize > head.size + tail.size &&
+                    declaredSize <= MAX_UPLOAD_BYTES;
+
+                if (canSplice) {
+                    const tailBuffer = await fsp.readFile(tail!.path);
+                    const handle = await fsp.open(head.path, "r+");
+                    try {
+                        // Writing past EOF extends the file with zeros, which is
+                        // what puts the tail back at its original offset.
+                        await handle.write(
+                            tailBuffer,
+                            0,
+                            tailBuffer.length,
+                            declaredSize - tailBuffer.length,
+                        );
+                    } finally {
+                        await handle.close();
+                    }
+                }
+
+                const { parseFile } = await import("music-metadata");
+                const metadata = await parseFile(head.path, { skipCovers: true });
+                const common = metadata.common;
+
+                res.json({
+                    tags: {
+                        title: common.title || null,
+                        artist: common.artist || null,
+                        albumArtist: common.albumartist || null,
+                        album: common.album || null,
+                        year: common.year ?? null,
+                        genre: common.genre?.[0] || null,
+                        trackNo: common.track?.no ?? null,
+                        discNo: common.disk?.no ?? null,
+                    },
+                });
+            } catch (error) {
+                // Unreadable tags are an everyday outcome here (an untagged
+                // file, a container whose metadata falls outside both slices),
+                // not a server fault. Answer with empty tags so the editor can
+                // just leave the fields alone.
+                console.warn(
+                    `🏷️  Could not read tags from ${head.originalname}:`,
+                    error instanceof Error ? error.message : error,
+                );
+                res.json({ tags: {} });
+            } finally {
+                await cleanup();
+            }
+        },
+    );
 
     /**
      * POST /api/admin/upload/cover
