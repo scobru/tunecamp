@@ -1,31 +1,26 @@
-import express, { Router } from "express";
+import express, { Router, Request, Response } from "express";
 import { wrapAsync } from "../../middleware/error-handling.js";
-import { VisibilityGuardian } from "../../common/visibility.js";
-import { getContextFromProfile } from "../../common/visibility.js";
-import { resolveService } from "../../core/container.js";
+import { type ServiceContainer } from "../../core/container.js";
 
 export function createEmbedRoutes(container: ServiceContainer): Router {
   const router = Router();
   const library = container.catalogService;
   const musicDir = container.musicDir;
   
-  router.get("/:type(track|album)/:id", wrapAsync(async (req, res: any) => {
+  router.get("/:type(track|album)/:id", wrapAsync(async (req: Request, res: Response) => {
     const { type, id } = req.params;
-    
-    // Get context for permissions
-    const context = getContextFromProfile(req.userId, req.userRole);
-    const visibility = VisibilityGuardian.canPublishContent(context);
+    const numericId = Number(id);
     
     // Get the actual track/album data
     let audioUrl = "";
     if (type === "track") {
-      const track = library.getTrack(id);
+      const track = container.database.getTrack(numericId);
       if (track) {
         // Use the actual audio path from the track data
         audioUrl = `/api/tracks/${id}/stream`;
       }
     } else if (type === "album") {
-      const album = library.getAlbum(id);
+      const album = container.database.getAlbum(numericId);
       if (album) {
         // Use the actual audio path from the album data
         audioUrl = `/api/albums/${id}/stream`;

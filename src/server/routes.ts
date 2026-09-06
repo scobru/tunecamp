@@ -242,7 +242,7 @@ export function registerRoutes(
 		authMiddleware.optionalAuth,
 		createSearchRoutes(container),
 	);
-	app.use("/embed", createEmbedRoutes());
+	app.use("/embed", createEmbedRoutes(container));
 
 	app.use("/api/peers", createPeersRoutes(container));
 }
