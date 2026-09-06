@@ -44,6 +44,8 @@ import { createPeersRoutes } from "./routes/api/peers.js";
 import { createLifecycleRoutes } from "./routes/api/lifecycle.js";
 import { requireModuleEnabled } from "./middleware/moduleGuard.js";
 
+import { createEmbedRoutes } from "./routes/embed/embed.routes.js";
+
 export function registerRoutes(
 	app: express.Express,
 	server: http.Server,
@@ -240,5 +242,7 @@ export function registerRoutes(
 		authMiddleware.optionalAuth,
 		createSearchRoutes(container),
 	);
+	app.use("/embed", createEmbedRoutes());
+
 	app.use("/api/peers", createPeersRoutes(container));
 }
