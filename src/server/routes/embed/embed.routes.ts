@@ -42,7 +42,7 @@ export function createEmbedRoutes(container: ServiceContainer): Router {
 
     if (isTrack) {
       const isNumeric = /^\d+$/.test(idOrSlug);
-      const track = isNumeric ? db.getTrack(Number(idOrSlug)) : null;
+      const track: any = isNumeric ? db.getTrack(Number(idOrSlug)) : null;
       if (!track) {
         return res.status(404).send(renderNotFound("Traccia non trovata"));
       }
