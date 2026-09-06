@@ -94,6 +94,8 @@ export function createApp(config: ServerConfig): AppSetupResult {
     // (canConsumeTrack), same model as /rest above, so opening GET CORS here grants
     // nothing a token holder couldn't already fetch directly.
     app.use('/api/tracks', publicFederationCors);
+    app.use('/api/releases', publicFederationCors);
+    app.use('/api/albums', publicFederationCors);
 
     // POST /api/auth/zen/sso is called by the FID identity portal, which is by design a
     // different origin (and may be one the user self-hosts), so the origin cannot be the
