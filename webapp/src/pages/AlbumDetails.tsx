@@ -152,6 +152,18 @@ const AlbumDetails = () => {
     }
   };
 
+  const handleEmbedAlbum = () => {
+    const iframeCode = `<iframe src="${window.location.origin}/embed/share/album/${album.id}" width="500" height="250" style="border:none;border-radius:20px;" loading="lazy"></iframe>`;
+    navigator.clipboard.writeText(iframeCode);
+    notify.success("Embed code copied to clipboard!");
+  };
+
+  const handleEmbedTrack = (track: any) => {
+    const iframeCode = `<iframe src="${window.location.origin}/embed/share/track/${track.id}" width="500" height="250" style="border:none;border-radius:20px;" loading="lazy"></iframe>`;
+    navigator.clipboard.writeText(iframeCode);
+    notify.success("Embed code copied to clipboard!");
+  };
+
   const [downloadFormat, setDownloadFormat] = useState("mp3");
 
   const handleShareAlbum = () => {
@@ -411,11 +423,21 @@ const AlbumDetails = () => {
               </button>
 
               <button
-                className="btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 hover:border-base-content/10 transition-all"
+                className="btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 hover:border-base-content/10 transition-all tooltip tooltip-top"
                 onClick={handleShareAlbum}
+                data-tip="Share Album"
                 title="Share Album"
               >
                 <Share2 size={24} className="opacity-60" />
+              </button>
+
+              <button
+                className="btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 hover:border-base-content/10 transition-all tooltip tooltip-top"
+                onClick={handleEmbedAlbum}
+                data-tip="Copy Embed Code"
+                title="Copy Embed Code"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60"><rect x="2" y="2" width="20" height="20" rx="5" /><path d="M8 6h8v8H8z" /><path d="M18 8h-2v10h2" /></svg>
               </button>
 
               <button
