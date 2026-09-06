@@ -52,6 +52,21 @@ const AlbumDetails = () => {
   };
 
   useEffect(() => {
+    // If embedded inside an external iframe, automatically forward to the dedicated lightweight embed player
+    try {
+      if (window.self !== window.top && idOrSlug) {
+        window.location.replace(`/embed/release/${idOrSlug}`);
+        return;
+      }
+    } catch {
+      if (idOrSlug) {
+        window.location.replace(`/embed/release/${idOrSlug}`);
+        return;
+      }
+    }
+  }, [idOrSlug]);
+
+  useEffect(() => {
     if (idOrSlug) {
       const fetchCall = isRelease ? API.getRelease(idOrSlug) : API.getAlbum(idOrSlug);
       fetchCall
@@ -150,6 +165,13 @@ const AlbumDetails = () => {
     } catch (err) {
       console.error("Failed to toggle album like:", err);
     }
+  };
+
+  const handleEmbedAlbum = () => {
+    const target = album.slug || album.id;
+    const iframeCode = `<iframe src="${window.location.origin}/embed/release/${target}" width="100%" height="220" style="border:none;border-radius:12px;max-width:600px;" loading="lazy" allow="autoplay; encrypted-media"></iframe>`;
+    navigator.clipboard.writeText(iframeCode);
+    notify.success("Embed code copied to clipboard!");
   };
 
   const [downloadFormat, setDownloadFormat] = useState("mp3");
@@ -411,11 +433,21 @@ const AlbumDetails = () => {
               </button>
 
               <button
-                className="btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 hover:border-base-content/10 transition-all"
+                className="btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 hover:border-base-content/10 transition-all tooltip tooltip-top"
                 onClick={handleShareAlbum}
+                data-tip="Share Album"
                 title="Share Album"
               >
                 <Share2 size={24} className="opacity-60" />
+              </button>
+
+              <button
+                className="btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 hover:border-base-content/10 transition-all tooltip tooltip-top"
+                onClick={handleEmbedAlbum}
+                data-tip="Copy Embed Code"
+                title="Copy Embed Code"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60"><rect x="2" y="2" width="20" height="20" rx="5" /><path d="M8 6h8v8H8z" /><path d="M18 8h-2v10h2" /></svg>
               </button>
 
               <button
