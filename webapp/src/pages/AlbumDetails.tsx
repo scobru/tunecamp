@@ -52,6 +52,21 @@ const AlbumDetails = () => {
   };
 
   useEffect(() => {
+    // If embedded inside an external iframe, automatically forward to the dedicated lightweight embed player
+    try {
+      if (window.self !== window.top && idOrSlug) {
+        window.location.replace(`/embed/release/${idOrSlug}`);
+        return;
+      }
+    } catch {
+      if (idOrSlug) {
+        window.location.replace(`/embed/release/${idOrSlug}`);
+        return;
+      }
+    }
+  }, [idOrSlug]);
+
+  useEffect(() => {
     if (idOrSlug) {
       const fetchCall = isRelease ? API.getRelease(idOrSlug) : API.getAlbum(idOrSlug);
       fetchCall
@@ -153,7 +168,8 @@ const AlbumDetails = () => {
   };
 
   const handleEmbedAlbum = () => {
-    const iframeCode = `<iframe src="${window.location.origin}/embed/share/album/${album.id}" width="500" height="250" style="border:none;border-radius:20px;" loading="lazy"></iframe>`;
+    const target = album.slug || album.id;
+    const iframeCode = `<iframe src="${window.location.origin}/embed/release/${target}" width="100%" height="220" style="border:none;border-radius:12px;max-width:600px;" loading="lazy" allow="autoplay; encrypted-media"></iframe>`;
     navigator.clipboard.writeText(iframeCode);
     notify.success("Embed code copied to clipboard!");
   };
