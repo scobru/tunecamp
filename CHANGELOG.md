@@ -20,6 +20,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Webapp build fails with TS6133: unused `handleEmbedTrack` in `AlbumDetails.tsx`.** Removed dead function that was never wired to the UI.
+
 - **The FID test double no longer lies about the `fid` API.** Jest maps the `fid` package to `__mocks__/fid.ts` (it is a git dependency whose Zen SEA crypto pulls a second git dependency), and that stand-in had drifted so far from the real library that 16 zen-route tests failed against it: `generateKeyPair()` returned `{publicKey, privateKey}` instead of a `FidKeyPair`, so every `keys.pub` in the tests was `undefined`; `createChallenge()` dropped `username` and `instanceDomain` from the challenge; `consumeChallenge()` ignored the signature and the public key entirely — and returned `true` for a nonce it had never issued, so no test could catch a forged signature; `issuePassport()` took a single payload and returned a base64 blob instead of a `FidPassport`; and `FidSsoHandler` had no `validateSsoToken` at all, which is why every `POST /api/auth/zen/sso` answered 500. The mock is now a faithful port of upstream — same signatures, same return shapes, same error strings the routes branch on — with only the secp256k1 sign/verify layer substituted by Node's Ed25519, keeping SEA's shape (a signature carries the message it covers, verification decodes and compares) so wrong-key and wrong-payload signatures still fail.
 
 ### Removed
