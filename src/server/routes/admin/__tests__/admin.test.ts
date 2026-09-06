@@ -2,6 +2,7 @@ import { createAdminRoutes } from "../admin.js";
 import express from "express";
 import request from "supertest";
 import { jest } from "@jest/globals";
+import { mockStripeInstance } from "stripe";
 import type { DatabaseService } from "../../../core/database.js";
 import type { ScannerService } from "../../../modules/catalog/scanner.service.js";
 import type { ServerConfig } from "../../../core/config.js";
@@ -826,6 +827,442 @@ describe("Admin Routes Vulnerability Check", () => {
 				.send({ trackcapTopupPriceUsd: -5 });
 
 			expect(response.status).toBe(400);
+		});
+	});
+});
+
+describe("Listener → Artist approval flow (POST /system/users/:id/approve-artist)", () => {
+	beforeEach(() => jest.clearAllMocks());
+
+	const rootAdmin = { role: "root_admin", userId: 1 };
+	const manager = { role: "admin", userId: 20 };
+	const pendingUser = {
+		id: 42,
+		username: "hopeful",
+		role: "user",
+		artist_id: null,
+	};
+
+	test("rejects a non-root-admin caller with 403", async () => {
+		const app = buildApp(manager);
+		const res = await request(app).post(
+			"/admin/system/users/42/approve-artist",
+		);
+		expect(res.status).toBe(403);
+		expect(mockAuthService.getAdminById).not.toHaveBeenCalled();
+	});
+
+	test("returns 404 when the target user does not exist", async () => {
+		(mockAuthService.getAdminById as jest.Mock).mockReturnValue(undefined);
+		const app = buildApp(rootAdmin);
+		const res = await request(app).post(
+			"/admin/system/users/999/approve-artist",
+		);
+		expect(res.status).toBe(404);
+	});
+
+	test("returns 400 and clears the pending request when the user already has an artist profile", async () => {
+		(mockAuthService.getAdminById as jest.Mock).mockReturnValue({
+			...pendingUser,
+			artist_id: 7,
+		});
+		(mockAuthService as any).setArtistRequest = jest.fn();
+		const app = buildApp(rootAdmin);
+		const res = await request(app).post(
+			"/admin/system/users/42/approve-artist",
+		);
+		expect(res.status).toBe(400);
+		expect(res.body.error).toBe("User already has an artist profile");
+		expect((mockAuthService as any).setArtistRequest).toHaveBeenCalledWith(
+			42,
+			false,
+		);
+	});
+
+	test("creates a new (unsellable) artist, keeps the user's role, and grants the configured quota", async () => {
+		(mockAuthService.getAdminById as jest.Mock).mockReturnValue(pendingUser);
+		(mockDatabase as any).getArtistByName = jest.fn().mockReturnValue(null);
+		(mockDatabase as any).createArtist = jest.fn().mockReturnValue(101);
+		(mockDatabase as any).setArtistCanSell = jest.fn();
+		(mockDatabase.getSetting as jest.Mock).mockImplementation((k: string) =>
+			k === "listenerSelfPublishQuota" ? "256" : null,
+		);
+		(mockAuthService as any).setArtistRequest = jest.fn();
+
+		const app = buildApp(rootAdmin);
+		const res = await request(app).post(
+			"/admin/system/users/42/approve-artist",
+		);
+
+		expect(res.status).toBe(200);
+		expect(res.body.artistId).toBe(101);
+		expect((mockDatabase as any).createArtist).toHaveBeenCalledWith(
+			"hopeful",
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			"public",
+		);
+		expect((mockDatabase as any).setArtistCanSell).toHaveBeenCalledWith(
+			101,
+			false,
+		);
+		expect(mockAuthService.updateAdmin).toHaveBeenCalledWith(
+			42,
+			101,
+			"user",
+			256 * 1024 * 1024,
+		);
+		expect((mockAuthService as any).setArtistRequest).toHaveBeenCalledWith(
+			42,
+			false,
+		);
+	});
+
+	test("defaults to a 1GB quota when listenerSelfPublishQuota is not configured", async () => {
+		(mockAuthService.getAdminById as jest.Mock).mockReturnValue(pendingUser);
+		(mockDatabase as any).getArtistByName = jest.fn().mockReturnValue(null);
+		(mockDatabase as any).createArtist = jest.fn().mockReturnValue(101);
+		(mockDatabase as any).setArtistCanSell = jest.fn();
+		// Real getSetting() returns `undefined` for an unconfigured key (not
+		// `null`) — Number(null) is 0, which would wrongly satisfy the
+		// `>= 0` finite check below and skip the 1024 MB default.
+		(mockDatabase.getSetting as jest.Mock).mockReturnValue(undefined);
+		(mockAuthService as any).setArtistRequest = jest.fn();
+
+		const app = buildApp(rootAdmin);
+		const res = await request(app).post(
+			"/admin/system/users/42/approve-artist",
+		);
+
+		expect(res.status).toBe(200);
+		expect(mockAuthService.updateAdmin).toHaveBeenCalledWith(
+			42,
+			101,
+			"user",
+			1024 * 1024 * 1024,
+		);
+	});
+
+	test("reuses an existing artist row matching the username instead of creating a duplicate", async () => {
+		(mockAuthService.getAdminById as jest.Mock).mockReturnValue(pendingUser);
+		(mockDatabase as any).getArtistByName = jest
+			.fn()
+			.mockReturnValue({ id: 55, name: "hopeful" });
+		(mockDatabase as any).createArtist = jest.fn();
+		(mockDatabase as any).setArtistCanSell = jest.fn();
+		(mockDatabase.getSetting as jest.Mock).mockReturnValue(undefined);
+		(mockAuthService as any).setArtistRequest = jest.fn();
+
+		const app = buildApp(rootAdmin);
+		const res = await request(app).post(
+			"/admin/system/users/42/approve-artist",
+		);
+
+		expect(res.status).toBe(200);
+		expect(res.body.artistId).toBe(55);
+		expect((mockDatabase as any).createArtist).not.toHaveBeenCalled();
+		expect((mockDatabase as any).setArtistCanSell).toHaveBeenCalledWith(
+			55,
+			false,
+		);
+	});
+});
+
+describe("DELETE /system/users/:id/artist-request (dismiss)", () => {
+	beforeEach(() => jest.clearAllMocks());
+
+	test("rejects a non-root-admin caller with 403", async () => {
+		const app = buildApp({ role: "admin", userId: 20 });
+		const res = await request(app).delete(
+			"/admin/system/users/42/artist-request",
+		);
+		expect(res.status).toBe(403);
+	});
+
+	test("root admin dismisses the pending request without creating an artist", async () => {
+		(mockAuthService as any).setArtistRequest = jest.fn();
+		const app = buildApp({ role: "root_admin", userId: 1 });
+		const res = await request(app).delete(
+			"/admin/system/users/42/artist-request",
+		);
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect((mockAuthService as any).setArtistRequest).toHaveBeenCalledWith(
+			42,
+			false,
+		);
+	});
+});
+
+describe("Stripe Connect onboarding (artist accounts)", () => {
+	beforeEach(() => jest.clearAllMocks());
+
+	const manager = { role: "admin", userId: 20 };
+	const ownArtist = { role: "user", userId: 7, artistId: 7 };
+	const otherArtist = { role: "user", userId: 8, artistId: 8 };
+	const listener = { role: "user", userId: 99, artistId: undefined };
+
+	const withStripeConfigured = () => {
+		(mockDatabase.getSetting as jest.Mock).mockImplementation((k: string) =>
+			k === "stripe_secret_key" ? "sk_test_admin" : null,
+		);
+	};
+
+	describe("POST /artists/:id/stripe-connect/onboard", () => {
+		test("rejects an invalid artist id", async () => {
+			withStripeConfigured();
+			const app = buildApp(manager);
+			const res = await request(app).post(
+				"/admin/artists/0/stripe-connect/onboard",
+			);
+			expect(res.status).toBe(400);
+		});
+
+		test("denies a listener with no matching artist profile", async () => {
+			withStripeConfigured();
+			const app = buildApp(listener);
+			const res = await request(app).post(
+				"/admin/artists/7/stripe-connect/onboard",
+			);
+			expect(res.status).toBe(403);
+		});
+
+		test("denies an artist trying to onboard a different artist's account", async () => {
+			withStripeConfigured();
+			const app = buildApp(otherArtist);
+			const res = await request(app).post(
+				"/admin/artists/7/stripe-connect/onboard",
+			);
+			expect(res.status).toBe(403);
+		});
+
+		test("returns 501 when Stripe is not configured", async () => {
+			(mockDatabase.getSetting as jest.Mock).mockReturnValue(null);
+			const app = buildApp(manager);
+			const res = await request(app).post(
+				"/admin/artists/7/stripe-connect/onboard",
+			);
+			expect(res.status).toBe(501);
+		});
+
+		test("returns 404 when the artist does not exist", async () => {
+			withStripeConfigured();
+			(mockDatabase as any).getArtistSimple = jest.fn().mockReturnValue(null);
+			const app = buildApp(manager);
+			const res = await request(app).post(
+				"/admin/artists/7/stripe-connect/onboard",
+			);
+			expect(res.status).toBe(404);
+		});
+
+		test("creates a new Express account when the artist has none and persists it", async () => {
+			withStripeConfigured();
+			(mockDatabase as any).getArtistSimple = jest
+				.fn()
+				.mockReturnValue({ id: 7, name: "Artist Seven", stripe_account_id: null });
+			(mockDatabase as any).setArtistStripeAccountId = jest.fn();
+			(mockStripeInstance.accounts.create as jest.Mock).mockResolvedValue({
+				id: "acct_new123",
+			});
+			(mockStripeInstance as any).accountLinks = {
+				create: jest.fn().mockResolvedValue({ url: "https://connect.stripe.com/setup/new123" }),
+			};
+
+			const app = buildApp(ownArtist);
+			const res = await request(app)
+				.post("/admin/artists/7/stripe-connect/onboard")
+				.send({});
+
+			expect(res.status).toBe(200);
+			expect(res.body.accountId).toBe("acct_new123");
+			expect(res.body.url).toBe("https://connect.stripe.com/setup/new123");
+			expect(mockStripeInstance.accounts.create).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: "express",
+					metadata: { artistId: "7", artistName: "Artist Seven" },
+				}),
+			);
+			expect((mockDatabase as any).setArtistStripeAccountId).toHaveBeenCalledWith(
+				7,
+				"acct_new123",
+			);
+		});
+
+		test("reuses an existing connected account without creating a new one", async () => {
+			withStripeConfigured();
+			(mockDatabase as any).getArtistSimple = jest.fn().mockReturnValue({
+				id: 7,
+				name: "Artist Seven",
+				stripe_account_id: "acct_existing",
+			});
+			(mockDatabase as any).setArtistStripeAccountId = jest.fn();
+			(mockStripeInstance as any).accountLinks = {
+				create: jest.fn().mockResolvedValue({ url: "https://connect.stripe.com/setup/existing" }),
+			};
+
+			const app = buildApp(ownArtist);
+			const res = await request(app)
+				.post("/admin/artists/7/stripe-connect/onboard")
+				.send({});
+
+			expect(res.status).toBe(200);
+			expect(res.body.accountId).toBe("acct_existing");
+			expect(mockStripeInstance.accounts.create).not.toHaveBeenCalled();
+			expect((mockDatabase as any).setArtistStripeAccountId).not.toHaveBeenCalled();
+		});
+
+		test("ignores an absolute returnTo and falls back to /admin (open-redirect guard)", async () => {
+			withStripeConfigured();
+			(mockDatabase as any).getArtistSimple = jest.fn().mockReturnValue({
+				id: 7,
+				name: "Artist Seven",
+				stripe_account_id: "acct_existing",
+			});
+			const linkCreate = jest.fn().mockResolvedValue({ url: "https://connect.stripe.com/setup/x" });
+			(mockStripeInstance as any).accountLinks = { create: linkCreate };
+
+			const app = buildApp(ownArtist);
+			await request(app)
+				.post("/admin/artists/7/stripe-connect/onboard")
+				.send({ returnTo: "https://evil.example/steal" });
+
+			const [args] = linkCreate.mock.calls;
+			expect(args[0].return_url).not.toContain("evil.example");
+			expect(args[0].return_url.endsWith("/admin")).toBe(true);
+		});
+
+		test("ignores a protocol-relative returnTo and falls back to /admin", async () => {
+			withStripeConfigured();
+			(mockDatabase as any).getArtistSimple = jest.fn().mockReturnValue({
+				id: 7,
+				name: "Artist Seven",
+				stripe_account_id: "acct_existing",
+			});
+			const linkCreate = jest.fn().mockResolvedValue({ url: "https://connect.stripe.com/setup/x" });
+			(mockStripeInstance as any).accountLinks = { create: linkCreate };
+
+			const app = buildApp(ownArtist);
+			await request(app)
+				.post("/admin/artists/7/stripe-connect/onboard")
+				.send({ returnTo: "//evil.example/steal" });
+
+			const [args] = linkCreate.mock.calls;
+			expect(args[0].return_url).not.toContain("evil.example");
+			expect(args[0].return_url.endsWith("/admin")).toBe(true);
+		});
+
+		test("accepts a safe same-origin relative returnTo path", async () => {
+			withStripeConfigured();
+			(mockDatabase as any).getArtistSimple = jest.fn().mockReturnValue({
+				id: 7,
+				name: "Artist Seven",
+				stripe_account_id: "acct_existing",
+			});
+			const linkCreate = jest.fn().mockResolvedValue({ url: "https://connect.stripe.com/setup/x" });
+			(mockStripeInstance as any).accountLinks = { create: linkCreate };
+
+			const app = buildApp(ownArtist);
+			await request(app)
+				.post("/admin/artists/7/stripe-connect/onboard")
+				.send({ returnTo: "/profile" });
+
+			const [args] = linkCreate.mock.calls;
+			expect(args[0].return_url.endsWith("/profile")).toBe(true);
+		});
+	});
+
+	describe("GET /artists/:id/stripe-connect/status", () => {
+		test("denies access to an unrelated listener", async () => {
+			const app = buildApp(listener);
+			const res = await request(app).get(
+				"/admin/artists/7/stripe-connect/status",
+			);
+			expect(res.status).toBe(403);
+		});
+
+		test("returns 404 when the artist does not exist", async () => {
+			(mockDatabase as any).getArtistSimple = jest.fn().mockReturnValue(null);
+			const app = buildApp(manager);
+			const res = await request(app).get(
+				"/admin/artists/7/stripe-connect/status",
+			);
+			expect(res.status).toBe(404);
+		});
+
+		test("reports connected:false when no account is linked", async () => {
+			(mockDatabase as any).getArtistSimple = jest
+				.fn()
+				.mockReturnValue({ id: 7, stripe_account_id: null });
+			const app = buildApp(manager);
+			const res = await request(app).get(
+				"/admin/artists/7/stripe-connect/status",
+			);
+			expect(res.status).toBe(200);
+			expect(res.body).toEqual({ connected: false });
+		});
+
+		test("reports full onboarding status for a connected account", async () => {
+			withStripeConfigured();
+			(mockDatabase as any).getArtistSimple = jest
+				.fn()
+				.mockReturnValue({ id: 7, stripe_account_id: "acct_existing" });
+			(mockStripeInstance.accounts.retrieve as jest.Mock).mockResolvedValue({
+				id: "acct_existing",
+				charges_enabled: true,
+				payouts_enabled: false,
+				details_submitted: true,
+				country: "US",
+			});
+
+			const app = buildApp(ownArtist);
+			const res = await request(app).get(
+				"/admin/artists/7/stripe-connect/status",
+			);
+
+			expect(res.status).toBe(200);
+			expect(res.body).toEqual({
+				connected: true,
+				accountId: "acct_existing",
+				chargesEnabled: true,
+				payoutsEnabled: false,
+				detailsSubmitted: true,
+				country: "US",
+			});
+		});
+	});
+
+	describe("DELETE /artists/:id/stripe-connect", () => {
+		test("denies access to an unrelated listener", async () => {
+			const app = buildApp(listener);
+			const res = await request(app).delete("/admin/artists/7/stripe-connect");
+			expect(res.status).toBe(403);
+		});
+
+		test("returns 404 when the artist does not exist", async () => {
+			(mockDatabase as any).getArtistSimple = jest.fn().mockReturnValue(null);
+			const app = buildApp(manager);
+			const res = await request(app).delete("/admin/artists/7/stripe-connect");
+			expect(res.status).toBe(404);
+		});
+
+		test("unlinks the connected account without deleting it on Stripe", async () => {
+			(mockDatabase as any).getArtistSimple = jest
+				.fn()
+				.mockReturnValue({ id: 7, stripe_account_id: "acct_existing" });
+			(mockDatabase as any).setArtistStripeAccountId = jest.fn();
+
+			const app = buildApp(ownArtist);
+			const res = await request(app).delete("/admin/artists/7/stripe-connect");
+
+			expect(res.status).toBe(200);
+			expect(res.body).toEqual({ success: true });
+			expect((mockDatabase as any).setArtistStripeAccountId).toHaveBeenCalledWith(
+				7,
+				null,
+			);
 		});
 	});
 });

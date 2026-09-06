@@ -247,6 +247,64 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * GET /api/playlists/:id/public
+     * A public playlist and its tracks, readable with no session.
+     *
+     * GET /:id above is members-only, so a playlist marked public was visible to
+     * the whole federation by name only: the community player could list one and
+     * never play it. This is the anonymous read that completes it, deliberately
+     * narrow — it answers only for a playlist already marked public, returns a
+     * purpose-built DTO rather than the internal row (no file paths, no per-user
+     * starred/rating fields), and still filters every track through
+     * canConsumeTrack as a guest, so a private album's track is only exposed
+     * where being in this public playlist is what makes it consumable.
+     *
+     * A private or missing playlist answers 404 alike: whether one exists is
+     * not something an anonymous caller should be able to probe.
+     */
+    router.get("/:id/public", (req, res) => {
+        try {
+            const id = parseInt(req.params.id as string, 10);
+            if (isNaN(id)) return res.status(400).json({ error: "Invalid playlist ID" });
+
+            const playlist = library.getPlaylist(id);
+            if (!playlist || !playlist.isPublic) {
+                return res.status(404).json({ error: "Playlist not found" });
+            }
+
+            const guest = { role: UserRole.GUEST };
+            const tracks = (library.getPlaylistTracks(id) || [])
+                .filter((t: any) => canConsumeTrack(t, guest, trackLookups))
+                .map((t: any) => ({
+                    id: t.id,
+                    title: t.title,
+                    artistName: t.artist_name || null,
+                    albumId: t.album_id ?? null,
+                    albumTitle: t.album_title || null,
+                    duration: t.duration ?? 0,
+                    coverUrl: t.external_artwork
+                        ? `/api/tracks/${t.id}/cover`
+                        : (t.album_id ? `/api/albums/${t.album_id}/cover` : null),
+                    streamUrl: `/api/tracks/${t.id}/stream`,
+                }));
+
+            res.json({
+                id: playlist.id,
+                name: playlist.name,
+                description: playlist.description || null,
+                username: playlist.username,
+                isPublic: true,
+                coverUrl: `/api/playlists/${playlist.id}/cover`,
+                trackCount: tracks.length,
+                tracks,
+            });
+        } catch (error) {
+            console.error("Error getting public playlist:", error);
+            res.status(500).json({ error: "Failed to get playlist" });
+        }
+    });
+
+    /**
      * DELETE /api/playlists/:id
      * Delete playlist
      */

@@ -335,6 +335,82 @@ describe('Users Routes', () => {
             expect(res.body.error).toBe('You already have an artist profile');
             expect(library.createArtist).not.toHaveBeenCalled();
         });
+
+        test('queues a pending request instead of auto-creating an artist when self-publish is off', async () => {
+            const { app: a, library } = buildApp({ listenerSelfPublish: 'false' });
+
+            const res = await request(a)
+                .post('/api/users/me/artist-request')
+                .set('Authorization', 'Bearer token');
+
+            expect(res.status).toBe(200);
+            expect(res.body.autoApproved).toBeUndefined();
+            expect(res.body.message).toMatch(/admin will review/i);
+            expect(mockAuthService.setArtistRequest).toHaveBeenCalledWith(10, true);
+            expect(library.createArtist).not.toHaveBeenCalled();
+            expect(mockAuthService.updateAdmin).not.toHaveBeenCalled();
+        });
+
+        test('reuses an existing artist row matching the username on auto-approve', async () => {
+            const { app: a, library } = buildApp({ listenerSelfPublish: 'true' });
+            library.getArtistByName.mockReturnValue({ id: 77, name: 'testuser' });
+
+            const res = await request(a)
+                .post('/api/users/me/artist-request')
+                .set('Authorization', 'Bearer token');
+
+            expect(res.status).toBe(200);
+            expect(res.body.artistId).toBe(77);
+            expect(library.createArtist).not.toHaveBeenCalled();
+            expect(library.setArtistCanSell).toHaveBeenCalledWith(77, false);
+            expect(mockAuthService.updateAdmin).toHaveBeenCalledWith(10, 77, UserRole.NORMAL_USER, ONE_GB);
+        });
+    });
+
+    describe('GET /api/users/me/artist-request', () => {
+        const buildApp = (getArtistRequest: jest.Mock, artistId: number | null = null) => {
+            mockAuthService.getArtistRequest = getArtistRequest;
+            mockAuthService.verifyToken = (jest.fn() as any).mockResolvedValue({
+                username: 'testuser', role: UserRole.NORMAL_USER, isActive: true, userId: 10, artistId,
+            });
+            const a = express();
+            a.use(express.json());
+            a.use('/api/users', createUsersRoutes({
+                database: mockDatabase, authService: mockAuthService, apService: mockAPService,
+            } as any));
+            return a;
+        };
+
+        test('reports no pending request and no artist for a plain listener', async () => {
+            const a = buildApp(jest.fn().mockReturnValue(null));
+            const res = await request(a)
+                .get('/api/users/me/artist-request')
+                .set('Authorization', 'Bearer token');
+
+            expect(res.status).toBe(200);
+            expect(res.body).toEqual({ requestedAt: null, hasArtist: false });
+        });
+
+        test('reports the pending request timestamp while awaiting admin approval', async () => {
+            const a = buildApp(jest.fn().mockReturnValue('2026-01-01T00:00:00.000Z'));
+            const res = await request(a)
+                .get('/api/users/me/artist-request')
+                .set('Authorization', 'Bearer token');
+
+            expect(res.status).toBe(200);
+            expect(res.body.requestedAt).toBe('2026-01-01T00:00:00.000Z');
+            expect(res.body.hasArtist).toBe(false);
+        });
+
+        test('reports hasArtist true once the request has been approved', async () => {
+            const a = buildApp(jest.fn().mockReturnValue(null), 42);
+            const res = await request(a)
+                .get('/api/users/me/artist-request')
+                .set('Authorization', 'Bearer token');
+
+            expect(res.status).toBe(200);
+            expect(res.body.hasArtist).toBe(true);
+        });
     });
     describe('GET /api/users/:username/public', () => {
         const buildApp = (userRow: any, likes: any[] = [], playlists: any[] = []) => {
