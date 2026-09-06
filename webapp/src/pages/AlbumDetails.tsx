@@ -158,12 +158,6 @@ const AlbumDetails = () => {
     notify.success("Embed code copied to clipboard!");
   };
 
-  const handleEmbedTrack = (track: any) => {
-    const iframeCode = `<iframe src="${window.location.origin}/embed/share/track/${track.id}" width="500" height="250" style="border:none;border-radius:20px;" loading="lazy"></iframe>`;
-    navigator.clipboard.writeText(iframeCode);
-    notify.success("Embed code copied to clipboard!");
-  };
-
   const [downloadFormat, setDownloadFormat] = useState("mp3");
 
   const handleShareAlbum = () => {
