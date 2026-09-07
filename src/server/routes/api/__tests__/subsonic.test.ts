@@ -202,3 +202,157 @@ describe('Subsonic Scrobbling', () => {
     });
 });
 
+
+/**
+ * The Subsonic surface addresses playlists by bare id and authenticates with a
+ * `u=` the token paths never verified. Both are authorization boundaries the
+ * REST twins (`/api/playlists`) have always enforced, so these cases pin the two
+ * surfaces to the same rules.
+ */
+describe('Subsonic authorization', () => {
+    let database: any;
+    let authService: any;
+    let app: any;
+    const dbPath = './test-subsonic-authz.db';
+
+    beforeAll(async () => {
+        database = createDatabase(dbPath);
+        authService = createAuthService(database.db, 'test-secret');
+        await authService.init();
+        const passHash = await authService.hashPassword('password');
+        for (const name of ['alice', 'mallory']) {
+            database.db.prepare(
+                "INSERT OR IGNORE INTO admin (username, password_hash, role, is_active) VALUES (?, ?, 'user', 1)"
+            ).run(name, passHash);
+        }
+        app = express();
+        app.use('/rest', createSubsonicRouter({
+            database,
+            authService,
+            musicDir: './music',
+            scrobbleService: {
+                updateNowPlaying: jest.fn<any>().mockReturnValue(Promise.resolve()),
+                scrobble: jest.fn<any>().mockReturnValue(Promise.resolve())
+            }
+        } as any));
+    });
+
+    afterAll(() => {
+        if (database?.db) database.db.close();
+        for (const suffix of ['', '-shm', '-wal']) {
+            if (fs.existsSync(dbPath + suffix)) fs.unlinkSync(dbPath + suffix);
+        }
+    });
+
+    const as = (user: string) => `u=${user}&p=password&v=1.16.1&c=test&f=json`;
+    const body = (res: any) => res.body['subsonic-response'];
+
+    describe('playlist ownership', () => {
+        it("refuses to delete another user's playlist", async () => {
+            const id = database.library.createPlaylist('Alice Private', 'alice', '', false);
+
+            const res = await request(app).get(`/rest/deletePlaylist.view?${as('mallory')}&id=pl_${id}`);
+
+            expect(body(res).status).toBe('failed');
+            expect(database.library.getPlaylist(id)).toBeTruthy();
+        });
+
+        it("refuses to rewrite another user's playlist", async () => {
+            const id = database.library.createPlaylist('Alice Private 2', 'alice', '', false);
+
+            const res = await request(app)
+                .get(`/rest/updatePlaylist.view?${as('mallory')}&playlistId=pl_${id}&public=true`);
+
+            expect(body(res).status).toBe('failed');
+            expect(database.library.getPlaylist(id).isPublic).toBeFalsy();
+        });
+
+        it("refuses to read another user's private playlist", async () => {
+            const id = database.library.createPlaylist('Alice Private 3', 'alice', '', false);
+
+            const res = await request(app).get(`/rest/getPlaylist.view?${as('mallory')}&id=pl_${id}`);
+
+            expect(body(res).status).toBe('failed');
+            expect(res.text).not.toContain('Alice Private 3');
+        });
+
+        it('lets the owner read, rewrite and delete their own playlist', async () => {
+            const id = database.library.createPlaylist('Alice Own', 'alice', '', false);
+
+            const read = await request(app).get(`/rest/getPlaylist.view?${as('alice')}&id=pl_${id}`);
+            expect(body(read).status).toBe('ok');
+            expect(body(read).playlist.name).toBe('Alice Own');
+
+            const update = await request(app)
+                .get(`/rest/updatePlaylist.view?${as('alice')}&playlistId=pl_${id}&public=true`);
+            expect(body(update).status).toBe('ok');
+            expect(database.library.getPlaylist(id).isPublic).toBeTruthy();
+
+            const del = await request(app).get(`/rest/deletePlaylist.view?${as('alice')}&id=pl_${id}`);
+            expect(body(del).status).toBe('ok');
+            expect(database.library.getPlaylist(id)).toBeFalsy();
+        });
+
+        it('lets anyone read a public playlist', async () => {
+            const id = database.library.createPlaylist('Alice Public', 'alice', '', true);
+
+            const res = await request(app).get(`/rest/getPlaylist.view?${as('mallory')}&id=pl_${id}`);
+
+            expect(body(res).status).toBe('ok');
+            expect(body(res).playlist.name).toBe('Alice Public');
+        });
+
+        it("lists the caller's own private playlists alongside public ones", async () => {
+            const mine = database.library.createPlaylist('Mallory Private', 'mallory', '', false);
+            const theirs = database.library.createPlaylist('Alice Private 4', 'alice', '', false);
+            const shared = database.library.createPlaylist('Alice Shared', 'alice', '', true);
+
+            const res = await request(app).get(`/rest/getPlaylists.view?${as('mallory')}`);
+
+            const names = body(res).playlists.playlist.map((p: any) => p.name);
+            expect(names).toContain('Mallory Private');
+            expect(names).toContain('Alice Shared');
+            expect(names).not.toContain('Alice Private 4');
+            expect([mine, theirs, shared].every((id) => typeof id === 'number')).toBe(true);
+        });
+    });
+
+    describe('token authentication', () => {
+        const tokenFor = (username: string) => {
+            const row: any = database.db
+                .prepare('SELECT id, token_version, artist_id FROM admin WHERE username = ?')
+                .get(username);
+            return authService.generateToken({
+                userId: row.id,
+                username,
+                isAdmin: false,
+                artistId: row.artist_id ?? null,
+                role: 'user',
+                isActive: true,
+                tokenVersion: row.token_version
+            });
+        };
+
+        it('acts as the account the token names, not as whatever u= claims', async () => {
+            const token = tokenFor('mallory');
+
+            const res = await request(app).get(
+                `/rest/createPlaylist.view?u=alice&p=${token}&v=1.16.1&c=test&f=json&name=WhoOwnsMe`
+            );
+
+            expect(body(res).status).toBe('ok');
+            expect(body(res).playlist.owner).toBe('mallory');
+            const row: any = database.db
+                .prepare('SELECT username FROM playlists WHERE name = ?')
+                .get('WhoOwnsMe');
+            expect(row.username).toBe('mallory');
+        });
+
+        it('still honours u= when the password path verified it', async () => {
+            const res = await request(app).get(`/rest/createPlaylist.view?${as('alice')}&name=AlicesOwn`);
+
+            expect(body(res).status).toBe('ok');
+            expect(body(res).playlist.owner).toBe('alice');
+        });
+    });
+});

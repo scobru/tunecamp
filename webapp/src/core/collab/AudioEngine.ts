@@ -373,8 +373,8 @@ export class AudioEngine {
     const numOfChan = buffer.numberOfChannels;
     const length = buffer.length * numOfChan * 2 + 44;
     const out = new DataView(new ArrayBuffer(length));
-    let channels: Float32Array[] = [];
-    let sampleRate = buffer.sampleRate;
+    const channels: Float32Array[] = [];
+    const sampleRate = buffer.sampleRate;
     let offset = 0;
 
     function writeString(str: string) {
