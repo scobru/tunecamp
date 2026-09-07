@@ -346,6 +346,85 @@ describe("Zen SEA Integration Routes", () => {
 		expect(res.body.username).toBe("scobru");
 	});
 
+	/**
+	 * An SSO token names the identity key twice — `masterKeySource.pubKey` and the
+	 * flat `zenPubKey` — and both arrive in the same request body. fid verified the
+	 * first while this route selected the account with the second, so a token signed
+	 * by anyone's keypair could name a victim's key and be handed the victim's
+	 * session. Fixed upstream in fid 4.0.1 and again here, because which account a
+	 * request authenticates as is this route's decision to get right.
+	 */
+	test("POST /api/auth/zen/sso refuses a token that names one key for verification and another for lookup", async () => {
+		const issuedAt = Date.now();
+		const nonce = crypto.randomBytes(16).toString("hex");
+		const clientId = "tunecamp-instance";
+		const instanceDomain = "sudorecords.scobrudot.dev";
+		const username = "anything";
+
+		// Signed by the attacker, over a payload naming the attacker's own key…
+		const payload = `${clientId}:${instanceDomain}:${username}:${altKeys1.pub}:${issuedAt}:${nonce}`;
+		const forged = {
+			clientId,
+			instanceDomain,
+			username,
+			issuedAt,
+			nonce,
+			signature: await signPayload(payload, altKeys1.priv),
+			// …while claiming the seeded `scobru` account's key in the field the
+			// account lookup reads. The passport is omitted: it is optional.
+			zenPubKey: baseKeys.pub,
+			masterKeySource: { type: "zen", pubKey: altKeys1.pub },
+		};
+
+		const res = await request(app)
+			.post("/api/auth/zen/sso")
+			.send({ ssoToken: forged, apSeed: validApSeed() });
+
+		expect(res.status).toBe(400);
+		expect(res.body.token).toBeUndefined();
+		expect(res.body.username).toBeUndefined();
+	});
+
+	test("POST /api/auth/zen/sso accepts a token carrying masterKeySource alone", async () => {
+		const issuedAt = Date.now();
+		const nonce = crypto.randomBytes(16).toString("hex");
+		const clientId = "tunecamp-instance";
+		const instanceDomain = "sudorecords.scobrudot.dev";
+
+		// No flat zenPubKey at all — the identity comes from masterKeySource, which is
+		// the copy the signature covers. This must still resolve to `scobru`.
+		const payload = `${clientId}:${instanceDomain}:scobru:${baseKeys.pub}:${issuedAt}:${nonce}`;
+		const token = {
+			clientId,
+			instanceDomain,
+			username: "scobru",
+			issuedAt,
+			nonce,
+			signature: await signPayload(payload, baseKeys.priv),
+			masterKeySource: { type: "zen", pubKey: baseKeys.pub },
+		};
+
+		const res = await request(app)
+			.post("/api/auth/zen/sso")
+			.send({ ssoToken: token, apSeed: validApSeed() });
+
+		expect(res.status).toBe(200);
+		expect(res.body.username).toBe("scobru");
+	});
+
+	test("POST /api/auth/zen/sso refuses a token dated in the future", async () => {
+		const token = await buildSsoToken({
+			issuedAt: Date.now() + 365 * 24 * 60 * 60 * 1000,
+		});
+
+		const res = await request(app)
+			.post("/api/auth/zen/sso")
+			.send({ ssoToken: token, apSeed: validApSeed() });
+
+		expect(res.status).toBe(400);
+		expect(res.body.error).toContain("future");
+	});
+
 	test("POST /api/auth/zen/sso in code mode returns a code instead of a session, redeemable exactly once", async () => {
 		const token = await buildSsoToken({ username: "codeuser" }, altKeys1);
 		const res = await request(app)

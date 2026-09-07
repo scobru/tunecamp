@@ -19,6 +19,9 @@
 import crypto from "node:crypto";
 import { Buffer } from "node:buffer";
 
+/** Mirrors fid's MAX_CLOCK_SKEW_MS. */
+const MOCK_MAX_CLOCK_SKEW_MS = 60 * 1000;
+
 // ── Types (mirrors fid/src/types.ts) ──────────────────────────────────────────
 
 export interface FidChallenge {
@@ -347,13 +350,12 @@ export class FidChallengeManager {
 			return false;
 		}
 
-		const verified = await verifySignature(challengeKey, signature, zenPubKey);
-		if (!verified) {
-			return false;
-		}
-
+		// Ported from fid 4.0.1: the challenge is spent on failure too, so a wrong
+		// signature costs an attempt instead of leaving the challenge attackable
+		// for its whole TTL.
 		this.activeChallenges.delete(challengeKey);
-		return true;
+
+		return await verifySignature(challengeKey, signature, zenPubKey);
 	}
 
 	private cleanupExpired(): void {
@@ -536,6 +538,21 @@ export class FidSsoHandler {
 			token.masterKeySource?.pubKey ?? token.zenPubKey ?? "";
 		const sourceId = verificationKey;
 
+		// Ported from fid 4.0.1. A token names the identity key twice and both
+		// copies come off the wire; verifying one while the route below resolves
+		// the account from the other was an account takeover. issueSsoToken writes
+		// the same key into both, so a mismatch is refused rather than resolved.
+		if (
+			token.masterKeySource?.pubKey &&
+			token.zenPubKey &&
+			token.masterKeySource.pubKey !== token.zenPubKey
+		) {
+			return {
+				valid: false,
+				error: "SSO token identity mismatch (masterKeySource.pubKey != zenPubKey)",
+			};
+		}
+
 		if (
 			!token.username ||
 			!token.issuedAt ||
@@ -552,8 +569,15 @@ export class FidSsoHandler {
 			};
 		}
 
-		if (Date.now() - token.issuedAt > maxAgeMs) {
+		const age = Date.now() - token.issuedAt;
+		if (age > maxAgeMs) {
 			return { valid: false, error: "SSO token expired" };
+		}
+
+		// Also from 4.0.1: the age check was one-sided, so a future-dated token had
+		// a negative age and never expired.
+		if (age < -MOCK_MAX_CLOCK_SKEW_MS) {
+			return { valid: false, error: "SSO token issued in the future" };
 		}
 
 		const tokenPayload = `${token.clientId}:${token.instanceDomain}:${token.username}:${sourceId}:${token.issuedAt}:${token.nonce}`;

@@ -132,6 +132,7 @@ You can help strengthen the network's resilience, speed, and decentralization by
 
 - **Behavior**:
   - Validates `ssoToken` via `FidSsoHandler.validateSsoToken()`.
+  - Resolves the account by the identity key the signature was actually verified against — `masterKeySource.pubKey` when present, otherwise the flat `zenPubKey`. A token that carries both and lets them disagree is refused (`400 SSO token identity mismatch`): those are two independent fields on one wire payload, so trusting a key other than the verified one would let any keypair claim any account. Requires `fid` ≥ 4.0.1, which refuses such a token itself; this route repeats the check so it does not depend on the library for it.
   - Derives deterministic Ed25519 ActivityPub keys server-side from `apSeed`.
   - Persists those keys on the account (`admin.ap_public_key` / `ap_private_key`) when not already set, and on the linked artist when there is one. Without this the account would have no Fediverse actor at all: SSO never goes through `POST /api/auth/login`, which is where key generation is otherwise triggered.
   - New SSO users start as standard **Listeners** (`UserRole.NORMAL_USER`) without auto-created artist profiles.

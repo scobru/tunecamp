@@ -132,6 +132,7 @@ Puoi contribuire a rafforzare la resilienza, la velocità e la decentralizzazion
 
 - **Comportamento**:
   - Valida `ssoToken` tramite `FidSsoHandler.validateSsoToken()`.
+  - Risolve l'account con la chiave d'identità contro cui la firma è stata effettivamente verificata — `masterKeySource.pubKey` se presente, altrimenti il campo piatto `zenPubKey`. Un token che li porta entrambi e li lascia discordare viene rifiutato (`400 SSO token identity mismatch`): sono due campi indipendenti dello stesso payload, quindi fidarsi di una chiave diversa da quella verificata permetterebbe a qualunque coppia di chiavi di rivendicare qualunque account. Richiede `fid` ≥ 4.0.1, che rifiuta già da sé un token simile; questa rotta ripete il controllo per non dipendere dalla libreria.
   - Deriva le chiavi Ed25519 ActivityPub in modo deterministico sul server da `apSeed`.
   - Salva quelle chiavi sull'account (`admin.ap_public_key` / `ap_private_key`) se non già presenti, e sull'artista collegato quando esiste. Senza questo passaggio l'account non avrebbe alcun attore Fediverse: l'SSO non passa mai da `POST /api/auth/login`, che è il punto in cui la generazione delle chiavi avviene altrimenti.
   - I nuovi utenti SSO iniziano come **Ascoltatori** standard (`UserRole.NORMAL_USER`) senza profili artista creati automaticamente.
