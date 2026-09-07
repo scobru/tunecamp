@@ -1,6 +1,12 @@
 import express, { Router, Request, Response } from "express";
 import { wrapAsync } from "../../middleware/error-handling.js";
 import { type ServiceContainer } from "../../core/container.js";
+import {
+  VisibilityGuardian,
+  UserRole,
+  canConsumeTrack,
+  type ViewerContext,
+} from "../../common/visibility.js";
 
 function escapeHtml(str: any): string {
   if (typeof str !== "string") str = String(str || "");
@@ -24,6 +30,45 @@ export function createEmbedRoutes(container: ServiceContainer): Router {
   const db = container.database;
   const siteName = container.config?.siteName || "TuneCamp";
 
+  /**
+   * An embed is an iframe on somebody else's page: it carries no credential and
+   * is meant to be readable by anyone who has the link, so the viewer is always
+   * a guest. Which makes the visibility rules the *only* thing standing between
+   * `/embed/track/<n>` and the private library — this router used to read rows
+   * straight out of the database, so walking the id space published the titles,
+   * artists, cover art and tracklists of unreleased and private material to
+   * anonymous callers. `/api/tracks/:id/stream` was still gating the audio, so
+   * what leaked was metadata, but the private library is exactly the thing the
+   * Guardian exists to keep private.
+   */
+  const GUEST: ViewerContext = { role: UserRole.GUEST };
+
+  // Lazy DB lookups for canConsumeTrack (arrow-wrapped to preserve `this`).
+  const trackLookups = {
+    getRelease: (id: number) => db.getRelease?.(id) as any,
+    getAlbum: (id: number) => db.getAlbum?.(id) as any,
+    isTrackInPublicPlaylist: (id: number) => !!db.isTrackInPublicPlaylist?.(id),
+  };
+
+  const isPubliclyEmbeddable = (item: any): boolean =>
+    VisibilityGuardian.isItemVisible(
+      { visibility: item?.visibility, status: item?.status, owner_id: item?.owner_id },
+      GUEST,
+    );
+
+  const isTrackEmbeddable = (track: any): boolean =>
+    canConsumeTrack(
+      {
+        id: Number(track?.id),
+        owner_id: track?.owner_id,
+        artist_id: track?.artist_id,
+        album_id: track?.album_id,
+        file_path: track?.file_path,
+      },
+      GUEST,
+      trackLookups,
+    );
+
   const renderEmbed = wrapAsync(async (req: Request, res: Response) => {
     const rawType = (req.params.type || "release").toLowerCase();
     const idOrSlug = req.params.idOrSlug || req.params.id;
@@ -43,7 +88,9 @@ export function createEmbedRoutes(container: ServiceContainer): Router {
     if (isTrack) {
       const isNumeric = /^\d+$/.test(idOrSlug);
       const track: any = isNumeric ? db.getTrack(Number(idOrSlug)) : null;
-      if (!track) {
+      // A track a guest may not consume is reported as absent, not as forbidden:
+      // a 403 would confirm the id exists, which is the leak in miniature.
+      if (!track || !isTrackEmbeddable(track)) {
         return res.status(404).send(renderNotFound("Traccia non trovata"));
       }
 
@@ -74,11 +121,14 @@ export function createEmbedRoutes(container: ServiceContainer): Router {
       if (!item) {
         item = db.getReleaseBySlug?.(idOrSlug) || db.getAlbumBySlug?.(idOrSlug);
       }
-      if (!item && isNumeric) {
+      // Looking a title up made sense only for the non-numeric spellings: a
+      // by-title lookup gated on `isNumeric` could never match a real title, so
+      // this fallback had never once fired.
+      if (!item && !isNumeric) {
         item = db.getAlbumByTitle?.(idOrSlug);
       }
 
-      if (!item) {
+      if (!item || !isPubliclyEmbeddable(item)) {
         return res.status(404).send(renderNotFound("Release o Album non trovato"));
       }
 
@@ -104,6 +154,11 @@ export function createEmbedRoutes(container: ServiceContainer): Router {
       if (!rawTracks.length && db.getTracks) {
         rawTracks = db.getTracks(item.id) || [];
       }
+
+      // The album cleared the gate, but its rows are read unfiltered — a track
+      // whose own album is private (a cross-linked or moved row) must not ride
+      // into a public embed on the strength of its neighbours.
+      rawTracks = rawTracks.filter((t: any) => isTrackEmbeddable(t));
 
       tracks = rawTracks.map((t: any, idx: number) => ({
         id: t.id || t.track_id || idx + 1,

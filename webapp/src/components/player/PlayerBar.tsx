@@ -44,9 +44,9 @@ const PlayerBackground = ({ coverUrl }: { coverUrl: string }) => {
 	// `useColor` is a stable module-level binding (the color-thief interop is
 	// resolved once at import), so the condition never changes between renders —
 	// hook call order stays consistent. Safe despite the rules-of-hooks lint.
-	// eslint-disable-next-line react-hooks/rules-of-hooks
 	const colorResult = useColor
-		? useColor(coverUrl || "", "hex", {
+		? // eslint-disable-next-line react-hooks/rules-of-hooks
+			useColor(coverUrl || "", "hex", {
 				crossOrigin: "anonymous",
 				quality: 10,
 			})
