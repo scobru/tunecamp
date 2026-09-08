@@ -3,6 +3,12 @@ import type { OpenRouterService } from "../ai/openrouter.service.js";
 import type { MetadataService } from "./metadata.service.js";
 import { VisibilityGuardian, VisibilityProfile, UserRole, Capability, type ViewerContext } from "../../common/visibility.js";
 import { mapTrackDTO, mapAlbumDTO } from "./catalog.mappers.js";
+import {
+    isPubliclyDownloadableAlbum,
+    isPubliclyDownloadableTrack,
+    isTrackDtoDownloadable,
+    type DownloadAccessLookups,
+} from "../../common/download-access.js";
 
 /**
  * Discovery Engine — Deep module for read-side catalog exploration.
@@ -97,6 +103,26 @@ export class DiscoveryService {
         const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
         const allReleases = this.database.getReleases(profile);
         const releases = allReleases.map(r => this.mapReleaseWithTracks(r, profile, username));
+
+        // Tell the federation what may actually be taken, not just streamed. A
+        // remote instance (or Sidecamp) sees this catalog as an anonymous
+        // stranger, so the flag is evaluated as a guest regardless of who
+        // triggered the fetch locally: a release on sale, one published as
+        // streaming-only, or an external showcase advertises
+        // `downloadable: false` and a well-behaved client offers no download
+        // button. The seller's own download routes still enforce it per request
+        // — this flag saves a client from offering what would be refused.
+        const lookups: DownloadAccessLookups = {
+            getTrackPriceFromRelease: (releaseId: number, trackId: number) =>
+                (this.database as any).getTrackPriceFromRelease?.(releaseId, trackId),
+        };
+        for (const release of releases as any[]) {
+            release.downloadable = isPubliclyDownloadableAlbum(release, lookups);
+            for (const track of release.tracks || []) {
+                track.downloadable = isPubliclyDownloadableTrack(track, release, lookups);
+            }
+        }
+
         return { releases };
     }
 
@@ -194,7 +220,15 @@ export class DiscoveryService {
 
         // Exclude non-audio files (images, PDFs, etc.) from the tracks listing
         const audioTracks = tracks.filter(t => !t.mime_type || t.mime_type.startsWith('audio/'));
-        return audioTracks.map(t => mapTrackDTO(t, this.database, username));
+        return audioTracks.map(t => {
+            const dto = mapTrackDTO(t, this.database, username);
+            // Whether THIS viewer may take the file, not just play it. Clients that
+            // offer a download button (Sidecamp's catalog browser, the Network page)
+            // read this instead of guessing from the release's mode; the download
+            // route enforces the same policy per request.
+            (dto as any).downloadable = isTrackDtoDownloadable(t as any, context);
+            return dto;
+        });
     }
 
     async getAlbumForUser(albumIdOrSlug: string | number, user: { userId?: number, artistId?: number | null, role?: string, isActive?: boolean, username?: string }): Promise<AlbumDTO> {

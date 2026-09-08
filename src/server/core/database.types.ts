@@ -118,6 +118,8 @@ export interface Track {
 	album_download?: string;
 	album_visibility?: string;
 	album_price?: number;
+	album_price_usdc?: number;
+	album_price_usdt?: number;
 	artist_id: number | null;
 	artist_name?: string | null;
 	owner_id: number | null;

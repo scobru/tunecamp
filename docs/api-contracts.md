@@ -32,6 +32,7 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 | `GET` | `/api/albums/:id` | Album details including the track list |
 | `GET` | `/api/artists` | List all artists |
 | `POST` | `/api/tracks` | Create a track (import). Accepts an opt-in `localize` boolean: when set on a rippable service (`bandcamp`/`youtube`/`soundcloud`) with a source `url`, the server downloads the audio into a durable local file in the background after responding |
+| `GET` | `/api/tracks` | List tracks visible to the caller. Each row carries `downloadable`: whether THIS viewer may take the file, not just stream it (clients offering a download button read it instead of guessing) |
 | `GET` | `/api/tracks/:id` | Track metadata |
 | `GET` | `/api/tracks/:id/stream` | Binary audio stream (supports `Range` for cloud tracks) |
 | `GET` | `/api/tracks/:id/download` | Download a single track's local audio file. Gated by the release's distribution mode: paid content needs an unlock code (`?code=`), a recorded purchase or an active subscription (`402` otherwise), streaming-only and external-showcase releases answer `403`. Staff, the owner and the linked artist bypass it |

@@ -24,6 +24,7 @@
 import { ForbiddenError, PaymentRequiredError, type AppError } from "./errors.js";
 import {
     Capability,
+    UserRole,
     VisibilityGuardian,
     type ViewerContext,
 } from "./visibility.js";
@@ -295,6 +296,64 @@ export function canDownloadAlbum(
         lookups,
         options
     );
+}
+
+/**
+ * "May an anonymous caller take this file?" — the question the federation
+ * surface answers.
+ *
+ * `/api/catalog/full` is fetched cross-instance with no credential, so the
+ * `downloadable` flag it advertises describes a stranger, never the viewer who
+ * happens to have triggered the fetch locally. A remote client (another
+ * instance's Network page, Sidecamp) uses it to decide whether to offer a
+ * download at all; the routes still enforce the real answer per request.
+ */
+export function isPubliclyDownloadableTrack(
+    track: DownloadableTrack,
+    album: DownloadableAlbum | null | undefined,
+    lookups: DownloadAccessLookups = {}
+): boolean {
+    return canDownloadTrack(track, album, { role: UserRole.GUEST }, lookups).allowed;
+}
+
+/** Album/release counterpart of `isPubliclyDownloadableTrack`. */
+export function isPubliclyDownloadableAlbum(
+    album: DownloadableAlbum,
+    lookups: DownloadAccessLookups = {}
+): boolean {
+    return canDownloadAlbum(album, { role: UserRole.GUEST }, lookups).allowed;
+}
+
+/**
+ * Same question, asked of a track DTO that carries its release's distribution
+ * mode inline (`album_download` / `album_price*`, selected by the `v_tracks`
+ * view) instead of a separate album row. Lets list endpoints annotate thousands
+ * of rows without a query per track.
+ *
+ * The per-release price override is not visible from here, so a track the
+ * override makes free reads as paid — the route resolves it properly and lets
+ * the download through. Erring toward "not downloadable" is the safe direction
+ * for a hint.
+ */
+export function isTrackDtoDownloadable(
+    track: DownloadableTrack & {
+        album_download?: string | null;
+        album_price?: number | null;
+        album_price_usdc?: number | null;
+        album_price_usdt?: number | null;
+    },
+    context: ViewerContext
+): boolean {
+    const album = track.album_id != null
+        ? {
+              id: track.album_id,
+              download: track.album_download ?? null,
+              price: track.album_price ?? 0,
+              price_usdc: track.album_price_usdc ?? 0,
+              price_usdt: track.album_price_usdt ?? 0,
+          }
+        : null;
+    return canDownloadTrack(track, album, context).allowed;
 }
 
 /** Human-readable refusal, shared by every download route. */
