@@ -16,6 +16,15 @@ import { getSiteHandle, SITE_ACTOR_ID } from "../../core/site-actor.js";
 import { StringUtils } from "../../../utils/stringUtils.js";
 import pLimit from "p-limit";
 
+/**
+ * The short label a published note carries in the admin's Publishing list.
+ * Shared by first publish and by edits so the two can never drift apart.
+ */
+function postNotePreview(post: Post): string {
+    const plain = post.content.replace(/<[^>]*>?/gm, '');
+    return plain.substring(0, 50) + (post.content.length > 50 ? '...' : '');
+}
+
 export class ActivityPubService {
     private renderer: ActivityPubRenderer;
     private transport: ActivityPubTransport;
@@ -1156,7 +1165,7 @@ export class ActivityPubService {
         }
 
         const article = this.generatePostArticle(post, artist);
-        this.db.createApNote(artist.id, article.id, 'post', post.id, post.slug, post.content.replace(/<[^>]*>?/gm, '').substring(0, 50) + (post.content.length > 50 ? '...' : ''));
+        this.db.createApNote(artist.id, article.id, 'post', post.id, post.slug, postNotePreview(post));
 
         const followers = this.db.getFollowers(artist.id);
         if (followers.length === 0) return;
@@ -1546,6 +1555,69 @@ export class ActivityPubService {
         await this.announceToRelay(activity);
 
         return { inboxes: inboxes.length };
+    }
+
+    /**
+     * Federate an edit to a post that is already published.
+     *
+     * The object id is built from the post's slug and its publish time, neither
+     * of which an edit touches, so the edited post keeps the identity remote
+     * servers already know and the edit goes out as an `Update` — the activity
+     * Mastodon and friends use to replace what they cached. Re-sending `Create`
+     * would show up as a second post; sending nothing (what used to happen) left
+     * every follower reading the original text forever.
+     *
+     * Adding or removing a title is the one edit that does change identity: the
+     * object turns from a `Note` into an `Article` or back, and its id with it.
+     * There is no way to rename an object in ActivityPub, so that case retracts
+     * the old one and publishes the new.
+     */
+    public async broadcastPostUpdate(post: Post): Promise<void> {
+        if (post.visibility !== 'public') return;
+
+        const artist = this.db.getArtist(post.artist_id);
+        if (!artist) return;
+
+        const existing = this.db.getApNoteByContent(artist.id, 'post', post.id);
+        if (!existing || existing.deleted_at) {
+            // Never published, or retracted since: this is a first publish.
+            await this.broadcastPost(post);
+            return;
+        }
+
+        const article = this.generatePostArticle(post, artist);
+
+        if (article.id !== existing.note_id) {
+            console.log(`🔁 [AP] Post "${post.slug}" changed object type; retracting ${existing.note_id} and republishing`);
+            await this.broadcastPostDelete(post, existing.note_id);
+            await this.broadcastPost(post, true);
+            return;
+        }
+
+        this.db.updateApNote(article.id, post.slug, postNotePreview(post));
+
+        const followers = this.db.getFollowers(artist.id);
+        if (followers.length === 0) return;
+
+        console.log(`✏️ [AP] Broadcasting Update for post "${post.slug}" to ${followers.length} follower(s)`);
+
+        const baseUrl = this.getBaseUrl();
+        const artistActorUrl = `${baseUrl}/users/${artist.slug}`;
+
+        const activity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: `${baseUrl}/activity/${crypto.randomUUID()}`,
+            type: "Update",
+            actor: artistActorUrl,
+            object: article,
+            to: ["https://www.w3.org/ns/activitystreams#Public"],
+            cc: [`${artistActorUrl}/followers`]
+        };
+
+        await Promise.all(followers.map(follower =>
+            this.sendActivity(artist, follower.inbox_uri, activity)
+                .catch(e => console.error(`[AP] Post Update delivery failed → ${follower.inbox_uri}:`, e))
+        ));
     }
 
     public async broadcastPostDelete(post: Post, manualNoteId?: string, noteIdMap?: Map<number, { id: string, deleted: boolean }>): Promise<void> {
