@@ -1,5 +1,6 @@
 import type { Database as DatabaseType } from "better-sqlite3";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
+import { isPubliclyDownloadableTrack } from "../../common/download-access.js";
 
 /**
  * CatalogCacheService — SQLite-backed cache for remote peer catalogs.
@@ -254,6 +255,26 @@ function parseCatalog(catalog: any, siteUrl: string, siteName?: string): any[] {
         return `${siteUrl}/${coverUrl}`;
     };
 
+    /**
+     * May a stranger take this remote track's file?
+     *
+     * An up-to-date instance answers directly with `downloadable` on the track
+     * (guest-evaluated, and aware of per-release price overrides we cannot see
+     * from here), so that wins. An older instance sends no such flag but still
+     * publishes the release's distribution mode and price, which is enough to
+     * run the same policy locally — so a release on sale, published as
+     * streaming-only, or pointing at an external store is never offered as a
+     * download just because the remote predates the flag.
+     */
+    const remoteAllowsDownload = (track: any, release: any): boolean => {
+        if (typeof track?.downloadable === "boolean") return track.downloadable;
+        if (typeof release?.downloadable === "boolean") return release.downloadable;
+        return isPubliclyDownloadableTrack(
+            { id: Number(track?.id) || 0, album_id: release?.id ?? null, price: track?.price, price_usdc: track?.price_usdc, price_usdt: track?.price_usdt },
+            { id: release?.id, download: release?.download, price: release?.price, price_usdc: release?.price_usdc, price_usdt: release?.price_usdt }
+        );
+    };
+
     if (catalog.releases && Array.isArray(catalog.releases)) {
         for (const release of catalog.releases) {
             if (!release.tracks || !Array.isArray(release.tracks)) continue;
@@ -272,6 +293,14 @@ function parseCatalog(catalog: any, siteUrl: string, siteName?: string): any[] {
                         (track.id ? `${siteUrl}/api/tracks/${track.id}/cover` : null) ||
                         releaseCover,
                     audioUrl: track.streamUrl || (track.id ? `${siteUrl}/api/tracks/${track.id}/stream` : null),
+                    // Mirrors the peer-track branch below: a download URL only
+                    // where the remote actually offers the file. Points at the
+                    // gated /download route rather than /stream, so a release
+                    // that goes on sale later starts refusing instead of
+                    // quietly handing over the master.
+                    downloadUrl: track.id && remoteAllowsDownload(track, release)
+                        ? `${siteUrl}/api/tracks/${track.id}/download`
+                        : null,
                     magnetUri: release.magnetUri || undefined,
                     duration: track.duration || 0,
                     siteUrl: siteUrl,

@@ -1937,6 +1937,14 @@ export function createDatabase(dbPath: string): DatabaseService {
             a.album_artist as album_artist_tag,
             a.visibility as album_visibility,
             a.status as album_status,
+            -- The release's distribution mode and price, so a track DTO can answer
+            -- "may this be downloaded?" without a second query per row (see
+            -- common/download-access.ts). Track.album_download/album_price have
+            -- always been declared and mapped, but nothing ever selected them.
+            a.download as album_download,
+            a.price as album_price,
+            a.price_usdc as album_price_usdc,
+            a.price_usdt as album_price_usdt,
             COALESCE(NULLIF(t.artist_name, ''), ar_t.name, NULLIF(a.album_artist, ''), ar_a.name, 'Unknown Artist') as artist_name,
             COALESCE(ar_t.slug, ar_a.slug) as artist_slug,
             COALESCE(ar_t.wallet_address, ar_a.wallet_address) as artist_wallet_address,

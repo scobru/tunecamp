@@ -332,8 +332,22 @@ export class SubsonicService {
     }));
   }
 
-  getPlaylists(username: string) {
-    const playlists = this.db.getPlaylists();
+  /**
+   * The caller's playlists plus every public one — the same scope
+   * `GET /api/playlists` serves, which this used to disagree with in both
+   * directions: it called `getPlaylists()` with no arguments, which defaults to
+   * a guest profile, so it listed *only* public playlists. A user's own private
+   * playlists were invisible to their Subsonic client, while admins (who see
+   * everything on the REST side) saw no more than anyone else.
+   */
+  getPlaylists(username: string, isAdmin = false) {
+    const playlists = isAdmin
+      ? this.db.getPlaylists(undefined, VisibilityProfile.ALL_ACCESS)
+      : (() => {
+          const own = this.db.getPlaylists(username, VisibilityProfile.ALL_ACCESS);
+          const seen = new Set(own.map((p: any) => p.id));
+          return [...own, ...this.db.getPlaylists().filter((p: any) => !seen.has(p.id))];
+        })();
     return playlists.map((p: any) => ({
       '@id': `pl_${p.id}`, 
       '@name': p.name, 

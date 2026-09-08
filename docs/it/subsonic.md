@@ -75,11 +75,11 @@ TuneCamp implementa le specifiche principali del protocollo Subsonic (v1.16.1) r
 
 | Endpoint | Descrizione | Stato |
 | :--- | :--- | :--- |
-| `getPlaylists.view` | Elenca tutte le playlist accessibili | ✅ Supportato |
-| `getPlaylist.view` | Dettagli playlist con lista brani | ✅ Supportato |
+| `getPlaylists.view` | Elenca le tue playlist più tutte quelle pubbliche (admin: tutte) | ✅ Supportato |
+| `getPlaylist.view` | Dettagli playlist con lista brani — proprietario, admin o playlist pubblica | ✅ Supportato |
 | `createPlaylist.view` | Crea una nuova playlist utente | ✅ Supportato |
-| `updatePlaylist.view` | Aggiungi/rimuovi brani, aggiorna visibilità | ✅ Supportato |
-| `deletePlaylist.view` | Elimina una playlist | ✅ Supportato |
+| `updatePlaylist.view` | Aggiungi/rimuovi brani, aggiorna visibilità — solo proprietario o admin | ✅ Supportato |
+| `deletePlaylist.view` | Elimina una playlist — solo proprietario o admin | ✅ Supportato |
 | `getPodcasts.view` | Elenca canali podcast / episodi | ✅ Supportato |
 | `getNewestPodcasts.view` | Elenca gli episodi podcast più recenti | ✅ Supportato |
 

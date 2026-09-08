@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { create } from 'xmlbuilder2';
 import path from 'path';
+import { Readable } from 'stream';
 import { resolveSafePath, fileExists } from '../../../utils/fileUtils.js';
 import { getPlaceholderSVG } from '../../../utils/audioUtils.js';
 import type { DatabaseService, Track } from '../../core/database.js';
@@ -127,6 +128,46 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         res.send(xml);
     };
 
+    /**
+     * Playlist ownership gate for the Subsonic surface.
+     *
+     * `/api/playlists` has always checked this (`playlist.username !== req.username`
+     * → 403); the Subsonic twins were added later and addressed playlists by bare id,
+     * so any authenticated client could read, rewrite or delete anyone's playlist.
+     * One helper now, so the two surfaces cannot drift apart again.
+     *
+     * Reads additionally allow a public playlist — that is what `public` means, and
+     * `getPlaylists` lists them to everyone. Writes are owner-or-admin only.
+     *
+     * Returns the playlist row on success, or null after it has already answered
+     * the request; callers must return immediately on null.
+     */
+    const requirePlaylistAccess = (
+        req: Request,
+        res: Response,
+        id: number,
+        opts: { write: boolean }
+    ): any | null => {
+        if (isNaN(id)) {
+            sendError(res, req, 10, 'Invalid playlist id');
+            return null;
+        }
+        const playlist = db.getPlaylist(id);
+        if (!playlist) {
+            sendError(res, req, 70, 'Playlist not found');
+            return null;
+        }
+        const user = (req as any).user;
+        if (user?.isAdmin) return playlist;
+        if (user?.username && playlist.username === user.username) return playlist;
+        if (!opts.write && playlist.isPublic) return playlist;
+
+        // A playlist the caller may not see must not be distinguishable from one
+        // that does not exist, or the id space becomes an enumeration oracle.
+        sendError(res, req, opts.write ? 50 : 70, opts.write ? 'Not authorized to modify this playlist' : 'Playlist not found');
+        return null;
+    };
+
     // --- Public Endpoints (No Auth Required) ---
 
     router.all('/ping.view', (req, res) => sendResponse(res, req, {}));
@@ -160,6 +201,12 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         // carrying a role themselves (Subsonic app password / token+salt);
         // both resolve the role from the account row below.
         let authorizedBySubsonicSecret = false;
+        // The account a *token* proved ownership of. `u=` is only a claim until
+        // some credential confirms it: the password paths verify it (the password
+        // is checked against that very account), the token paths do not — a token
+        // names its own account. Keeping the two apart is what stops a valid token
+        // for one account from acting as whatever `u=` asks for.
+        let tokenUsername: string | undefined;
 
         if (p) {
             // Auth method 1: tc_ API tokens or JWT session tokens via p= parameter
@@ -172,7 +219,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
                     isAdmin = tokenPayload.isAdmin;
                     artistId = tokenPayload.artistId;
                     // Use the username from the token payload (overrides u= param)
-                    (req as any).user = { username: tokenPayload.username, isAdmin, artistId };
+                    tokenUsername = tokenPayload.username;
                 }
             }
 
@@ -218,7 +265,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
 
         if (!authorized) return sendError(res, req, 40, 'Wrong username or password');
 
-        (req as any).user = { username: u, isAdmin, artistId };
+        (req as any).user = { username: tokenUsername ?? u, isAdmin, artistId };
         next();
     });
 
@@ -314,7 +361,14 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
                         const contentType = response.headers.get('content-type');
                         if (contentType) res.setHeader('Content-Type', contentType);
                         res.setHeader('Cache-Control', 'public, max-age=86400');
-                        if (response.body) { (response.body as any).pipe(res); return; }
+                        // `fetch` here is undici's: `response.body` is a WHATWG
+                        // ReadableStream with no `.pipe`, so piping it threw a
+                        // TypeError this catch swallowed — every remote image
+                        // silently fell through to the placeholder below.
+                        if (response.body) {
+                            Readable.fromWeb(response.body as any).pipe(res);
+                            return;
+                        }
                     }
                 } catch (error) { console.error('Error proxying image:', error); }
             }
@@ -536,7 +590,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
     router.all('/getPlaylists.view', (req, res) => {
         if (!subsonicService) return sendError(res, req, 80, 'Subsonic service not initialized');
         const username = (req as any).user?.username || 'admin';
-        const playlist = subsonicService.getPlaylists(username);
+        const playlist = subsonicService.getPlaylists(username, !!(req as any).user?.isAdmin);
         sendResponse(res, req, { playlists: { playlist } });
     });
 
@@ -545,6 +599,8 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         const username = (req as any).user?.username || 'admin';
         const idStr = ensureString(req.query.id);
         const id = parseInt(idStr?.startsWith('pl_') ? idStr.substring(3) : (idStr || ''));
+        const owned = requirePlaylistAccess(req, res, id, { write: false });
+        if (!owned) return;
         const playlist = subsonicService.getPlaylist(id, username);
         if (!playlist) return sendError(res, req, 70, 'Playlist not found');
         sendResponse(res, req, { playlist });
@@ -569,6 +625,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         const idStr = ensureString(req.query.id);
         if (!idStr) return sendError(res, req, 10, 'Missing id parameter');
         const id = parseInt(idStr.startsWith('pl_') ? idStr.substring(3) : idStr);
+        if (!requirePlaylistAccess(req, res, id, { write: true })) return;
         db.deletePlaylist(id);
         sendResponse(res, req, {});
     });
@@ -577,8 +634,8 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         const idStr = ensureString(req.query.playlistId);
         if (!idStr) return sendError(res, req, 10, 'Missing playlistId parameter');
         const id = parseInt(idStr.startsWith('pl_') ? idStr.substring(3) : idStr);
-        const playlist = db.getPlaylist(id);
-        if (!playlist) return sendError(res, req, 70, 'Playlist not found');
+        const playlist = requirePlaylistAccess(req, res, id, { write: true });
+        if (!playlist) return;
         const pub = ensureString(req.query.public);
         if (pub !== undefined) db.updatePlaylistVisibility(id, pub === 'true');
         const addIdsRaw = req.query.songIdToAdd;
@@ -800,7 +857,14 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
                         const contentType = response.headers.get('content-type');
                         if (contentType) res.setHeader('Content-Type', contentType);
                         res.setHeader('Cache-Control', 'public, max-age=86400');
-                        if (response.body) { (response.body as any).pipe(res); return; }
+                        // `fetch` here is undici's: `response.body` is a WHATWG
+                        // ReadableStream with no `.pipe`, so piping it threw a
+                        // TypeError this catch swallowed — every remote image
+                        // silently fell through to the placeholder below.
+                        if (response.body) {
+                            Readable.fromWeb(response.body as any).pipe(res);
+                            return;
+                        }
                     }
                 } catch (error) {
                     console.error('Error proxying avatar:', error);

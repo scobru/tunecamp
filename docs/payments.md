@@ -40,6 +40,13 @@ Every album/release picks **one** distribution mode in the editor (**Studio → 
 | **Unlock Codes** | `codes` | Download is gated behind a unique unlock code (see §2). Codes are issued on purchase (Stripe/crypto) or handed out manually from the editor. |
 | **External Showcase** | `external` | **All on-platform purchase/download flows are disabled.** The release page replaces the buy button with a single **"Buy on Bandcamp"** link pointing at the configured *External Buy URL*. |
 
+These modes are enforced by the server, not just by the release page. Every download route — `GET /api/tracks/:id/download`, `GET /api/albums/:id/download` and `GET /api/releases/:id/download` — runs the shared policy in `src/server/common/download-access.ts` on top of the visibility check:
+
+- `free` is served to anyone who can see the release, guests included.
+- `codes` (and any release or track carrying a price) needs an unlock code matching the track or its release, a purchase recorded against the account, or an active subscription — the same entitlements `GET /api/payments/download/:trackId` accepts. Without one the answer is `402 PAYMENT_REQUIRED`.
+- `none`/`null` and `external` answer `403` — there is no downloadable payload to hand out on this instance.
+- Curators, Managers and Root Admins, the owning account and the linked artist bypass the gate entirely, so staff and the seller always reach their own masters.
+
 **External Showcase details:**
 - The buy URL is stored as the first entry of `albums.external_links` (`[{ label, url }]`). The button label is `Buy on {label}`, defaulting to **"Buy on Bandcamp"** when no label is set.
 - Selecting this mode forces `use_nft = false` and clears the price — TuneCamp never takes a cut of an off-platform sale.

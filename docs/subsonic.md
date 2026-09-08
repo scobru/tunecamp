@@ -75,11 +75,11 @@ TuneCamp implements the core Subsonic specification (v1.16.1) required by mobile
 
 | Endpoint | Description | Status |
 | :--- | :--- | :--- |
-| `getPlaylists.view` | List all accessible playlists | ✅ Supported |
-| `getPlaylist.view` | Get playlist details with song list | ✅ Supported |
+| `getPlaylists.view` | List your own playlists plus every public one (admins: all) | ✅ Supported |
+| `getPlaylist.view` | Get playlist details with song list — owner, admin, or a public playlist | ✅ Supported |
 | `createPlaylist.view` | Create a new user playlist | ✅ Supported |
-| `updatePlaylist.view` | Add/remove songs, update visibility | ✅ Supported |
-| `deletePlaylist.view` | Delete a playlist | ✅ Supported |
+| `updatePlaylist.view` | Add/remove songs, update visibility — owner or admin only | ✅ Supported |
+| `deletePlaylist.view` | Delete a playlist — owner or admin only | ✅ Supported |
 | `getPodcasts.view` | List podcast channels / episodes | ✅ Supported |
 | `getNewestPodcasts.view` | List newest podcast episodes | ✅ Supported |
 

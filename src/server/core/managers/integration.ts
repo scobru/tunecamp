@@ -165,6 +165,23 @@ export function createIntegrationManager(db: DatabaseType): IntegrationManager {
 					`SELECT uc.code, uc.created_at, uc.release_id, uc.track_id, uc.asset_id, al.title as release_title, al.cover_path, ar.name as artist_name, t.title as track_title, t.file_path FROM unlock_codes uc LEFT JOIN albums al ON uc.release_id = al.id LEFT JOIN artists ar ON al.artist_id = ar.id LEFT JOIN tracks t ON uc.track_id = t.id WHERE uc.user_id = ? ORDER BY uc.created_at DESC`,
 				)
 				.all(uid) as any[],
+		/** Entitlement check for the download gate: a completed purchase mints an
+		 *  unlock code carrying the buyer's user_id, so owning such a code for
+		 *  the track (or for the release it belongs to) proves payment. */
+		hasPurchase: (
+			uid: number,
+			target: { trackId?: number | null; releaseId?: number | null },
+		) => {
+			const trackId = target.trackId ?? null;
+			const releaseId = target.releaseId ?? null;
+			if (trackId === null && releaseId === null) return false;
+			const row = db
+				.prepare(
+					"SELECT 1 FROM unlock_codes WHERE user_id = ? AND ((? IS NOT NULL AND track_id = ?) OR (? IS NOT NULL AND release_id = ?)) LIMIT 1",
+				)
+				.get(uid, trackId, trackId, releaseId, releaseId);
+			return !!row;
+		},
 		getUnlockCodeByTxHash: (tx: string) =>
 			db.prepare("SELECT * FROM unlock_codes WHERE tx_hash = ?").get(tx),
 

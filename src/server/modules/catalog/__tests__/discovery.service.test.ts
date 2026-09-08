@@ -197,6 +197,79 @@ describe('DiscoveryService.getOverview / getGenres / search', () => {
     });
 });
 
+// The federation catalog is fetched cross-instance with no credential, so what
+// it advertises as downloadable must describe a stranger — see
+// common/download-access.ts.
+describe('DiscoveryService.getFederationCatalog downloadability', () => {
+    let service: any;
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        service = new DiscoveryService(mockDb as any, {} as any, {} as any);
+    });
+
+    const federate = (release: any, tracks: any[]) => {
+        (mockDb.getReleases as jest.Mock).mockReturnValue([release]);
+        (mockDb.getReleaseTracks as jest.Mock).mockReturnValue(tracks);
+        return service.getFederationCatalog(false).releases[0];
+    };
+
+    test('a free release advertises itself as downloadable', () => {
+        const rel = federate(
+            { id: 1, title: 'Gift', visibility: 'public', download: 'free', price: 0 },
+            [{ id: 10, title: 'A', album_id: 1 }]
+        );
+        expect(rel.downloadable).toBe(true);
+        expect(rel.tracks[0].downloadable).toBe(true);
+    });
+
+    test.each([
+        ['on sale via codes', { download: 'codes', price: 5 }],
+        ['streaming only', { download: 'none', price: 0 }],
+        ['never configured', { download: null, price: 0 }],
+        ['priced with no explicit mode', { download: null, price: 3 }],
+        ['an external showcase', { download: 'external', price: 0 }],
+    ])('a release %s advertises itself as NOT downloadable', (_label, mode) => {
+        const rel = federate(
+            { id: 1, title: 'Rel', visibility: 'public', ...mode },
+            [{ id: 10, title: 'A', album_id: 1 }]
+        );
+        expect(rel.downloadable).toBe(false);
+        expect(rel.tracks[0].downloadable).toBe(false);
+    });
+
+    test('a track priced on its own is flagged even when its release is not', () => {
+        const rel = federate(
+            { id: 1, title: 'Rel', visibility: 'public', download: 'none', price: 0 },
+            [{ id: 10, title: 'Sold separately', album_id: 1, price: 2 }]
+        );
+        expect(rel.tracks[0].downloadable).toBe(false);
+    });
+
+    test('the flag describes a stranger, not the admin who triggered the fetch', () => {
+        (mockDb.getReleases as jest.Mock).mockReturnValue([
+            { id: 1, title: 'Rel', visibility: 'public', download: 'codes', price: 5, owner_id: 1 },
+        ]);
+        (mockDb.getReleaseTracks as jest.Mock).mockReturnValue([{ id: 10, title: 'A', album_id: 1 }]);
+
+        // isAdmin=true widens which releases are listed; it must not widen what
+        // the federation is told it may take.
+        expect(service.getFederationCatalog(true).releases[0].downloadable).toBe(false);
+    });
+
+    test('a per-release price override that zeroes the price is honoured', () => {
+        mockDb.getTrackPriceFromRelease = jest.fn(() => ({ price: 0, price_usdc: 0, price_usdt: 0 }));
+        const rel = federate(
+            { id: 1, title: 'Rel', visibility: 'public', download: 'none', price: 0 },
+            [{ id: 10, title: 'A', album_id: 1, price: 9 }]
+        );
+        expect(mockDb.getTrackPriceFromRelease).toHaveBeenCalledWith(1, 10);
+        // Free of charge, but the release still publishes no download.
+        expect(rel.tracks[0].downloadable).toBe(false);
+        delete mockDb.getTrackPriceFromRelease;
+    });
+});
+
 describe('DiscoveryService.getTracksForUser', () => {
     let service: any;
 
@@ -237,6 +310,28 @@ describe('DiscoveryService.getTracksForUser', () => {
 
         await service.getTracksForUser({ userId: 1, role: UserRole.NORMAL_USER }, { mineOnly: true });
         expect(mockDb.getPrimaryAdminId).not.toHaveBeenCalled();
+    });
+
+    // A client that offers a download button (Sidecamp's catalog browser) reads
+    // this instead of guessing; the download route enforces the same policy.
+    test('each track says whether THIS viewer may download it', async () => {
+        (mockDb.getTracks as jest.Mock).mockReturnValue([
+            { id: 1, album_id: 5, album_download: 'free', album_price: 0 },
+            { id: 2, album_id: 6, album_download: 'codes', album_price: 5 },
+            { id: 3, album_id: 7, album_download: 'none', album_price: 0 },
+        ]);
+
+        const result = await service.getTracksForUser({ userId: 1, role: UserRole.NORMAL_USER });
+        expect(result.map((t: any) => t.downloadable)).toEqual([true, false, false]);
+    });
+
+    test('a curator may download what a listener may not', async () => {
+        (mockDb.getTracks as jest.Mock).mockReturnValue([
+            { id: 2, album_id: 6, album_download: 'codes', album_price: 5 },
+        ]);
+
+        const result = await service.getTracksForUser({ userId: 9, role: UserRole.SUPER_USER });
+        expect(result[0].downloadable).toBe(true);
     });
 });
 

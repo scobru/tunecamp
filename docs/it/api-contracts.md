@@ -32,12 +32,13 @@ Authorization: Bearer <token>
 | `GET`  | `/api/albums/:id` | Dettagli dell'album, inclusa la lista delle tracce |
 | `GET`  | `/api/artists` | Elenca tutti gli artisti |
 | `POST` | `/api/tracks` | Crea una traccia (import). Accetta un booleano opzionale `localize`: se impostato su un servizio rippabile (`bandcamp`/`youtube`/`soundcloud`) con un `url` sorgente, il server scarica l'audio in un file locale durevole in background dopo la risposta |
+| `GET`  | `/api/tracks` | Elenca le tracce visibili al chiamante. Ogni riga porta `downloadable`: se QUESTO utente può prendere il file, non solo ascoltarlo (i client che offrono un pulsante di download lo leggono invece di tirare a indovinare) |
 | `GET`  | `/api/tracks/:id` | Metadati della traccia |
 | `GET`  | `/api/tracks/:id/stream` | Stream audio binario (supporta l'intestazione `Range` per le tracce cloud) |
-| `GET`  | `/api/tracks/:id/download` | Scarica il file audio locale di una singola traccia |
+| `GET`  | `/api/tracks/:id/download` | Scarica il file audio locale di una singola traccia. Vincolato alla modalità di distribuzione della release: il contenuto a pagamento richiede un codice di sblocco (`?code=`), un acquisto registrato o un abbonamento attivo (altrimenti `402`); le release solo-streaming ed external showcase rispondono `403`. Staff, proprietario e artista collegato scavalcano il gate |
 | `POST` | `/api/tracks/:id/localize` | Solo admin: scarica l'audio di una traccia esterna in un file locale durevole |
-| `GET`  | `/api/albums/:id/download` | Scarica uno ZIP dei file audio locali dell'album (esclude le tracce streaming/linkate) |
-| `GET`  | `/api/releases/:id/download` | Scarica uno ZIP dei file audio locali di una release. Risolve id numerico o slug; le release private sono limitate a proprietario/admin |
+| `GET`  | `/api/albums/:id/download` | Scarica uno ZIP dei file audio locali dell'album (esclude le tracce streaming/linkate). Stesso gate sulla modalità di distribuzione della rotta a traccia singola |
+| `GET`  | `/api/releases/:id/download` | Scarica uno ZIP dei file audio locali di una release. Risolve id numerico o slug; le release private sono limitate a proprietario/admin e vale lo stesso gate sulla modalità di distribuzione della rotta a traccia singola |
 | `GET`  | `/api/waveform/:id` | Dati della forma d'onda per la visualizzazione grafica |
 | `GET`  | `/api/releases/:id/artwork/:filename` | Serve in modo sicuro gli artwork aggiuntivi delle release |
 

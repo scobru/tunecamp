@@ -716,6 +716,52 @@ describe('Tracks Routes', () => {
             const res = await request(app).get('/tracks/1/download');
             expect(res.status).toBe(403);
         });
+
+        // The visibility gate alone used to guard this route, so a track on sale
+        // in a public release was downloadable by anyone who could see it —
+        // straight past the store. See common/download-access.ts.
+        test('402s a listener on a track whose release is on sale', async () => {
+            (app as any).testAuth = { isAdmin: false, artistId: null, userId: 42, role: 'user' };
+            (mockDatabase.getTrack as jest.Mock).mockReturnValue({ id: 1, album_id: 5, artist_id: 20, file_path: 'a.mp3' });
+            (mockLibrary.getRelease as jest.Mock).mockReturnValue({ id: 5, visibility: 'public', download: 'codes', price: 5 });
+
+            const res = await request(app).get('/tracks/1/download');
+            expect(res.status).toBe(402);
+            expect(mockFs.pathExists).not.toHaveBeenCalled();
+        });
+
+        test('403s a listener on a streaming-only release', async () => {
+            (app as any).testAuth = { isAdmin: false, artistId: null, userId: 42, role: 'user' };
+            (mockDatabase.getTrack as jest.Mock).mockReturnValue({ id: 1, album_id: 5, artist_id: 20, file_path: 'a.mp3' });
+            (mockLibrary.getRelease as jest.Mock).mockReturnValue({ id: 5, visibility: 'public', download: 'none', price: 0 });
+
+            const res = await request(app).get('/tracks/1/download');
+            expect(res.status).toBe(403);
+        });
+
+        // The gate is cleared when the handler moves on to resolving the file on
+        // disk (which then 404s here, since the mocked fs has no real payload).
+        test('lets a listener through for a free release', async () => {
+            (app as any).testAuth = { isAdmin: false, artistId: null, userId: 42, role: 'user' };
+            (mockDatabase.getTrack as jest.Mock).mockReturnValue({ id: 1, album_id: 5, artist_id: 20, file_path: 'a.mp3', title: 'T' });
+            (mockLibrary.getRelease as jest.Mock).mockReturnValue({ id: 5, visibility: 'public', download: 'free', price: 0 });
+            (mockFs.pathExists as jest.Mock).mockResolvedValue(true as never);
+
+            const res = await request(app).get('/tracks/1/download');
+            expect([402, 403]).not.toContain(res.status);
+            expect(mockFs.pathExists).toHaveBeenCalled();
+        });
+
+        test('lets a curator through for a track that is on sale', async () => {
+            (app as any).testAuth = { isAdmin: false, isSuperUser: true, artistId: null, userId: 7, role: 'super_user' };
+            (mockDatabase.getTrack as jest.Mock).mockReturnValue({ id: 1, album_id: 5, artist_id: 20, file_path: 'a.mp3', title: 'T' });
+            (mockLibrary.getRelease as jest.Mock).mockReturnValue({ id: 5, visibility: 'public', download: 'codes', price: 5 });
+            (mockFs.pathExists as jest.Mock).mockResolvedValue(true as never);
+
+            const res = await request(app).get('/tracks/1/download');
+            expect([402, 403]).not.toContain(res.status);
+            expect(mockFs.pathExists).toHaveBeenCalled();
+        });
     });
 });
 

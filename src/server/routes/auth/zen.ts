@@ -567,7 +567,29 @@ export function createZenRoutes(container: ServiceContainer): Router {
 				const desiredUsername = ssoToken.username;
 				// Stable identity key stored in zen_pub: the Zen SEA secp256k1 public key.
 				// It is the same on every instance, which is what makes the identity portable.
-				const zenPubKey = ssoToken.zenPubKey;
+				//
+				// Read from masterKeySource first, because that is the copy fid verifies the
+				// signature against; the flat `zenPubKey` is a second, independent field on
+				// the same wire payload. fid 4.0.1 refuses a token whose two copies disagree,
+				// so today they cannot differ — but selecting the account by the key that was
+				// *not* verified is what made them worth forging in the first place, and this
+				// route should not depend on a library check to stay sound.
+				const zenPubKey =
+					ssoToken.masterKeySource?.pubKey ?? ssoToken.zenPubKey;
+
+				// Belt and braces against an older or patched-out fid: a token that names two
+				// different keys never authenticates anyone here.
+				if (
+					ssoToken.masterKeySource?.pubKey &&
+					ssoToken.zenPubKey &&
+					ssoToken.masterKeySource.pubKey !== ssoToken.zenPubKey
+				) {
+					return res.status(400).json({ error: "SSO token identity mismatch" });
+				}
+
+				if (!zenPubKey) {
+					return res.status(400).json({ error: "SSO token carries no identity key" });
+				}
 
 				// Look up by FID identity (zen_pub) first, never by username: matching on
 				// username/alias alone would let anyone log in as an unrelated existing

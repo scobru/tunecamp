@@ -234,3 +234,103 @@ describe('Release Routes - Creation and Publishing', () => {
     });
 });
 
+
+// The release ZIP used to be guarded by visibility alone, so a release on sale
+// was downloadable by anyone who could see it. See common/download-access.ts.
+describe('Release Routes - GET /:id/download gate', () => {
+    let app: express.Express;
+    let auth: any;
+    let releaseRow: any;
+    const getReleaseTracks = jest.fn();
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        auth = { isAdmin: false, isSuperUser: false, userId: 42, role: 'user' };
+        releaseRow = null;
+
+        const library: any = {
+            getRelease: () => releaseRow,
+            getAlbum: () => releaseRow,
+            getReleaseBySlug: () => releaseRow,
+            getAlbumBySlug: () => releaseRow,
+            getReleaseTracks,
+        };
+
+        app = express();
+        app.use(express.json());
+        app.use((req: any, res, next) => {
+            Object.assign(req, auth);
+            req.context = { role: auth.role, userId: auth.userId, artistId: auth.artistId ?? null };
+            next();
+        });
+        app.use('/releases', createReleaseRouter({
+            database: mockDatabase,
+            library,
+            scannerService: mockScanner,
+            publishingService: mockPublishingService,
+            authService: mockAuthService,
+            musicDir,
+        } as any));
+        app.use((err: any, req: any, res: any, _next: any) => {
+            res.status(err.statusCode || 500).json({ error: err.message });
+        });
+    });
+
+    test('402s a listener on a release that is on sale', async () => {
+        releaseRow = { id: 5, title: 'Paid', visibility: 'public', download: 'codes', price: 5, owner_id: 9 };
+
+        const response = await request(app).get('/releases/5/download');
+
+        expect(response.status).toBe(402);
+        expect(getReleaseTracks).not.toHaveBeenCalled();
+    });
+
+    test('403s a listener on a streaming-only release', async () => {
+        releaseRow = { id: 5, title: 'Stream', visibility: 'public', download: 'none', price: 0, owner_id: 9 };
+
+        const response = await request(app).get('/releases/5/download');
+
+        expect(response.status).toBe(403);
+    });
+
+    test('403s a listener on an external showcase', async () => {
+        releaseRow = { id: 5, title: 'Elsewhere', visibility: 'public', download: 'external', price: 0, owner_id: 9 };
+
+        const response = await request(app).get('/releases/5/download');
+
+        expect(response.status).toBe(403);
+    });
+
+    test('lets a listener through for a free release', async () => {
+        releaseRow = { id: 5, title: 'Gift', visibility: 'public', download: 'free', price: 0, owner_id: 9 };
+        getReleaseTracks.mockReturnValue([] as never);
+
+        const response = await request(app).get('/releases/5/download');
+
+        // Past the gate: it fails later, on the empty track list.
+        expect(response.status).toBe(404);
+        expect(getReleaseTracks).toHaveBeenCalled();
+    });
+
+    test('lets a curator through for a release that is on sale', async () => {
+        auth = { isAdmin: false, isSuperUser: true, userId: 7, role: 'super_user' };
+        releaseRow = { id: 5, title: 'Paid', visibility: 'public', download: 'codes', price: 5, owner_id: 9 };
+        getReleaseTracks.mockReturnValue([] as never);
+
+        const response = await request(app).get('/releases/5/download');
+
+        expect(response.status).toBe(404);
+        expect(getReleaseTracks).toHaveBeenCalled();
+    });
+
+    test('lets the owning artist through for their own paid release', async () => {
+        auth = { isAdmin: false, isSuperUser: false, userId: 9, role: 'user' };
+        releaseRow = { id: 5, title: 'Paid', visibility: 'public', download: 'codes', price: 5, owner_id: 9 };
+        getReleaseTracks.mockReturnValue([] as never);
+
+        const response = await request(app).get('/releases/5/download');
+
+        expect(response.status).toBe(404);
+        expect(getReleaseTracks).toHaveBeenCalled();
+    });
+});

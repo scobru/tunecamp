@@ -118,6 +118,8 @@ export interface Track {
 	album_download?: string;
 	album_visibility?: string;
 	album_price?: number;
+	album_price_usdc?: number;
+	album_price_usdt?: number;
 	artist_id: number | null;
 	artist_name?: string | null;
 	owner_id: number | null;
@@ -1101,6 +1103,10 @@ export interface IntegrationManager {
 	listUnlockCodes(releaseId?: number): any[];
 	getUnlockCodeByTxHash(txHash: string): any | undefined;
 	getPurchasesByUser(userId: number): any[];
+	hasPurchase(
+		userId: number,
+		target: { trackId?: number | null; releaseId?: number | null },
+	): boolean;
 
 	// Assets
 	getPublicAssets(): any[];
