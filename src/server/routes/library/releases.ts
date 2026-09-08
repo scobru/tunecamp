@@ -4,7 +4,8 @@ import type { ScannerService } from "../../modules/catalog/scanner.service.js";
 import type { PublishingService } from "../../modules/publishing/publishing.service.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 import { wrapAsync } from "../../middleware/error-handling.js";
-import { VisibilityGuardian, VisibilityProfile, Capability } from "../../common/visibility.js";
+import { VisibilityGuardian, VisibilityProfile, Capability, UserRole } from "../../common/visibility.js";
+import { canDownloadAlbum, createDownloadAccessLookups, downloadDenialError } from "../../common/download-access.js";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../common/errors.js";
 import { serveCachedList, invalidateListCacheOnMutation } from "../../common/list-cache.js";
 import path from "path";
@@ -102,6 +103,12 @@ export function createReleaseRouter(container: ServiceContainer): Router {
     const library = container.library;
     const social = container.social;
     const database = container.database;
+    // Commercial gate for the ZIP route (see common/download-access.ts).
+    const downloadLookups = createDownloadAccessLookups({
+        library,
+        identity: (container as any).identity,
+        integration: (container as any).integration,
+    });
     const router = Router();
     router.use(json());
     router.use(invalidateListCacheOnMutation);
@@ -341,6 +348,14 @@ export function createReleaseRouter(container: ServiceContainer): Router {
         if (!isPrivileged && release.visibility === 'private') {
             throw new ForbiddenError("Access denied");
         }
+
+        const decision = canDownloadAlbum(
+            release,
+            req.context || { role: UserRole.GUEST },
+            downloadLookups,
+            { code: typeof req.query.code === "string" ? req.query.code : null }
+        );
+        if (!decision.allowed) throw downloadDenialError(decision.reason);
 
         const tracks = library.getReleaseTracks(release.id);
         if (!tracks || tracks.length === 0) throw new NotFoundError("No tracks found");

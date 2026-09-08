@@ -174,6 +174,48 @@ describe('Albums Routes - Cache Optimization', () => {
             expect(response.status).toBe(404);
             expect(response.body).toEqual({ error: "No tracks found" });
         });
+
+        // Before the download gate this ZIP handed out paid releases to anyone
+        // who could see them, bypassing the store entirely.
+        test('402s a listener on a release that is on sale', async () => {
+            (app as any).testAuth = { isAdmin: false, isSuperUser: false, userId: 42, role: 'user' };
+            (mockDatabase.getAlbum as jest.Mock).mockReturnValue({
+                id: 1, title: 'Paid', slug: 'paid', download: 'codes', price: 5,
+                visibility: 'public', is_release: 1, owner_id: 9
+            });
+
+            const response = await request(app).get('/albums/1/download');
+
+            expect(response.status).toBe(402);
+            expect(mockDatabase.getTracksByAlbum).not.toHaveBeenCalled();
+        });
+
+        test('403s a listener on a streaming-only release', async () => {
+            (app as any).testAuth = { isAdmin: false, isSuperUser: false, userId: 42, role: 'user' };
+            (mockDatabase.getAlbum as jest.Mock).mockReturnValue({
+                id: 1, title: 'Stream', slug: 'stream', download: 'none', price: 0,
+                visibility: 'public', is_release: 1, owner_id: 9
+            });
+
+            const response = await request(app).get('/albums/1/download');
+
+            expect(response.status).toBe(403);
+        });
+
+        test('a curator downloads a release that is on sale', async () => {
+            (app as any).testAuth = { isAdmin: false, isSuperUser: true, userId: 7, role: 'super_user' };
+            (mockDatabase.getAlbum as jest.Mock).mockReturnValue({
+                id: 1, title: 'Paid', slug: 'paid', download: 'codes', price: 5,
+                visibility: 'public', is_release: 1, owner_id: 9
+            });
+            (mockDatabase.getTracksByAlbum as jest.Mock).mockReturnValue([]);
+
+            const response = await request(app).get('/albums/1/download');
+
+            // Past the gate: it fails later, on the empty track list.
+            expect(response.status).toBe(404);
+            expect(mockDatabase.getTracksByAlbum).toHaveBeenCalled();
+        });
     });
 
     describe('Metadata Search & Matching', () => {
