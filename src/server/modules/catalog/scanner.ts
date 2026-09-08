@@ -169,7 +169,7 @@ export interface ScannerService {
     scanDirectory(dir: string, onProgress?: (processed: number, total: number) => void): Promise<ScanResult>;
     startWatching(dir: string): void;
     stopWatching(): void;
-    processAudioFile(filePath: string, musicDir: string, overrideArtistId?: number, ownerId?: number, overrideAlbumId?: number, suggestedCoverPath?: string, metadataHints?: { artist?: string, album?: string, year?: number, title?: string, genre?: string }): Promise<{ originalPath: string, success: boolean, message: string, convertedPath?: string, trackId?: number, queuedConversion?: boolean } | null>;
+    processAudioFile(filePath: string, musicDir: string, overrideArtistId?: number, ownerId?: number, overrideAlbumId?: number, suggestedCoverPath?: string, metadataHints?: { artist?: string, album?: string, year?: number, title?: string, genre?: string, trackNum?: number, version?: string }): Promise<{ originalPath: string, success: boolean, message: string, convertedPath?: string, trackId?: number, queuedConversion?: boolean } | null>;
     getOrCreateLibraryAlbum(dir: string, musicDir: string, forcedCoverPath?: string): Promise<number | null>;
     clearCaches(): void;
 }
@@ -510,7 +510,7 @@ export class Scanner implements ScannerService {
         ownerId?: number, 
         overrideAlbumId?: number, 
         suggestedCoverPath?: string,
-        metadataHints?: { artist?: string, album?: string, year?: number, title?: string, genre?: string }
+        metadataHints?: { artist?: string, album?: string, year?: number, title?: string, genre?: string, trackNum?: number, version?: string }
     ): Promise<{ originalPath: string, success: boolean, message: string, convertedPath?: string, trackId?: number, queuedConversion?: boolean } | null> {
         const musicDir = musicDirRaw.replace(/\\/g, "/");
         let currentFilePath = filePath.replace(/^@@[a-z0-9]+\\?/, "").replace(/\\/g, "/").replace(/\/+/g, "/");
