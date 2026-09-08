@@ -1003,6 +1003,7 @@ export interface SocialManager {
 		contentId: number,
 	): ApNote | undefined;
 	getApNote(noteId: string): ApNote | undefined;
+	updateApNote(noteId: string, contentSlug: string, contentTitle: string): void;
 	markApNoteDeleted(noteId: string): void;
 	deleteApNote(noteId: string): void;
 	addApInteraction(

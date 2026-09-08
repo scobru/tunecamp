@@ -27,6 +27,7 @@ describe('PublishingService', () => {
             broadcastDelete: jest.fn<any>().mockResolvedValue(undefined),
             broadcastPost: jest.fn<any>().mockResolvedValue(undefined),
             broadcastPostDelete: jest.fn<any>().mockResolvedValue(undefined),
+            broadcastPostUpdate: jest.fn<any>().mockResolvedValue(undefined),
             generateNote: jest.fn<any>().mockReturnValue({}),
             announceToRelay: jest.fn<any>().mockResolvedValue(undefined),
             followRemoteActor: jest.fn<any>().mockResolvedValue(undefined),
@@ -184,6 +185,44 @@ const albumId = db.createAlbum({
             const postId = db.createPost(db.createArtist('Test Artist 2', 'bio', 'photo', [], null, null, 'public', 'external'), 'Private Post Content', 'private', 'Private Post');
             await publishingService.syncPost(postId);
             expect(apMock.broadcastPostDelete).toHaveBeenCalled();
+        });
+
+        /**
+         * Editing a published post used to reach `broadcastPost`, which saw the
+         * post was already published and returned without telling anyone — so
+         * followers kept the original text and the admin's Publishing list kept
+         * the original title.
+         */
+        test('federates an edit to an already-published post as an Update', async () => {
+            db.createUser('testuser3', 'hash');
+            const artistId = db.createArtist('Test Artist 3', 'bio', 'photo', [], null, null, 'public', 'external');
+            const postId = db.createPost(artistId, 'Original content', 'public', 'Original title');
+            const post = db.getPost(postId)!;
+
+            // Stand in for the first publish: the note the broadcast would store.
+            db.createApNote(artistId, 'https://test.tunecamp.org/api/ap/article/post/' + post.slug + '/1', 'post', postId, post.slug, 'Original title');
+
+            db.updatePost(postId, 'Edited content', undefined, 'Edited title');
+            await publishingService.syncPost(postId);
+
+            expect(apMock.broadcastPostUpdate).toHaveBeenCalled();
+            expect(apMock.broadcastPost).not.toHaveBeenCalled();
+        });
+
+        test('still publishes as new when the earlier note was retracted', async () => {
+            db.createUser('testuser4', 'hash');
+            const artistId = db.createArtist('Test Artist 4', 'bio', 'photo', [], null, null, 'public', 'external');
+            const postId = db.createPost(artistId, 'Content', 'public', 'Title');
+            const post = db.getPost(postId)!;
+            const noteId = 'https://test.tunecamp.org/api/ap/article/post/' + post.slug + '/2';
+
+            db.createApNote(artistId, noteId, 'post', postId, post.slug, 'Title');
+            db.markApNoteDeleted(noteId);
+
+            await publishingService.syncPost(postId);
+
+            expect(apMock.broadcastPost).toHaveBeenCalled();
+            expect(apMock.broadcastPostUpdate).not.toHaveBeenCalled();
         });
     });
 });
