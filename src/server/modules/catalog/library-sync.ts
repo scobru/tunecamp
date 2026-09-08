@@ -17,6 +17,10 @@ export interface SyncOptions {
     year?: number;
     title?: string;
     genre?: string;
+    // Position the caller already knows — an imported tracklist keeps its order
+    // even when the uploaded file carries no track tag.
+    trackNum?: number;
+    version?: string;
   };
 }
 
@@ -320,7 +324,10 @@ export class LibrarySync {
         mime_type: resolvedMimeType || existing.mime_type,
         file_size: format.fileSize || existing.file_size,
         file_hash: hash || existing.file_hash,
-        version: metadataHints?.version || existing.version
+        version: metadataHints?.version || existing.version,
+        // Same protection rule as the title above: a position the caller stated
+        // outright wins, everything else leaves the stored one alone.
+        track_num: metadataHints?.trackNum || existing.track_num
     } as any);
 
     return { trackId: existing.id, success: true, message: "Track updated.", action: 'updated' };
@@ -343,7 +350,7 @@ export class LibrarySync {
         album_id: albumId,
         artist_id: artistId,
         owner_id: ownerId || this.primaryAdminId || 1,
-        track_num: common.track?.no || null,
+        track_num: metadataHints?.trackNum || common.track?.no || null,
         duration: duration || null,
         file_path: isLossless ? normalizedPath.replace(new RegExp(`\\${ext}$`, 'i'), '.mp3') : normalizedPath,
         format: isLossless ? 'mp3' : (format.codec || ext.substring(1)),

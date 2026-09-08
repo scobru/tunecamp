@@ -125,7 +125,13 @@ export const adminApi = {
         }
         return handleResponse(api.post<{ tags: AudioTags }>('admin/upload/inspect', formData));
     },
-    uploadTracks: (files: File[], options: { releaseSlug?: string, artistId?: string | number, artist?: string, album?: string, onProgress?: (percent: number) => void } = {}) => {
+    /**
+     * `title` and `trackNum` name a single track, so the server only honours
+     * them when `files` holds exactly one file — use them when the caller
+     * already knows what the track is (an imported tracklist filling a slot),
+     * and leave them out to let the file's own tags decide.
+     */
+    uploadTracks: (files: File[], options: { releaseSlug?: string, artistId?: string | number, artist?: string, album?: string, title?: string, trackNum?: number, onProgress?: (percent: number) => void } = {}) => {
         const formData = new FormData();
         if (options.releaseSlug) {
             formData.append('releaseSlug', options.releaseSlug);
@@ -139,6 +145,12 @@ export const adminApi = {
         }
         if (options.album) {
             formData.append('album', options.album);
+        }
+        if (options.title) {
+            formData.append('title', options.title);
+        }
+        if (options.trackNum) {
+            formData.append('trackNum', String(options.trackNum));
         }
         files.forEach(file => formData.append('files', file));
         return handleResponse(api.post('admin/upload/tracks', formData, {

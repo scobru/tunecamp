@@ -31,12 +31,12 @@ Authorization: Bearer <token>
 | `GET`  | `/api/albums` | Elenca tutti gli album locali. Restituisce `status` (`draft` \| `published`) e `is_release` (booleano) per distinguere i contenuti della libreria dalle release ufficiali |
 | `GET`  | `/api/albums/:id` | Dettagli dell'album, inclusa la lista delle tracce |
 | `GET`  | `/api/artists` | Elenca tutti gli artisti |
-| `POST` | `/api/tracks` | Crea una traccia (import). Accetta un booleano opzionale `localize`: se impostato su un servizio rippabile (`bandcamp`/`youtube`/`soundcloud`) con un `url` sorgente, il server scarica l'audio in un file locale durevole in background dopo la risposta |
+| `POST` | `/api/tracks` | Crea una traccia dai metadati (un link, o una riga in attesa del suo file). L'audio **non** viene scaricato: la traccia nasce senza `file_path` finché non le si carica un file. Qui non esiste alcuna opzione `localize` — questo server non scarica audio dalle piattaforme di streaming |
 | `GET`  | `/api/tracks` | Elenca le tracce visibili al chiamante. Ogni riga porta `downloadable`: se QUESTO utente può prendere il file, non solo ascoltarlo (i client che offrono un pulsante di download lo leggono invece di tirare a indovinare) |
 | `GET`  | `/api/tracks/:id` | Metadati della traccia |
 | `GET`  | `/api/tracks/:id/stream` | Stream audio binario (supporta l'intestazione `Range` per le tracce cloud) |
 | `GET`  | `/api/tracks/:id/download` | Scarica il file audio locale di una singola traccia. Vincolato alla modalità di distribuzione della release: il contenuto a pagamento richiede un codice di sblocco (`?code=`), un acquisto registrato o un abbonamento attivo (altrimenti `402`); le release solo-streaming ed external showcase rispondono `403`. Staff, proprietario e artista collegato scavalcano il gate |
-| `POST` | `/api/tracks/:id/localize` | Solo admin: scarica l'audio di una traccia esterna in un file locale durevole |
+| `POST` | `/api/tracks/:id/localize` | Solo admin: copia una traccia su cloud (percorso `gdrive://`) in un file locale durevole. Le piattaforme di streaming vengono rifiutate con `400` — si usa [Sidecamp](./sidecamp.md) |
 | `GET`  | `/api/albums/:id/download` | Scarica uno ZIP dei file audio locali dell'album (esclude le tracce streaming/linkate). Stesso gate sulla modalità di distribuzione della rotta a traccia singola |
 | `GET`  | `/api/releases/:id/download` | Scarica uno ZIP dei file audio locali di una release. Risolve id numerico o slug; le release private sono limitate a proprietario/admin e vale lo stesso gate sulla modalità di distribuzione della rotta a traccia singola |
 | `GET`  | `/api/waveform/:id` | Dati della forma d'onda per la visualizzazione grafica |
@@ -139,6 +139,7 @@ Tutte le route richiedono l'autenticazione. Vedi [COLLAB.md](COLLAB.md) per la d
 |--------|----------|-------------|
 | `GET`  | `/api/admin/system/users` | Elenca gli utenti registrati (solo per amministratori) |
 | `POST` | `/api/admin/system/rescan` | Avvia una scansione completa della libreria |
+| `POST` | `/api/admin/upload/tracks` | Archivia uno o più file audio e li importa nella libreria (solo admin/artisti). `releaseSlug` li collega a una release; `artist`/`album` ne indicano il contenitore. `title` e `trackNum` impostano titolo e posizione di una traccia e valgono **solo se viene inviato un singolo file** — con più file ciascuno mantiene i propri tag. Li usa l'editor delle release per riempire una tracklist importata, i cui file raramente sono taggati come la release li elenca |
 | `POST` | `/api/admin/upload/additional-artworks` | Carica più artwork/booklet aggiuntivi per una release (solo admin/artisti) |
 | `GET`  | `/api/admin/stats` | Statistiche di utilizzo del server e del database |
 | `GET`  | `/api/admin/system/resources` | Snapshot in tempo reale delle risorse del processo/host — CPU, memoria, RAM dell'host, dimensioni del database SQLite e attività in background in esecuzione (solo per amministratori root) |
