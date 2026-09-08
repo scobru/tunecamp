@@ -302,14 +302,31 @@ export class PublishingService {
 
     async publishPostToAP(post: Post): Promise<void> {
         if (post.visibility !== 'public') return;
-        console.log(`📢 Broadcasting post "${post.slug}" via ActivityPub...`);
+
+        // An edit is not a new post. Federating it as `Create` again would show
+        // up as a second post on every follower's timeline, and the Mastodon
+        // cross-post below would file another status for the same thing — so the
+        // two cases are told apart here, once, by whether this post already has
+        // a live note.
+        const artist = post.artist_id ? this.db.getArtist(post.artist_id) : null;
+        const existingNote = artist ? this.db.getApNoteByContent(artist.id, 'post', post.id) : undefined;
+        const isRepublish = !!existingNote && !existingNote.deleted_at;
+
         try {
-            await this.ap.broadcastPost(post);
+            if (isRepublish) {
+                await this.ap.broadcastPostUpdate(post);
+            } else {
+                await this.ap.broadcastPost(post);
+            }
         } catch (e) {
             console.error("❌ Failed to broadcast post via ActivityPub:", e);
         }
 
-        // Cross-post to Mastodon
+        // Cross-post to Mastodon — first publish only. Mastodon has no way to
+        // edit a status through this integration, and posting the edited text
+        // again would leave the artist's timeline holding both versions.
+        if (isRepublish) return;
+
         if (post.artist_id) {
             const artist = this.db.getArtist(post.artist_id);
             if (artist) {

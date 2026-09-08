@@ -149,7 +149,11 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         if (!req.context || !VisibilityGuardian.canWriteContent(req.context)) throw new ForbiddenError("Unauthorized");
         if (!req.isAdmin && !req.isActive) throw new ForbiddenError("Account not active");
 
-        const { title, albumId, artistId: bodyArtistId, trackNum, url, service, externalArtwork, duration, lyrics, currency, priceUsdc, localize } = req.body;
+        // No `localize` here on purpose: downloading audio off a streaming
+        // platform is not something this server does (see POST /:id/localize,
+        // which only handles gdrive://). A track created here is a link or a
+        // placeholder until a real file is uploaded for it.
+        const { title, albumId, artistId: bodyArtistId, trackNum, url, service, externalArtwork, duration, lyrics, currency, priceUsdc } = req.body;
         
         let finalArtistId = bodyArtistId;
         if (!req.isAdmin) {

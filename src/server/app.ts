@@ -32,6 +32,10 @@ export function createApp(config: ServerConfig): AppSetupResult {
     app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 })); 
     app.use('/rest', rateLimit({ windowMs: 15 * 60 * 1000, max: 5000 }));
 
+    // `origin: false` means the cors package sends NO Access-Control-Allow-Origin,
+    // i.e. no cross-origin browser access — so an unset TUNECAMP_CORS_ORIGINS is the
+    // restrictive default, not an open one. (The same-origin webapp never goes
+    // through CORS at all, and the federation surface below opts in separately.)
     const corsOrigin = config.corsOrigins && config.corsOrigins.length > 0 ? config.corsOrigins : false;
     const strictCors = cors({ origin: corsOrigin, credentials: true });
 
@@ -64,7 +68,37 @@ export function createApp(config: ServerConfig): AppSetupResult {
         }
     };
 
-    app.use('/api/community', publicFederationCors);
+    // POST /api/community/register is the one public *mutation* on the federation
+    // surface, and it is the endpoint the community website calls straight from a
+    // visitor's browser to self-register an instance (see docs/FEDERATION.md).
+    // Routing it through strictCors blocks that documented flow on every directory
+    // instance that hasn't listed the website in TUNECAMP_CORS_ORIGINS, while
+    // protecting nothing: the route takes no cookie or Authorization header, does
+    // nothing user-specific (it probes the submitted URL over NodeInfo and stores
+    // public metadata), and is rate-limited to 1 request per IP per hour. CORS was
+    // never the CSRF boundary here either — a cross-site POST is sent regardless of
+    // the response headers; strict CORS only hides the reply from the caller. A
+    // request that does carry credentials still falls through to the strict path.
+    const registerCors = cors({ origin: '*', credentials: false, methods: ['POST', 'OPTIONS'] });
+    app.use('/api/community', (req, res, next) => {
+        const isRegisterPath = /^\/register\/?$/.test(req.path);
+        const preflightMethod = String(req.headers['access-control-request-method'] || '').toUpperCase();
+        const wantsPost = req.method === 'POST' || (req.method === 'OPTIONS' && preflightMethod === 'POST');
+        const preflightHeaders = String(req.headers['access-control-request-headers'] || '')
+            .split(',')
+            .map((h) => h.trim().toLowerCase());
+        const withCredentials =
+            !!req.headers.cookie || !!req.headers.authorization || preflightHeaders.includes('authorization');
+
+        if (!isRegisterPath || !wantsPost || withCredentials) {
+            return publicFederationCors(req, res, next);
+        }
+        registerCors(req, res, (err?: any) => {
+            if (err) return next(err);
+            res.locals.skipStrictCors = true;
+            next();
+        });
+    });
     app.use('/api/catalog', publicFederationCors);
     app.use('/api/samples', publicFederationCors);
     app.use('/api/sample-packs', publicFederationCors);

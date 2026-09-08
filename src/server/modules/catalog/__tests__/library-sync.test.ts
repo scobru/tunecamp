@@ -348,6 +348,64 @@ describe('LibrarySync', () => {
         expect(mockDb.createArtist).toHaveBeenCalledWith('Unknown Artist', undefined, undefined, undefined, undefined, undefined, 'private');
     });
 
+    /**
+     * An imported tracklist knows the order; the files the artist drags in
+     * often carry no track tag at all. The hint is how that order survives.
+     */
+    test('syncFile prefers the caller\'s trackNum over the file tag on a new track', async () => {
+        mockDb.getTrackByHash.mockReturnValue(null);
+        mockDb.getTrackByPath.mockReturnValue(null);
+        mockDb.getTrackByMetadata.mockReturnValue(null);
+
+        const metadata = { common: { title: 'Test Song', track: { no: 9 } }, format: {} };
+
+        await librarySync.syncFile('/music/song.mp3', metadata, {
+            musicDir: '/music',
+            metadataHints: { trackNum: 3 }
+        });
+
+        expect(mockDb.createTrack).toHaveBeenCalledWith(
+            expect.objectContaining({ track_num: 3 })
+        );
+    });
+
+    test('syncFile falls back to the file tag when no trackNum is given', async () => {
+        mockDb.getTrackByHash.mockReturnValue(null);
+        mockDb.getTrackByPath.mockReturnValue(null);
+        mockDb.getTrackByMetadata.mockReturnValue(null);
+
+        const metadata = { common: { title: 'Test Song', track: { no: 9 } }, format: {} };
+
+        await librarySync.syncFile('/music/song.mp3', metadata, { musicDir: '/music' });
+
+        expect(mockDb.createTrack).toHaveBeenCalledWith(
+            expect.objectContaining({ track_num: 9 })
+        );
+    });
+
+    test('syncFile applies trackNum to a track that is already in the library', async () => {
+        // Re-uploading a file the library already has must still put it where
+        // the imported tracklist says it goes.
+        mockDb.getTrackByHash.mockReturnValue(null);
+        mockDb.getTrackByPath.mockReturnValue({
+            id: 10,
+            title: 'Test Song',
+            file_path: 'song.mp3',
+            album_id: 2,
+            track_num: 9
+        });
+
+        await librarySync.syncFile('/music/song.mp3', {}, {
+            musicDir: '/music',
+            metadataHints: { trackNum: 3 }
+        });
+
+        expect(mockDb.updateTrack).toHaveBeenCalledWith(
+            10,
+            expect.objectContaining({ track_num: 3 })
+        );
+    });
+
     test('updateExistingTrack updates lossless_path for lossless files if missing', async () => {
         mockDb.getTrackByHash.mockReturnValue(null);
         mockDb.getTrackByPath.mockReturnValue({

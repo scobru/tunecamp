@@ -64,6 +64,27 @@ interface LocalTrack {
 }
 
 /**
+ * One line of an imported tracklist, waiting for its audio.
+ *
+ * Importing a release elsewhere gives us titles, order and durations but never
+ * the audio: this server does not pull files off streaming platforms (see
+ * `POST /api/tracks/:id/localize`, which only localizes gdrive://). So an
+ * import fills these slots instead of creating tracks — a slot lives only in
+ * the editor until the artist attaches a file to it, and a slot left empty at
+ * save time creates nothing. That is the whole point: what used to land in the
+ * database was a tracklist of rows no one could play and everyone had to
+ * delete by hand.
+ */
+interface ImportedSlot {
+  position: number;
+  title: string;
+  duration: number;
+  /** Where the line came from, kept so the artist can open the original page. */
+  sourceUrl: string | null;
+  file: File | null;
+}
+
+/**
  * Year a brand-new release starts on. Named so tag prefill can tell "the user
  * chose this year" from "nobody has touched the field yet".
  */
@@ -167,6 +188,8 @@ export default function AdminReleaseEditor() {
   // Tracks State
   const [tracks, setTracks] = useState<LocalTrack[]>([]);
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+  // Tracklist lines from an import, each waiting for its audio file.
+  const [importedSlots, setImportedSlots] = useState<ImportedSlot[]>([]);
   // Tags read off the pending files, keyed by `${name}:${size}` so a file that
   // is removed and re-added keeps its entry and duplicates don't collide.
   const [pendingTags, setPendingTags] = useState<Record<string, AudioTags>>({});
@@ -424,57 +447,6 @@ export default function AdminReleaseEditor() {
 
       if (!releaseId) throw new Error("No release ID available");
 
-      // Loop through tracks, and if any has a negative ID (imported from Bandcamp),
-      // create it in the database and get its real ID.
-      const newTracksList = [...tracks];
-      let hasNewTracks = false;
-
-      for (let i = 0; i < newTracksList.length; i++) {
-        const t = newTracksList[i];
-        const currentId = t.track_id || t.id;
-        if (typeof currentId === "number" && currentId < 0) {
-          const createdTrack = await API.createTrack({
-            title: t.title,
-            albumId: releaseId,
-            artistId: metadata.artist_id,
-            trackNum: t.position,
-            url: t.url || undefined,
-            service: t.service || undefined,
-            duration: t.duration,
-            // Bandcamp (and other streaming) references rot — signed links expire and
-            // nothing survives a redeploy. Ask the server to download the audio into
-            // the library so the imported tracks become durable local files.
-            localize: t.service === "bandcamp",
-          });
-          newTracksList[i] = {
-            ...t,
-            id: Number(createdTrack.id),
-            isDirty: false,
-          };
-          hasNewTracks = true;
-        }
-      }
-
-      // If we created new tracks, perform a secondary update to sync the release tracks correctly in order.
-      if (hasNewTracks) {
-        const updatedTrackIds = newTracksList.map((t: any) => t.id);
-        const updatedTracksData = newTracksList.map((t: any) => ({
-          id: t.id,
-          title: t.title,
-          price: t.price,
-          price_usdc: t.priceUsdc,
-          currency: t.currency || "ETH"
-        }));
-
-        await API.updateRelease(String(releaseId), {
-          ...dataToSave,
-          track_ids: updatedTrackIds,
-          tracks_data: updatedTracksData,
-        });
-
-        setTracks(newTracksList);
-      }
-
       // 2. Upload Cover
       if (coverFile && currentSlug) {
         await API.uploadCover(coverFile, currentSlug);
@@ -498,6 +470,42 @@ export default function AdminReleaseEditor() {
           notify.error(e, "Some files failed to upload. Please try again.");
           // Don't clear filesToUpload so user can retry
           throw e;
+        }
+      }
+
+      // 3b. Fill the imported slots that have audio attached. One request per
+      // slot, because title and position name a single track and the upload
+      // endpoint only honours them for a single file. A slot with no file is
+      // left where it is: it stays in the editor for the next save instead of
+      // becoming a track nobody can play.
+      const filledSlots = importedSlots.filter((slot) => slot.file);
+      if (filledSlots.length > 0 && currentSlug) {
+        const stillEmpty: ImportedSlot[] = importedSlots.filter((slot) => !slot.file);
+        const failed: ImportedSlot[] = [];
+
+        for (const slot of filledSlots) {
+          try {
+            await API.uploadTracks([slot.file as File], {
+              releaseSlug: currentSlug,
+              artistId: metadata.artist_id,
+              title: slot.title,
+              trackNum: slot.position,
+            });
+          } catch (e) {
+            console.error(`Failed to upload audio for "${slot.title}"`, e);
+            failed.push(slot);
+          }
+        }
+
+        // Keep whatever did not make it, so a retry does not re-upload the
+        // slots that already landed.
+        setImportedSlots([...failed, ...stillEmpty].sort((a, b) => a.position - b.position));
+
+        if (failed.length > 0) {
+          notify.error(
+            new Error(`${failed.length} of ${filledSlots.length} imported track(s) failed to upload`),
+            "Some imported tracks could not be uploaded — they are still listed, try again.",
+          );
         }
       }
 
@@ -812,6 +820,18 @@ export default function AdminReleaseEditor() {
         return next;
       });
     }
+  };
+
+  /** Attach audio to one imported slot, or clear what was attached. */
+  const setSlotFile = (index: number, file: File | null) => {
+    setImportedSlots((prev) =>
+      prev.map((slot, i) => (i === index ? { ...slot, file } : slot)),
+    );
+  };
+
+  /** Drop one imported line. Its audio, if any, goes with it. */
+  const removeSlot = (index: number) => {
+    setImportedSlots((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Drag and Drop handlers for File Upload
@@ -1345,7 +1365,7 @@ export default function AdminReleaseEditor() {
                       </tr>
                     </thead>
                     <tbody onDragOver={(e) => e.preventDefault()} onDrop={handleDropAudio}>
-                      {tracks.length === 0 && filesToUpload.length === 0 && (
+                      {tracks.length === 0 && filesToUpload.length === 0 && importedSlots.length === 0 && (
                         <tr>
                           <td colSpan={colSpanCount} className="py-20 text-center opacity-40">
                              <Music className="w-12 h-12 mx-auto mb-4 opacity-10" />
@@ -1658,6 +1678,118 @@ export default function AdminReleaseEditor() {
                   </table>
                 </div>
 
+                {/* Imported tracklist waiting for audio */}
+                {importedSlots.length > 0 && (
+                  <div className="bg-warning/5 p-4 border-t border-warning/20 space-y-3">
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div>
+                        <h4 className="text-xs font-bold tracking-normal text-warning flex items-center gap-2">
+                          <Globe className="w-3 h-3" /> Imported tracklist — audio needed
+                        </h4>
+                        <p className="text-[11px] opacity-60 mt-1 max-w-xl">
+                          Titles and order came from the import; the audio did not. Attach a
+                          file to each track and it is uploaded under that title on save.
+                          Slots left empty are not saved.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs gap-1 text-error"
+                        onClick={async () => {
+                          if (await confirm("Discard the imported tracklist? Attached files are dropped too.")) {
+                            setImportedSlots([]);
+                          }
+                        }}
+                        disabled={uploadingFileIndex !== null}
+                      >
+                        <Trash2 className="w-3 h-3" /> Discard all
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {importedSlots.map((slot, idx) => (
+                        <div
+                          key={`slot-${idx}`}
+                          className="flex items-center gap-3 bg-base-100 p-2 rounded-lg text-xs border border-base-content/5"
+                        >
+                          <span className="font-mono opacity-40 w-6 text-right shrink-0">
+                            {slot.position}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <input
+                              type="text"
+                              value={slot.title}
+                              onChange={(e) => {
+                                const title = e.target.value;
+                                setImportedSlots((prev) =>
+                                  prev.map((it, i) => (i === idx ? { ...it, title } : it)),
+                                );
+                              }}
+                              className="input input-ghost input-xs w-full font-bold p-0 h-auto focus:bg-base-300"
+                            />
+                            <div className="flex items-center gap-2 mt-0.5 opacity-50">
+                              <span className="font-mono text-[10px]">
+                                {slot.duration ? formatDuration(slot.duration) : "--:--"}
+                              </span>
+                              {slot.sourceUrl && (
+                                <a
+                                  href={slot.sourceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="link link-hover text-[10px] flex items-center gap-1"
+                                >
+                                  <LinkIcon className="w-2.5 h-2.5" /> source
+                                </a>
+                              )}
+                            </div>
+                          </div>
+
+                          {slot.file ? (
+                            <div className="flex items-center gap-2 shrink-0 max-w-[45%]">
+                              <Music className="w-3 h-3 text-success shrink-0" />
+                              <span className="truncate opacity-70">{slot.file.name}</span>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-xs btn-circle"
+                                onClick={() => setSlotFile(idx, null)}
+                                disabled={uploadingFileIndex !== null}
+                                aria-label={`Remove audio from ${slot.title}`}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="btn btn-xs btn-outline gap-1 shrink-0 whitespace-nowrap">
+                              <Plus className="w-3 h-3" /> Choose file
+                              <input
+                                type="file"
+                                accept="audio/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) setSlotFile(idx, file);
+                                  // Let the same file be picked again after removing it.
+                                  e.target.value = "";
+                                }}
+                              />
+                            </label>
+                          )}
+
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-xs btn-circle text-error shrink-0"
+                            onClick={() => removeSlot(idx)}
+                            disabled={uploadingFileIndex !== null}
+                            aria-label={`Remove ${slot.title} from the imported tracklist`}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Pending Uploads */}
                 {filesToUpload.length > 0 && (
                   <div className="bg-primary/5 p-4 border-t border-primary/20 space-y-2">
@@ -1843,7 +1975,9 @@ export default function AdminReleaseEditor() {
 
         <ImportBandcampReleaseModal
           onImport={async (m) => {
-            // Import release-level metadata only — no tracks are created.
+            // Release-level fields land straight in the form; the tracklist becomes
+            // slots (see `ImportedSlot`) and no track reaches the database until
+            // the artist attaches audio to one.
             const parsedYear = m.date ? new Date(m.date).getFullYear() : NaN;
             const bandcampUrl = m.url || "";
             setMetadata((prev) => ({
@@ -1856,24 +1990,20 @@ export default function AdminReleaseEditor() {
               externalLinks: bandcampUrl ? [{ label: "Bandcamp", url: bandcampUrl }] : prev.externalLinks,
             }));
 
-            // Populate tracks state with temporary negative IDs and Bandcamp stream URLs
+            // The tracklist becomes slots to fill, not tracks: the audio stays on
+            // Bandcamp, and a row without audio is not a track this server can
+            // publish or play. Prefer the durable track page URL over the signed,
+            // short-lived CDN stream link — the latter expires within the hour.
             if (m.tracks && m.tracks.length > 0) {
-              const localTracks: LocalTrack[] = m.tracks.map((t: any, index: number) => ({
-                id: -(index + 1),
-                title: t.title,
-                duration: t.duration,
-                position: t.position || (index + 1),
-                price: 0,
-                priceUsdc: 0,
-                currency: "ETH" as const,
-                file_path: null,
-                // Prefer the durable Bandcamp track page URL over the signed, short-lived
-                // CDN stream link — the latter expires and can't be re-downloaded later.
-                url: t.url || t.streamUrl || null,
-                service: "bandcamp",
-                artistName: m.artist,
-              }));
-              setTracks(localTracks);
+              setImportedSlots(
+                m.tracks.map((t: any, index: number) => ({
+                  position: t.position || index + 1,
+                  title: t.title,
+                  duration: t.duration || 0,
+                  sourceUrl: t.url || t.streamUrl || null,
+                  file: null,
+                })),
+              );
             }
 
             // Cover is best-effort: pull it through the same-origin proxy and stage it

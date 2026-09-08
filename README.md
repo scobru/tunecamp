@@ -252,8 +252,17 @@ Configuration is managed via environment variables (or an `.env` file).
 | `TUNECAMP_ADMIN_PASS`   | Default admin password                                 | `admin`                                                  |
 | `TUNECAMP_PUBLIC_URL`   | Public HTTPS URL (required for ActivityPub federation) | —                                                        |
 | `TUNECAMP_SITE_NAME`    | Human-readable instance name                           | `My TuneCamp Server`                                     |
-| `TUNECAMP_CORS_ORIGINS` | Comma-separated allowed CORS origins                   | _all_                                                    |
+| `TUNECAMP_CORS_ORIGINS` | Comma-separated origins allowed to call the API cross-origin | _same-origin only_                                       |
 | `TUNECAMP_DOWNLOAD_DIR` | Directory for download-provider plugins (e.g. Sidecamp) | `./music/downloads` (local) / `/data/downloads` (Docker) |
+
+> `TUNECAMP_CORS_ORIGINS` unset is the **restrictive** default, not an open one: no
+> `Access-Control-Allow-Origin` header is sent, so a browser on another origin cannot
+> read the API. Your own webapp is served from the same origin and is unaffected —
+> set this only when something else (a separate frontend, an embedded player) must
+> reach the API from a different domain. The public federation surface
+> (`/api/catalog`, `/api/community`, `/api/tracks`, `/api/albums`, `/api/releases`,
+> `/api/samples`, `/rest`) stays readable cross-origin regardless, for credential-less
+> GETs only — that is what lets other instances and Subsonic clients work.
 
 **Federation & Network**
 
