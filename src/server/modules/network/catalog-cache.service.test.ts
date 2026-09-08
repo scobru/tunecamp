@@ -99,6 +99,56 @@ describe('CatalogCacheService', () => {
         expect(tracks[0].downloadUrl).toBe(`${SITE.url}/api/peers/sess-1/tracks/trk-1/federated-download`);
     });
 
+    describe('release-track download URLs', () => {
+        const release = (over: any = {}) => ({
+            id: 5, title: 'Rel', slug: 'rel',
+            tracks: [{ id: 11, title: 'Song', ...(over.track || {}) }],
+            ...over.release,
+        });
+
+        // Each case is a fresh first sight of the peer: without invalidating,
+        // the second payload would be served from the first one's cache entry.
+        const parseOne = async (payload: any) => {
+            mockFetch.mockResolvedValue({ ok: true, json: async () => payload });
+            const cache = createCatalogCacheService(db);
+            cache.invalidate();
+            const tracks = await cache.getTracks([SITE]);
+            return tracks[0];
+        };
+
+        test('the remote instance\'s own downloadable flag wins', async () => {
+            const allowed = await parseOne({ releases: [release({ track: { downloadable: true } })] });
+            expect(allowed.downloadUrl).toBe(`${SITE.url}/api/tracks/11/download`);
+
+            const refused = await parseOne({ releases: [release({ track: { downloadable: false }, release: { download: 'free' } })] });
+            expect(refused.downloadUrl).toBeNull();
+        });
+
+        test('an older instance sending no flag is judged from its distribution mode', async () => {
+            const free = await parseOne({ releases: [release({ release: { download: 'free' } })] });
+            expect(free.downloadUrl).toBe(`${SITE.url}/api/tracks/11/download`);
+
+            for (const mode of ['codes', 'none', 'external']) {
+                const refused = await parseOne({ releases: [release({ release: { download: mode } })] });
+                expect(refused.downloadUrl).toBeNull();
+            }
+        });
+
+        test('an older instance advertising a price is treated as selling it', async () => {
+            const priced = await parseOne({ releases: [release({ release: { download: null, price: 4 } })] });
+            expect(priced.downloadUrl).toBeNull();
+
+            const pricedTrack = await parseOne({ releases: [release({ track: { price: 2 }, release: { download: null, price: 0 } })] });
+            expect(pricedTrack.downloadUrl).toBeNull();
+        });
+
+        test('streaming is offered either way — only the download is withheld', async () => {
+            const refused = await parseOne({ releases: [release({ release: { download: 'codes', price: 5 } })] });
+            expect(refused.audioUrl).toBe(`${SITE.url}/api/tracks/11/stream`);
+            expect(refused.downloadUrl).toBeNull();
+        });
+    });
+
     test('peer-bearing catalogs revalidate after the short peer TTL, not the 1h TTL', async () => {
         mockFetch.mockResolvedValue({ ok: true, json: async () => ({ releases: [], peerTracks: [] }) });
         const cache = createCatalogCacheService(db);
