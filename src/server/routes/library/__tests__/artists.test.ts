@@ -7,6 +7,7 @@ import type { DatabaseService } from '../../../core/database.js';
 describe('Artists Routes', () => {
     let app: express.Express;
     let mockDatabase: any;
+    let mockApService: any;
     const musicDir = '/tmp/music';
 
     beforeEach(() => {
@@ -55,6 +56,7 @@ describe('Artists Routes', () => {
         const mockMetadataService = {
             searchArtist: jest.fn().mockReturnValue([])
         };
+        mockApService = { broadcastActorUpdate: jest.fn<any>().mockResolvedValue({ inboxes: 1 }) };
         app.use('/api/artists', createArtistsRoutes({
             database: mockDatabase,
             library: mockDatabase.library || mockDatabase,
@@ -62,7 +64,8 @@ describe('Artists Routes', () => {
             musicDir: musicDir,
             metadataService: mockMetadataService,
             discoveryService: {} as any,
-            catalogService: {} as any
+            catalogService: {} as any,
+            apService: mockApService as any
         } as any));
     });
 
@@ -232,6 +235,38 @@ describe('Artists Routes', () => {
 
             expect(response.status).toBe(200);
             expect(mockDatabase.updateArtist).toHaveBeenCalledWith(2, 'Updated Artist 2', 'Updated Bio 2', undefined, undefined, undefined, undefined, undefined, undefined);
+        });
+
+        /**
+         * Name, bio, links and avatar are the ActivityPub actor's name, summary,
+         * attachment and icon. Remote servers cache all of it and refresh only on
+         * an actor Update — without this the edit is local-only, exactly as the
+         * avatar upload was.
+         */
+        test('announces an actor Update so the Fediverse sees the change', async () => {
+            const artist = { id: 1, name: 'Artist 1', slug: 'artist-1' };
+            mockDatabase.getArtist.mockReturnValue(artist);
+
+            const response = await request(app)
+                .put('/api/artists/1')
+                .set('x-is-admin', 'true')
+                .send({ name: 'Renamed', bio: 'New bio' });
+
+            expect(response.status).toBe(200);
+            expect(mockApService.broadcastActorUpdate).toHaveBeenCalledWith(1);
+        });
+
+        test('a refused edit announces nothing', async () => {
+            const artist = { id: 1, name: 'Artist 1', slug: 'artist-1' };
+            mockDatabase.getArtist.mockReturnValue(artist);
+
+            await request(app)
+                .put('/api/artists/1')
+                .set('x-is-admin', 'false')
+                .set('x-artist-id', '2')
+                .send({ name: 'Hack Artist' });
+
+            expect(mockApService.broadcastActorUpdate).not.toHaveBeenCalled();
         });
 
         test('denies non-admin, non-self from updating artist', async () => {
