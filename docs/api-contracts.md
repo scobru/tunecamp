@@ -31,12 +31,12 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 | `GET` | `/api/albums` | List all local albums. Returns `status` (`draft` \| `published`) and `is_release` (boolean) to distinguish library content from official releases |
 | `GET` | `/api/albums/:id` | Album details including the track list |
 | `GET` | `/api/artists` | List all artists |
-| `POST` | `/api/tracks` | Create a track (import). Accepts an opt-in `localize` boolean: when set on a rippable service (`bandcamp`/`youtube`/`soundcloud`) with a source `url`, the server downloads the audio into a durable local file in the background after responding |
+| `POST` | `/api/tracks` | Create a track from metadata (a link, or a row awaiting its file). The audio is **not** fetched: the track is created with no `file_path` until a file is uploaded for it. There is no `localize` option here — this server does not download audio from streaming platforms |
 | `GET` | `/api/tracks` | List tracks visible to the caller. Each row carries `downloadable`: whether THIS viewer may take the file, not just stream it (clients offering a download button read it instead of guessing) |
 | `GET` | `/api/tracks/:id` | Track metadata |
 | `GET` | `/api/tracks/:id/stream` | Binary audio stream (supports `Range` for cloud tracks) |
 | `GET` | `/api/tracks/:id/download` | Download a single track's local audio file. Gated by the release's distribution mode: paid content needs an unlock code (`?code=`), a recorded purchase or an active subscription (`402` otherwise), streaming-only and external-showcase releases answer `403`. Staff, the owner and the linked artist bypass it |
-| `POST` | `/api/tracks/:id/localize` | Admin-only: download an external track's audio into a durable local file |
+| `POST` | `/api/tracks/:id/localize` | Admin-only: copy a cloud-backed track (a `gdrive://` path) into a durable local file. Streaming platforms are refused with `400` — use [Sidecamp](./sidecamp.md) |
 | `GET` | `/api/albums/:id/download` | Download a ZIP of the album's local audio files (skips streaming/linked tracks). Same distribution-mode gate as the single-track route |
 | `GET` | `/api/releases/:id/download` | Download a ZIP of a release's local audio files. Resolves numeric id or slug; private releases gated to owner/admin, and the same distribution-mode gate as the single-track route applies |
 | `GET` | `/api/waveform/:id` | Waveform data for visualisation |
@@ -139,6 +139,7 @@ All routes require login. See [COLLAB.md](COLLAB.md) for the full feature writeu
 |--------|------|-------------|
 | `GET` | `/api/admin/system/users` | List registered users (admin only) |
 | `POST` | `/api/admin/system/rescan` | Trigger a full library rescan |
+| `POST` | `/api/admin/upload/tracks` | Store one or more audio files and scan them into the library (admin/artist only). `releaseSlug` links them to a release; `artist`/`album` name the container. `title` and `trackNum` set one track's title and position and are honoured **only when a single file is sent** — with several files each one keeps its own tags. Used by the release editor to fill an imported tracklist, whose files are rarely tagged the way the release lists them |
 | `POST` | `/api/admin/upload/additional-artworks` | Upload multiple additional artworks/booklets for a release (admin/artist only) |
 | `GET` | `/api/admin/stats` | Server and database usage statistics |
 | `GET` | `/api/admin/system/resources` | Live process/host resource snapshot — CPU, memory, host RAM, SQLite DB size, and running background tasks (root admin only) |

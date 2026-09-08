@@ -115,6 +115,20 @@ number, so a well-tagged album needs almost no typing. Anything it guesses is
 editable before you save, and fields you have already filled in are never
 overwritten.
 
+### Importing a tracklist
+
+**Import from Bandcamp** fills the release fields and the cover from a public
+release page, and turns its tracklist into **slots**: one row per track, with
+the title, position, duration and a link back to the source, each waiting for
+an audio file you attach yourself. TuneCamp does not download audio from
+streaming platforms, so the import saves you the typing, not the files.
+
+Attach a file to a slot and it is uploaded under that slot's title and
+position on save — which is the point, since the files you have on disk are
+rarely tagged the way the release lists them. A slot you leave empty creates
+nothing and simply stays listed for next time, so a release never ends up
+holding tracks with no audio behind them.
+
 Where uploaded audio lands:
 
 | Uploaded... | Stored at |
