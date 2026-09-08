@@ -10,7 +10,8 @@ import { wrapAsync } from "../../middleware/error-handling.js";
 import { NotFoundError, ForbiddenError, BadRequestError } from "../../common/errors.js";
 import { serveCachedList, invalidateListCacheOnMutation } from "../../common/list-cache.js";
 import { metadataService as metadataServiceModule } from "../../modules/catalog/metadata.service.js";
-import { VisibilityProfile, VisibilityGuardian, Capability } from "../../common/visibility.js";
+import { VisibilityProfile, VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
+import { canDownloadAlbum, createDownloadAccessLookups, downloadDenialError } from "../../common/download-access.js";
 import type { ServiceContainer } from "../../core/container.js";
 
 /**
@@ -24,6 +25,13 @@ export function createAlbumsRoutes(container: ServiceContainer): Router {
     const social = container.social;
     const database = container.database;
     const metadataService = (container as any).metadataService || metadataServiceModule;
+    // Commercial gate for the ZIP route (see common/download-access.ts): being
+    // able to browse a release never implied being able to take its files.
+    const downloadLookups = createDownloadAccessLookups({
+        library,
+        identity: (container as any).identity,
+        integration: (container as any).integration,
+    });
     const router = Router();
     router.use(express.json());
     router.use(invalidateListCacheOnMutation);
@@ -321,6 +329,14 @@ export function createAlbumsRoutes(container: ServiceContainer): Router {
         if (!isAdmin && !isOwner) {
             if (!isRelease || album.visibility === 'private') throw new ForbiddenError("Access denied");
         }
+
+        const decision = canDownloadAlbum(
+            album,
+            req.context || { role: UserRole.GUEST },
+            downloadLookups,
+            { code: typeof req.query.code === "string" ? req.query.code : null }
+        );
+        if (!decision.allowed) throw downloadDenialError(decision.reason);
 
         const tracks = library.getTracksByAlbum(id);
         if (tracks.length === 0) throw new NotFoundError("No tracks found");

@@ -18,6 +18,7 @@ if (ffmpegPath) {
 
 import { metadataService } from "../../modules/catalog/metadata.service.js";
 import { VisibilityGuardian, Capability, UserRole, canConsumeTrack } from "../../common/visibility.js";
+import { canDownloadTrack, createDownloadAccessLookups, downloadDenialError } from "../../common/download-access.js";
 import { mapTrackDTO } from "../../modules/catalog/catalog.mappers.js";
 import { sendStreamResult } from "../../modules/media/media-engine.js";
 import { resolveService, type ServiceContainer } from "../../core/container.js";
@@ -46,6 +47,29 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         getAlbum: (id: number) => library.getAlbum(id),
         isTrackInPublicPlaylist: (id: number) => library.isTrackInPublicPlaylist(id),
     };
+
+    // Commercial gate applied on top of the visibility one: streaming is public,
+    // handing over the master file is not (see common/download-access.ts).
+    const downloadLookups = createDownloadAccessLookups({
+        library,
+        identity: (container as any).identity,
+        integration,
+    });
+
+    /** Throws 402/403 when the viewer may see the track but not take the file. */
+    function assertTrackDownloadable(track: any, req: AuthenticatedRequest): void {
+        const album = track.album_id != null
+            ? (library.getRelease(track.album_id) || library.getAlbum(track.album_id))
+            : null;
+        const decision = canDownloadTrack(
+            track,
+            album,
+            req.context || { role: UserRole.GUEST },
+            downloadLookups,
+            { code: typeof req.query.code === "string" ? req.query.code : null }
+        );
+        if (!decision.allowed) throw downloadDenialError(decision.reason);
+    }
 
     /**
      * GET /api/tracks
@@ -525,6 +549,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         if (!canConsumeTrack(track, req.context || { role: UserRole.GUEST }, trackLookups)) {
             throw new ForbiddenError("Access denied");
         }
+        assertTrackDownloadable(track, req);
 
         if (!track.file_path) throw new NotFoundError("Track file not found");
         if (track.file_path.startsWith("gdrive://")) {

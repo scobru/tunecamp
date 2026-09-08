@@ -1101,6 +1101,10 @@ export interface IntegrationManager {
 	listUnlockCodes(releaseId?: number): any[];
 	getUnlockCodeByTxHash(txHash: string): any | undefined;
 	getPurchasesByUser(userId: number): any[];
+	hasPurchase(
+		userId: number,
+		target: { trackId?: number | null; releaseId?: number | null },
+	): boolean;
 
 	// Assets
 	getPublicAssets(): any[];
