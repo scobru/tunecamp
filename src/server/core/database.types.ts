@@ -226,6 +226,8 @@ export interface Post {
 	visibility: "public" | "private" | "unlisted";
 	published_at: string | null;
 	created_at: string;
+	/** When the post was last edited; null while it still says what it first said. */
+	updated_at?: string | null;
 	artist_name?: string;
 	artist_slug?: string;
 	artist_photo?: string | null;

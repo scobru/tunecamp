@@ -460,7 +460,8 @@ export function createDatabase(dbPath: string): DatabaseService {
             slug TEXT NOT NULL UNIQUE,
             visibility TEXT DEFAULT 'public',
             published_at TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT
         );
 
         CREATE TABLE IF NOT EXISTS artist_events (
@@ -1559,6 +1560,14 @@ export function createDatabase(dbPath: string): DatabaseService {
 					"📦 [Database] Migrating posts table: adding summary column...",
 				);
 				db.exec("ALTER TABLE posts ADD COLUMN summary TEXT");
+			}
+			if (!cols.some((col) => col.name === "updated_at")) {
+				console.log(
+					"📦 [Database] Migrating posts table: adding updated_at column...",
+				);
+				// Left NULL for existing posts on purpose: it means "never edited",
+				// and the ActivityPub object omits `updated` in that case.
+				db.exec("ALTER TABLE posts ADD COLUMN updated_at TEXT");
 			}
 		}
 

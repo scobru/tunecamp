@@ -30,7 +30,8 @@ function setupDb(): DatabaseType {
             slug TEXT NOT NULL UNIQUE,
             visibility TEXT DEFAULT 'public',
             published_at TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT
         );
         CREATE TABLE artist_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -436,6 +437,20 @@ describe("SocialManager", () => {
             expect(post.visibility).toBe("unlisted");
             expect(post.title).toBe("New Title");
             expect(post.summary).toBe("New summary");
+        });
+
+        // The edit timestamp is what an ActivityPub `Update` carries as `updated`,
+        // and Mastodon applies an edit only when that key is present and newer
+        // than what it holds — so a post that has never been edited must not have
+        // one, and an edit must set it.
+        test("updatePost stamps updated_at, and a fresh post has none", () => {
+            const id = manager.createPost(1, "original", "public", "Original Title");
+            expect((manager.getPost(id) as any).updated_at).toBeNull();
+
+            manager.updatePost(id, "edited");
+            const stamped = (manager.getPost(id) as any).updated_at;
+            expect(stamped).toEqual(expect.any(String));
+            expect(new Date(stamped).toISOString()).toBe(stamped);
         });
 
         test("updatePostVisibility and deletePost", () => {

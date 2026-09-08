@@ -122,6 +122,13 @@ export class ActivityPubRenderer {
         const apiUrl = `${this.baseUrl}/users/${artist.slug}`;
         const published = post.published_at || post.created_at;
         const sentTime = published ? new Date(published).getTime() : 0;
+        // Mastodon applies a remote edit only when the object carries `updated`
+        // (ActivityPub::Parser::StatusParser#edited_at reads exactly this key) and
+        // that timestamp is newer than the one it already holds; without it the
+        // Update is accepted and the content quietly left alone. Omitted entirely
+        // for a post that has never been edited, so a first publish does not show
+        // up as already edited.
+        const updated = post.updated_at || undefined;
 
         // Parse markdown image syntax to populate the attachments array
         const attachments: any[] = [];
@@ -157,6 +164,7 @@ export class ActivityPubRenderer {
                 attributedTo: userUrl,
                 content: contentHtml,
                 published: published,
+                updated: updated,
                 to: ["https://www.w3.org/ns/activitystreams#Public"],
                 cc: [`${apiUrl}/followers`],
                 attachment: attachments.length > 0 ? attachments : undefined
@@ -179,6 +187,7 @@ export class ActivityPubRenderer {
             content: contentHtml,
             url: postUrl,
             published: published,
+            updated: updated,
             to: ["https://www.w3.org/ns/activitystreams#Public"],
             cc: [`${apiUrl}/followers`],
             attachment: attachments.length > 0 ? attachments : undefined
