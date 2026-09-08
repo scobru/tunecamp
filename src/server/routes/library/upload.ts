@@ -268,7 +268,19 @@ export function createUploadRoutes(container: ServiceContainer): Router {
     router.post("/tracks", rejectAs400(upload.array("files", 50)), async (req: any, res: any) => {
         try {
             const files = req.files as Express.Multer.File[];
-            const { releaseSlug, artistId: bodyArtistId, artist: bodyArtistName, album: bodyAlbumTitle, title: bodyTrackTitle } = req.body;
+            const { releaseSlug, artistId: bodyArtistId, artist: bodyArtistName, album: bodyAlbumTitle, title: bodyTrackTitle, trackNum: bodyTrackNum } = req.body;
+
+            // Title and position name ONE track, so they only make sense when one
+            // file is being stored. Applying them to a batch would stamp the same
+            // title on every file in it; the batch keeps reading its own tags.
+            const isSingleFile = Array.isArray(files) && files.length === 1;
+            const parsedTrackNum = parseInt(String(bodyTrackNum ?? ""), 10);
+            const perTrackHints = isSingleFile
+                ? {
+                    title: bodyTrackTitle || undefined,
+                    trackNum: Number.isFinite(parsedTrackNum) && parsedTrackNum > 0 ? parsedTrackNum : undefined
+                }
+                : {};
 
             // Get release if applicable
             const formalRelease = releaseSlug ? library.getReleaseBySlug(releaseSlug) : undefined;
@@ -460,7 +472,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
                         targetAlbumId,
                         undefined,
                         {
-                            title: bodyTrackTitle || undefined,
+                            ...perTrackHints,
                             artist: bodyArtistName || undefined,
                             album: bodyAlbumTitle || undefined
                         }

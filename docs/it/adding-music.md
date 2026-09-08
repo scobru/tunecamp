@@ -119,6 +119,20 @@ un album ben taggato richiede quasi zero digitazione. Tutto ciò che viene
 indovinato resta modificabile prima del salvataggio, e i campi che hai già
 compilato non vengono mai sovrascritti.
 
+### Importare una tracklist
+
+**Import from Bandcamp** compila i campi della release e la copertina da una
+pagina pubblica, e trasforma la sua tracklist in **slot**: una riga per
+traccia, con titolo, posizione, durata e il link alla fonte, ciascuna in attesa
+di un file audio che alleghi tu. TuneCamp non scarica audio dalle piattaforme
+di streaming: l'import ti risparmia la digitazione, non i file.
+
+Allega un file a uno slot e al salvataggio viene caricato con il titolo e la
+posizione di quello slot — che è poi il punto, visto che i file che hai su
+disco raramente sono taggati come la release li elenca. Uno slot lasciato vuoto
+non crea nulla e resta semplicemente in elenco per la volta successiva, così
+una release non finisce mai per contenere tracce senza audio dietro.
+
 Dove finisce l'audio caricato:
 
 | Caricato... | Salvato in |
