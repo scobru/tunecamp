@@ -95,11 +95,16 @@ export async function bootstrapServices(
 				`Admin account '${adminUser}' is still using a default/weak password. Change it now (or set TUNECAMP_ADMIN_PASS).`,
 			);
 		}
-		if (!config.corsOrigins || config.corsOrigins.length === 0) {
-			warnings.push(
-				`CORS is open to all origins. Set TUNECAMP_CORS_ORIGINS to your domain(s) before exposing this instance publicly.`,
-			);
-		}
+		// No CORS warning here on purpose. An unset TUNECAMP_CORS_ORIGINS makes
+		// app.ts pass `origin: false` to cors(), which sends no
+		// Access-Control-Allow-Origin at all — the restrictive default, not an
+		// open one. This block used to report the opposite ("CORS is open to all
+		// origins"), pushing admins to configure a variable they mostly do not
+		// need and implying a hole that was not there. The routes that ARE
+		// cross-origin readable (the federation surface: catalog, community,
+		// tracks, albums, releases, samples, /rest) opt in explicitly and stay
+		// open whatever this variable says, so the variable is a deployment
+		// detail rather than a security control.
 		if (!process.env.TUNECAMP_JWT_SECRET) {
 			warnings.push(
 				`No TUNECAMP_JWT_SECRET set — using an auto-generated secret file. Set an explicit secret for stable sessions across deployments.`,

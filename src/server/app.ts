@@ -32,6 +32,10 @@ export function createApp(config: ServerConfig): AppSetupResult {
     app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 })); 
     app.use('/rest', rateLimit({ windowMs: 15 * 60 * 1000, max: 5000 }));
 
+    // `origin: false` means the cors package sends NO Access-Control-Allow-Origin,
+    // i.e. no cross-origin browser access — so an unset TUNECAMP_CORS_ORIGINS is the
+    // restrictive default, not an open one. (The same-origin webapp never goes
+    // through CORS at all, and the federation surface below opts in separately.)
     const corsOrigin = config.corsOrigins && config.corsOrigins.length > 0 ? config.corsOrigins : false;
     const strictCors = cors({ origin: corsOrigin, credentials: true });
 
