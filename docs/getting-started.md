@@ -75,7 +75,7 @@ TuneCamp creates a default admin account on first run:
 
 (Override these before first run with `TUNECAMP_ADMIN_USER` / `TUNECAMP_ADMIN_PASS`.)
 
-**Change the admin password immediately** after logging in, from **Admin → Settings**. The server logs a security warning at startup while the admin account, open CORS, or an auto-generated JWT secret are left at defaults — see the [Configuration reference](https://github.com/scobru/tunecamp/blob/main/README.md#configuration) to harden these.
+**Change the admin password immediately** after logging in, from **Admin → Settings**. The server logs a security warning at startup while the admin account or an auto-generated JWT secret are left at defaults — see the [Configuration reference](https://github.com/scobru/tunecamp/blob/main/README.md#configuration) to harden these.
 
 > A built-in setup wizard forces a password change for any account still using a default password, and the server enforces it: until the password is changed, that account gets `403` on every endpoint except the ones needed to change it, and Subsonic (`/rest`) is refused entirely. Anonymous listeners are unaffected. Details in [Roles & Permissions](./ROLES.md#first-login-setup-wizard).
 

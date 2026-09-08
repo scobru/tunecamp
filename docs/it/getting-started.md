@@ -75,7 +75,7 @@ Al primo avvio, TuneCamp crea un account amministratore predefinito:
 
 (Puoi sovrascrivere queste credenziali prima del primo avvio impostando le variabili d'ambiente `TUNECAMP_ADMIN_USER` e `TUNECAMP_ADMIN_PASS`.)
 
-**Modifica la password dell'amministratore immediatamente** dopo il primo accesso, andando su **Admin → Settings**. All'avvio, il server registra un avviso di sicurezza se l'account admin, le impostazioni CORS o il segreto JWT generato automaticamente sono rimasti a quelli predefiniti — consulta il [riferimento per la configurazione](https://github.com/scobru/tunecamp/blob/main/README.md#configuration) per proteggere la tua istanza.
+**Modifica la password dell'amministratore immediatamente** dopo il primo accesso, andando su **Admin → Settings**. All'avvio, il server registra un avviso di sicurezza se l'account admin o il segreto JWT generato automaticamente sono rimasti a quelli predefiniti — consulta il [riferimento per la configurazione](https://github.com/scobru/tunecamp/blob/main/README.md#configuration) per proteggere la tua istanza.
 
 > Una procedura guidata integrata forza la modifica della password per qualsiasi account che utilizzi ancora credenziali predefinite, e il server la fa rispettare: finché la password non viene cambiata, quell'account riceve `403` su ogni endpoint tranne quelli necessari a cambiarla, e Subsonic (`/rest`) viene rifiutato del tutto. Gli ascoltatori anonimi non sono toccati. I dettagli sono disponibili in [Ruoli e Permessi](./ROLES.md#primo-accesso-procedura-guidata-di-configurazione).
 
