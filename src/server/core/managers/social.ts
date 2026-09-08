@@ -125,8 +125,12 @@ export function createSocialManager(
             return Number(db.prepare("INSERT INTO posts (artist_id, content, slug, visibility, published_at, title, summary) VALUES (?, ?, ?, ?, ?, ?, ?)").run(aid, c, generatedSlug, v, (v === 'public' || v === 'unlisted') ? new Date().toISOString() : null, t || null, s || null).lastInsertRowid);
         },
         updatePost(id: number, c: string, v?: any, t?: string | null, s?: string | null) {
-            const updates: string[] = ["content = ?"];
-            const params: any[] = [c];
+            // Stamped in ISO 8601 UTC rather than SQLite's CURRENT_TIMESTAMP: this
+            // value is published as the ActivityPub object's `updated`, and Mastodon
+            // applies an edit only when that timestamp parses and is newer than the
+            // one it already holds.
+            const updates: string[] = ["content = ?", "updated_at = ?"];
+            const params: any[] = [c, new Date().toISOString()];
             if (v !== undefined) {
                 updates.push("visibility = ?");
                 params.push(v);
