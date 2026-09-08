@@ -49,7 +49,9 @@ The directory instance will:
 | `422` | URL is not a reachable TuneCamp instance (NodeInfo check failed). |
 | `429` | Rate limited — 1 registration per IP per hour. `Retry-After` header included. |
 
-The endpoint is public (no auth required) and CORS-enabled, so the [community website](https://github.com/scobru/tunecamp-website) can call it directly from the browser. The rate limit is enforced per IP to prevent abuse.
+The endpoint is public (no auth required) and CORS-enabled — wildcard, credential-less, independent of `TUNECAMP_CORS_ORIGINS` — so the [community website](https://github.com/scobru/tunecamp-website) can call it directly from the browser. The rate limit is enforced per IP to prevent abuse.
+
+Note that the CORS policy of the **directory** instance is what matters here: the URL being registered is only a payload, and the instance it points at is contacted server-to-server (NodeInfo), where CORS plays no part at all. An instance that fails the `422` check is unreachable or not answering NodeInfo — not missing a CORS header.
 
 ### Configuration
 
