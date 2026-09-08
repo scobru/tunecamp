@@ -49,7 +49,9 @@ L'istanza directory:
 | `422` | L'URL non è un'istanza TuneCamp raggiungibile (controllo NodeInfo fallito). |
 | `429` | Rate limit superato — 1 registrazione per IP all'ora. Header `Retry-After` incluso. |
 
-L'endpoint è pubblico (nessuna autenticazione richiesta) e abilitato a livello CORS, così il [sito web della community](https://github.com/scobru/tunecamp-website) può chiamarlo direttamente dal browser. Il rate limit è applicato per IP per prevenire abusi.
+L'endpoint è pubblico (nessuna autenticazione richiesta) e abilitato a livello CORS — wildcard, senza credenziali, indipendente da `TUNECAMP_CORS_ORIGINS` — così il [sito web della community](https://github.com/scobru/tunecamp-website) può chiamarlo direttamente dal browser. Il rate limit è applicato per IP per prevenire abusi.
+
+Attenzione: qui conta la policy CORS dell'istanza **directory**. L'URL che si registra è solo un payload, e l'istanza a cui punta viene contattata server-to-server (NodeInfo), dove il CORS non entra in gioco. Un'istanza che fallisce il controllo (`422`) è irraggiungibile o non risponde a NodeInfo — non le manca un header CORS.
 
 ### Configurazione
 

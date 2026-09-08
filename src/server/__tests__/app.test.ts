@@ -68,6 +68,55 @@ describe("Express App Bootstrap & Routing Setup", () => {
 			expect(res.headers["access-control-allow-origin"]).toBe("https://my-app.tunecamp.net");
 		});
 
+		test("POST /api/community/register allows wildcard CORS (the website registers from the browser)", async () => {
+			const { app } = createApp(dummyConfig);
+			app.post("/api/community/register", (req, res) => res.json({ ok: true }));
+
+			const res = await request(app)
+				.post("/api/community/register")
+				.set("Origin", "https://tunecamp.example");
+
+			expect(res.status).toBe(200);
+			expect(res.headers["access-control-allow-origin"]).toBe("*");
+		});
+
+		test("preflight for POST /api/community/register is answered with wildcard CORS", async () => {
+			const { app } = createApp(dummyConfig);
+			app.post("/api/community/register", (req, res) => res.json({ ok: true }));
+
+			const res = await request(app)
+				.options("/api/community/register")
+				.set("Origin", "https://tunecamp.example")
+				.set("Access-Control-Request-Method", "POST")
+				.set("Access-Control-Request-Headers", "content-type");
+
+			expect(res.status).toBeLessThan(300);
+			expect(res.headers["access-control-allow-origin"]).toBe("*");
+		});
+
+		test("other /api/community mutations keep strict CORS", async () => {
+			const { app } = createApp(dummyConfig);
+			app.post("/api/community/registry", (req, res) => res.json({ ok: true }));
+
+			const res = await request(app)
+				.post("/api/community/registry")
+				.set("Origin", "https://tunecamp.example");
+
+			expect(res.headers["access-control-allow-origin"]).toBeUndefined();
+		});
+
+		test("a credentialed register request falls back to strict CORS", async () => {
+			const { app } = createApp(dummyConfig);
+			app.post("/api/community/register", (req, res) => res.json({ ok: true }));
+
+			const res = await request(app)
+				.post("/api/community/register")
+				.set("Origin", "https://tunecamp.example")
+				.set("Authorization", "Bearer token");
+
+			expect(res.headers["access-control-allow-origin"]).toBeUndefined();
+		});
+
 	// ── Static & Fallback Routes ────────────────────────────────────────────
 
 	describe("setupStaticAndFallbackRoutes", () => {
