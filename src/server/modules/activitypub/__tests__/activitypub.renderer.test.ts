@@ -94,3 +94,66 @@ describe('ActivityPubRenderer image handling', () => {
         expect(note.content).toContain('<strong>text</strong>');
     });
 });
+
+/**
+ * Mastodon's ActivityPub::Parser::StatusParser#edited_at reads the object's
+ * `updated` key and nothing else; ProcessStatusUpdateService applies the edit
+ * only when that timestamp is present AND newer than the one it holds. Without
+ * it the Update is accepted and the content silently left alone — which is why
+ * an edit reached the local timeline and never Mastodon.
+ */
+describe('ActivityPubRenderer edit timestamps', () => {
+    test('omits `updated` for a post that has never been edited', () => {
+        const note = renderer.renderPostArticle(
+            { slug: 'p', content: 'First words', published_at: '2026-01-01T00:00:00.000Z' } as any,
+            artist,
+        );
+        expect(note.updated).toBeUndefined();
+    });
+
+    test('publishes `updated` on an edited Note', () => {
+        const note = renderer.renderPostArticle(
+            {
+                slug: 'p',
+                content: 'Second thoughts',
+                published_at: '2026-01-01T00:00:00.000Z',
+                updated_at: '2026-01-02T10:30:00.000Z',
+            } as any,
+            artist,
+        );
+        expect(note.type).toBe('Note');
+        expect(note.updated).toBe('2026-01-02T10:30:00.000Z');
+    });
+
+    test('publishes `updated` on an edited Article too', () => {
+        const article = renderer.renderPostArticle(
+            {
+                slug: 'p',
+                title: 'A title',
+                content: 'Second thoughts',
+                published_at: '2026-01-01T00:00:00.000Z',
+                updated_at: '2026-01-02T10:30:00.000Z',
+            } as any,
+            artist,
+        );
+        expect(article.type).toBe('Article');
+        expect(article.updated).toBe('2026-01-02T10:30:00.000Z');
+    });
+
+    test('keeps the object id stable across an edit, so the Update targets what remotes already have', () => {
+        const before = renderer.renderPostArticle(
+            { slug: 'p', content: 'First words', published_at: '2026-01-01T00:00:00.000Z' } as any,
+            artist,
+        );
+        const after = renderer.renderPostArticle(
+            {
+                slug: 'p',
+                content: 'Second thoughts',
+                published_at: '2026-01-01T00:00:00.000Z',
+                updated_at: '2026-01-02T10:30:00.000Z',
+            } as any,
+            artist,
+        );
+        expect(after.id).toBe(before.id);
+    });
+});
