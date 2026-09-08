@@ -112,20 +112,35 @@ describe('Upload Routes - per-track metadata hints', () => {
         await fs.remove(tempMusicDir);
     });
 
-    /** Attach `count` distinct audio files to the request. */
-    const attachFiles = async (req: request.Test, count: number) => {
+    /**
+     * Write `count` audio files and return their paths. Kept separate from
+     * building the request: a supertest `Test` is thenable, so awaiting a
+     * helper that returns one sends the request there and then, and what comes
+     * back is a Response with no `.field()` left to call.
+     */
+    const writeFiles = async (count: number) => {
+        const paths: string[] = [];
         for (let i = 0; i < count; i++) {
             const audioPath = path.join(tempMusicDir, `test-${i}.mp3`);
             await fs.writeFile(audioPath, `fake audio content ${i}`);
-            req = req.attach('files', audioPath);
+            paths.push(audioPath);
         }
+        return paths;
+    };
+
+    /** One upload request carrying `paths` as files and `fields` as text. */
+    const uploadWith = (paths: string[], fields: Record<string, string> = {}) => {
+        let req = request(app).post('/upload/tracks');
+        for (const [name, value] of Object.entries(fields)) req = req.field(name, value);
+        for (const filePath of paths) req = req.attach('files', filePath);
         return req;
     };
 
     test('passes title and trackNum through for a single file', async () => {
-        const response = await (await attachFiles(request(app).post('/upload/tracks'), 1))
-            .field('title', 'Nocturne in C')
-            .field('trackNum', '4');
+        const response = await uploadWith(await writeFiles(1), {
+            title: 'Nocturne in C',
+            trackNum: '4',
+        });
 
         expect(response.status).toBe(202);
         expect(mockScanner.processAudioFile).toHaveBeenCalledTimes(1);
@@ -133,9 +148,10 @@ describe('Upload Routes - per-track metadata hints', () => {
     });
 
     test('ignores title and trackNum when several files are uploaded at once', async () => {
-        const response = await (await attachFiles(request(app).post('/upload/tracks'), 3))
-            .field('title', 'Nocturne in C')
-            .field('trackNum', '4');
+        const response = await uploadWith(await writeFiles(3), {
+            title: 'Nocturne in C',
+            trackNum: '4',
+        });
 
         expect(response.status).toBe(202);
         expect(mockScanner.processAudioFile).toHaveBeenCalledTimes(3);
@@ -146,7 +162,7 @@ describe('Upload Routes - per-track metadata hints', () => {
     });
 
     test('leaves the hints unset when the upload names neither', async () => {
-        const response = await attachFiles(request(app).post('/upload/tracks'), 1);
+        const response = await uploadWith(await writeFiles(1));
 
         expect(response.status).toBe(202);
         expect(hintsOfCall(0).title).toBeUndefined();
@@ -154,9 +170,10 @@ describe('Upload Routes - per-track metadata hints', () => {
     });
 
     test('rejects a position that is not a usable track number', async () => {
-        const response = await (await attachFiles(request(app).post('/upload/tracks'), 1))
-            .field('title', 'Nocturne in C')
-            .field('trackNum', 'side B');
+        const response = await uploadWith(await writeFiles(1), {
+            title: 'Nocturne in C',
+            trackNum: 'side B',
+        });
 
         expect(response.status).toBe(202);
         // The title still applies; only the unusable position is dropped, so the
