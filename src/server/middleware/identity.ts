@@ -50,6 +50,28 @@ export const GUEST_IDENTITY: RequestIdentity = Object.freeze({
 	context: { role: UserRole.GUEST },
 });
 
+/**
+ * The role the request actually carries.
+ *
+ * `is_root` and `role` are two records of the same fact and installations
+ * exist where they disagree: the primary admin predates the `root_admin`
+ * role, so its row still reads `admin` while every root check derives root
+ * from the row being id 1. Login already resolves that in the account's
+ * favour (`if (user.id === 1) userRole = ROOT_ADMIN`), so the token says
+ * root_admin while the row says admin — and since the row wins here, root
+ * capabilities were lost the moment the derivation started re-reading it.
+ * MANAGE_SYSTEM is role-only, so those installs got 403 on every root
+ * surface (GET /api/admin/settings among them) from an account the same
+ * request reports as `isRootAdmin: true`.
+ *
+ * Promotion is deliberately confined to accounts the row already calls
+ * administrators: it reconciles two spellings of "primary admin", and never
+ * grants root to an account the database has demoted below admin.
+ */
+function effectiveRole(role: UserRole, isRoot: boolean): UserRole {
+	return isRoot && VisibilityGuardian.isAdminRole(role) ? UserRole.ROOT_ADMIN : role;
+}
+
 function build(fields: {
 	userId: number | undefined;
 	username: string | undefined;
@@ -58,20 +80,22 @@ function build(fields: {
 	isActive: boolean;
 	isRoot: boolean;
 }): RequestIdentity {
+	const role = effectiveRole(fields.role, fields.isRoot);
+
 	const context = VisibilityGuardian.deriveContext({
 		userId: fields.userId,
 		username: fields.username,
-		role: fields.role,
+		role,
 		artistId: fields.artistId ?? null,
 		isActive: fields.isActive,
 	} as TokenPayload);
 
 	return {
-		isAdmin: VisibilityGuardian.isAdminRole(fields.role),
-		isSuperUser: fields.role === UserRole.SUPER_USER,
+		isAdmin: VisibilityGuardian.isAdminRole(role),
+		isSuperUser: role === UserRole.SUPER_USER,
 		isRootAdmin: fields.isRoot,
 		username: fields.username,
-		role: fields.role,
+		role,
 		isActive: fields.isActive,
 		userId: fields.userId,
 		artistId: fields.artistId,

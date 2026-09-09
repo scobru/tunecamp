@@ -189,6 +189,66 @@ describe("AuthService", () => {
 		});
 	});
 
+	describe("the primary admin's role predates root_admin", () => {
+		/**
+		 * `is_root` means "row 1" everywhere in this codebase, but installations
+		 * older than the `root_admin` role store that same account as `admin`.
+		 * Login has always resolved the disagreement in the account's favour;
+		 * the request path re-reads the row, so while the two spellings
+		 * coexisted the owner of the instance was refused every MANAGE_SYSTEM
+		 * route. Startup writes the role the row has always implied.
+		 */
+		test("init promotes a legacy id-1 'admin' row to root_admin", async () => {
+			db.prepare("UPDATE admin SET role = 'admin' WHERE id = 1").run();
+
+			await authService.init();
+
+			expect(
+				db.prepare("SELECT role FROM admin WHERE id = 1").get().role,
+			).toBe("root_admin");
+		});
+
+		test("init leaves every other admin alone", async () => {
+			const { id } = await authService.createAdmin("second", "pw", null, "admin");
+
+			await authService.init();
+
+			expect(
+				db.prepare("SELECT role FROM admin WHERE id = ?").get(id).role,
+			).toBe("admin");
+		});
+
+		/**
+		 * The users form submits the role it rendered even when the admin only
+		 * meant to link an artist, so `admin` arrives for row 1 from an
+		 * ordinary edit. Storing it would drop the instance owner out of
+		 * MANAGE_SYSTEM — and, because the role changed, log them out on the
+		 * way.
+		 */
+		test("linking an artist cannot demote row 1 out of root_admin", async () => {
+			const root = db.prepare("SELECT * FROM admin WHERE id = 1").get();
+			const token = authService.generateToken({
+				username: root.username,
+				userId: 1,
+				role: root.role,
+				tokenVersion: root.token_version,
+			});
+
+			authService.updateAdmin(1, 7, "admin" as any);
+
+			expect(
+				db.prepare("SELECT role, artist_id FROM admin WHERE id = 1").get(),
+			).toMatchObject({ role: "root_admin", artist_id: 7 });
+			expect(await authService.verifyToken(token)).not.toBeNull();
+		});
+
+		test("a demotion below admin is still refused for row 1", () => {
+			expect(() => authService.updateAdmin(1, null, "user" as any)).toThrow(
+				/Cannot demote the primary admin/,
+			);
+		});
+	});
+
 	describe("encryptZenPrivHelper", () => {
 		const TEST_SECRET = "super-secret-key-12345";
 		const TEST_DATA = { user: "test", id: 42 };

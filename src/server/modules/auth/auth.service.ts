@@ -496,6 +496,22 @@ export function createAuthService(
 				}
 			}
 
+			// Row 1 is the primary admin by construction — that is what every
+			// `is_root` in this codebase means. Installations predating the
+			// `root_admin` role still store it as `admin`, which login papers
+			// over (it issues a root_admin token for id 1) but the request
+			// path does not: guards re-read the row, and a role-only
+			// MANAGE_SYSTEM then refuses the owner of the instance. Write the
+			// role the row has always implied, once, so the two agree.
+			const primaryAdminRole = db
+				.prepare("UPDATE admin SET role = 'root_admin' WHERE id = 1 AND role = 'admin'")
+				.run();
+			if (primaryAdminRole.changes > 0) {
+				console.log(
+					"🔐 Primary admin (id 1) promoted from 'admin' to 'root_admin' — legacy role normalised.",
+				);
+			}
+
 			const count = (
 				db.prepare("SELECT COUNT(*) as count FROM admin").get() as any
 			).count;
@@ -995,14 +1011,24 @@ export function createAuthService(
 					| { role: UserRole }
 					| undefined
 			)?.role;
-			const roleChanged = !!role && !!previousRole && role !== previousRole;
 
-			if (role) {
+			// Row 1 is the primary admin by construction, and `admin` is only
+			// how installations older than the `root_admin` role spell that.
+			// Storing it verbatim would drop the instance owner out of
+			// MANAGE_SYSTEM, and this is reachable from an ordinary edit: the
+			// users form submits the role it rendered even when the admin only
+			// meant to link an artist.
+			const storedRole =
+				role && id === 1 ? (UserRole.ROOT_ADMIN as UserRole) : role;
+			const roleChanged =
+				!!storedRole && !!previousRole && storedRole !== previousRole;
+
+			if (storedRole) {
 				if (id === 1 && role !== "admin" && role !== "root_admin") {
 					throw new Error("Cannot demote the primary admin");
 				}
 				updates.push("role = ?");
-				params.push(role);
+				params.push(storedRole);
 			}
 
 			if (storageQuota !== undefined) {
