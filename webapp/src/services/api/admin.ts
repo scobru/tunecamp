@@ -1,4 +1,4 @@
-import { api, handleResponse } from './client';
+import { api, handleResponse, uploadProgressConfig } from './client';
 import type {
     Track, Album, Artist, SiteSettings, User, Release,
     AdminStats, StorageAccount, GoogleDriveFile, InstanceStorage,
@@ -153,29 +153,22 @@ export const adminApi = {
             formData.append('trackNum', String(options.trackNum));
         }
         files.forEach(file => formData.append('files', file));
-        return handleResponse(api.post('admin/upload/tracks', formData, {
-            onUploadProgress: (progressEvent) => {
-                if (options.onProgress && progressEvent.total) {
-                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    options.onProgress(percentCompleted);
-                }
-            }
-        }));
+        return handleResponse(api.post('admin/upload/tracks', formData, uploadProgressConfig(options.onProgress)));
     },
-    uploadCover: (file: File, releaseSlug?: string) => {
+    uploadCover: (file: File, releaseSlug?: string, onProgress?: (percent: number) => void) => {
         const formData = new FormData();
         formData.append('file', file);
         if (releaseSlug) {
             formData.append('releaseSlug', releaseSlug);
             formData.append('type', 'release');
         }
-        return handleResponse(api.post('admin/upload/cover', formData));
+        return handleResponse(api.post('admin/upload/cover', formData, uploadProgressConfig(onProgress)));
     },
-    uploadAdditionalArtworks: (releaseSlug: string, files: File[]) => {
+    uploadAdditionalArtworks: (releaseSlug: string, files: File[], onProgress?: (percent: number) => void) => {
         const formData = new FormData();
         formData.append('releaseSlug', releaseSlug);
         files.forEach(file => formData.append('files', file));
-        return handleResponse(api.post<{ additional_artworks: string[] }>('admin/upload/additional-artworks', formData));
+        return handleResponse(api.post<{ additional_artworks: string[] }>('admin/upload/additional-artworks', formData, uploadProgressConfig(onProgress)));
     },
 
     uploadTrackArtwork: (trackId: string, file: File) => {

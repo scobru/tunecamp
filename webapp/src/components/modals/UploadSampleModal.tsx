@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import API from "../../services/api";
 import { UploadCloud, Music2 } from "lucide-react";
+import { UploadProgress } from "../ui/UploadProgress";
+import { formatBytes } from "../../utils/format";
 
 const LICENSES = ["cc0", "cc-by", "cc-by-sa", "royalty-free"];
 
@@ -19,6 +21,8 @@ export const UploadSampleModal = ({
   const [attributionName, setAttributionName] = useState("");
   const [tags, setTags] = useState("");
   const [uploading, setUploading] = useState(false);
+  /** Bytes sent, as a percentage. Samples are small but packs are not. */
+  const [percent, setPercent] = useState(0);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -33,6 +37,7 @@ export const UploadSampleModal = ({
       setTags("");
       setError("");
       setUploading(false);
+      setPercent(0);
       dialogRef.current?.showModal();
     };
     document.addEventListener("open-upload-sample-modal", handleOpen);
@@ -53,11 +58,12 @@ export const UploadSampleModal = ({
 
     setUploading(true);
     setError("");
+    setPercent(0);
     try {
       if (isPack) {
-        await API.uploadSamplePack(files, { title, description, license, attributionName });
+        await API.uploadSamplePack(files, { title, description, license, attributionName }, setPercent);
       } else {
-        await API.uploadSample(files[0], { title, description, bpm, musicalKey, license, attributionName, tags });
+        await API.uploadSample(files[0], { title, description, bpm, musicalKey, license, attributionName, tags }, setPercent);
       }
       onUploadComplete?.();
       dialogRef.current?.close();
@@ -145,6 +151,15 @@ export const UploadSampleModal = ({
           </div>
 
           {error && <div className="text-error text-sm text-center">{error}</div>}
+
+          {uploading && (
+            <UploadProgress
+              label={isPack ? `Uploading ${files.length} files` : `Uploading ${files[0]?.name ?? "sample"}`}
+              percent={percent}
+              detail={formatBytes(files.reduce((sum, f) => sum + f.size, 0))}
+              color="secondary"
+            />
+          )}
 
           <div className="modal-action">
             <button type="button" className="btn btn-ghost" onClick={() => dialogRef.current?.close()}>Close</button>

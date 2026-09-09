@@ -7,7 +7,7 @@ import type { AudioTags } from "../services/api/admin";
 import { genreDatalistOptions } from "../constants/genres";
 import { useWalletStore } from "../stores/useWalletStore";
 import { notify } from "../utils/notify";
-import { formatDuration } from "../utils/format";
+import { formatBytes, formatDuration } from "../utils/format";
 import { canPublish, canManageItem } from "../utils/permissions";
 import { ethers } from "ethers";
 import { DEPLOYMENTS } from "shogun-contracts-sdk";
@@ -15,6 +15,7 @@ import { TrackPickerModal } from "../components/modals/TrackPickerModal";
 import { UnlockCodeManager } from "../components/modals/UnlockCodeManager";
 import { ImportBandcampReleaseModal } from "../components/modals/ImportBandcampReleaseModal";
 import { AddYouTubeTrackModal } from "../components/modals/AddYouTubeTrackModal";
+import { UploadProgress } from "../components/ui/UploadProgress";
 import {
   Image as ImageIcon,
   Music,
@@ -31,6 +32,7 @@ import {
   Disc,
   Youtube,
   Mic,
+  UploadCloud,
 } from "lucide-react";
 
 interface LocalTrack {
@@ -82,6 +84,30 @@ interface ImportedSlot {
   /** Where the line came from, kept so the artist can open the original page. */
   sourceUrl: string | null;
   file: File | null;
+}
+
+/**
+ * What the request chain behind one Save / Upload click is doing right now.
+ *
+ * Saving a release is never one request: metadata, then the cover, then one
+ * request per audio file, then the per-track metadata edits. The audio is the
+ * slow part — tens of megabytes each — and until this existed the artist
+ * clicked Save and watched a disabled button, with no way to tell an upload in
+ * flight from a stuck one.
+ */
+interface SaveProgress {
+  /** Line shown next to the bar, e.g. `Uploading 2 of 5 — kick.wav`. */
+  label: string;
+  /** 0-100 across the whole chain, not just the request in flight. */
+  percent: number;
+  /** Optional second line: what is left, or what failed. */
+  detail?: string;
+}
+
+/** Transfer state of one queued audio file, shown on its row. */
+interface FileProgress {
+  percent: number;
+  status: "uploading" | "done" | "error";
 }
 
 /**
@@ -194,8 +220,11 @@ export default function AdminReleaseEditor() {
   // is removed and re-added keeps its entry and duplicates don't collide.
   const [pendingTags, setPendingTags] = useState<Record<string, AudioTags>>({});
   const [isReadingTags, setIsReadingTags] = useState(false);
-  const [uploadingFileIndex, setUploadingFileIndex] = useState<number | null>(
-    null,
+  /** Progress of the save/upload in flight, or null when nothing is running. */
+  const [saveProgress, setSaveProgress] = useState<SaveProgress | null>(null);
+  /** Per-file transfer state for the queued audio, keyed by `fileKey()`. */
+  const [fileProgress, setFileProgress] = useState<Record<string, FileProgress>>(
+    {},
   );
 
   // Track Picker
@@ -398,157 +427,410 @@ export default function AdminReleaseEditor() {
     }
   };
 
-  const handleSave = async (exit: boolean = false) => {
+  /**
+   * Split the bar into equal steps and drive it.
+   *
+   * A save is a chain of requests, so a single "saving…" spinner cannot say
+   * how far along it is. Each request owns `1 / totalSteps` of the bar; a file
+   * transfer additionally moves inside its own step as bytes go out, which is
+   * where nearly all the waiting happens.
+   */
+  const createProgress = (totalSteps: number) => {
+    let done = 0;
+    let current: { label: string; detail?: string } = { label: "Saving…" };
+
+    const push = (fraction: number) =>
+      setSaveProgress({
+        ...current,
+        percent:
+          totalSteps > 0 ? ((done + fraction) / totalSteps) * 100 : 0,
+      });
+
+    return {
+      /** Begin a step. */
+      step(label: string, detail?: string) {
+        current = { label, detail };
+        push(0);
+      },
+      /** Move within the current step (0-1). */
+      fraction(f: number) {
+        push(Math.max(0, Math.min(1, f)));
+      },
+      /** The current step landed. */
+      complete() {
+        done += 1;
+        push(0);
+      },
+    };
+  };
+
+  type ProgressReporter = ReturnType<typeof createProgress>;
+
+  /** The release as the editor currently has it, in the shape the API wants. */
+  const buildReleasePayload = () => {
+    // Filter out negative (temporary) IDs for the initial metadata save.
+    const track_ids = tracks.filter((t: any) => (t.track_id || t.id) > 0).map((t: any) => t.track_id || t.id);
+
+    return {
+      ...metadata,
+      album_artist: metadata.album_artist,
+      price_usdc: metadata.priceUsdc,
+      genres: metadata.genre
+        ? metadata.genre.split(",").map((s: string) => s.trim())
+        : [],
+      track_ids,
+      tracks_data: tracks.filter((t: any) => (t.track_id || t.id) > 0).map((t: any) => ({
+        id: t.track_id || t.id,
+        title: t.title,
+        price: t.price,
+        price_usdc: t.priceUsdc,
+        currency: t.currency || "ETH",
+      })),
+      externalLinks: metadata.externalLinks,
+      additional_artworks: JSON.stringify(existingAdditionalArtworks),
+    } as any;
+  };
+
+  /**
+   * Make sure the release exists server-side, and hand back its id and slug.
+   *
+   * Uploads need a slug to land in, so this runs before any file goes up —
+   * from Save and from the Upload button alike.
+   *
+   * Prefer the URL id, then any id we created earlier in this session.
+   * Without `createdId`, a "Save" followed by "Publish" on a brand-new
+   * release would create the release twice (the URL still reads /new, so
+   * `isNew` never flips), which is the duplicate-release bug.
+   */
+  const ensureRelease = async (): Promise<{ releaseId: number; slug?: string }> => {
+    const dataToSave = buildReleasePayload();
+    let releaseId = id ? parseInt(id) : createdId;
+    let currentSlug = metadata.slug;
+
+    if (!releaseId) {
+      const created: any = await API.createRelease(dataToSave);
+      releaseId = parseInt(created.id);
+      currentSlug = created.slug;
+      setCreatedId(releaseId);
+    } else {
+      await API.updateRelease(String(releaseId), dataToSave);
+      // Fetch fresh slug if needed
+      if (!currentSlug) {
+        const fresh = await API.getAdminRelease(releaseId);
+        currentSlug = fresh.slug;
+      }
+    }
+
+    if (!releaseId) throw new Error("No release ID available");
+    return { releaseId, slug: currentSlug };
+  };
+
+  /** How many upload steps the queue currently amounts to. */
+  const pendingUploadCount = () =>
+    filesToUpload.length + importedSlots.filter((slot) => slot.file).length;
+
+  /**
+   * Send the queued audio, one request per file.
+   *
+   * One request per file, not one for the whole batch: the browser reports
+   * bytes sent for a request as a whole, so a single 400 MB request can only
+   * ever say "somewhere between 0 and 100%", and one failure partway through
+   * takes every file with it. Per file, the artist sees which file is moving,
+   * and a failure costs only that file — the rest stay queued for a retry.
+   */
+  const uploadQueuedFiles = async (
+    slug: string,
+    artistId: number | undefined,
+    progress: ProgressReporter,
+    stepOffset: number,
+    stepTotal: number,
+  ): Promise<{ uploaded: number; failed: File[] }> => {
+    const failed: File[] = [];
+    let uploaded = 0;
+
+    // Start from a clean slate: a file re-added after a finished run shares its
+    // key with the old entry and would otherwise show up already uploaded.
+    setFileProgress({});
+
+    for (const [index, file] of filesToUpload.entries()) {
+      const key = fileKey(file);
+      const position = stepOffset + index + 1;
+
+      progress.step(
+        `Uploading ${position} of ${stepTotal} — ${file.name}`,
+        formatBytes(file.size),
+      );
+      setFileProgress((prev) => ({ ...prev, [key]: { percent: 0, status: "uploading" } }));
+
+      try {
+        await API.uploadTracks([file], {
+          releaseSlug: slug,
+          artistId,
+          onProgress: (percent) => {
+            progress.fraction(percent / 100);
+            setFileProgress((prev) => ({ ...prev, [key]: { percent, status: "uploading" } }));
+          },
+        });
+        setFileProgress((prev) => ({ ...prev, [key]: { percent: 100, status: "done" } }));
+        uploaded++;
+      } catch (e) {
+        console.error(`Failed to upload ${file.name}`, e);
+        setFileProgress((prev) => ({ ...prev, [key]: { percent: 0, status: "error" } }));
+        failed.push(file);
+      }
+      progress.complete();
+    }
+
+    // Whatever did not land stays queued, so a retry does not re-send the
+    // files that already made it.
+    setFilesToUpload(failed);
+    return { uploaded, failed };
+  };
+
+  /**
+   * Fill the imported slots that have audio attached. One request per slot,
+   * because title and position name a single track and the upload endpoint
+   * only honours them for a single file. A slot with no file is left where it
+   * is: it stays in the editor for the next save instead of becoming a track
+   * nobody can play.
+   */
+  const uploadImportedSlots = async (
+    slug: string,
+    artistId: number | undefined,
+    progress: ProgressReporter,
+    stepOffset: number,
+    stepTotal: number,
+  ): Promise<{ uploaded: number; failed: ImportedSlot[] }> => {
+    const filledSlots = importedSlots.filter((slot) => slot.file);
+    if (filledSlots.length === 0) return { uploaded: 0, failed: [] };
+
+    const stillEmpty = importedSlots.filter((slot) => !slot.file);
+    const failed: ImportedSlot[] = [];
+    let uploaded = 0;
+
+    for (const [index, slot] of filledSlots.entries()) {
+      const position = stepOffset + index + 1;
+      progress.step(
+        `Uploading ${position} of ${stepTotal} — ${slot.title}`,
+        (slot.file as File).name,
+      );
+
+      try {
+        await API.uploadTracks([slot.file as File], {
+          releaseSlug: slug,
+          artistId,
+          title: slot.title,
+          trackNum: slot.position,
+          onProgress: (percent) => progress.fraction(percent / 100),
+        });
+        uploaded++;
+      } catch (e) {
+        console.error(`Failed to upload audio for "${slot.title}"`, e);
+        failed.push(slot);
+      }
+      progress.complete();
+    }
+
+    setImportedSlots([...failed, ...stillEmpty].sort((a, b) => a.position - b.position));
+
+    if (failed.length > 0) {
+      notify.error(
+        new Error(`${failed.length} of ${filledSlots.length} imported track(s) failed to upload`),
+        "Some imported tracks could not be uploaded — they are still listed, try again.",
+      );
+    }
+
+    return { uploaded, failed };
+  };
+
+  /**
+   * Upload the queued audio now, without saving-and-closing the release.
+   *
+   * The audio is the slow half of a release, and pairing it with "Save" meant
+   * every retry of a failed upload re-sent the whole form and, on a new
+   * release, risked leaving the artist staring at a frozen page. This does the
+   * upload and nothing else — beyond making sure the release exists, since a
+   * file needs a release to land in.
+   */
+  const handleUploadPending = async () => {
+    const totalUploads = pendingUploadCount();
+    if (totalUploads === 0 || saving) return;
+
+    if (!metadata.title?.trim()) {
+      notify.warning("Give the release a title first — the files need somewhere to land.");
+      return;
+    }
+
     setSaving(true);
+    const progress = createProgress(totalUploads + 1);
+
     try {
-      // Filter out negative (temporary) IDs for the initial metadata save.
-      const track_ids = tracks.filter((t: any) => (t.track_id || t.id) > 0).map((t: any) => t.track_id || t.id);
+      progress.step("Preparing the release…");
+      const { releaseId, slug } = await ensureRelease();
+      progress.complete();
 
-      const dataToSave = {
-        ...metadata,
-        album_artist: metadata.album_artist,
-        price_usdc: metadata.priceUsdc,
-        genres: metadata.genre
-          ? metadata.genre.split(",").map((s: string) => s.trim())
-          : [],
-        track_ids,
-        tracks_data: tracks.filter((t: any) => (t.track_id || t.id) > 0).map((t: any) => ({ 
-          id: t.track_id || t.id, 
-          title: t.title, 
-          price: t.price, 
-          price_usdc: t.priceUsdc,
-          currency: t.currency || "ETH" 
-        })),
-        externalLinks: metadata.externalLinks,
-        additional_artworks: JSON.stringify(existingAdditionalArtworks),
-      } as any;
+      if (!slug) throw new Error("Release has no slug to upload into");
 
-      // Prefer the URL id, then any id we created earlier in this session.
-      // Without `createdId`, a "Save" followed by "Publish" on a brand-new
-      // release would create the release twice (the URL still reads /new, so
-      // `isNew` never flips), which is the duplicate-release bug.
-      let releaseId = id ? parseInt(id) : createdId;
-      let currentSlug = metadata.slug;
+      const files = await uploadQueuedFiles(
+        slug,
+        metadata.artist_id,
+        progress,
+        0,
+        totalUploads,
+      );
+      const slots = await uploadImportedSlots(
+        slug,
+        metadata.artist_id,
+        progress,
+        filesToUpload.length,
+        totalUploads,
+      );
 
-      // 1. Create or Update Release
-      if (!releaseId) {
-        const created: any = await API.createRelease(dataToSave);
-        releaseId = parseInt(created.id);
-        currentSlug = created.slug;
-        setCreatedId(releaseId);
-      } else {
-        await API.updateRelease(String(releaseId), dataToSave);
-        // Fetch fresh slug if needed
-        if (!currentSlug) {
-          const fresh = await API.getAdminRelease(releaseId);
-          currentSlug = fresh.slug;
-        }
+      const uploaded = files.uploaded + slots.uploaded;
+      const failedCount = files.failed.length + slots.failed.length;
+
+      if (uploaded > 0) {
+        notify.success(
+          `${uploaded} track${uploaded === 1 ? "" : "s"} uploaded${failedCount > 0 ? `, ${failedCount} failed` : ""}.`,
+        );
+      }
+      if (files.failed.length > 0) {
+        notify.error(
+          new Error(`${files.failed.length} file(s) failed to upload`),
+          "Some files failed to upload — they are still queued, try again.",
+        );
       }
 
-      if (!releaseId) throw new Error("No release ID available");
+      setPendingTags({});
+      if (!id) {
+        // The release exists now, so point the URL at its edit page.
+        navigate(`/admin/release/${releaseId}/edit`, { replace: true });
+      }
+      loadRelease(releaseId);
+    } catch (e) {
+      console.error("Upload failed", e);
+      notify.error(e, "Failed to upload tracks.");
+    } finally {
+      setSaving(false);
+      setSaveProgress(null);
+    }
+  };
+
+  const handleSave = async (exit: boolean = false) => {
+    setSaving(true);
+
+    const uploadSteps = pendingUploadCount();
+    const tracksToUpdate = tracks.filter((t) => t.isDirty);
+    const totalSteps =
+      1 + // release metadata
+      (coverFile ? 1 : 0) +
+      (additionalArtworksToUpload.length > 0 ? 1 : 0) +
+      uploadSteps +
+      (tracksToUpdate.length > 0 ? 1 : 0);
+    const progress = createProgress(totalSteps);
+
+    try {
+      // 1. Create or Update Release
+      progress.step("Saving release details…");
+      const { releaseId, slug: currentSlug } = await ensureRelease();
+      progress.complete();
 
       // 2. Upload Cover
       if (coverFile && currentSlug) {
-        await API.uploadCover(coverFile, currentSlug);
+        progress.step("Uploading cover art…", coverFile.name);
+        await API.uploadCover(coverFile, currentSlug, (percent) =>
+          progress.fraction(percent / 100),
+        );
+        progress.complete();
       }
 
       // 2b. Upload Additional Artworks
       if (additionalArtworksToUpload.length > 0 && currentSlug) {
-        await API.uploadAdditionalArtworks(currentSlug, additionalArtworksToUpload);
+        progress.step(
+          `Uploading ${additionalArtworksToUpload.length} additional artwork(s)…`,
+        );
+        await API.uploadAdditionalArtworks(
+          currentSlug,
+          additionalArtworksToUpload,
+          (percent) => progress.fraction(percent / 100),
+        );
+        progress.complete();
       }
 
-      // 3. Handle File Uploads (Sequentially to report progress/errors)
-      if (filesToUpload.length > 0 && currentSlug) {
-        try {
-          setUploadingFileIndex(0);
-          await API.uploadTracks(filesToUpload, {
-            releaseSlug: currentSlug,
-            artistId: metadata.artist_id,
-          });
-        } catch (e) {
-          console.error("Upload failed", e);
-          notify.error(e, "Some files failed to upload. Please try again.");
-          // Don't clear filesToUpload so user can retry
-          throw e;
-        }
-      }
+      // 3. Audio, one file per request so the bar can follow it.
+      let uploadFailures = 0;
+      if (uploadSteps > 0 && currentSlug) {
+        const queuedCount = filesToUpload.length;
+        const files = await uploadQueuedFiles(
+          currentSlug,
+          metadata.artist_id,
+          progress,
+          0,
+          uploadSteps,
+        );
+        const slots = await uploadImportedSlots(
+          currentSlug,
+          metadata.artist_id,
+          progress,
+          queuedCount,
+          uploadSteps,
+        );
+        uploadFailures = files.failed.length + slots.failed.length;
 
-      // 3b. Fill the imported slots that have audio attached. One request per
-      // slot, because title and position name a single track and the upload
-      // endpoint only honours them for a single file. A slot with no file is
-      // left where it is: it stays in the editor for the next save instead of
-      // becoming a track nobody can play.
-      const filledSlots = importedSlots.filter((slot) => slot.file);
-      if (filledSlots.length > 0 && currentSlug) {
-        const stillEmpty: ImportedSlot[] = importedSlots.filter((slot) => !slot.file);
-        const failed: ImportedSlot[] = [];
-
-        for (const slot of filledSlots) {
-          try {
-            await API.uploadTracks([slot.file as File], {
-              releaseSlug: currentSlug,
-              artistId: metadata.artist_id,
-              title: slot.title,
-              trackNum: slot.position,
-            });
-          } catch (e) {
-            console.error(`Failed to upload audio for "${slot.title}"`, e);
-            failed.push(slot);
-          }
-        }
-
-        // Keep whatever did not make it, so a retry does not re-upload the
-        // slots that already landed.
-        setImportedSlots([...failed, ...stillEmpty].sort((a, b) => a.position - b.position));
-
-        if (failed.length > 0) {
+        if (files.failed.length > 0) {
           notify.error(
-            new Error(`${failed.length} of ${filledSlots.length} imported track(s) failed to upload`),
-            "Some imported tracks could not be uploaded — they are still listed, try again.",
+            new Error(`${files.failed.length} file(s) failed to upload`),
+            "Some files failed to upload — they are still queued, try again.",
           );
         }
       }
 
-      // Save Track Metadata changes (Title, Filename, Lyrics)
-      const tracksToUpdate = tracks.filter((t) => t.isDirty);
-      for (const t of tracksToUpdate) {
-        try {
-          const updateData: any = {
-            title: t.title,
-            price: t.price,
-            priceUsdc: t.priceUsdc,
-            currency: t.currency || "ETH",
-            lyrics: t.lyrics,
-            genre: t.genre,
-            year: t.year,
-            description: t.description,
-            podcast_episode_num: t.podcast_episode_num,
-            podcast_season_num: t.podcast_season_num,
-            podcast_episode_type: t.podcast_episode_type,
-          };
+      // 4. Save Track Metadata changes (Title, Filename, Lyrics)
+      if (tracksToUpdate.length > 0) {
+        progress.step(`Saving ${tracksToUpdate.length} track edit(s)…`);
+        for (const [index, t] of tracksToUpdate.entries()) {
+          try {
+            const updateData: any = {
+              title: t.title,
+              price: t.price,
+              priceUsdc: t.priceUsdc,
+              currency: t.currency || "ETH",
+              lyrics: t.lyrics,
+              genre: t.genre,
+              year: t.year,
+              description: t.description,
+              podcast_episode_num: t.podcast_episode_num,
+              podcast_season_num: t.podcast_season_num,
+              podcast_episode_type: t.podcast_episode_type,
+            };
 
-          if (t.file_path) {
-            updateData.fileName = t.file_path.split("/").pop() || "";
+            if (t.file_path) {
+              updateData.fileName = t.file_path.split("/").pop() || "";
+            }
+
+            await API.updateTrack(String(t.id), updateData);
+          } catch (e) {
+            console.error(`Failed to update track ${t.id}`, e);
           }
-
-          await API.updateTrack(String(t.id), updateData);
-        } catch (e) {
-          console.error(`Failed to update track ${t.id}`, e);
+          progress.fraction((index + 1) / tracksToUpdate.length);
         }
+        progress.complete();
       }
 
       if (exit) {
+        notify.success(
+          metadata.visibility === "public" ? "Release published." : "Release saved.",
+        );
         navigate("/admin");
       } else {
         if (!id) {
           // If this was a new release, update the URL to point to the edit page
           navigate(`/admin/release/${releaseId}/edit`, { replace: true });
         }
+        if (uploadFailures === 0) notify.success("Release saved.");
         // Reload
-        setFilesToUpload([]);
         setPendingTags({});
         // Reload release to get updated state (including new tracks if any were uploaded)
-        setUploadingFileIndex(null);
         setCoverFile(null);
         setAdditionalArtworksToUpload([]);
         loadRelease(releaseId);
@@ -558,7 +840,7 @@ export default function AdminReleaseEditor() {
       notify.error(e, "Failed to save release or upload tracks.");
     } finally {
       setSaving(false);
-      setUploadingFileIndex(null);
+      setSaveProgress(null);
     }
   };
 
@@ -854,6 +1136,9 @@ export default function AdminReleaseEditor() {
 
   if (loading) return <div className="p-8 text-center">Loading...</div>;
 
+  /** Files waiting to go up — drives the Upload button in the toolbar. */
+  const queuedUploadCount = pendingUploadCount();
+
   const colSpanCount = 5 + (metadata.use_nft ? 1 : 0) + (metadata.download !== "external" ? 1 : 0);
 
   return (
@@ -895,13 +1180,37 @@ export default function AdminReleaseEditor() {
           )}
           {canEdit && (canManageThis || role === 'super_user') && (
             <>
+              {/* Upload on its own, so the slow half of a release doesn't have
+                  to ride along with every metadata save (and a failed upload
+                  can be retried without re-sending the form). */}
+              {queuedUploadCount > 0 && (
+                <button
+                  className="btn btn-secondary btn-sm gap-2"
+                  id="upload-tracks-btn"
+                  onClick={handleUploadPending}
+                  disabled={saving}
+                >
+                  <UploadCloud className="w-4 h-4" />
+                  <span className="hidden sm:inline">
+                    Upload {queuedUploadCount} file{queuedUploadCount === 1 ? "" : "s"}
+                  </span>
+                  <span className="sm:hidden">{queuedUploadCount}</span>
+                </button>
+              )}
               <button
                 className="btn btn-ghost btn-sm"
                 id="save-release-btn"
                 onClick={() => handleSave(false)}
                 disabled={saving}
               >
-                Save
+                {saving ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs"></span>
+                    <span className="hidden sm:inline">Saving…</span>
+                  </>
+                ) : (
+                  "Save"
+                )}
               </button>
               <button
                 className="btn btn-primary btn-sm px-6"
@@ -919,6 +1228,18 @@ export default function AdminReleaseEditor() {
           )}
         </div>
       </div>
+
+      {/* Live progress for the request chain behind Save / Upload. Sticky under
+          the toolbar so it stays in view while the page is scrolled. */}
+      {saveProgress && (
+        <div className="sticky top-[4rem] z-40 bg-base-100/80 backdrop-blur-xl border-b border-base-content/5 px-4 lg:px-6 py-2">
+          <UploadProgress
+            label={saveProgress.label}
+            percent={saveProgress.percent}
+            detail={saveProgress.detail}
+          />
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto bg-base-300/10">
         <div className="container mx-auto px-4 py-8 lg:p-12">
@@ -1641,39 +1962,69 @@ export default function AdminReleaseEditor() {
                         </React.Fragment>
                       ))}
 
-              {/* Pending Uploads */}
-              {filesToUpload.map((file, idx) => {
-                const tags = pendingTags[fileKey(file)];
-                return (
-                <div
-                  key={`upload-${idx}`}
-                  className="card card-compact bg-base-100/50 border border-dashed border-primary/30"
-                >
-                  <div className="card-body flex-row items-center gap-4 py-3">
-                    {uploadingFileIndex !== null && (
-                      <div className="loading loading-spinner loading-xs text-primary"></div>
-                    )}
-                    {tags?.trackNo != null && (
-                      <div className="font-mono opacity-40 w-6 text-right">{tags.trackNo}</div>
-                    )}
-                    <div className="flex-1 truncate">
-                      {tags?.title || file.name}
-                      {tags?.title && (
-                        <span className="ml-2 text-xs opacity-40 truncate">{file.name}</span>
-                      )}
-                    </div>
-                    <div className="badge badge-ghost">Pending Upload</div>
-                    <button
-                      className="btn btn-ghost btn-xs btn-circle"
-                      onClick={() => removePendingFile(idx)}
-                      disabled={uploadingFileIndex !== null}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                );
-              })}
+                      {/* Queued audio, listed where its tracks will appear.
+                          Each row carries its own transfer bar, so a stalled
+                          file is obvious rather than hidden behind one spinner
+                          for the whole batch. */}
+                      {filesToUpload.map((file, idx) => {
+                        const tags = pendingTags[fileKey(file)];
+                        const state = fileProgress[fileKey(file)];
+                        return (
+                          <tr
+                            key={`upload-${idx}`}
+                            className="border-l-2 border-dashed border-primary/30 bg-primary/[0.03]"
+                          >
+                            <td className="font-mono opacity-40 text-xs">
+                              {tags?.trackNo ?? "—"}
+                            </td>
+                            <td colSpan={Math.max(1, colSpanCount - 3)}>
+                              <div className="flex flex-col gap-1">
+                                <div className="truncate">
+                                  {tags?.title || file.name}
+                                  {tags?.title && (
+                                    <span className="ml-2 text-xs opacity-40">{file.name}</span>
+                                  )}
+                                </div>
+                                {state?.status === "uploading" ? (
+                                  <UploadProgress
+                                    label={`Uploading — ${file.name}`}
+                                    percent={state.percent}
+                                    detail={formatBytes(file.size)}
+                                  />
+                                ) : (
+                                  <span className="text-[11px] opacity-40">
+                                    {formatBytes(file.size)}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="text-right">
+                              {state?.status === "uploading" ? (
+                                <span className="badge badge-primary badge-sm gap-1">
+                                  <span className="loading loading-spinner loading-xs"></span>
+                                  {state.percent}%
+                                </span>
+                              ) : state?.status === "done" ? (
+                                <span className="badge badge-success badge-sm">Uploaded</span>
+                              ) : state?.status === "error" ? (
+                                <span className="badge badge-error badge-sm">Failed</span>
+                              ) : (
+                                <span className="badge badge-ghost badge-sm">Pending Upload</span>
+                              )}
+                            </td>
+                            <td className="text-right">
+                              <button
+                                className="btn btn-ghost btn-xs btn-circle"
+                                onClick={() => removePendingFile(idx)}
+                                disabled={saving}
+                                aria-label={`Remove ${file.name} from the upload queue`}
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1700,7 +2051,7 @@ export default function AdminReleaseEditor() {
                             setImportedSlots([]);
                           }
                         }}
-                        disabled={uploadingFileIndex !== null}
+                        disabled={saving}
                       >
                         <Trash2 className="w-3 h-3" /> Discard all
                       </button>
@@ -1752,7 +2103,7 @@ export default function AdminReleaseEditor() {
                                 type="button"
                                 className="btn btn-ghost btn-xs btn-circle"
                                 onClick={() => setSlotFile(idx, null)}
-                                disabled={uploadingFileIndex !== null}
+                                disabled={saving}
                                 aria-label={`Remove audio from ${slot.title}`}
                               >
                                 <X className="w-3 h-3" />
@@ -1779,7 +2130,7 @@ export default function AdminReleaseEditor() {
                             type="button"
                             className="btn btn-ghost btn-xs btn-circle text-error shrink-0"
                             onClick={() => removeSlot(idx)}
-                            disabled={uploadingFileIndex !== null}
+                            disabled={saving}
                             aria-label={`Remove ${slot.title} from the imported tracklist`}
                           >
                             <Trash2 className="w-3 h-3" />
@@ -1790,29 +2141,52 @@ export default function AdminReleaseEditor() {
                   </div>
                 )}
 
-                {/* Pending Uploads */}
-                {filesToUpload.length > 0 && (
-                  <div className="bg-primary/5 p-4 border-t border-primary/20 space-y-2">
-                    <h4 className="text-xs font-bold tracking-normal text-primary flex items-center gap-2">
-                      <Plus className="w-3 h-3" /> Pending Uploads
-                      {isReadingTags && (
-                        <span className="font-normal opacity-60 flex items-center gap-1">
-                          <span className="loading loading-spinner loading-xs"></span>
-                          Reading tags…
-                        </span>
-                      )}
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                      {filesToUpload.map((file, idx) => (
-                        <div key={`upload-${idx}`} className="flex items-center gap-3 bg-base-100 p-2 rounded-lg text-xs border border-base-content/5">
-                          {uploadingFileIndex !== null ? <span className="loading loading-spinner loading-xs text-primary"></span> : <Music className="w-3 h-3 opacity-30" />}
-                          <span className="flex-1 truncate opacity-70">{pendingTags[fileKey(file)]?.title || file.name}</span>
-                          <button className="btn btn-ghost btn-xs btn-circle text-error" onClick={() => removePendingFile(idx)} disabled={uploadingFileIndex !== null}>
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
+                {/* Upload strip. The files themselves are listed in the
+                    tracklist above, each with its own bar; this is where the
+                    transfer is started and how far along it is. */}
+                {queuedUploadCount > 0 && (
+                  <div className="bg-primary/5 p-4 border-t border-primary/20 space-y-3">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <h4 className="text-xs font-bold tracking-normal text-primary flex items-center gap-2">
+                        <Plus className="w-3 h-3" />
+                        {queuedUploadCount} file{queuedUploadCount === 1 ? "" : "s"} ready to upload
+                        {isReadingTags && (
+                          <span className="font-normal opacity-60 flex items-center gap-1">
+                            <span className="loading loading-spinner loading-xs"></span>
+                            Reading tags…
+                          </span>
+                        )}
+                      </h4>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm gap-2"
+                        onClick={handleUploadPending}
+                        disabled={saving}
+                      >
+                        {saving ? (
+                          <>
+                            <span className="loading loading-spinner loading-xs"></span>
+                            Uploading…
+                          </>
+                        ) : (
+                          <>
+                            <UploadCloud className="w-4 h-4" /> Upload now
+                          </>
+                        )}
+                      </button>
                     </div>
+                    <p className="text-[11px] opacity-50">
+                      Uploading now stores the audio without closing the editor — the rest of
+                      the form is saved when you hit Save. Files also upload on Save.
+                    </p>
+                    {saveProgress && (
+                      <UploadProgress
+                        label={saveProgress.label}
+                        percent={saveProgress.percent}
+                        detail={saveProgress.detail}
+                        color="secondary"
+                      />
+                    )}
                   </div>
                 )}
               </div>
