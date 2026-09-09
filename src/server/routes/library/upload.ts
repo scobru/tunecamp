@@ -109,7 +109,24 @@ export function createUploadRoutes(container: ServiceContainer): Router {
     const authService = resolveService(container, 'authService');
     const identity = resolveService(container, 'identity');
     const library = resolveService(container, 'library');
+    const apService = container.apService;
     const router = Router();
+
+    /**
+     * Tell the Fediverse the actor changed.
+     *
+     * Mastodon and friends cache a remote actor's avatar, header, name and bio
+     * and refresh them when an `Update` for that actor arrives — so a profile
+     * image replaced here is the old one everywhere else until this is sent.
+     * Fire-and-forget: a follower's server being down is not a reason to fail
+     * the upload the artist just made.
+     */
+    const announceActorChange = (artistId: number, what: string) => {
+        if (!apService) return;
+        apService.broadcastActorUpdate(artistId)
+            .then(({ inboxes }) => console.log(`🔄 [AP] ${what} change for artist ${artistId} announced to ${inboxes} inbox(es)`))
+            .catch(e => console.error(`❌ [AP] Failed to announce ${what} change for artist ${artistId}:`, e));
+    };
 
     const safeRemove = async (filePath: string) => {
         try {
@@ -906,6 +923,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
                 // Correct parameter order: (id, name, bio, photoPath, links)
                 // We pass undefined for name to avoid changing it.
                 library.updateArtist(artist.id, undefined, artist.bio || undefined, dbPath, artist.links ? artist.links : undefined);
+                announceActorChange(artist.id, "avatar");
             }
 
 
@@ -966,6 +984,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             const bannerFilename = `banner-${artistId}${ext}`;
             const { targetPath: bannerPath, dbPath } = await storeImageAsset(file, bannerFilename, "assets");
             library.updateArtistBanner(artistId, dbPath);
+            announceActorChange(artistId, "banner");
 
             res.json({
                 message: "Banner uploaded",
@@ -1096,6 +1115,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
                 // Correct parameter order: (id, name, bio, photoPath, links)
                 // We pass undefined for name to avoid changing it.
                 library.updateArtist(artist.id, undefined, artist.bio || undefined, dbPath, artist.links ? artist.links : undefined);
+                announceActorChange(artist.id, "avatar");
             }
 
 

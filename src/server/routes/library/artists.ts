@@ -25,6 +25,7 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
     const social = container.social;
     const database = container.database;
     const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService;
+    const apService = container.apService;
     const router = Router();
     router.use(json());
     router.use(invalidateListCacheOnMutation);
@@ -169,6 +170,16 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
 
             const updated = library.getArtist(id);
             res.json(updated);
+
+            // Name, bio, links and avatar are the actor's `name`, `summary`,
+            // `attachment` and `icon`: remote servers cache all of it and refresh
+            // only when an actor `Update` arrives. Announced after the response,
+            // and never allowed to fail the edit the artist just saved.
+            if (apService) {
+                apService.broadcastActorUpdate(id)
+                    .then(({ inboxes }) => console.log(`🔄 [AP] Profile change for artist ${id} announced to ${inboxes} inbox(es)`))
+                    .catch(e => console.error(`❌ [AP] Failed to announce profile change for artist ${id}:`, e));
+            }
         } catch (error) {
             console.error("Error updating artist:", error);
             res.status(500).json({ error: "Failed to update artist" });
