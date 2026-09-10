@@ -1,4 +1,4 @@
-import { api, handleResponse, API_URL, downloadTokenCache, setDownloadTokenCache } from './client';
+import { api, handleResponse, API_URL, downloadTokenCache, setDownloadTokenCache, uploadProgressConfig } from './client';
 import type {
     Sample, SamplePack, CollabProject, CollabVersion, CollabStem, LiveSession
 } from '../../types';
@@ -53,11 +53,11 @@ export const mediaApi = {
     },
     getSample: (id: number) => handleResponse(api.get<Sample>(`samples/${id}`)),
     getPendingSamples: () => handleResponse(api.get<Sample[]>('samples/moderation/pending')),
-    uploadSample: (file: File, fields: { title: string, description?: string, bpm?: string, musicalKey?: string, license?: string, attributionName?: string, tags?: string }) => {
+    uploadSample: (file: File, fields: { title: string, description?: string, bpm?: string, musicalKey?: string, license?: string, attributionName?: string, tags?: string }, onProgress?: (percent: number) => void) => {
         const formData = new FormData();
         formData.append('file', file);
         Object.entries(fields).forEach(([k, v]) => { if (v) formData.append(k, v); });
-        return handleResponse(api.post<Sample>('samples', formData, { headers: { 'Content-Type': 'multipart/form-data' } }));
+        return handleResponse(api.post<Sample>('samples', formData, { headers: { 'Content-Type': 'multipart/form-data' }, ...uploadProgressConfig(onProgress) }));
     },
     updateSample: (id: number, fields: Partial<{ title: string, description: string, bpm: string, musicalKey: string, license: string, attributionName: string, tags: string }>) =>
         handleResponse(api.put<Sample>(`samples/${id}`, fields)),
@@ -81,11 +81,11 @@ export const mediaApi = {
     },
     getSamplePack: (id: number) => handleResponse(api.get<SamplePack>(`sample-packs/${id}`)),
     getPendingSamplePacks: () => handleResponse(api.get<SamplePack[]>('sample-packs/moderation/pending')),
-    uploadSamplePack: (files: File[], fields: { title: string, description?: string, license?: string, attributionName?: string }) => {
+    uploadSamplePack: (files: File[], fields: { title: string, description?: string, license?: string, attributionName?: string }, onProgress?: (percent: number) => void) => {
         const formData = new FormData();
         files.forEach(f => formData.append('files', f));
         Object.entries(fields).forEach(([k, v]) => { if (v) formData.append(k, v); });
-        return handleResponse(api.post<SamplePack>('sample-packs', formData, { headers: { 'Content-Type': 'multipart/form-data' } }));
+        return handleResponse(api.post<SamplePack>('sample-packs', formData, { headers: { 'Content-Type': 'multipart/form-data' }, ...uploadProgressConfig(onProgress) }));
     },
     updateSamplePack: (id: number, fields: Partial<{ title: string, description: string, license: string }>) =>
         handleResponse(api.put<SamplePack>(`sample-packs/${id}`, fields)),

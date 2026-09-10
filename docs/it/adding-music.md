@@ -119,6 +119,21 @@ un album ben taggato richiede quasi zero digitazione. Tutto ciò che viene
 indovinato resta modificabile prima del salvataggio, e i campi che hai già
 compilato non vengono mai sovrascritti.
 
+### Vedere l'upload mentre avviene
+
+L'audio è la metà lenta di una release, quindi l'editor non ti lascia mai a
+indovinare. I file in coda sono elencati nella tracklist con la loro dimensione
+e nella toolbar compare un pulsante **Upload N files**: premilo e l'audio parte
+da solo, senza salvare-e-chiudere la release. Una barra di avanzamento sotto la
+toolbar dice quale file sta partendo e a che punto è l'intero blocco, e ogni
+riga in coda ha la sua barra. Un file che fallisce resta in coda, così un nuovo
+tentativo rimanda solo ciò che non è arrivato.
+
+I file partono anche con **Save**, che mostra la stessa barra su tutta la
+catena — dati della release, copertina, ogni file audio, poi le modifiche alle
+tracce — così un salvataggio lungo si legge come avanzamento e non come una
+pagina bloccata.
+
 ### Importare una tracklist
 
 **Import from Bandcamp** compila i campi della release e la copertina da una
