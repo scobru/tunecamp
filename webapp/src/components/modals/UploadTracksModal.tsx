@@ -3,6 +3,23 @@ import { useState, useRef, useEffect } from "react";
 import API from "../../services/api";
 import { UploadCloud, Music, X, Trash2 } from "lucide-react";
 import type { Track } from "../../types";
+import { UploadProgress } from "../ui/UploadProgress";
+import { formatBytes } from "../../utils/format";
+
+/** Stable key for a queued file, so removing one doesn't shift the others' progress. */
+const fileKey = (file: File) => `${file.name}:${file.size}:${file.lastModified}`;
+
+/** Byte-level progress of one upload run. */
+interface BatchProgress {
+  /** Files in the run. */
+  total: number;
+  /** Files finished, successfully or not. */
+  done: number;
+  /** Bytes sent across the run, as a percentage of its total size. */
+  percent: number;
+  /** Per-file percentages, keyed by `fileKey()`, for the file rows. */
+  files: Record<string, number>;
+}
 
 export const UploadTracksModal = ({
   onUploadComplete,
@@ -15,7 +32,17 @@ export const UploadTracksModal = ({
   const [releaseTitle, setReleaseTitle] = useState<string>("");
   const [artistId, setArtistId] = useState<string | number>("");
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0); // Mock progress for now
+  /**
+   * Progress of the current (or last) upload run, or null before the first
+   * one.
+   *
+   * Counting finished files was the only feedback here, so a single 80 MB
+   * file sat at 0% until it was completely done. This is weighted by bytes,
+   * so the bar moves while the bytes move, and it survives the end of the run
+   * so the artist sees a finished bar next to the result rather than a
+   * progress bar that vanishes.
+   */
+  const [batch, setBatch] = useState<BatchProgress | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [existingTracks, setExistingTracks] = useState<Track[]>([]);
@@ -47,7 +74,7 @@ export const UploadTracksModal = ({
       setError("");
       setSuccess("");
       setUploading(false);
-      setProgress(0);
+      setBatch(null);
       dialogRef.current?.showModal();
     };
 
@@ -122,41 +149,62 @@ export const UploadTracksModal = ({
 
     setUploading(true);
     setError("");
-    setProgress(0);
+
+    const batchFiles = [...files];
+    // Weighted by size, not by file count: three short interludes finishing
+    // first must not report an album as nearly uploaded.
+    const totalBytes = batchFiles.reduce((sum, f) => sum + f.size, 0);
+    const sentPercent: Record<string, number> = {};
+    setBatch({ total: batchFiles.length, done: 0, percent: 0, files: {} });
+
+    const publish = (finished = 0) =>
+      setBatch((prev) => {
+        const sentBytes = batchFiles.reduce(
+          (sum, f) => sum + (f.size * (sentPercent[fileKey(f)] ?? 0)) / 100,
+          0,
+        );
+        return {
+          total: batchFiles.length,
+          done: (prev?.done ?? 0) + finished,
+          percent: totalBytes > 0 ? (sentBytes / totalBytes) * 100 : 0,
+          files: { ...sentPercent },
+        };
+      });
 
     let successCount = 0;
     let failCount = 0;
-    let processedCount = 0;
-
-    const updateProgress = () => {
-      const percent = Math.round((processedCount / files.length) * 100);
-      setProgress(percent);
-    };
 
     try {
       // Simple concurrency control
       const CONCURRENCY_LIMIT = 3;
-      const queue = [...files];
+      const queue = [...batchFiles];
       const activePromises: Promise<void>[] = [];
 
       const processNext = async () => {
         const file = queue.shift();
         if (!file) return;
 
+        const key = fileKey(file);
         try {
           await API.uploadTracks([file], {
             releaseSlug,
             artistId,
             artist: artistName,
             album: albumTitle,
+            onProgress: (percent) => {
+              sentPercent[key] = percent;
+              publish();
+            },
           });
+          // A finished file counts as fully sent even if the browser never
+          // reported the last chunk.
+          sentPercent[key] = 100;
           successCount++;
         } catch (err: unknown) {
           console.error(`Failed to upload ${file.name}:`, err);
           failCount++;
         } finally {
-          processedCount++;
-          updateProgress();
+          publish(1);
         }
 
         if (queue.length > 0) {
@@ -170,8 +218,6 @@ export const UploadTracksModal = ({
       }
 
       await Promise.all(activePromises);
-
-      setProgress(100);
 
       if (failCount === 0) {
         setSuccess(`Successfully uploaded all ${successCount} tracks.`);
@@ -337,23 +383,41 @@ export const UploadTracksModal = ({
                 </span>
               </label>
               <div className="bg-base-200 rounded p-2 max-h-40 overflow-y-auto space-y-1">
-                {files.map((file: File, i: number) => (
-                  <div
-                    key={i}
-                    className="flex justify-between items-center text-xs p-1 hover:bg-base-content/5 rounded"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <Music size={12} /> {file.name}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeFile(i)}
-                      className="btn btn-ghost btn-xs btn-square"
+                {files.map((file: File, i: number) => {
+                  const percent = batch?.files[fileKey(file)] ?? 0;
+                  return (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center gap-2 text-xs p-1 hover:bg-base-content/5 rounded"
                     >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-2 truncate flex-1 min-w-0">
+                        <Music size={12} className="shrink-0" />
+                        {uploading ? (
+                          <UploadProgress
+                            label={file.name}
+                            percent={percent}
+                            color="secondary"
+                          />
+                        ) : (
+                          <>
+                            <span className="truncate">{file.name}</span>
+                            <span className="opacity-40 shrink-0">
+                              {formatBytes(file.size)}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(i)}
+                        className="btn btn-ghost btn-xs btn-square"
+                        disabled={uploading}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -366,13 +430,17 @@ export const UploadTracksModal = ({
           )}
 
           <div className="modal-action flex-col">
-            {uploading && (
+            {batch && (
               <div className="w-full mb-2">
-                <progress
-                  className="progress progress-secondary w-full"
-                  value={progress}
-                  max="100"
-                ></progress>
+                <UploadProgress
+                  label={
+                    uploading
+                      ? `Uploading ${batch.total} file${batch.total === 1 ? "" : "s"} — ${batch.done} of ${batch.total} done`
+                      : `Finished — ${batch.done} of ${batch.total} file${batch.total === 1 ? "" : "s"}`
+                  }
+                  percent={batch.percent}
+                  color="secondary"
+                />
               </div>
             )}
             <div className="flex justify-end gap-2">

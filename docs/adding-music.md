@@ -115,6 +115,20 @@ number, so a well-tagged album needs almost no typing. Anything it guesses is
 editable before you save, and fields you have already filled in are never
 overwritten.
 
+### Watching an upload happen
+
+Audio is the slow half of a release, so the editor never leaves you guessing.
+Queued files are listed in the tracklist with their size, and the toolbar grows
+an **Upload N files** button — press it and the audio goes up on its own,
+without saving-and-closing the release: a progress bar under the toolbar names
+the file being sent and how far along the whole batch is, and each queued row
+carries its own bar. A file that fails stays queued, so a retry re-sends only
+what did not make it.
+
+Files also go up on **Save**, which shows the same bar across the whole chain of
+work — release details, cover art, each audio file, then the track edits — so a
+long save reads as progress rather than as a frozen page.
+
 ### Importing a tracklist
 
 **Import from Bandcamp** fills the release fields and the cover from a public

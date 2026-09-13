@@ -522,7 +522,9 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 			return res.status(403).json({ error: "Super Root access required" });
 		try {
 			const settings = identity.getAllSettings();
-			// jwtSecret is never exposed to the client — it lives only server-side.
+			// Sensitive cryptographic material and server secrets are never exposed in general settings
+			delete (settings as any).site_private_key;
+			delete (settings as any).jwtSecret;
 			res.json({
 				...settings,
 				musicDir: container.musicDir,

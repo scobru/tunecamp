@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { UploadTracksModal } from "./UploadTracksModal";
@@ -116,6 +116,42 @@ describe("UploadTracksModal", () => {
 			expect(screen.getByRole("progressbar")).toBeInTheDocument();
 		});
 		expect(mockAPI.uploadTracks).toHaveBeenCalled();
+	});
+
+	it("follows the bytes the browser reports, not the file count", async () => {
+		// Hold the upload open so the intermediate progress is observable, and
+		// drive it through the onProgress callback the API layer passes down.
+		let report: ((percent: number) => void) | undefined;
+		let finish: (() => void) | undefined;
+		mockAPI.uploadTracks.mockImplementation((_files: any, options: any) => {
+			report = options.onProgress;
+			return new Promise<void>((resolve) => {
+				finish = resolve;
+			}) as any;
+		});
+
+		renderModal();
+		const fileInput = document.querySelector('input[type="file"]')!;
+		fireEvent.change(fileInput, {
+			target: { files: [new File(["audio content"], "test.mp3", { type: "audio/mpeg" })] },
+		});
+		fireEvent.click(screen.getByRole("button", { name: /Start Upload/i }));
+
+		await waitFor(() => expect(report).toBeDefined());
+
+		act(() => report!(37));
+		await waitFor(() => {
+			expect(screen.getAllByText("37%").length).toBeGreaterThan(0);
+		});
+
+		await act(async () => {
+			finish!();
+		});
+
+		// The finished bar stays put next to the result, rather than vanishing.
+		await waitFor(() => {
+			expect(screen.getByText(/Finished — 1 of 1 file/i)).toBeInTheDocument();
+		});
 	});
 
 	it("shows error on upload failure", async () => {
