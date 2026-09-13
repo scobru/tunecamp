@@ -9,7 +9,18 @@ webapp/dist
 .git
 .gitignore
 .env
+.env.*
 .env.local
+.jwt-secret
+*.keypair.json
+*-keypair.json
+gundb-keypair.json
+*.pem
+*.key
+.cache
+.claude
+.fallow
+graphify-out
 *.md
 !README.md
 # Served by GET /api/changelog and copied into the runtime image (Dockerfile:127)

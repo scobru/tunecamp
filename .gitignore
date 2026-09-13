@@ -109,3 +109,7 @@ test-config.json
 # Pix Agent
 .pi/
 .pi-lens/
+
+# Local cache & knowledge graph
+.cache/
+graphify-out/

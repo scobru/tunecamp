@@ -19,8 +19,7 @@ services:
       args:
         - TUNECAMP_RPC_URL=${TUNECAMP_RPC_URL:-https://mainnet.base.org}
         - TUNECAMP_CURRENCY_CONTRACT=${TUNECAMP_CURRENCY_CONTRACT:-0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913}
-        - DISCOGS_TOKEN=${DISCOGS_TOKEN:-}
-        - TUNECAMP_DOWNLOAD_DIR=${TUNECAMP_DOWNLOAD_DIR:-/data/downloads}
+
     image: tunecamp:latest
     container_name: tunecamp
     ports:

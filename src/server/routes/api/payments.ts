@@ -301,6 +301,10 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
     const verifyLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, message: "Too many verification attempts, try again later." });
     router.use(["/verify", "/subscription/verify"], verifyLimiter);
 
+    // Checkout session creation calls Stripe; rate-limit by IP to mitigate card testing bot floods
+    const stripeCheckoutLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, message: "Too many checkout requests, please try again later." });
+    router.use(["/stripe/create-session", "/stripe/create-subscription-session", "/stripe/create-trackcap-session"], stripeCheckoutLimiter);
+
     /**
      * GET /api/payments/purchases
      * Returns purchased items for the authenticated user.
