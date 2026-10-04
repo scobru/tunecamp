@@ -437,7 +437,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
 						userAlias ||
 						user.username,
 					bio: artist?.bio || null,
-					imageUrl: artist?.image_url || null,
+					imageUrl: profile?.avatar || artist?.image_url || null,
 					joinedAt: user.created_at,
 				},
 				publicReleases: releases,
