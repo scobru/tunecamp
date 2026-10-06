@@ -55,6 +55,8 @@ Il portale centralizzato SSO e d'identità ufficiale è distribuito su:
 
 Gli account creati tramite FID non hanno password, il server rifiuta di scriverne una e la vecchia chiave non si può più verificare (Zen non c'è più): il proprietario non può dimostrare da solo che l'account è suo. Serve l'approvazione di un amministratore.
 
+**Ancora connesso all'istanza (self-service).** Apri **Profilo** e premi **Collega la mia identità FID a questo account**. L'istanza genera un codice monouso (5 minuti) e apre `tunecamp.org/profile.html` con il codice nel frammento dell'URL. Accedi lì con alias e passphrase e premi **Collega questa identità**: la pagina firma la challenge dell'istanza con la nuova chiave e la associa all'account, senza intervento dell'amministratore.
+
 **Dall'interfaccia web.** Il proprietario accede dal portale FID con la nuova chiave. L'istanza risponde `FID_KEY_CHANGED` e registra una **richiesta di ricollegamento** sull'account (vince la prima richiesta: un'altra chiave non può sostituirla finché l'amministratore non la rifiuta). In **Admin → Users** l'account mostra *FID relink requested* con la chiave e i pulsanti **Approve** / **Dismiss** (solo l'amministratore principale). Prima di approvare, conferma con la persona che la chiave è quella mostrata dal suo portale: chiunque conosca un nome utente può inviare una richiesta. Dopo l'approvazione il proprietario accede di nuovo con l'SSO.
 
 **Dall'host.** Lo stesso spostamento senza interfaccia:

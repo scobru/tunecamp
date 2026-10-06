@@ -55,6 +55,8 @@ The official central SSO and identity portal is deployed at:
 
 Accounts created through FID have no password, and the server refuses to write one, and the old key can no longer be verified (Zen is gone), so the owner cannot prove the account is theirs by themselves. An administrator has to approve the move.
 
+**Still signed in on the instance (self-service).** Open **Profile** and press **Link my FID identity to this account**. The instance mints a one-time code (5 minutes, single use) and opens `tunecamp.org/profile.html` with it in the URL fragment. Sign in there with your alias and passphrase and press **Link this identity**: the page signs the instance challenge with the new key and binds it to the account, no administrator involved.
+
 **From the web UI.** The owner signs in through the FID portal with the new key. The instance answers `FID_KEY_CHANGED` and records a **relink request** on the account (the first request wins; a different key cannot replace it until the administrator dismisses it). In **Admin → Users** the account shows *FID relink requested* with the key and **Approve** / **Dismiss** buttons (primary admin only). Confirm with the person that the key is the one their portal shows before approving: anyone who knows a username can send a request. After approval the owner signs in again through the SSO.
 
 **From the host.** The same move without the UI:
