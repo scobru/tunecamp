@@ -31,7 +31,7 @@ Ogni **artista** in TuneCamp corrisponde a un **Attore ActivityPub** (di tipo "P
 - Profilo: `https://tuo-dominio.com/actor/@nomeutente`
 - Le attività in uscita sono firmate con la **coppia di chiavi RSA a 4096 bit** dell'artista, generata automaticamente per ciascun profilo.
 
-> Nota: le versioni precedenti collegavano l'identità a coppie di chiavi Zen (SEA). Questa integrazione è stata rimossa — l'autenticazione avviene tramite nome utente/password (JWT) e la firma per la federazione si basa su chiavi RSA. Vedi [FEDERATION.md](./FEDERATION.md).
+> Nota: l'autenticazione avviene tramite nome utente/password (JWT); un'identità FID opzionale (una chiave Ed25519) può essere collegata per l'SSO tra istanze, e la firma per la federazione si basa su chiavi RSA. Vedi [FEDERATION.md](./FEDERATION.md).
 
 ## 5. Segnalazione e Moderazione delle Release
 

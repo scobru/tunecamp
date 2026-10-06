@@ -64,7 +64,8 @@ TuneCamp utilizza **SQLite** come motore di database relazionale per la gestione
 
 - **`admin`**: Tabella contenente tutti gli account locali (tutti i ruoli, non solo l'amministratore: il nome ha ragioni storiche). Include `role`, `password_hash`, `artist_id`, quote di archiviazione.
 - **`password_reset_tokens`**: Token crittografici a scadenza per il reset password via Brevo.
-- **`zen_users`**: Cache del profilo identità FID/Zen (chiave pubblica, alias, avatar), sincronizzata con `admin.zen_pub` per il login SSO cross-istanza.
+- **`library_sync`**: Record opachi per identità (`pub`, `bucket`, `id`, `d`, `at`, `del`) alla base della sync della libreria tra dispositivi del player del sito. I bucket privati (`favorites`, `artists`, `playlists`) contengono testo cifrato; `shared` contiene le playlist pubbliche in chiaro. Vedi [FID-IDENTITY.md](./FID-IDENTITY.md).
+- **`zen_users`**: Cache del profilo identità FID (chiave pubblica, alias, avatar), sincronizzata con `admin.zen_pub` per il login SSO cross-istanza.
 - **`zen_cache`**: Tabella ereditata dal livello di sincronizzazione ZEN rimosso — conservata per compatibilità di schema ma non più scritta.
 - **`fid_registry`**: Registro passaporti e verifiche crittografiche dell'identità federata.
 - **`followers`** / **`following`**: Relazioni di tipo "follow" tra utenti locali e attori remoti ActivityPub.

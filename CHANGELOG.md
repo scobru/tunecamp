@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Library sync for the website player, over plain HTTP.** `GET`/`PUT /api/auth/zen/library/:pub` store a listener's favorites, artists and playlists as opaque records (encrypted in the browser) and `GET /api/auth/zen/library/:pub/shared/:id` serves a playlist its owner published. Requests are signed with the identity key in `X-Fid-Auth` (method, path, timestamp and body hash, 5-minute window), the key must belong to an active account on the instance, and storage is capped (200 records per request, 64 KB per record, 5000 records / 8 MB per identity, 120 requests a minute per IP). CORS is open without credentials because the signature is the credential. Last write wins by the record's own timestamp; a deleted record stays as a tombstone. New table `library_sync`. This replaces the Zen relay the player used before, so no relay is involved anywhere any more.
+
+### Documentation
+
+- FID, architecture, federation and decision docs (English and Italian) no longer describe Zen SEA or a relay; they describe Ed25519 identities and the library sync endpoints. Removed the dead `zen` / `@akaoio/zen` type stubs from the webapp.
+
 ### Changed
 
 - **`fid` 5.0.0: FID identities are now plain Ed25519 keys instead of Zen SEA.** The `fid` git dependency no longer pulls `@akaoio/zen`, so the install drops it too. The `/api/auth/zen/*` routes, the `zen_pub` column and the `zenPubKey` / `masterKeySource.type: "zen"` wire names are unchanged; the keys and signatures behind them are not. A `zen_pub` linked before this change will not match a key from the new portal, so affected users have to relink their identity. The `fid` test double (`__mocks__/fid.ts`) now mirrors the real Ed25519 sign/verify (detached base64url signatures, `pub`/`priv` as JWK `x`/`d`) and `FidKeyPair` is `{ pub, priv }`.
