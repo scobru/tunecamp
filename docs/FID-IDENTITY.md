@@ -49,6 +49,20 @@ The official central SSO and identity portal is deployed at:
 
 ## 🔑 Endpoints
 
+## 🔁 After `fid` 5.0: relinking an account
+
+`fid` 5.0 replaced Zen SEA keys with Ed25519 keys, so the same alias and passphrase now derive a **different** key. An account whose `zen_pub` is the old key is no longer reached by signing in: the SSO answers `Username already exists…` (`FID_KEY_CHANGED`) or the link flow `FID identity not found`.
+
+Accounts created through FID have no password, and the server refuses to write one, so the owner cannot fix this from the web UI. The instance operator points the account at the new key:
+
+```bash
+npm run fid:relink -- <username> <new-public-key>   # add --db path/to/db if it is not the configured one
+```
+
+The new public key is the one the FID profile page shows after signing in again. The tool refuses a malformed key or one another account owns, signs the account's sessions out, resets its passports (they were issued for the old key) and removes the old identity's library records, which nobody can read any more. Accounts that do have a password can log in normally and link the new key from their profile.
+
+---
+
 ### 1. Generate Challenge
 
 - **Endpoint**: `GET /api/auth/zen/challenge`

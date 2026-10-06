@@ -49,6 +49,20 @@ Il portale centralizzato SSO e d'identità ufficiale è distribuito su:
 
 ## 🔑 Endpoint
 
+## 🔁 Dopo `fid` 5.0: ricollegare un account
+
+`fid` 5.0 ha sostituito le chiavi Zen SEA con chiavi Ed25519, quindi lo stesso alias e la stessa passphrase ora derivano una chiave **diversa**. Un account il cui `zen_pub` è la vecchia chiave non viene più raggiunto dall'accesso: l'SSO risponde `Username already exists…` (`FID_KEY_CHANGED`) oppure il collegamento `FID identity not found`.
+
+Gli account creati tramite FID non hanno password e il server rifiuta di scriverne una, quindi il proprietario non può risolvere dall'interfaccia web. L'operatore dell'istanza punta l'account alla nuova chiave:
+
+```bash
+npm run fid:relink -- <username> <nuova-chiave-pubblica>   # aggiungi --db percorso/del/db se non è quello configurato
+```
+
+La nuova chiave pubblica è quella mostrata dalla pagina del profilo FID dopo aver rifatto l'accesso. Lo strumento rifiuta una chiave malformata o già usata da un altro account, disconnette le sessioni dell'account, azzera i passaporti (erano emessi per la vecchia chiave) e rimuove i record della libreria della vecchia identità, che nessuno può più leggere. Gli account che hanno una password possono accedere normalmente e collegare la nuova chiave dal profilo.
+
+---
+
 ### 1. Genera Challenge
 
 - **Endpoint**: `GET /api/auth/zen/challenge`
