@@ -255,6 +255,61 @@ describe("Zen SEA Integration Routes", () => {
 		expect(update!.args).toEqual([altKeys1.pub, 1]);
 	});
 
+	// A signed-in user binds a new key from the FID portal, which cannot receive the session token:
+	// the webapp mints a one-time code, the portal signs a challenge and calls /set with the code.
+	test("POST /api/auth/zen/link-code needs a session and returns a short-lived code", async () => {
+		expect((await request(app).post("/api/auth/zen/link-code")).status).toBe(401);
+		const res = await request(app)
+			.post("/api/auth/zen/link-code")
+			.set("Authorization", "Bearer test-token");
+		expect(res.status).toBe(200);
+		expect(typeof res.body.code).toBe("string");
+		expect(res.body.code.length).toBeGreaterThan(30);
+		expect(res.body.expiresInSeconds).toBe(300);
+	});
+
+	test("a link code lets the portal bind a new key to the account, once", async () => {
+		const { body: minted } = await request(app)
+			.post("/api/auth/zen/link-code")
+			.set("Authorization", "Bearer test-token");
+
+		// the portal has no session: the code stands in for it, for the challenge ...
+		const challengeRes = await request(app)
+			.get("/api/auth/zen/challenge")
+			.query({ linkCode: minted.code });
+		expect(challengeRes.status).toBe(200);
+		const challenge = challengeRes.body.challenge;
+		expect(challenge.username).toBe("scobru");
+		const seaSignature = await signPayload(`scobru:${challenge.nonce}`, altKeys1.priv);
+
+		// ... and for /set, which still verifies the signature of the NEW key
+		const wrongKey = await request(app)
+			.post("/api/auth/zen/set")
+			.send({ zenPubKey: altKeys1.pub, challenge, seaSignature: await signPayload(`scobru:${challenge.nonce}`, altKeys2.priv), linkCode: minted.code });
+		expect(wrongKey.status).toBe(400);
+
+		const fresh = (await request(app).get("/api/auth/zen/challenge").query({ linkCode: minted.code })).body.challenge;
+		const res = await request(app)
+			.post("/api/auth/zen/set")
+			.send({ zenPubKey: altKeys1.pub, challenge: fresh, seaSignature: await signPayload(`scobru:${fresh.nonce}`, altKeys1.priv), linkCode: minted.code });
+		expect(res.status).toBe(200);
+		expect(res.body.zenPub).toBe(altKeys1.pub);
+
+		// spent: the same code does nothing a second time
+		const again = (await request(app).get("/api/auth/zen/challenge").query({ linkCode: minted.code })).status;
+		expect(again).toBe(401);
+		expect(
+			(await request(app).post("/api/auth/zen/set").send({ zenPubKey: altKeys1.pub, challenge: fresh, seaSignature, linkCode: minted.code })).status,
+		).toBe(401);
+	});
+
+	test("an unknown link code and no session get nothing", async () => {
+		expect((await request(app).get("/api/auth/zen/challenge").query({ linkCode: "nope" })).status).toBe(401);
+		expect(
+			(await request(app).post("/api/auth/zen/set").send({ zenPubKey: altKeys1.pub, challenge: { nonce: "x" }, seaSignature: "y", linkCode: "nope" })).status,
+		).toBe(401);
+	});
+
 	// Helper to generate a valid apSeed (32 bytes = 64 hex chars)
 	function validApSeed(): string {
 		return crypto.randomBytes(32).toString("hex");

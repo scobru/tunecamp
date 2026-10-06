@@ -128,6 +128,18 @@ export const authApi = {
 			}>("auth/zen/sso", { ssoToken, apSeed }),
 		),
 
+	/**
+	 * A one-time code for the FID portal to bind a key to the account that is signed in here.
+	 * The portal is another origin and must not receive the session token, so it carries this
+	 * code instead (in the URL fragment) and the signed challenge proves the key.
+	 */
+	createFidLinkCode: () =>
+		handleResponse(
+			api.post<{ success: boolean; code: string; expiresInSeconds: number }>(
+				"auth/zen/link-code",
+			),
+		),
+
 	/** Trades the one-time code left by the portal in the callback URL for the session JWT. */
 	exchangeSsoCode: (code: string) =>
 		handleResponse(
