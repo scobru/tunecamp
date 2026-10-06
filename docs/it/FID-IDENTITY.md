@@ -181,6 +181,7 @@ Sincronizzazione tra dispositivi della libreria di un ascoltatore, più le playl
   - `GET /:pub?since=<ms>` — i record cambiati dopo `since`, tombstone incluse. Firmato.
   - `PUT /:pub` — inserisce o aggiorna `{ records: [{ bucket, id, d, at, del }] }`. Un record viene accettato solo se `at` è più recente di quello salvato (vince l'ultima scrittura). Firmato.
   - `GET /:pub/shared/:id` — una playlist condivisa pubblica `{ name, items, at }`. Anonimo.
+  - `GET /:pub/account` — `{ username }` se l'istanza ha un account attivo collegato alla chiave, altrimenti `404`. Anonimo; un nuovo dispositivo lo usa per trovare dove sta la sua libreria. Espone solo il legame chiave ↔ username che gli endpoint dei passaporti già pubblicano.
 - **Autenticazione**: `X-Fid-Auth: <ts>.<sig>`, dove `sig` è la firma della chiave d'identità su `fid-library:<METODO>:<percorso>:<ts>:<sha256 esadecimale del corpo>`. Timestamp con più di 5 minuti di scarto vengono rifiutati. La chiave deve appartenere a un **account attivo su quell'istanza** (`admin.zen_pub`), così un'istanza non è mai spazio gratuito per sconosciuti.
 - **Bucket**: `favorites`, `artists`, `playlists` (testo cifrato in `d`) e `shared` (JSON in chiaro, fino a 200 brani).
 - **Limiti**: 200 record per richiesta, 64 KB per record, 5000 record e 8 MB per identità, 120 richieste al minuto per IP. Oltre il limite: `413`.

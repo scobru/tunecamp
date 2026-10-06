@@ -79,6 +79,16 @@ export function createLibrarySyncRoutes(container: ServiceContainer): Router {
 		return pub;
 	}
 
+	// GET /:pub/account — does this instance hold an active account for this identity key?
+	// Lets a new device find where its library lives without a relay. It reveals only the
+	// link between a public key and a username, which the passport endpoints already publish.
+	router.get("/:pub/account", (req, res) => {
+		const pub = req.params.pub;
+		const user = PUB_RE.test(pub) ? authService.getUserByZenPubKey(pub) : undefined;
+		if (!user || !user.is_active) return res.status(404).json({ error: "Not found" });
+		res.json({ username: user.username });
+	});
+
 	// GET /:pub/shared/:id — the one public read: a playlist its owner chose to publish.
 	router.get("/:pub/shared/:id", (req, res) => {
 		if (!PUB_RE.test(req.params.pub)) return res.status(404).json({ error: "Not found" });
