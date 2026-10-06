@@ -94,7 +94,7 @@ Per contributori e sviluppatori su TuneCamp.
 | [Architettura Backend](./architecture-backend.md) | Server Express, SQLite, ActivityPub, scoperta federata e modello dati completo / schema del database |
 | [Architettura Webapp](./architecture-webapp.md) | React, Vite, Zustand e scoperta dell'istanza nel frontend |
 | [Contratti API](./api-contracts.md) | Endpoint REST, autenticazione e protocolli supportati |
-| [Identità FID](./FID-IDENTITY.md) | Identità auto-sovrana e passaporti d'istanza tramite FID + Zen SEA |
+| [Identità FID](./FID-IDENTITY.md) | Identità auto-sovrana e passaporti d'istanza tramite FID (Ed25519) |
 
 ---
 

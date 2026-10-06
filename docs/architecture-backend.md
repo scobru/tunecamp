@@ -64,7 +64,8 @@ TuneCamp uses **SQLite** as its relational database engine for managing music me
 
 - **`admin`**: Table of all local accounts (all roles, not just admin: the name is historical). Includes `role`, `password_hash`, `artist_id`, storage quotas.
 - **`password_reset_tokens`**: Time-limited cryptographic tokens for Brevo-powered email password resets.
-- **`zen_users`**: FID/Zen identity profile cache (pub key, alias, avatar), kept in sync with `admin.zen_pub` for cross-instance SSO login.
+- **`library_sync`**: Opaque per-identity records (`pub`, `bucket`, `id`, `d`, `at`, `del`) behind the website player's cross-device library sync. The private buckets (`favorites`, `artists`, `playlists`) hold ciphertext; `shared` holds public playlists in the clear. See [FID-IDENTITY.md](./FID-IDENTITY.md).
+- **`zen_users`**: FID identity profile cache (pub key, alias, avatar), kept in sync with `admin.zen_pub` for cross-instance SSO login.
 - **`zen_cache`**: Legacy table from the removed ZEN sync layer — retained for schema compatibility but no longer written to.
 - **`fid_registry`**: Federation identity passports and cryptographic claim verification registry.
 - **`followers`** / **`following`**: Follow relations between local users and remote ActivityPub actors.

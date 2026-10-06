@@ -565,6 +565,17 @@ export function createDatabase(dbPath: string): DatabaseService {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS library_sync (
+            pub TEXT NOT NULL,
+            bucket TEXT NOT NULL,
+            id TEXT NOT NULL,
+            d TEXT NOT NULL,
+            at INTEGER NOT NULL,
+            del INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (pub, bucket, id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_library_sync_pub_at ON library_sync(pub, at);
+
         CREATE TABLE IF NOT EXISTS fid_registry (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL REFERENCES admin(id) ON DELETE CASCADE,

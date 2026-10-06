@@ -94,7 +94,7 @@ For contributors and people building on TuneCamp.
 | [Backend Architecture](./architecture-backend.md) | Express server, SQLite, ActivityPub, federated discovery, and the full data model / database schema |
 | [Webapp Architecture](./architecture-webapp.md) | React, Vite, Zustand, and instance discovery in the frontend |
 | [API Contracts](./api-contracts.md) | REST endpoints, authentication, and supported protocols |
-| [FID Identity](./FID-IDENTITY.md) | Self-sovereign identity and instance passports via FID + Zen SEA |
+| [FID Identity](./FID-IDENTITY.md) | Self-sovereign identity and instance passports via FID (Ed25519) |
 
 ---
 

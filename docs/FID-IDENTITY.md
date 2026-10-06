@@ -1,6 +1,6 @@
 # FID (Fediverse-ID) Unified Identity & Instance Passports
 
-TuneCamp uses a **self-sovereign, decentralized identity model** powered by [FID (Fediverse-ID)](https://github.com/scobru/fid) (`@scobru/fid`), [Zen SEA](https://github.com/scobru/zen), and the P2P relay network (`wss://delay.scobrudot.dev/zen`).
+TuneCamp uses a **self-sovereign, decentralized identity model** powered by [FID (Fediverse-ID)](https://github.com/scobru/fid) (`fid`): an Ed25519 keypair derived in the browser from an alias and a passphrase, signed requests over plain HTTPS, and no relay.
 
 This architecture allows users to unify their profiles across independent TuneCamp instances without relying on a centralized Single Sign-On (SSO) or shared database.
 
@@ -13,29 +13,15 @@ The official central SSO and identity portal is deployed at:
 
 ---
 
-## 📡 Help the Network: Host a Zen Relay Node
-
-The decentralized graph sync and P2P communication in FID rely on open Zen P2P Relays.
-
-You can help strengthen the network's resilience, speed, and decentralization by running your own Zen P2P Relay node!
-
-👉 **Host a Zen Relay Node:** Visit the **[scobru/zen repository](https://github.com/scobru/zen)** for instructions on spinning up a lightweight relay instance.
-
----
-
 ## 🏛️ Architecture Overview
 
 ```
                                 ┌───────────────────────────┐
                                 │   fid-portal.vercel.app   │
-                                │  (Zen SEA Global Portal)  │
+                                │   (Ed25519 identity,      │
+                                │    keys stay in browser)  │
                                 └─────────────┬─────────────┘
-                                              │  WSS (Zen Graph)
-                                ┌─────────────▼─────────────┐
-                                │   wss://delay.scobrudot.dev│
-                                │     Zen P2P Relay         │
-                                └─────────────┬─────────────┘
-                                              │
+                                              │  HTTPS (signed requests)
                         ┌─────────────────────┴─────────────────────┐
                         │                                           │
            ┌────────────▼────────────┐                 ┌────────────▼────────────┐
@@ -56,14 +42,14 @@ You can help strengthen the network's resilience, speed, and decentralization by
 2. **Step 2 (fid-portal.vercel.app $\rightarrow$ Instance)**:
    - On `fid-portal.vercel.app/profile.html`, user opens **"Link Instance"** $\rightarrow$ **"Firma Challenge Istanza"**.
    - User pastes the Challenge JSON.
-   - Portal signs the challenge with the user's private Zen SEA key and generates a **Passport JSON**.
+   - Portal signs the challenge with the user's private identity key and generates a **Passport JSON**.
    - User copies the **Passport JSON** and pastes it back into the local TuneCamp instance to activate the verified link.
 
 ---
 
 ## 🔑 Endpoints
 
-### 1. Generate Zen Challenge
+### 1. Generate Challenge
 
 - **Endpoint**: `GET /api/auth/zen/challenge`
 - **Auth Required**: Yes (`requireUser`)
@@ -89,7 +75,7 @@ You can help strengthen the network's resilience, speed, and decentralization by
 
 ```json
 {
-  "zenPubKey": "QmZenPubKey...",
+  "zenPubKey": "bE9DAycqb9gbxMJHTxh5RRxVQRPpG-wrCojHVl0s9sM",
   "challenge": { ... },
   "seaSignature": "SEA.sign_signature_data"
 }
@@ -103,7 +89,7 @@ You can help strengthen the network's resilience, speed, and decentralization by
   "passport": {
     "instanceDomain": "sudorecords.scobrudot.dev",
     "localUsername": "scobru",
-    "zenPubKey": "QmZenPubKey...",
+    "zenPubKey": "bE9DAycqb9gbxMJHTxh5RRxVQRPpG-wrCojHVl0s9sM",
     "issuedAt": 1721926658000,
     "passportSignature": "HMAC_SHA256_SIGNATURE",
     "publicDataEndpoint": "https://sudorecords.scobrudot.dev/api/auth/zen/user/scobru/public"
@@ -123,7 +109,7 @@ You can help strengthen the network's resilience, speed, and decentralization by
     "clientId": "tunecamp-webapp",
     "instanceDomain": "sudorecords.scobrudot.dev",
     "username": "scobru",
-    "zenPubKey": "QmZenPubKey...",
+    "zenPubKey": "bE9DAycqb9gbxMJHTxh5RRxVQRPpG-wrCojHVl0s9sM",
     "issuedAt": 1721926658000
   },
   "apSeed": "32_byte_hex_seed..."
@@ -171,3 +157,17 @@ You can help strengthen the network's resilience, speed, and decentralization by
 - **Tabs**: Releases, Favorites (starred), Playlists — each shows instance badge.
 - **Auto-sync**: On login, `loadLinkedInstances()` fetches registry and auto-syncs verified instances.
 - **Manual sync**: "Sync" button per instance in the Linked Instances list.
+- **Library sync (player)**: when an identity is linked to an instance, the player can mirror the listener's library (favorites, artists, playlists) to that instance. Records are encrypted in the browser with a key derived from the identity key; the instance only stores ciphertext. See below.
+
+### 9. Library Sync (website player)
+
+Cross-device sync of a listener's library, plus public shared playlists. Plain HTTP, no relay.
+
+- **Endpoints** (all under `/api/auth/zen/library/:pub`, wildcard CORS, no cookies):
+  - `GET /:pub?since=<ms>` — records changed after `since`, tombstones included. Signed.
+  - `PUT /:pub` — upserts `{ records: [{ bucket, id, d, at, del }] }`. A record only lands if `at` is newer than the stored one (last write wins). Signed.
+  - `GET /:pub/shared/:id` — one public shared playlist `{ name, items, at }`. Anonymous.
+- **Auth**: `X-Fid-Auth: <ts>.<sig>`, where `sig` is the identity key's signature over `fid-library:<METHOD>:<path>:<ts>:<sha256 hex of the body>`. Timestamps more than 5 minutes off are refused. The key must belong to an **active account on that instance** (`admin.zen_pub`), so an instance is never free storage for strangers.
+- **Buckets**: `favorites`, `artists`, `playlists` (ciphertext in `d`) and `shared` (JSON in the clear, up to 200 tracks).
+- **Limits**: 200 records per request, 64 KB per record, 5000 records and 8 MB per identity, 120 requests per minute per IP. Over the limit: `413`.
+- **Storage**: table `library_sync (pub, bucket, id, d, at, del)`. A deleted record keeps its row as a tombstone with an empty payload.

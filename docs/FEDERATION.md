@@ -6,7 +6,7 @@ Tunecamp leverages two primary technologies to enable a decentralized music ecos
 
 Tunecamp discovers other instances by **gossip over HTTP** — there is no central relay and no shared registry. An instance crawls outward from a set of seed instances (its ActivityPub-followed TuneCamp sites plus `TUNECAMP_FEDERATION_SEEDS`), validates that each peer is a live TuneCamp via its NodeInfo, and stores the reachable set in local SQLite (`federated_instances`). Implemented in `src/server/modules/network/federated-discovery.service.ts`.
 
-> **History**: earlier versions used the **Zen** decentralized graph for instance signaling, and before that for user identity (SEA keypairs), Zen-first auth, wallet derivation, and cross-instance roaming. **Zen has been removed entirely** (PRs #369/#370/#372): authentication is username/password (JWT), discovery is the HTTP gossip described here, and catalogs are exchanged directly over HTTP. The `zen` dependency and all `TUNECAMP_ZEN_*` env vars are gone.
+> **History**: earlier versions used the **Zen** decentralized graph for instance signaling, and before that for user identity (SEA keypairs), Zen-first auth, wallet derivation, and cross-instance roaming. **Zen has been removed entirely** (PRs #369/#370/#372): authentication is username/password (JWT), discovery is the HTTP gossip described here, and catalogs are exchanged directly over HTTP. The `zen` dependency and all `TUNECAMP_ZEN_*` env vars are gone. FID identities themselves are now plain Ed25519 keys (`fid` 5.0.0), still carried in the `zen_pub` / `zenPubKey` fields.
 
 ### Key Roles
 

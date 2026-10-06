@@ -174,6 +174,24 @@ export function createApp(config: ServerConfig): AppSetupResult {
         });
     });
 
+    // The website player syncs a listener's library from another origin. Authentication is
+    // a signature in X-Fid-Auth, not a cookie or Authorization header, so wildcard CORS
+    // without credentials exposes nothing a signature holder couldn't already do.
+    const librarySyncCors = cors({
+        origin: '*',
+        credentials: false,
+        methods: ['GET', 'PUT', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'X-Fid-Auth'],
+    });
+    app.use('/api/auth/zen/library', (req, res, next) => {
+        if (!!req.headers.cookie || !!req.headers.authorization) return next();
+        librarySyncCors(req, res, (err?: any) => {
+            if (err) return next(err);
+            res.locals.skipStrictCors = true;
+            next();
+        });
+    });
+
     app.use((req, res, next) => {
         if (res.locals.skipStrictCors) {
             return next();
