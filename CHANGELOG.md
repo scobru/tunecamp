@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **`fid` 5.0.0: FID identities are now plain Ed25519 keys instead of Zen SEA.** The `fid` git dependency no longer pulls `@akaoio/zen`, so the install drops it too. The `/api/auth/zen/*` routes, the `zen_pub` column and the `zenPubKey` / `masterKeySource.type: "zen"` wire names are unchanged; the keys and signatures behind them are not. A `zen_pub` linked before this change will not match a key from the new portal, so affected users have to relink their identity. The `fid` test double (`__mocks__/fid.ts`) now mirrors the real Ed25519 sign/verify (detached base64url signatures, `pub`/`priv` as JWK `x`/`d`) and `FidKeyPair` is `{ pub, priv }`.
+
 ### Security
 
 - **The startup security check no longer reports the CORS default as the opposite of what it is.** With `TUNECAMP_CORS_ORIGINS` unset, `createApp` passes `origin: false` to `cors()`, which sends no `Access-Control-Allow-Origin` at all — the *restrictive* default. The startup banner announced `CORS is open to all origins` and filed it under "insecure configuration detected", and the README documented the default as `_all_`, so admins were pushed to configure a variable most of them do not need, against a hole that was never there. The warning is gone (an unset value is not a finding), the README row now reads `same-origin only` with a note explaining that the federation surface — `/api/catalog`, `/api/community`, `/api/tracks`, `/api/albums`, `/api/releases`, `/api/samples`, `/rest` — opts into cross-origin reads separately and stays open for credential-less GETs whatever the variable says. Documentation and one console line only: no CORS behaviour changed.
