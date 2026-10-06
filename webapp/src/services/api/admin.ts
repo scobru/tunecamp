@@ -334,6 +334,8 @@ export const adminApi = {
     requestArtistProfile: () => handleResponse(api.post<{ success: boolean; autoApproved?: boolean; token?: string; artistId?: number; message?: string }>('users/me/artist-request')),
     approveArtistRequest: (userId: string | number) => handleResponse(api.post<{ artistId: number }>(`admin/system/users/${userId}/approve-artist`)),
     dismissArtistRequest: (userId: string | number) => handleResponse(api.delete(`admin/system/users/${userId}/artist-request`)),
+    approveFidRelink: (userId: string | number) => handleResponse(api.post(`admin/system/users/${userId}/approve-fid-relink`)),
+    dismissFidRelink: (userId: string | number) => handleResponse(api.delete(`admin/system/users/${userId}/fid-relink`)),
     deleteUser: (id: string) => handleResponse(api.delete(`admin/system/users/${id}`)),
     deleteUsersBatch: (ids: (string | number)[]) =>
         handleResponse(api.delete('admin/system/users/batch', { data: { ids } })),

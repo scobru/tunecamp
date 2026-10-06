@@ -336,6 +336,37 @@ describe("Zen SEA Integration Routes", () => {
 		expect(res.body.error).toContain("Username already exists");
 	});
 
+	test("POST /api/auth/zen/sso turns a new key for a FID-only account into a relink request, never a login", async () => {
+		const runs: unknown[][] = [];
+		const previous = mockContainer.database.prepare.getMockImplementation();
+		mockContainer.database.prepare.mockImplementation((query: string) => {
+			if (query.includes("fid_relink_pub FROM admin WHERE username")) {
+				return {
+					get: () => ({ id: 1, zen_pub: baseKeys.pub, zen_auth_mode: "zen", fid_relink_pub: null }),
+					all: () => [],
+					run: () => ({}),
+				};
+			}
+			if (query.includes("UPDATE admin SET fid_relink_pub")) {
+				return { get: () => null, all: () => [], run: (...args: unknown[]) => (runs.push(args), {}) };
+			}
+			return previous!(query);
+		});
+		try {
+			const token = await buildSsoToken({ username: "scobru" }, altKeys2);
+			const res = await request(app)
+				.post("/api/auth/zen/sso")
+				.send({ ssoToken: token, apSeed: validApSeed() });
+			expect(res.status).toBe(409);
+			expect(res.body.code).toBe("FID_KEY_CHANGED");
+			expect(res.body.relinkRequested).toBe(true);
+			expect(res.body.token).toBeUndefined();
+			expect(runs).toEqual([[altKeys2.pub, 1]]);
+		} finally {
+			mockContainer.database.prepare.mockImplementation(previous!);
+		}
+	});
+
 	test("POST /api/auth/zen/sso logs in existing user on valid request", async () => {
 		const token = await buildSsoToken();
 		const res = await request(app)
