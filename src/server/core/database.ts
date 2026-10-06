@@ -1442,6 +1442,15 @@ export function createDatabase(dbPath: string): DatabaseService {
 					"ALTER TABLE admin ADD COLUMN artist_requested_at TEXT DEFAULT NULL",
 				);
 			}
+			// A FID key someone signed in with after fid 5.0 re-keyed identities, waiting for an
+			// administrator to approve moving the account to it (see modules/auth/fid-relink.ts).
+			if (!cols.some((col) => col.name === "fid_relink_pub")) {
+				console.log(
+					"📦 [Database] Migrating admin table: adding fid_relink_pub columns...",
+				);
+				db.exec("ALTER TABLE admin ADD COLUMN fid_relink_pub TEXT DEFAULT NULL");
+				db.exec("ALTER TABLE admin ADD COLUMN fid_relink_requested_at TEXT DEFAULT NULL");
+			}
 			// Opt-in "now listening" presence (off by default for privacy).
 			if (!cols.some((col) => col.name === "now_playing_enabled")) {
 				console.log(

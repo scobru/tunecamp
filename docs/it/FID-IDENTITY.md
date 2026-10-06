@@ -53,7 +53,11 @@ Il portale centralizzato SSO e d'identità ufficiale è distribuito su:
 
 `fid` 5.0 ha sostituito le chiavi Zen SEA con chiavi Ed25519, quindi lo stesso alias e la stessa passphrase ora derivano una chiave **diversa**. Un account il cui `zen_pub` è la vecchia chiave non viene più raggiunto dall'accesso: l'SSO risponde `Username already exists…` (`FID_KEY_CHANGED`) oppure il collegamento `FID identity not found`.
 
-Gli account creati tramite FID non hanno password e il server rifiuta di scriverne una, quindi il proprietario non può risolvere dall'interfaccia web. L'operatore dell'istanza punta l'account alla nuova chiave:
+Gli account creati tramite FID non hanno password, il server rifiuta di scriverne una e la vecchia chiave non si può più verificare (Zen non c'è più): il proprietario non può dimostrare da solo che l'account è suo. Serve l'approvazione di un amministratore.
+
+**Dall'interfaccia web.** Il proprietario accede dal portale FID con la nuova chiave. L'istanza risponde `FID_KEY_CHANGED` e registra una **richiesta di ricollegamento** sull'account (vince la prima richiesta: un'altra chiave non può sostituirla finché l'amministratore non la rifiuta). In **Admin → Users** l'account mostra *FID relink requested* con la chiave e i pulsanti **Approve** / **Dismiss** (solo l'amministratore principale). Prima di approvare, conferma con la persona che la chiave è quella mostrata dal suo portale: chiunque conosca un nome utente può inviare una richiesta. Dopo l'approvazione il proprietario accede di nuovo con l'SSO.
+
+**Dall'host.** Lo stesso spostamento senza interfaccia:
 
 ```bash
 npm run fid:relink -- <username> <nuova-chiave-pubblica>   # aggiungi --db percorso/del/db se non è quello configurato

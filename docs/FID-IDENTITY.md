@@ -53,7 +53,11 @@ The official central SSO and identity portal is deployed at:
 
 `fid` 5.0 replaced Zen SEA keys with Ed25519 keys, so the same alias and passphrase now derive a **different** key. An account whose `zen_pub` is the old key is no longer reached by signing in: the SSO answers `Username already exists…` (`FID_KEY_CHANGED`) or the link flow `FID identity not found`.
 
-Accounts created through FID have no password, and the server refuses to write one, so the owner cannot fix this from the web UI. The instance operator points the account at the new key:
+Accounts created through FID have no password, and the server refuses to write one, and the old key can no longer be verified (Zen is gone), so the owner cannot prove the account is theirs by themselves. An administrator has to approve the move.
+
+**From the web UI.** The owner signs in through the FID portal with the new key. The instance answers `FID_KEY_CHANGED` and records a **relink request** on the account (the first request wins; a different key cannot replace it until the administrator dismisses it). In **Admin → Users** the account shows *FID relink requested* with the key and **Approve** / **Dismiss** buttons (primary admin only). Confirm with the person that the key is the one their portal shows before approving: anyone who knows a username can send a request. After approval the owner signs in again through the SSO.
+
+**From the host.** The same move without the UI:
 
 ```bash
 npm run fid:relink -- <username> <new-public-key>   # add --db path/to/db if it is not the configured one

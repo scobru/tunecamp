@@ -4,6 +4,7 @@ import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
 import { FidChallengeManager, FidPassportIssuer, FidSsoHandler } from "fid";
 import { UserRole } from "../../common/visibility.js";
+import { requestRelink } from "../../modules/auth/fid-relink.js";
 import crypto from "node:crypto";
 
 // Global FID challenge manager and passport issuer instances
@@ -615,17 +616,25 @@ export function createZenRoutes(container: ServiceContainer): Router {
 					// their existing account settings after a password login.
 					const collision = authService.getUserByUsername(desiredUsername);
 					if (collision) {
-						// An account that already has a FID key is one the same person created before
-						// fid 5.0 re-keyed every identity: it has no password to log in with, so only
-						// the instance administrator can point it at the new key (npm run fid:relink).
-						const hasOldKey = !!(db
-							.prepare("SELECT zen_pub FROM admin WHERE username = ? COLLATE NOCASE")
-							.get(desiredUsername) as { zen_pub: string | null } | undefined)?.zen_pub;
+						// A FID-only account that already has a key is one created before fid 5.0
+						// re-keyed every identity. It has no password and the old key can no longer be
+						// verified, so the new key only earns a request for the administrator to
+						// approve (Admin > Users), never a login.
+						const outcome = requestRelink(db, desiredUsername, zenPubKey);
+						if (outcome !== "not-eligible") {
+							return res.status(409).json({
+								error:
+									outcome === "requested"
+										? "Username already exists and is linked to a different FID identity, probably one created before FID 5.0 re-keyed every identity. A request to relink it to your new key was sent to the administrator of this instance: you can sign in once they approve it."
+										: "Username already exists and is linked to a different FID identity. A relink request for this account is already waiting for the administrator of this instance to approve or dismiss it.",
+								code: "FID_KEY_CHANGED",
+								relinkRequested: outcome === "requested",
+							});
+						}
 						return res.status(409).json({
-							error: hasOldKey
-								? "Username already exists and is linked to a different FID identity, probably one created before FID 5.0 re-keyed every identity. Ask the administrator of this instance to relink it to your new key."
-								: "Username already exists. Log in with your password first, then link your FID identity from your profile.",
-							code: hasOldKey ? "FID_KEY_CHANGED" : "USERNAME_TAKEN",
+							error:
+								"Username already exists. Log in with your password first, then link your FID identity from your profile.",
+							code: "USERNAME_TAKEN",
 						});
 					}
 

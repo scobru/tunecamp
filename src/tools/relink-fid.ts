@@ -17,52 +17,12 @@
  */
 
 import sqlite3 from "better-sqlite3";
-import type { Database } from "better-sqlite3";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { loadConfig } from "../server/core/config.js";
+import { relinkFid } from "../server/modules/auth/fid-relink.js";
 
-/** An Ed25519 public key as `fid` 5 writes it: 32 bytes, base64url, 43 characters. */
-const KEY_RE = /^[A-Za-z0-9_-]{43}$/;
-
-export interface RelinkResult {
-	username: string;
-	oldPub: string | null;
-	newPub: string;
-}
-
-/**
- * Moves `username` to `newPub`. Throws, and changes nothing, if the key is malformed, the
- * account does not exist, or another account already owns the key.
- */
-export function relinkFid(db: Database, username: string, newPub: string): RelinkResult {
-	if (!KEY_RE.test(newPub)) {
-		throw new Error("The new public key must be 43 base64url characters (an Ed25519 key from fid 5).");
-	}
-	const user = db
-		.prepare("SELECT id, username, zen_pub FROM admin WHERE username = ? COLLATE NOCASE")
-		.get(username) as { id: number; username: string; zen_pub: string | null } | undefined;
-	if (!user) throw new Error(`No account named "${username}".`);
-
-	const owner = db
-		.prepare("SELECT username FROM admin WHERE zen_pub = ? AND id != ?")
-		.get(newPub, user.id) as { username: string } | undefined;
-	if (owner) throw new Error(`That key already belongs to "${owner.username}".`);
-
-	db.transaction(() => {
-		// token_version + 1 signs out every session issued for the old identity.
-		db.prepare("UPDATE admin SET zen_pub = ?, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?").run(newPub, user.id);
-		// Passports and the cached profile were issued for the old key; the library records are
-		// ciphertext under it and nobody can read them any more.
-		db.prepare("UPDATE fid_registry SET public_key = ?, verified = 0, passport_signature = NULL WHERE user_id = ?").run(newPub, user.id);
-		if (user.zen_pub) {
-			db.prepare("DELETE FROM zen_users WHERE pub = ?").run(user.zen_pub);
-			db.prepare("DELETE FROM library_sync WHERE pub = ?").run(user.zen_pub);
-		}
-	})();
-
-	return { username: user.username, oldPub: user.zen_pub, newPub };
-}
+export { relinkFid };
 
 async function main() {
 	const args = process.argv.slice(2);
