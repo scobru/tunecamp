@@ -106,4 +106,13 @@ describe("library sync routes", () => {
 		await put([{ ...shared, at: 600, del: 1 }]);
 		expect((await request(app).get(`/api/auth/zen/library/${keys.pub}/shared/p1`)).status).toBe(404);
 	});
+
+	test("the account lookup is public and only answers for an active account", async () => {
+		const found = await request(app).get(`/api/auth/zen/library/${keys.pub}/account`);
+		expect(found.status).toBe(200);
+		expect(found.body).toEqual({ username: "alice" });
+		expect((await request(app).get(`/api/auth/zen/library/${other.pub}/account`)).status).toBe(404);
+		active = 0;
+		expect((await request(app).get(`/api/auth/zen/library/${keys.pub}/account`)).status).toBe(404);
+	});
 });

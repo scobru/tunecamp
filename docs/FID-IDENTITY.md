@@ -49,6 +49,20 @@ The official central SSO and identity portal is deployed at:
 
 ## 🔑 Endpoints
 
+## 🔁 After `fid` 5.0: relinking an account
+
+`fid` 5.0 replaced Zen SEA keys with Ed25519 keys, so the same alias and passphrase now derive a **different** key. An account whose `zen_pub` is the old key is no longer reached by signing in: the SSO answers `Username already exists…` (`FID_KEY_CHANGED`) or the link flow `FID identity not found`.
+
+Accounts created through FID have no password, and the server refuses to write one, so the owner cannot fix this from the web UI. The instance operator points the account at the new key:
+
+```bash
+npm run fid:relink -- <username> <new-public-key>   # add --db path/to/db if it is not the configured one
+```
+
+The new public key is the one the FID profile page shows after signing in again. The tool refuses a malformed key or one another account owns, signs the account's sessions out, resets its passports (they were issued for the old key) and removes the old identity's library records, which nobody can read any more. Accounts that do have a password can log in normally and link the new key from their profile.
+
+---
+
 ### 1. Generate Challenge
 
 - **Endpoint**: `GET /api/auth/zen/challenge`
@@ -167,6 +181,7 @@ Cross-device sync of a listener's library, plus public shared playlists. Plain H
   - `GET /:pub?since=<ms>` — records changed after `since`, tombstones included. Signed.
   - `PUT /:pub` — upserts `{ records: [{ bucket, id, d, at, del }] }`. A record only lands if `at` is newer than the stored one (last write wins). Signed.
   - `GET /:pub/shared/:id` — one public shared playlist `{ name, items, at }`. Anonymous.
+  - `GET /:pub/account` — `{ username }` if this instance holds an active account linked to the key, else `404`. Anonymous; a new device uses it to find where its library lives. It exposes only the key ↔ username link the passport endpoints already publish.
 - **Auth**: `X-Fid-Auth: <ts>.<sig>`, where `sig` is the identity key's signature over `fid-library:<METHOD>:<path>:<ts>:<sha256 hex of the body>`. Timestamps more than 5 minutes off are refused. The key must belong to an **active account on that instance** (`admin.zen_pub`), so an instance is never free storage for strangers.
 - **Buckets**: `favorites`, `artists`, `playlists` (ciphertext in `d`) and `shared` (JSON in the clear, up to 200 tracks).
 - **Limits**: 200 records per request, 64 KB per record, 5000 records and 8 MB per identity, 120 requests per minute per IP. Over the limit: `413`.

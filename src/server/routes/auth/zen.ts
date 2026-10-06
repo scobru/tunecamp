@@ -99,7 +99,10 @@ export function createZenRoutes(container: ServiceContainer): Router {
 					.prepare("SELECT username FROM admin WHERE zen_pub = ?")
 					.get(zenPubKey) as any;
 				if (!linkedUser) {
-					return res.status(404).json({ error: "FID identity not found" });
+					return res.status(404).json({
+						error:
+							"FID identity not found. If your account was linked before FID 5.0 (which re-keyed every identity), ask the administrator of this instance to relink it to your new key.",
+					});
 				}
 				username = String(linkedUser.username);
 			}
@@ -612,10 +615,17 @@ export function createZenRoutes(container: ServiceContainer): Router {
 					// their existing account settings after a password login.
 					const collision = authService.getUserByUsername(desiredUsername);
 					if (collision) {
+						// An account that already has a FID key is one the same person created before
+						// fid 5.0 re-keyed every identity: it has no password to log in with, so only
+						// the instance administrator can point it at the new key (npm run fid:relink).
+						const hasOldKey = !!(db
+							.prepare("SELECT zen_pub FROM admin WHERE username = ? COLLATE NOCASE")
+							.get(desiredUsername) as { zen_pub: string | null } | undefined)?.zen_pub;
 						return res.status(409).json({
-							error:
-								"Username already exists. Log in with your password first, then link your FID identity from Settings.",
-							code: "USERNAME_TAKEN",
+							error: hasOldKey
+								? "Username already exists and is linked to a different FID identity, probably one created before FID 5.0 re-keyed every identity. Ask the administrator of this instance to relink it to your new key."
+								: "Username already exists. Log in with your password first, then link your FID identity from your profile.",
+							code: hasOldKey ? "FID_KEY_CHANGED" : "USERNAME_TAKEN",
 						});
 					}
 
