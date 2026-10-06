@@ -24,10 +24,11 @@
 - `sync-tags` (riscrittura tag ID3 da DB) è mantenuto solo come azione manuale su richiesta.
 - La dedup via `file_path` tramite `mergeTracks` è corretta; la riorganizzazione del filesystem no.
 
-### ZEN / ZEN
+### Rimozione di Zen e identità FID
 - **ZEN DB / ZEN è stato completamente rimosso** (PR #370, 15-06-2026). Non re-importare `zen`, `zendb.service`, `zen.worker` o `gun`.
 - La scoperta delle istanze ora utilizza **HTTP federato** (NodeInfo `/.well-known/nodeinfo`, endpoint `/peers`, gossip crawler).
-- Le firme **Zen SEA & FID SSO** (`/api/auth/zen/*`) rimangono attive per i passaporti di identità decentralizzata e i collegamenti tra istanze.
+- L'**SSO FID** (`/api/auth/zen/*`) resta attivo per i passaporti di identità decentralizzata e i collegamenti tra istanze. Da `fid` 5.0.0 le identità sono semplici chiavi **Ed25519** (WebCrypto nel browser, `node:crypto` sul server); i nomi delle rotte e dei campi `zen_pub` / `zenPubKey` restano invariati per compatibilità sul wire.
+- **La sync della libreria è HTTP semplice.** Il player del sito sincronizza la libreria dell'ascoltatore tramite `/api/auth/zen/library/:pub` su un'istanza dove l'identità è collegata: richieste firmate (`X-Fid-Auth`), record cifrati lato client, nessun relay. Lo spazio è limitato per identità e accettato solo per account attivi.
 
 ### Federazione & Autenticazione
 - L'autenticazione è **username + password + JWT, per-istanza**. Nessun SSO cross-istanza, nessuna identità crittografica portabile.

@@ -229,7 +229,7 @@ Styling uses standard CSS with variables for theme support.
 | ------ | ------------- |
 | [tunecamp](https://github.com/scobru/tunecamp) | Main server + webapp |
 | [sidecamp](https://github.com/scobru/sidecamp) | Standalone Desktop & Mobile App for Peer Sharing, Soulseek, and Torrents (npm-workspaces monorepo: Sidecamp + Sidecamp CLI) |
-| [fid](https://github.com/scobru/fid) | FID (Fediverse-ID) — self-sovereign identity & SSO protocol, Zen SEA auth |
+| [fid](https://github.com/scobru/fid) | FID (Fediverse-ID) — self-sovereign identity & SSO protocol, Ed25519 keys |
 | [tunecamp-iris](https://github.com/scobru/tunecamp-iris) | Air-gapped optical file transfer (fountain codes + WASM), standalone |
 | [tunecamp-website](https://github.com/scobru/tunecamp-website) | Landing page, community directory, and global FID identity portal |
 | [tunecamp-ecosystem](https://github.com/scobru/tunecamp-ecosystem) | Ecosystem overview doc — what exists, how the pieces talk |

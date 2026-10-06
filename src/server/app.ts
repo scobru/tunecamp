@@ -160,6 +160,20 @@ export function createApp(config: ServerConfig): AppSetupResult {
         });
     });
 
+    // POST /api/auth/zen/set, when the FID portal binds a key with a one-time link code from the
+    // user's own webapp instead of the session token. The code proves the account, the signed
+    // challenge proves the key; a request that carries a cookie or Authorization header is the
+    // webapp's own and keeps strict CORS.
+    const setPortalCors = cors({ origin: '*', credentials: false, methods: ['POST', 'OPTIONS'] });
+    app.use('/api/auth/zen/set', (req, res, next) => {
+        if (req.path !== '/' || !!req.headers.cookie || !!req.headers.authorization) return next();
+        setPortalCors(req, res, (err?: any) => {
+            if (err) return next(err);
+            res.locals.skipStrictCors = true;
+            next();
+        });
+    });
+
     // GET /api/auth/zen/challenge is step 1 of the same portal flow /link completes, so
     // it needs the same cross-origin allowance — without it the portal's fetch is blocked
     // by the browser before it ever reaches the route. It hands out nothing but a nonce;
@@ -168,6 +182,24 @@ export function createApp(config: ServerConfig): AppSetupResult {
     app.use('/api/auth/zen/challenge', (req, res, next) => {
         if (req.path !== '/' || !!req.headers.cookie || !!req.headers.authorization) return next();
         challengePortalCors(req, res, (err?: any) => {
+            if (err) return next(err);
+            res.locals.skipStrictCors = true;
+            next();
+        });
+    });
+
+    // The website player syncs a listener's library from another origin. Authentication is
+    // a signature in X-Fid-Auth, not a cookie or Authorization header, so wildcard CORS
+    // without credentials exposes nothing a signature holder couldn't already do.
+    const librarySyncCors = cors({
+        origin: '*',
+        credentials: false,
+        methods: ['GET', 'PUT', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'X-Fid-Auth'],
+    });
+    app.use('/api/auth/zen/library', (req, res, next) => {
+        if (!!req.headers.cookie || !!req.headers.authorization) return next();
+        librarySyncCors(req, res, (err?: any) => {
             if (err) return next(err);
             res.locals.skipStrictCors = true;
             next();

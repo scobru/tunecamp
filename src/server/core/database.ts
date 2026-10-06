@@ -565,6 +565,17 @@ export function createDatabase(dbPath: string): DatabaseService {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS library_sync (
+            pub TEXT NOT NULL,
+            bucket TEXT NOT NULL,
+            id TEXT NOT NULL,
+            d TEXT NOT NULL,
+            at INTEGER NOT NULL,
+            del INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (pub, bucket, id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_library_sync_pub_at ON library_sync(pub, at);
+
         CREATE TABLE IF NOT EXISTS fid_registry (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL REFERENCES admin(id) ON DELETE CASCADE,
@@ -1430,6 +1441,15 @@ export function createDatabase(dbPath: string): DatabaseService {
 				db.exec(
 					"ALTER TABLE admin ADD COLUMN artist_requested_at TEXT DEFAULT NULL",
 				);
+			}
+			// A FID key someone signed in with after fid 5.0 re-keyed identities, waiting for an
+			// administrator to approve moving the account to it (see modules/auth/fid-relink.ts).
+			if (!cols.some((col) => col.name === "fid_relink_pub")) {
+				console.log(
+					"📦 [Database] Migrating admin table: adding fid_relink_pub columns...",
+				);
+				db.exec("ALTER TABLE admin ADD COLUMN fid_relink_pub TEXT DEFAULT NULL");
+				db.exec("ALTER TABLE admin ADD COLUMN fid_relink_requested_at TEXT DEFAULT NULL");
 			}
 			// Opt-in "now listening" presence (off by default for privacy).
 			if (!cols.some((col) => col.name === "now_playing_enabled")) {

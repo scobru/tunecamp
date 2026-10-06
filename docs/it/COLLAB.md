@@ -1,6 +1,6 @@
 # TuneCamp Collab
 
-**Collab** consente a più artisti sulla stessa istanza di creare un brano insieme: caricare stem, salvare snapshot delle versioni ed effettuare iterazioni — senza app separate, senza tempo reale e senza ZEN.
+**Collab** consente a più artisti sulla stessa istanza di creare un brano insieme: caricare stem, salvare snapshot delle versioni ed effettuare iterazioni — senza app separate, senza tempo reale.
 
 ## Perché nativo
 
@@ -45,4 +45,4 @@ Tutte le rotte richiedono il login (`authMiddleware.requireUser`).
 
 ## Non (ancora) in tempo reale
 
-Nessun cursore/presenza dal vivo — la gestione delle versioni (righe append-only) copre le esigenze di collaborazione. La presenza in tempo reale è rinviata alle attività "Fase C" ZEN-via-`worker_thread`-RPC già pianificate (presenza effimera / playlist collaborative in tempo reale) documentate nelle regole di sessione del repository — Collab non la duplica né ne dipende.
+Nessun cursore/presenza dal vivo — la gestione delle versioni (righe append-only) copre le esigenze di collaborazione. La presenza in tempo reale è fuori scopo: Collab non dipende da alcun livello realtime.

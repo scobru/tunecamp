@@ -4,6 +4,7 @@ import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
 import { FidChallengeManager, FidPassportIssuer, FidSsoHandler } from "fid";
 import { UserRole } from "../../common/visibility.js";
+import { requestRelink } from "../../modules/auth/fid-relink.js";
 import crypto from "node:crypto";
 
 // Global FID challenge manager and passport issuer instances
@@ -51,6 +52,47 @@ const ssoCodeSweeper = setInterval(() => {
 }, SSO_CODE_TTL_MS);
 ssoCodeSweeper.unref?.();
 
+/**
+ * One-time codes that let the FID portal act for an account that is signed in on this instance.
+ *
+ * The user's session lives here and their FID key lives in the portal, a different origin that
+ * must not receive the session token. The instance's own webapp mints a code (it has the session)
+ * and hands it to the portal in the URL fragment; the portal then signs a challenge with the key
+ * and calls /set with the code. The code proves the account (a live session asked for it), the
+ * signature proves the key, and /set binds the one to the other.
+ *
+ * ponytail: in-process Map, like the SSO codes above; move it to the DB if the server is ever
+ * clustered.
+ */
+const LINK_CODE_TTL_MS = 5 * 60 * 1000;
+const linkCodes = new Map<string, { username: string; expiresAt: number }>();
+
+function mintLinkCode(username: string): string {
+	const code = crypto.randomBytes(32).toString("base64url");
+	linkCodes.set(code, { username, expiresAt: Date.now() + LINK_CODE_TTL_MS });
+	return code;
+}
+
+/** The account a live code belongs to, without spending it (the challenge step only looks). */
+function peekLinkCode(code: unknown): string | undefined {
+	if (typeof code !== "string") return undefined;
+	const entry = linkCodes.get(code);
+	if (!entry) return undefined;
+	if (Date.now() > entry.expiresAt) {
+		linkCodes.delete(code);
+		return undefined;
+	}
+	return entry.username;
+}
+
+const linkCodeSweeper = setInterval(() => {
+	const now = Date.now();
+	for (const [code, entry] of linkCodes) {
+		if (now > entry.expiresAt) linkCodes.delete(code);
+	}
+}, LINK_CODE_TTL_MS);
+linkCodeSweeper.unref?.();
+
 export function createZenRoutes(container: ServiceContainer): Router {
 	const authMiddleware = container.authMiddleware;
 	const authService = container.authService;
@@ -83,6 +125,9 @@ export function createZenRoutes(container: ServiceContainer): Router {
 		(req: AuthenticatedRequest, res) => {
 			let username = req.username;
 
+			// A link code stands in for the session when the portal asks (see mintLinkCode).
+			if (!username) username = peekLinkCode(req.query.linkCode);
+
 			if (!username) {
 				const zenPubKey =
 					typeof req.query.zenPubKey === "string" ? req.query.zenPubKey : "";
@@ -99,7 +144,10 @@ export function createZenRoutes(container: ServiceContainer): Router {
 					.prepare("SELECT username FROM admin WHERE zen_pub = ?")
 					.get(zenPubKey) as any;
 				if (!linkedUser) {
-					return res.status(404).json({ error: "FID identity not found" });
+					return res.status(404).json({
+						error:
+							"FID identity not found. If your account was linked before FID 5.0 (which re-keyed every identity), ask the administrator of this instance to relink it to your new key.",
+					});
 				}
 				username = String(linkedUser.username);
 			}
@@ -188,6 +236,27 @@ export function createZenRoutes(container: ServiceContainer): Router {
 	);
 
 	/**
+	 * POST /api/auth/zen/link-code
+	 * Called by this instance's own webapp for a signed-in user: returns a short-lived code the
+	 * user carries to the FID portal so it can bind a key to this account (see mintLinkCode).
+	 */
+	router.post(
+		"/link-code",
+		rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }),
+		authMiddleware.requireUser,
+		(req: AuthenticatedRequest, res) => {
+			if (!req.username) {
+				return res.status(401).json({ error: "Authentication required" });
+			}
+			return res.json({
+				success: true,
+				code: mintLinkCode(req.username),
+				expiresInSeconds: LINK_CODE_TTL_MS / 1000,
+			});
+		},
+	);
+
+	/**
 	 * POST /api/auth/zen/set
 	 * First-time binding of a Zen SEA identity to the *currently authenticated* (password/JWT)
 	 * account. Unlike /link, this does not look up the account by zen_pub — there is none yet —
@@ -198,10 +267,12 @@ export function createZenRoutes(container: ServiceContainer): Router {
 	router.post(
 		"/set",
 		rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }),
-		authMiddleware.requireUser,
+		authMiddleware.optionalAuth,
 		async (req: AuthenticatedRequest, res) => {
-			const { zenPubKey, challenge, seaSignature } = req.body;
-			const username = req.username;
+			const { zenPubKey, challenge, seaSignature, linkCode } = req.body;
+			// The session, or a code the instance's own webapp minted for it (the portal cannot
+			// send the session token from its origin).
+			const username = req.username || peekLinkCode(linkCode);
 
 			if (!username) {
 				return res.status(401).json({ error: "Authentication required" });
@@ -252,6 +323,13 @@ export function createZenRoutes(container: ServiceContainer): Router {
 			db.prepare(
 				"UPDATE admin SET zen_pub = ?, zen_priv = NULL WHERE id = ?",
 			).run(zenPubKey, user.id);
+
+			// A code is good for one binding. A relink request that was waiting for an admin is
+			// moot now that the owner proved the account from a live session.
+			if (typeof linkCode === "string") linkCodes.delete(linkCode);
+			db.prepare(
+				"UPDATE admin SET fid_relink_pub = NULL, fid_relink_requested_at = NULL WHERE id = ?",
+			).run(user.id);
 
 			return res.json({ success: true, zenPub: zenPubKey });
 		},
@@ -612,9 +690,24 @@ export function createZenRoutes(container: ServiceContainer): Router {
 					// their existing account settings after a password login.
 					const collision = authService.getUserByUsername(desiredUsername);
 					if (collision) {
+						// A FID-only account that already has a key is one created before fid 5.0
+						// re-keyed every identity. It has no password and the old key can no longer be
+						// verified, so the new key only earns a request for the administrator to
+						// approve (Admin > Users), never a login.
+						const outcome = requestRelink(db, desiredUsername, zenPubKey);
+						if (outcome !== "not-eligible") {
+							return res.status(409).json({
+								error:
+									outcome === "requested"
+										? "Username already exists and is linked to a different FID identity, probably one created before FID 5.0 re-keyed every identity. A request to relink it to your new key was sent to the administrator of this instance: you can sign in once they approve it. If you can still sign in to this instance another way, open your Profile and use 'Link my FID identity' instead."
+										: "Username already exists and is linked to a different FID identity. A relink request for this account is already waiting for the administrator of this instance to approve or dismiss it.",
+								code: "FID_KEY_CHANGED",
+								relinkRequested: outcome === "requested",
+							});
+						}
 						return res.status(409).json({
 							error:
-								"Username already exists. Log in with your password first, then link your FID identity from Settings.",
+								"Username already exists. Log in with your password first, then link your FID identity from your profile.",
 							code: "USERNAME_TAKEN",
 						});
 					}

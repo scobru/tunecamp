@@ -167,6 +167,8 @@ export interface AuthService {
 		is_root: boolean;
 		can_peer: number;
 		zen_auth_mode: string;
+		fid_relink_pub: string | null;
+		fid_relink_requested_at: string | null;
 	}[];
 	deleteAdmin(id: number): void;
 	deleteUsersBatch(ids: number[]): void;
@@ -1286,10 +1288,12 @@ export function createAuthService(
 			is_root: boolean;
 			can_peer: number;
 			zen_auth_mode: string;
+			fid_relink_pub: string | null;
+			fid_relink_requested_at: string | null;
 		}[] {
 			const rows = db
 				.prepare(`
-                SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, a.artist_requested_at, a.can_peer, ar.name as artist_name, a.zen_auth_mode
+                SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, a.artist_requested_at, a.can_peer, ar.name as artist_name, a.zen_auth_mode, a.fid_relink_pub, a.fid_relink_requested_at
                 FROM admin a
                 LEFT JOIN artists ar ON a.artist_id = ar.id
                 ORDER BY a.username
