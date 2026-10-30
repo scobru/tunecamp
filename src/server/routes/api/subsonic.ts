@@ -9,7 +9,7 @@ import type { AuthService } from '../../modules/auth/auth.service.js';
 import type { MediaEngine } from '../../modules/media/media-engine.js';
 import { sendStreamResult } from '../../modules/media/media-engine.js';
 import { SubsonicService } from '../../modules/subsonic/subsonic.service.js';
-import { UserRole, VisibilityGuardian, VisibilityProfile } from '../../common/visibility.js';
+import { UserRole, VisibilityGuardian, VisibilityProfile, canConsumeTrack, type ViewerContext } from '../../common/visibility.js';
 import { NotFoundError } from '../../common/errors.js';
 
 import type { ServiceContainer } from '../../core/container.js';
@@ -266,8 +266,21 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         if (!authorized) return sendError(res, req, 40, 'Wrong username or password');
 
         (req as any).user = { username: tokenUsername ?? u, isAdmin, artistId };
+        // What this account may see, resolved from its row like the web API does:
+        // a deactivated account is a guest, a plain user sees the public stage plus its own.
+        const account = (db as any).db.prepare("SELECT id, role, artist_id, is_active FROM admin WHERE username = ? COLLATE NOCASE").get(tokenUsername ?? u);
+        (req as any).context = account
+            ? { userId: account.id, artistId: account.artist_id, role: VisibilityGuardian.deriveRole(account.role, account.is_active !== 0) }
+            : { role: UserRole.GUEST };
         next();
     });
+
+    const ctx = (req: Request): ViewerContext => (req as any).context;
+    const trackLookups = {
+        getRelease: (id: number) => db.getRelease(id),
+        getAlbum: (id: number) => db.getAlbum(id),
+        isTrackInPublicPlaylist: (id: number) => db.isTrackInPublicPlaylist(id),
+    };
 
     // --- Core Endpoints ---
 
@@ -290,7 +303,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
     router.all(['/getIndexes.view', '/getArtists.view'], (req, res) => {
         if (!subsonicService) return sendError(res, req, 80, 'Subsonic service not initialized');
         const username = (req as any).user?.username || 'admin';
-        const indexNodes = subsonicService.getIndexes(username);
+        const indexNodes = subsonicService.getIndexes(username, ctx(req));
         const rootKey = req.path.includes('getArtists') ? 'artists' : 'indexes';
         sendResponse(res, req, {
             [rootKey]: {
@@ -306,7 +319,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         const username = (req as any).user?.username || 'admin';
         const id = ensureString(req.query.id);
         if (!id) return sendError(res, req, 10, 'Missing parameter id');
-        const directory = subsonicService.getMusicDirectory(id, username);
+        const directory = subsonicService.getMusicDirectory(id, username, ctx(req));
         if (!directory) return sendError(res, req, 70, 'Directory not found');
         sendResponse(res, req, { directory });
     });
@@ -397,6 +410,9 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         if (!id) return sendError(res, req, 10, 'Missing parameter id');
         const trackId = parseInt(id.startsWith('tr_') ? id.substring(3) : id);
         if (isNaN(trackId)) return sendError(res, req, 10, 'Invalid id');
+        const track = db.getTrack(trackId);
+        // Same answer for "missing" and "not yours", so ids can't be probed.
+        if (!track || !canConsumeTrack(track, ctx(req), trackLookups)) return sendError(res, req, 70, 'Track not found');
         try {
             const result = await mediaEngine.getStream({
                 trackId, format, bitrate: maxBitRate, seek: timeOffset ? parseInt(timeOffset) : 0,
@@ -421,7 +437,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         const type = ensureString(req.query.type) || 'newest';
         const size = parseInt(ensureString(req.query.size) || '10');
         const offset = parseInt(ensureString(req.query.offset) || '0');
-        const album = subsonicService.getAlbumList(type, size, offset, username);
+        const album = subsonicService.getAlbumList(type, size, offset, username, ctx(req));
         const wrapperKey = req.path.includes('getAlbumList2') ? 'albumList2' : 'albumList';
         sendResponse(res, req, { [wrapperKey]: { album } });
     });
@@ -430,7 +446,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         if (!subsonicService) return sendError(res, req, 80, 'Subsonic service not initialized');
         const username = (req as any).user?.username || 'admin';
         const size = parseInt(ensureString(req.query.size) || '10');
-        const tracks = db.getRandomTracks(size);
+        const tracks = db.getRandomTracks(size).filter(t => canConsumeTrack(t, ctx(req), trackLookups));
         sendResponse(res, req, { randomSongs: { song: subsonicService.formatTracksBulk(tracks, username) } });
     });
 
@@ -439,7 +455,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         const username = (req as any).user?.username || 'admin';
         const query = ensureString(req.query.query);
         if (!query) return sendError(res, req, 10, 'Missing query');
-        const results = subsonicService.search(query, username);
+        const results = subsonicService.search(query, username, ctx(req));
         const resName = req.path.includes('search3') ? 'searchResult3' : (req.path.includes('search2') ? 'searchResult2' : 'searchResult');
         sendResponse(res, req, { [resName]: results });
     });
@@ -523,7 +539,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         const username = (req as any).user?.username || 'admin';
         const id = ensureString(req.query.id);
         if (!id) return sendError(res, req, 10, 'Missing parameter id');
-        const artist = subsonicService.getArtist(id, username);
+        const artist = subsonicService.getArtist(id, username, ctx(req));
         if (!artist) return sendError(res, req, 70, 'Artist not found');
         sendResponse(res, req, { artist });
     });
@@ -533,7 +549,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         const username = (req as any).user?.username || 'admin';
         const id = ensureString(req.query.id);
         if (!id) return sendError(res, req, 10, 'Missing parameter id');
-        const album = subsonicService.getAlbum(id, username);
+        const album = subsonicService.getAlbum(id, username, ctx(req));
         if (!album) return sendError(res, req, 70, 'Album not found');
         sendResponse(res, req, { album });
     });
@@ -575,7 +591,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
 
     router.all('/getGenres.view', (req, res) => {
         if (!subsonicService) return sendError(res, req, 80, 'Subsonic service not initialized');
-        const genre = subsonicService.getGenres();
+        const genre = subsonicService.getGenres(ctx(req));
         sendResponse(res, req, { genres: { genre } });
     });
 
@@ -675,13 +691,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
 
     router.all(['/getPodcasts.view', '/getPodcasts'], (req, res) => {
         if (!subsonicService) return sendError(res, req, 80, 'Subsonic service not initialized');
-        const username = (req as any).user?.username || 'admin';
-        const userObj = (db as any).db.prepare("SELECT id, role, artist_id, is_active FROM admin WHERE username = ?").get(username);
-        const context = userObj ? {
-            userId: userObj.id,
-            artistId: userObj.artist_id,
-            role: VisibilityGuardian.deriveRole(userObj.role, userObj.is_active !== 0)
-        } : { role: UserRole.GUEST };
+        const context = ctx(req);
 
         const id = ensureString(req.query.id);
         const includeEpisodes = ensureString(req.query.includeEpisodes) !== 'false';
@@ -695,13 +705,7 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
 
     router.all(['/getNewestPodcasts.view', '/getNewestPodcasts'], (req, res) => {
         if (!subsonicService) return sendError(res, req, 80, 'Subsonic service not initialized');
-        const username = (req as any).user?.username || 'admin';
-        const userObj = (db as any).db.prepare("SELECT id, role, artist_id, is_active FROM admin WHERE username = ?").get(username);
-        const context = userObj ? {
-            userId: userObj.id,
-            artistId: userObj.artist_id,
-            role: VisibilityGuardian.deriveRole(userObj.role, userObj.is_active !== 0)
-        } : { role: UserRole.GUEST };
+        const context = ctx(req);
 
         const countStr = ensureString(req.query.count);
         const offsetStr = ensureString(req.query.offset);

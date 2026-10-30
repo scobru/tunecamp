@@ -27,6 +27,9 @@ Genera la password Subsonic da **Profilo → Impostazioni → Subsonic Password*
 > [!NOTE]
 > **Utenti in Roaming (Roaming Users)**: Per utilizzare Subsonic su una nuova istanza, effettua prima l'accesso a quell'istanza tramite l'interfaccia web. Questo avvia il processo di **Creazione Pigra dell'Account** (roaming), che configura il tuo profilo locale; poi genera lì una password Subsonic.
 
+> [!NOTE]
+> **Cosa vede un client** segue le stesse regole della webapp: gli amministratori vedono tutta la libreria, gli altri account vedono gli album pubblicati e pubblici più i propri, e un account disattivato vede solo ciò che vedrebbe un ospite. `stream.view` rifiuta un brano che l'account non può vedere con lo stesso errore "non trovato" di un brano inesistente.
+
 ## Endpoint Supportati
 
 TuneCamp implementa le specifiche principali del protocollo Subsonic (v1.16.1) richieste dai client mobili:
