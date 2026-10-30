@@ -77,3 +77,34 @@ describe('isSafeUrl', () => {
         expect(await networkUtils.isSafeUrl('not-a-url')).toBe(false);
     });
 });
+
+describe('safeLookup (connect-time check against DNS rebinding)', () => {
+    beforeEach(() => setupLookup());
+
+    const lookup = (host: string, opts: any = {}) => new Promise<any>((resolve) =>
+        networkUtils.safeLookup(host, opts, (err: any, address: any, family: any) => resolve({ err, address, family })));
+
+    test('refuses a host that resolves to a private address at connect time', async () => {
+        const { err } = await lookup('private.com');
+        expect(err?.message).toContain('SSRF Blocked');
+        expect((await lookup('mixed.com')).err).toBeTruthy();
+    });
+
+    test('passes a public address through in the shape the caller asked for', async () => {
+        expect(await lookup('public.com')).toMatchObject({ err: null, address: '8.8.8.8', family: 4 });
+        const all = await lookup('public.com', { all: true });
+        expect(all.address).toEqual([{ address: '8.8.8.8', family: 4 }]);
+    });
+});
+
+describe('private targets need an explicit opt-in', () => {
+    test('an unset NODE_ENV no longer disables the check', async () => {
+        const saved = process.env.NODE_ENV;
+        delete process.env.NODE_ENV;
+        try {
+            expect(await networkUtils.isSafeUrl('http://127.0.0.1')).toBe(false);
+        } finally {
+            process.env.NODE_ENV = saved;
+        }
+    });
+});

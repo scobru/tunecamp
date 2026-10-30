@@ -1,4 +1,8 @@
-import { isSafeUrl } from '../../utils/networkUtils.js';
+import { Agent } from 'undici';
+import { isSafeUrl, safeLookup } from '../../utils/networkUtils.js';
+
+// Checks the resolved IP again when the socket opens (see safeLookup).
+const safeDispatcher = new Agent({ connect: { lookup: safeLookup } });
 
 /**
  * Ensures the response body is always consumed to prevent leaking the
@@ -28,7 +32,7 @@ export async function fetchSafe(url: string, init?: RequestInit, maxRedirects = 
             console.warn(`[Security] Blocked potential SSRF request to: ${url}`);
             throw new Error(`SSRF Blocked: Invalid or private destination.`);
         }
-        const res = await fetch(url, { ...init, redirect: 'manual' });
+        const res = await fetch(url, { ...init, redirect: 'manual', dispatcher: safeDispatcher } as unknown as RequestInit);
         const location = res.status >= 300 && res.status < 400 ? res.headers.get('location') : null;
         if (!location) return res;
         await drainResponse(res);
@@ -54,10 +58,7 @@ export async function isLiveTuneCamp(url: string, timeoutMs = 5000): Promise<boo
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        if (!(await isSafeUrl(base))) return false;
-        // Use the global fetch (same as the peer catalog cache) so liveness and
-        // catalog retrieval behave identically and stay mockable in tests.
-        const res: any = await (globalThis as any).fetch(`${base}/api/catalog`, {
+        const res: any = await fetchSafe(`${base}/api/catalog`, {
             signal: controller.signal,
             headers: { 'Accept': 'application/json', 'User-Agent': 'TuneCamp-HealthCheck/2.0' }
         });

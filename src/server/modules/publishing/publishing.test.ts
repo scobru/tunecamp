@@ -44,6 +44,8 @@ describe('PublishingService', () => {
             text: () => Promise.resolve('ok')
         }));
         global.fetch = mockFetch;
+        // fetchSafe resolves DNS for these made-up Mastodon hosts; skip that here.
+        process.env.TUNECAMP_ALLOW_PRIVATE_IP = 'true';
 
         // Setup Mock Storage
         storageMock = {
@@ -75,6 +77,7 @@ describe('PublishingService', () => {
 
     afterEach(() => {
         global.fetch = originalFetch;
+        delete process.env.TUNECAMP_ALLOW_PRIVATE_IP;
         if (db && db.db) db.db.close();
     });
 

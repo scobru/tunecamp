@@ -1,9 +1,11 @@
+import dnsForMock from 'dns';
 import { jest } from '@jest/globals';
 import type { DatabaseService } from '../../../core/database.types.js';
 import type { createRssService as CreateRssService } from '../rss.service.js';
 
 // Setup ESM mock for isSafeUrl before importing rss.service
 jest.unstable_mockModule('../../../../utils/networkUtils.js', () => ({
+    safeLookup: dnsForMock.lookup,
     isSafeUrl: jest.fn().mockResolvedValue(true),
 }));
 

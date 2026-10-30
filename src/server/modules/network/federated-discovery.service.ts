@@ -1,4 +1,5 @@
 import type { Database as DatabaseType } from "better-sqlite3";
+import { fetchSafe } from "../../common/network.js";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 
 /**
@@ -156,7 +157,7 @@ export function createFederatedDiscoveryService(
         try {
             const controller = new AbortController();
             timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
-            const res = await fetch(url, {
+            const res = await fetchSafe(url, {
                 signal: controller.signal,
                 headers: { Accept: "application/json", "User-Agent": "TuneCamp-Federation/2.0" },
             });
