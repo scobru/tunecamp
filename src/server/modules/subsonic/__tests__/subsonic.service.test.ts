@@ -89,6 +89,16 @@ describe('SubsonicService', () => {
       expect(result['@bitDepth']).toBe(16);
     });
 
+    test('derives suffix from the file extension, not a codec label in format', () => {
+      const flac = service.formatTrack({ id: 2, file_path: 'a/B.FLAC', format: 'FLAC' } as unknown as Track, 'u');
+      expect(flac['@suffix']).toBe('flac');
+      expect(flac['@contentType']).toBe('audio/flac');
+      const mp3 = service.formatTrack({ id: 3, file_path: 'tracks/x.mp3', format: 'MPEG 1 Layer 3' } as unknown as Track, 'u');
+      expect(mp3['@suffix']).toBe('mp3');
+      const noPath = service.formatTrack({ id: 4, format: 'ogg' } as unknown as Track, 'u');
+      expect(noPath['@suffix']).toBe('ogg');
+    });
+
     test('should handle missing starredSet and ratingsMap properly', () => {
       const mockTrack = {
         id: 1,
