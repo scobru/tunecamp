@@ -257,21 +257,6 @@ describe('SubsonicService', () => {
     });
   });
 
-  describe('getContentType', () => {
-    test('should return correct content types', () => {
-      expect(service.getContentType('flac')).toBe('audio/flac');
-      expect(service.getContentType('ogg')).toBe('audio/ogg');
-      expect(service.getContentType('opus')).toBe('audio/ogg');
-      expect(service.getContentType('wav')).toBe('audio/wav');
-      expect(service.getContentType('m4a')).toBe('audio/mp4');
-      expect(service.getContentType('mp4')).toBe('audio/mp4');
-      expect(service.getContentType('mp3')).toBe('audio/mpeg');
-      expect(service.getContentType(null)).toBe('audio/mpeg');
-      expect(service.getContentType(undefined)).toBe('audio/mpeg');
-      expect(service.getContentType('unknown')).toBe('audio/mpeg');
-    });
-  });
-
   describe('formatPodcastChannel', () => {
       test('should format basic channel info', () => {
           const mockAlbum = {
@@ -387,26 +372,14 @@ describe('SubsonicService', () => {
   });
 
   describe('getAlbumList', () => {
-    test('should sort albums correctly', () => {
-      mockDb.getAlbumsWithStats.mockReturnValue([
-        { id: 1, title: 'B Album', created_at: '2023-01-01', artist_name: 'Z Artist' },
-        { id: 2, title: 'A Album', created_at: '2023-01-02', artist_name: 'A Artist' }
-      ] as any);
+    test('sorts and slices in the database, capping a page at 500', () => {
+      mockDb.getAlbumsWithStats.mockReturnValue([{ id: 2, title: 'A Album' }] as any);
+      const ctx = { role: 'user' } as any;
 
-      let result = service.getAlbumList('alphabeticalByName', 10, 0, 'testuser');
+      const result = service.getAlbumList('alphabeticalByName', 9999, 40, 'testuser', ctx);
+
+      expect(mockDb.getAlbumsWithStats).toHaveBeenCalledWith(ctx, { order: 'alphabeticalByName', limit: 500, offset: 40 });
       expect(result[0]['@id']).toBe('al_2');
-      expect(result[1]['@id']).toBe('al_1');
-
-      result = service.getAlbumList('alphabeticalByArtist', 10, 0, 'testuser');
-      expect(result[0]['@id']).toBe('al_2');
-      expect(result[1]['@id']).toBe('al_1');
-
-      result = service.getAlbumList('newest', 10, 0, 'testuser');
-      expect(result[0]['@id']).toBe('al_2');
-      expect(result[1]['@id']).toBe('al_1');
-
-      result = service.getAlbumList('random', 10, 0, 'testuser');
-      expect(result).toHaveLength(2);
     });
   });
 

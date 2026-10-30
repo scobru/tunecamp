@@ -66,3 +66,13 @@ export function getPlaceholderSVG(text: string = 'No Cover'): string {
   <text x="250" y="440" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="white" opacity="0.4" font-weight="600">${safeText}</text>
 </svg>`.trim();
 }
+
+const AUDIO_CONTENT_TYPES: Record<string, string> = {
+  mp3: "audio/mpeg", flac: "audio/flac", ogg: "audio/ogg", opus: "audio/opus",
+  wav: "audio/wav", m4a: "audio/mp4", mp4: "audio/mp4", aac: "audio/aac",
+};
+
+/** MIME type for an audio extension or format ("mp3", ".flac"); unknown ones are served as mp3. */
+export function audioContentType(formatOrExt?: string | null): string {
+  return AUDIO_CONTENT_TYPES[(formatOrExt || "").toLowerCase().replace(/^\./, "")] || "audio/mpeg";
+}

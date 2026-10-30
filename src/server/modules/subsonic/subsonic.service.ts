@@ -1,5 +1,6 @@
 import path from "path";
 import type { DatabaseService, Track } from "../../core/database.js";
+import { audioContentType } from "../../../utils/audioUtils.js";
 import { VisibilityProfile, VisibilityGuardian, ViewerContext } from "../../common/visibility.js";
 
 /**
@@ -27,7 +28,7 @@ export class SubsonicService {
       '@genre': track.genre,
       '@coverArt': track.album_id ? `al_${track.album_id}` : id,
       '@size': 0,
-      '@contentType': this.getContentType(suffix),
+      '@contentType': audioContentType(suffix),
       '@suffix': suffix,
       '@duration': Math.floor(track.duration || 0),
       '@bitRate': track.bitrate ? Math.round(track.bitrate / 1000) : 128,
@@ -103,15 +104,6 @@ export class SubsonicService {
     return artists.map((a: any) => this.formatArtist(a, username, ratingsMap, starredSet));
   }
 
-  getContentType(format?: string | null): string {
-    if (!format) return 'audio/mpeg';
-    const f = format.toLowerCase();
-    if (f === 'flac') return 'audio/flac';
-    if (f === 'ogg' || f === 'opus') return 'audio/ogg';
-    if (f === 'wav') return 'audio/wav';
-    if (f === 'm4a' || f === 'mp4') return 'audio/mp4';
-    return 'audio/mpeg';
-  }
 
   // --- Logic Methods ---
 
@@ -194,16 +186,10 @@ export class SubsonicService {
   }
 
   getAlbumList(type: string, size: number, offset: number, username: string, context: ViewerContext) {
-    const allAlbums = this.db.getAlbumsWithStats(context);
-    let albums = [...allAlbums];
-    
-    if (type === 'random') albums.sort(() => Math.random() - 0.5);
-    else if (type === 'newest' || type === 'recent') albums.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    else if (type === 'alphabeticalByName') albums.sort((a, b) => a.title.localeCompare(b.title));
-    else if (type === 'alphabeticalByArtist') albums.sort((a, b) => (a.artist_name || '').localeCompare(b.artist_name || ''));
-
-    const paginated = albums.slice(offset, offset + size);
-    return this.formatAlbumsBulk(paginated, username);
+    // Subsonic caps a page at 500; sorting and slicing happen in SQL.
+    const limit = Math.min(Math.max(size || 0, 0), 500);
+    const albums = this.db.getAlbumsWithStats(context, { order: type, limit, offset: Math.max(offset || 0, 0) });
+    return this.formatAlbumsBulk(albums, username);
   }
 
   search(query: string, username: string, context: ViewerContext) {
@@ -416,7 +402,7 @@ export class SubsonicService {
       '@duration': Math.floor(track.duration || 0),
       '@bytes': track.file_size || 0,
       '@coverArt': track.album_id ? `al_${track.album_id}` : id,
-      '@contentType': this.getContentType(track.format),
+      '@contentType': audioContentType(track.format),
       '@isDir': false
     };
   }

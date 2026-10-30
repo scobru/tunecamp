@@ -57,7 +57,7 @@ export function createLibraryManager(
 
         // Albums
         getAlbums: (p?: VisibilityProfile | ViewerContext) => albumRepository.getLibraryAlbums(p),
-        getAlbumsWithStats: (p?: VisibilityProfile | ViewerContext) => albumRepository.getWithStats(p),
+        getAlbumsWithStats: (p?: VisibilityProfile | ViewerContext, page?: { order: string; limit: number; offset: number }) => albumRepository.getWithStats(p, page),
         getLibraryAlbums: (p?: VisibilityProfile | ViewerContext) => albumRepository.getLibraryAlbums(p),
         getAlbum: (id: number) => albumRepository.getById(id),
         getAlbumsByIds: (ids: number[]) => albumRepository.getByIds(ids),

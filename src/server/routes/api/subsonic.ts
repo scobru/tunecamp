@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
 import { create } from 'xmlbuilder2';
 import path from 'path';
@@ -13,6 +14,10 @@ import { UserRole, VisibilityGuardian, VisibilityProfile, canConsumeTrack, type 
 import { NotFoundError } from '../../common/errors.js';
 
 import type { ServiceContainer } from '../../core/container.js';
+
+// Successful account-password checks, keyed by sha256(user + password).
+const PASSWORD_CACHE_MS = 5 * 60 * 1000;
+const passwordCache = new Map<string, { result: any; expires: number }>();
 
 // In-memory cache for "Now Playing" to support Subsonic clients
 const nowPlayingCache = new Map<string, { trackId: number, timestamp: number }>();
@@ -91,42 +96,8 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         res.send(xml);
     };
 
-    const sendError = (res: Response, req: Request, code: number, message: string) => {
-        const isJson = ensureString(req.query.f) === 'json';
-        const status = 'failed';
-        const version = '1.16.1';
-
-        res.set('X-OpenSubsonic-Server', 'Tunecamp/2.0');
-
-        if (isJson) {
-            res.json({
-                'subsonic-response': {
-                    status,
-                    version,
-                    type: 'tunecamp',
-                    serverVersion: '2.0.0',
-                    openSubsonic: true,
-                    error: { code: String(code), message }
-                }
-            });
-            return;
-        }
-
-        const doc = create({ version: '1.0', encoding: 'UTF-8' })
-            .ele('subsonic-response', { 
-                xmlns: 'http://subsonic.org/restapi', 
-                status, 
-                version,
-                type: 'tunecamp',
-                serverVersion: '2.0.0',
-                openSubsonic: 'true' 
-            })
-            .ele('error', { code: String(code), message }).up();
-
-        const xml = doc.end({ prettyPrint: true });
-        res.set('Content-Type', 'text/xml');
-        res.send(xml);
-    };
+    const sendError = (res: Response, req: Request, code: number, message: string) =>
+        sendResponse(res, req, { error: { '@code': String(code), '@message': message } }, 'failed');
 
     /**
      * Playlist ownership gate for the Subsonic surface.
@@ -237,7 +208,17 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
                     authorized = true;
                     authorizedBySubsonicSecret = true;
                 } else {
-                    const result = await auth.authenticateUser(u, password);
+                    // Clients send the password on every call; bcrypt on each one pinned the CPU
+                    // during a library scan. shortcut: a changed password keeps working for up to
+                    // PASSWORD_CACHE_MS; clear the cache on password change if that ever matters.
+                    const key = crypto.createHash('sha256').update(`${u}\0${password}`).digest('hex');
+                    const cached = passwordCache.get(key);
+                    const fresh = cached && cached.expires > Date.now();
+                    const result = fresh ? cached.result : await auth.authenticateUser(u, password);
+                    if (result && result.success && !fresh) {
+                        if (passwordCache.size >= 1000) passwordCache.clear();
+                        passwordCache.set(key, { result, expires: Date.now() + PASSWORD_CACHE_MS });
+                    }
                     if (result && result.success) {
                         authorized = true;
                         isAdmin = result.isAdmin;

@@ -496,6 +496,24 @@ describe('Payments Routes', () => {
             expect(mockDatabase.createUnlockCode).not.toHaveBeenCalled();
         });
 
+        test('refuses a second verification of the same tx while the first is running', async () => {
+            const pending: ((v: any) => void)[] = [];
+            mockProvider.getTransaction.mockImplementation(() => new Promise(r => { pending.push(r); }));
+            mockProvider.getTransactionReceipt.mockResolvedValue({ status: 1 });
+            mockDatabase.getTrack.mockReturnValue({ id: 5, walletAddress: '0xArtistWallet', price: 1.0, currency: 'ETH' });
+            (ethers.verifyMessage as jest.Mock).mockReturnValue('0xBuyer');
+
+            const send = (hash: string) => request(app).post('/api/payments/verify').send({ txHash: hash, trackId: '5', signature: 'sig' }).then(r => r);
+            const first = send('0xRACE');
+            const second = send('0xrace');
+            await new Promise(r => setTimeout(r, 100));
+            pending.forEach(r => r({ to: '0xArtistWallet', from: '0xBuyer', value: 1.0 }));
+
+            const statuses = (await Promise.all([first, second])).map(r => r.status).sort();
+            expect(statuses).toEqual([200, 409]);
+            expect(mockDatabase.createUnlockCode).toHaveBeenCalledTimes(1);
+        });
+
         test('enforces per-release price override over the track-level price', async () => {
             mockProvider.getTransaction.mockResolvedValue({
                 to: '0xArtistWallet',

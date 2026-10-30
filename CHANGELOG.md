@@ -18,6 +18,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- One audio format → MIME table (`audioContentType` in `utils/audioUtils.ts`) replaces the three copies in the media engine and the Subsonic service, which disagreed about `opus` and `m4a`. Subsonic's `sendError` now goes through `sendResponse`, and the payment check computes the ETH price in one place. Removed `utils/libraryUtils.ts`, which only its own test used.
+
 - **`fid` 5.0.0: FID identities are now plain Ed25519 keys instead of Zen SEA.** The `fid` git dependency no longer pulls `@akaoio/zen`, so the install drops it too. The `/api/auth/zen/*` routes, the `zen_pub` column and the `zenPubKey` / `masterKeySource.type: "zen"` wire names are unchanged; the keys and signatures behind them are not. A `zen_pub` linked before this change will not match a key from the new portal, so affected users have to relink their identity. The `fid` test double (`__mocks__/fid.ts`) now mirrors the real Ed25519 sign/verify (detached base64url signatures, `pub`/`priv` as JWK `x`/`d`) and `FidKeyPair` is `{ pub, priv }`.
 
 ### Security
@@ -28,6 +30,13 @@ All notable changes to this project will be documented in this file.
 - **Direct USDC/ETH payment verification refuses what it cannot check.** With no artist wallet and `TUNECAMP_OWNER_ADDRESS` unset, the USDC branch skipped the recipient check, so a buyer could transfer USDC to themselves and get an unlock code. A track priced only in ETH expected 0 USDC, so a 0-USDC transfer unlocked it (and the same for ETH on a USDC-only track). `/api/payments/verify` now answers 400 in all three cases.
 
 ### Fixed
+
+- **mp3 files are streamed as they are again, instead of through ffmpeg.** The scanner stores the codec label (`MPEG 1 Layer 3`, `mpeg`) in `tracks.format`, which was not in the list of formats a browser can play directly, so every mp3 was transcoded: the first play had no `Content-Length` and could not seek, three ffmpeg slots served the whole instance, and the 2 GB transcode cache kept churning. `handleLocalStream` now reads those labels as `mp3`. Files whose codec is MP4/AAC are still transcoded.
+- **Removed the fallback that played another recording.** When a local file was missing, `MediaEngine` searched a streaming provider for "artist – title" and redirected to whatever it found, so the listener heard a different recording without being told. A missing file now answers "Audio source not found".
+- **A stored path cannot reach outside the music folder.** `resolveLocalPath` joined `musicDir` and `file_path` with `path.join`, so a path like `../package.json` resolved outside the folder. It now uses `resolveSafePath`. The Subsonic path-traversal test passed without testing anything (its app had no media engine); a media-engine test now covers it.
+- **One payment can no longer mint two unlock codes.** The replay check in `POST /api/payments/verify` ran before two slow chain calls, so two parallel requests with the same `txHash` both passed it. A hash being verified now answers `409` to a second request.
+- **Subsonic album lists are sorted and paged in SQL.** `getAlbumList`/`getAlbumList2` loaded and sorted every album for each page, and `size` had no limit, so a client syncing a library of thousands of albums re-read all of them on every page. Pages are capped at 500 (the Subsonic limit).
+- **Subsonic no longer runs bcrypt on every call.** Clients that authenticate with the account password send it on each request, so a library scan cost one bcrypt check per album. A successful check is now remembered for 5 minutes (keyed by a SHA-256 of user and password). The Subsonic app password was already fast.
 
 - **The stream proxy no longer deletes tracks.** When a proxied URL answered 403/404/410 or could not be reached, `/api/proxy/stream` deleted every external track with that URL. Temporary failures (expired signed links, rate limits, region blocks, a CDN outage) erased catalog entries for good, and since the route needs no login, anyone could trigger it. The proxy now only returns the error.
 

@@ -149,6 +149,25 @@ describe('MediaEngine.getStream — local format routing', () => {
     });
   });
 
+  it.each(['MPEG 1 Layer 3', 'MPEG 2 Layer 3', 'mpeg'])(
+    'codec label "%s" from the scanner is an mp3 and is streamed without transcoding',
+    async (format) => {
+      const engine = makeEngine(track(format, 'mp3'));
+      const result = await engine.getStream({ trackId: 152 });
+
+      expect(transcode).not.toHaveBeenCalled();
+      expect(result.contentType).toBe('audio/mpeg');
+      expect(result.stream).toBe(fakeFileStream);
+    },
+  );
+
+  it('never reads a file outside the music folder, whatever the stored path says', async () => {
+    const engine = makeEngine({ ...track('mp3', 'mp3'), file_path: '../../etc/passwd' });
+
+    await expect(engine.getStream({ trackId: 152 })).rejects.toThrow('Audio source not found');
+    expect(mockFs.createReadStream).not.toHaveBeenCalled();
+  });
+
   // Regression guard: ffmpeg emits 'error' on the COMMAND object, not on the
   // piped stream. If the live path only listened on the stream, an ffmpeg
   // failure on a corrupt source became an uncaughtException and crash-looped

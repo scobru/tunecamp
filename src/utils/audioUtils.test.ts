@@ -1,6 +1,6 @@
 
 import { describe, expect, test } from '@jest/globals';
-import { getPlaceholderSVG, slugify, sanitizeFilename, validateUsername } from './audioUtils.js';
+import { getPlaceholderSVG, slugify, sanitizeFilename, validateUsername, audioContentType } from './audioUtils.js';
 
 describe('slugify', () => {
     test('should return empty string for null/undefined/empty input', () => {
@@ -176,5 +176,15 @@ describe('getPlaceholderSVG structure details', () => {
         const svg = getPlaceholderSVG('Test');
         expect(svg).toContain('<defs>');
         expect(svg).toContain('<linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">');
+    });
+});
+
+describe('audioContentType', () => {
+    test('maps formats and extensions, falling back to mp3', () => {
+        expect(audioContentType('flac')).toBe('audio/flac');
+        expect(audioContentType('.M4A')).toBe('audio/mp4');
+        expect(audioContentType('opus')).toBe('audio/opus');
+        expect(audioContentType('MPEG 1 Layer 3')).toBe('audio/mpeg');
+        expect(audioContentType(null)).toBe('audio/mpeg');
     });
 });
