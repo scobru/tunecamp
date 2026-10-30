@@ -546,6 +546,7 @@ export interface LibraryManager {
 	getAlbums(profile?: VisibilityProfile | ViewerContext): Album[];
 	getAlbumsWithStats(
 		profile?: VisibilityProfile | ViewerContext,
+		page?: { order: string; limit: number; offset: number },
 	): (Album & { songCount: number; duration: number })[];
 	getLibraryAlbums(profile?: VisibilityProfile | ViewerContext): Album[];
 	getAlbum(id: number): Album | undefined;

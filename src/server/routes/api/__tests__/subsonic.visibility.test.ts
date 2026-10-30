@@ -14,6 +14,7 @@ import fs from 'fs';
 describe('Subsonic visibility', () => {
     const dbPath = './test-subsonic-visibility.db';
     let database: any;
+    let auth: any;
     let app: any;
     let privateAlbum: number;
     let privateTrack: number;
@@ -22,12 +23,13 @@ describe('Subsonic visibility', () => {
 
     beforeAll(async () => {
         database = createDatabase(dbPath);
-        const auth: any = createAuthService(database.db, 'test-secret');
+        auth = createAuthService(database.db, 'test-secret');
         await auth.init();
         const hash = await auth.hashPassword('password');
         const addUser = database.db.prepare("INSERT INTO admin (username, password_hash, role, is_active) VALUES (?, ?, ?, ?)");
         addUser.run('curator', hash, 'admin', 1);
         addUser.run('listener', hash, 'user', 1);
+        addUser.run('scanner', hash, 'user', 1);
 
         const artist = database.library.createArtist('Vis Artist');
         privateAlbum = database.library.createAlbum({ title: 'Secret Draft', slug: 'secret-draft', artist_id: artist, visibility: 'private' } as any);
@@ -78,5 +80,22 @@ describe('Subsonic visibility', () => {
         const album = await request(app).get(`/rest/getAlbum.view?${q('curator')}&id=al_${privateAlbum}`);
         expect(status(album)).toBe('failed');
         database.db.prepare("UPDATE admin SET is_active = 1 WHERE username = 'curator'").run();
+    });
+    it('checks the account password once per few minutes, not on every call', async () => {
+        const spy = jest.spyOn(auth, 'authenticateUser');
+        await request(app).get(`/rest/getGenres.view?${q('scanner')}`);
+        await request(app).get(`/rest/getGenres.view?${q('scanner')}`);
+        expect(spy).toHaveBeenCalledTimes(1);
+
+        const wrong = await request(app).get(`/rest/getGenres.view?u=scanner&p=nope&v=1.16.1&c=test&f=json`);
+        expect(status(wrong)).toBe('failed');
+        spy.mockRestore();
+    });
+    it('pages album lists in name order', async () => {
+        database.library.createAlbum({ title: 'Zeta Draft', slug: 'zeta-draft', visibility: 'private' } as any);
+        const page = await request(app).get(`/rest/getAlbumList2.view?${q('curator')}&type=alphabeticalByName&size=1&offset=1`);
+        const albums = page.body['subsonic-response'].albumList2.album;
+        expect(albums).toHaveLength(1);
+        expect(albums[0].title).toBe('Zeta Draft');
     });
 });

@@ -759,13 +759,26 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
      * Verify a transaction hash locally on the server to unlock a track.
      * Auto-detects payment type: Direct ETH, Direct ERC20 (USDC/USDT), or Checkout Contract.
      */
+    // Hashes being verified right now. The replay check below runs before slow chain
+    // calls, so two parallel requests with one hash both passed it and minted two codes.
+    // shortcut: per-process, fine while TuneCamp runs as one process; a UNIQUE index
+    // on unlock_codes.tx_hash would be the multi-process version.
+    const verifying = new Set<string>();
+
     router.post("/verify", async (req, res) => {
+        const locked: string[] = [];
         try {
             const { txHash, feeTxHash, trackId, signature } = req.body;
 
             if (!txHash || !trackId) {
                 return res.status(400).json({ error: "Missing required fields" });
             }
+
+            const keys = [txHash, feeTxHash].filter(Boolean).map((h: any) => String(h).toLowerCase());
+            if (keys.some(k => verifying.has(k))) {
+                return res.status(409).json({ error: "This transaction is already being verified." });
+            }
+            keys.forEach(k => { verifying.add(k); locked.push(k); });
 
             // --- REPLAY ATTACK PROTECTION ---
             const existingCode = integration.getUnlockCodeByTxHash(txHash);
@@ -814,6 +827,9 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                     effCurrency = (override.currency as typeof effCurrency) || effCurrency;
                 }
             }
+
+            // The ETH a buyer owes for this track, converting a USD price at today's rate.
+            const expectedEthTotal = async () => effCurrency === 'USD' ? effPrice / await getEthUsdRate() : effPrice;
 
             const web3CheckoutAddr = identity.getSetting("web3_checkout_address");
             const artistWallet = (track as any).walletAddress || process.env.TUNECAMP_OWNER_ADDRESS;
@@ -887,12 +903,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                     }
                 } else if (feeToAddress === adminTreasury.toLowerCase()) {
                     const paidFeeEth = parseFloat(ethers.formatEther(feeTx.value));
-                    let expectedTotalEth = effPrice;
-                    if (effCurrency === 'USD') {
-                        const rate = await getEthUsdRate();
-                        expectedTotalEth = effPrice / rate;
-                    }
-                    const expectedFeeEth = expectedTotalEth * (adminFeePct / 100);
+                    const expectedFeeEth = (await expectedEthTotal()) * (adminFeePct / 100);
                     const margin = expectedFeeEth * 0.05; // 5% tolerance (rate drift)
                     if (expectedFeeEth > 0 && paidFeeEth < expectedFeeEth - margin) {
                         return res.status(400).json({ error: `Label fee underpayment: paid ${paidFeeEth} ETH, expected ~${expectedFeeEth} ETH` });
@@ -918,11 +929,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                             // Amount check for ETH
                             if (parsed.name === "purchaseWithETH") {
                                 const paidEth = parseFloat(ethers.formatEther(tx.value));
-                                let expectedEth = effPrice;
-                                if (effCurrency === 'USD') {
-                                    const rate = await getEthUsdRate();
-                                    expectedEth = effPrice / rate;
-                                }
+                                const expectedEth = await expectedEthTotal();
                                 const margin = expectedEth * 0.05;
                                 if (paidEth < expectedEth - margin) {
                                     verificationResult.error = `Underpayment: paid ${paidEth} ETH, expected ~${expectedEth} ETH`;
@@ -986,12 +993,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             else if (artistWallet && toAddress === artistWallet.toLowerCase()) {
                 verificationResult.method = "DirectETH";
                 const paidEth = parseFloat(ethers.formatEther(tx.value));
-                let expectedEth = effPrice;
-
-                if (effCurrency === 'USD') {
-                    const rate = await getEthUsdRate();
-                    expectedEth = effPrice / rate;
-                }
+                let expectedEth = await expectedEthTotal();
                 
                 if (adminFeePct > 0 && adminTreasury) {
                     // If fee split is active, artist receives total - fee
@@ -1040,6 +1042,8 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
         } catch (error) {
             console.error("Payment verification error:", error);
             res.status(500).json({ error: "Internal server error during verification" });
+        } finally {
+            locked.forEach(k => verifying.delete(k));
         }
     });
 
