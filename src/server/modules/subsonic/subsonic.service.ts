@@ -1,3 +1,4 @@
+import path from "path";
 import type { DatabaseService, Track } from "../../core/database.js";
 import { VisibilityProfile, VisibilityGuardian, ViewerContext } from "../../common/visibility.js";
 
@@ -12,6 +13,8 @@ export class SubsonicService {
 
   formatTrack(track: Track, username: string, starredSet?: Set<string>, ratingsMap?: Map<string, number>) {
     const id = `tr_${track.id}`;
+    // `format` can hold a codec label ("MPEG 1 Layer 3"); clients expect a file extension here.
+    const suffix = path.extname(track.file_path || '').slice(1).toLowerCase() || track.format || 'mp3';
     return {
       '@id': id,
       '@parent': track.album_id ? `al_${track.album_id}` : undefined,
@@ -24,8 +27,8 @@ export class SubsonicService {
       '@genre': track.genre,
       '@coverArt': track.album_id ? `al_${track.album_id}` : id,
       '@size': 0,
-      '@contentType': this.getContentType(track.format),
-      '@suffix': track.format || 'mp3',
+      '@contentType': this.getContentType(suffix),
+      '@suffix': suffix,
       '@duration': Math.floor(track.duration || 0),
       '@bitRate': track.bitrate ? Math.round(track.bitrate / 1000) : 128,
       '@path': track.file_path,
