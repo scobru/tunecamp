@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { fetchSafe } from "../../common/network.js";
 import { Router, Request, Response } from 'express';
 import { create } from 'xmlbuilder2';
 import path from 'path';
@@ -350,10 +351,12 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         if (imagePath) {
             if (imagePath.startsWith('http')) {
                 try {
-                    const response = await fetch(imagePath);
-                    if (response.ok) {
-                        const contentType = response.headers.get('content-type');
-                        if (contentType) res.setHeader('Content-Type', contentType);
+                    const response = await fetchSafe(imagePath);
+                    const contentType = response.headers.get('content-type') || '';
+                    // Served from our origin: only an image, and never as a document that runs code.
+                    if (response.ok && /^image\//i.test(contentType)) {
+                        res.setHeader('Content-Type', contentType);
+                        res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
                         res.setHeader('Cache-Control', 'public, max-age=86400');
                         // `fetch` here is undici's: `response.body` is a WHATWG
                         // ReadableStream with no `.pipe`, so piping it threw a
@@ -837,10 +840,12 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         if (avatarPath) {
             if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
                 try {
-                    const response = await fetch(avatarPath);
-                    if (response.ok) {
-                        const contentType = response.headers.get('content-type');
-                        if (contentType) res.setHeader('Content-Type', contentType);
+                    const response = await fetchSafe(avatarPath);
+                    const contentType = response.headers.get('content-type') || '';
+                    // Served from our origin: only an image, and never as a document that runs code.
+                    if (response.ok && /^image\//i.test(contentType)) {
+                        res.setHeader('Content-Type', contentType);
+                        res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
                         res.setHeader('Cache-Control', 'public, max-age=86400');
                         // `fetch` here is undici's: `response.body` is a WHATWG
                         // ReadableStream with no `.pipe`, so piping it threw a

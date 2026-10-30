@@ -2,7 +2,7 @@ import { Router, json } from "express";
 import fs from "fs-extra";
 import path from "path";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
-import { drainResponse } from "../../common/network.js";
+import { drainResponse, fetchSafe } from "../../common/network.js";
 import { metadataService } from "../../modules/catalog/metadata.service.js";
 import type { DatabaseService } from "../../core/database.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
@@ -274,7 +274,7 @@ export function createMetadataRoutes(container: ServiceContainer): Router {
         let response: any = null;
 
         for (let i = 0; i <= 3; i++) {
-            response = await fetch(currentUrl, {
+            response = await fetchSafe(currentUrl, {
                 redirect: 'manual',
                 signal: AbortSignal.timeout(10000)
             });

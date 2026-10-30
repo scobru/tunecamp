@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { fetchSafe } from "../../common/network.js";
 import type { Cheerio } from "cheerio";
 import type { AnyNode, Element } from "domhandler";
 import type { DatabaseService } from "../../core/database.types.js";
@@ -39,7 +40,7 @@ export function createRssService(db: DatabaseService): RssService {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
         try {
-            const res = await fetch(url, {
+            const res = await fetchSafe(url, {
                 signal: controller.signal,
                 redirect: "follow",
                 headers: {

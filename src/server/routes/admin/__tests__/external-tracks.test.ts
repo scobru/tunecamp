@@ -1,3 +1,4 @@
+import dnsForMock from 'dns';
 import { jest, beforeAll } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
@@ -9,6 +10,7 @@ const mockFetch = jest.fn() as any;
 
 // Mock isSafeUrl to avoid DNS query dependency
 jest.unstable_mockModule('../../../../utils/networkUtils.js', () => ({
+    safeLookup: dnsForMock.lookup,
     isSafeUrl: jest.fn(async () => true)
 }));
 

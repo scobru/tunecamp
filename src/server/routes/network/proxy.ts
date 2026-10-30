@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { Readable } from "node:stream";
-import { fetchSafe } from "../../common/network.js";
+import { fetchSafe, drainResponse } from "../../common/network.js";
+
+const PROXIED_MEDIA = /^\s*(audio\/|video\/|image\/|application\/(ogg|octet-stream)|binary\/octet-stream)/i;
 
 import type { ServiceContainer } from "../../core/container.js";
 
@@ -36,12 +38,20 @@ export function createProxyRoutes(container: ServiceContainer): Router {
                 return res.status(response.status).send(`Failed to fetch remote stream: ${response.statusText}`);
             }
 
-            // Copy headers
-            const contentType = response.headers.get('content-type');
+            // This route answers from our own origin, whose CSP allows inline scripts:
+            // relaying a remote text/html page would run its script here, next to the
+            // login token in localStorage. Media only, and the body may never run code.
+            const contentType = response.headers.get('content-type') || 'application/octet-stream';
+            if (!PROXIED_MEDIA.test(contentType)) {
+                await drainResponse(response);
+                return res.status(415).send("Only audio, video and image content can be proxied");
+            }
+            res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
+
             const contentLength = response.headers.get('content-length');
             const acceptRanges = response.headers.get('accept-ranges');
 
-            if (contentType) res.setHeader('Content-Type', contentType);
+            res.setHeader('Content-Type', contentType);
             if (contentLength) res.setHeader('Content-Length', contentLength);
             if (acceptRanges) res.setHeader('Accept-Ranges', acceptRanges);
             

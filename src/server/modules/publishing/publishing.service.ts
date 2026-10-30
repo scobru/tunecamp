@@ -1,4 +1,5 @@
 import { stringify } from "yaml";
+import { fetchSafe } from "../../common/network.js";
 import path from "path";
 import type { DatabaseService, Post, Release, Artist } from "../../core/database.js";
 import type { FederatedDiscoveryService } from "../network/federated-discovery.service.js";
@@ -166,7 +167,7 @@ export class PublishingService {
             const url = `${instanceUrl}/api/v1/statuses`;
             console.log(`📡 Mirroring status to Mastodon at ${url}...`);
 
-            const response = await fetch(url, {
+            const response = await fetchSafe(url, {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${token}`,

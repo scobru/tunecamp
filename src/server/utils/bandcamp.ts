@@ -1,4 +1,5 @@
 import { load } from "cheerio";
+import { fetchSafe } from "../common/network.js";
 
 export const BANDCAMP_IMAGE_BASE = "https://f4.bcbits.com/img";
 const BANDCAMP_SEARCH_API_URL = "https://bandcamp.com/api/bcsearch_public_api/1/autocomplete_elastic";
@@ -118,7 +119,7 @@ export async function searchBandcamp(query: string, filter: 'b' | 'a' | 't' = 't
 export async function extractBandcampMetadata(url: string): Promise<BandcampMetadata | null> {
     try {
         const fullUrl = url.startsWith("http") ? url : `https://${url}`;
-        const res = await fetch(fullUrl, {
+        const res = await fetchSafe(fullUrl, {
             headers: { "User-Agent": USER_AGENT },
             signal: AbortSignal.timeout(15_000)
         });

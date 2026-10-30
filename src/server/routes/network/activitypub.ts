@@ -616,7 +616,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
         instanceUrl = instanceUrl.replace(/\/$/, "");
 
         try {
-            const response = await fetch(`${instanceUrl}/api/v1/statuses`, {
+            const response = await fetchSafe(`${instanceUrl}/api/v1/statuses`, {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${postParams.token}`, "Content-Type": "application/json" },
                 body: JSON.stringify({ status: statusText })

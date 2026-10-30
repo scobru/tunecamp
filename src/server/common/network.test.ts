@@ -1,9 +1,10 @@
+import dnsForMock from 'dns';
 import { jest, describe, test, expect, beforeEach, afterEach, beforeAll } from '@jest/globals';
 
 // ESM module namespaces are read-only, so spying on the binding directly fails.
 // Mock the module instead and import the SUT dynamically so it picks up the mock.
 const isSafeUrl = jest.fn<(urlStr: string) => Promise<boolean>>();
-jest.unstable_mockModule('../../utils/networkUtils.js', () => ({ isSafeUrl }));
+jest.unstable_mockModule('../../utils/networkUtils.js', () => ({ isSafeUrl, safeLookup: dnsForMock.lookup }));
 
 let network: typeof import('./network.js');
 
