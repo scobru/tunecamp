@@ -962,8 +962,14 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                             expectedAmount = expectedAmount * (1 - adminFeePct / 100);
                         }
 
-                        if (artistWallet && recipient !== artistWallet.toLowerCase()) {
+                        // Without a payout wallet there is no recipient to check, and with no
+                        // USDC price any amount (even 0) would pass: both must refuse.
+                        if (!artistWallet) {
+                            verificationResult.error = "No payout wallet is configured for this track";
+                        } else if (recipient !== artistWallet.toLowerCase()) {
                             verificationResult.error = `Recipient mismatch: sent to ${recipient}, expected ${artistWallet}`;
+                        } else if (!(expectedAmount > 0)) {
+                            verificationResult.error = "This track has no USDC price";
                         } else if (paidAmount < expectedAmount * 0.99) { // 1% tolerance
                             verificationResult.error = `Underpayment: paid ${paidAmount} ${tokenSymbol}, expected ${expectedAmount}`;
                         } else {
@@ -993,7 +999,9 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                 }
                 
                 const margin = expectedEth * 0.05;
-                if (paidEth < expectedEth - margin) {
+                if (!(expectedEth > 0)) {
+                    verificationResult.error = "This track has no ETH price";
+                } else if (paidEth < expectedEth - margin) {
                     verificationResult.error = `Underpayment: paid ${paidEth} ETH, expected ~${expectedEth} ETH`;
                 } else {
                     verificationResult.success = true;

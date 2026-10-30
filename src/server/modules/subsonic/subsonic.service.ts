@@ -115,8 +115,8 @@ export class SubsonicService {
 
   // --- Logic Methods ---
 
-  getIndexes(username: string) {
-    const artists = this.db.getArtists(VisibilityProfile.ALL_ACCESS);
+  getIndexes(username: string, context: ViewerContext) {
+    const artists = this.db.getArtists(context);
     const indexes: Record<string, any[]> = {};
     const albumCounts = this.db.getArtistAlbumCounts();
     const countMap = new Map<number, number>();
@@ -140,13 +140,13 @@ export class SubsonicService {
     }));
   }
 
-  getMusicDirectory(id: string, username: string) {
+  getMusicDirectory(id: string, username: string, context: ViewerContext) {
     if (id.startsWith('ar_')) {
       const artistId = parseInt(id.substring(3));
       const artist = this.db.getArtist(artistId);
       if (!artist) return null;
 
-      const libraryAlbums = this.db.getAlbumsByArtist(artistId, VisibilityProfile.ALL_ACCESS);
+      const libraryAlbums = this.db.getAlbumsByArtist(artistId, context);
       const albumIds = libraryAlbums.map((album: any) => album.id);
       const albumStats = new Map<number, { songCount: number; duration: number }>();
 
@@ -180,7 +180,8 @@ export class SubsonicService {
       const album = this.db.getAlbum(albumId) as any;
       if (!album) return null;
 
-      const tracks = this.db.getTracks(albumId, VisibilityProfile.ALL_ACCESS);
+      const tracks = this.db.getTracks(albumId, context);
+      if (!tracks.length && !VisibilityGuardian.isItemVisible(album, context)) return null;
       return {
         '@id': id,
         '@name': album.title,
@@ -192,8 +193,8 @@ export class SubsonicService {
     return null;
   }
 
-  getAlbumList(type: string, size: number, offset: number, username: string) {
-    const allAlbums = this.db.getAlbumsWithStats(VisibilityProfile.ALL_ACCESS);
+  getAlbumList(type: string, size: number, offset: number, username: string, context: ViewerContext) {
+    const allAlbums = this.db.getAlbumsWithStats(context);
     let albums = [...allAlbums];
     
     if (type === 'random') albums.sort(() => Math.random() - 0.5);
@@ -205,11 +206,11 @@ export class SubsonicService {
     return this.formatAlbumsBulk(paginated, username);
   }
 
-  search(query: string, username: string) {
-    const results = this.db.search(query, VisibilityProfile.ALL_ACCESS);
+  search(query: string, username: string, context: ViewerContext) {
+    const results = this.db.search(query, context);
 
     const mappedAlbums = results.albums.map((a: any) => {
-      const tracks = this.db.getTracks(a.id, VisibilityProfile.ALL_ACCESS);
+      const tracks = this.db.getTracks(a.id, context);
       return { ...a, songCount: tracks.length, duration: tracks.reduce((acc: number, t: Track) => acc + (t.duration || 0), 0) };
     });
 
@@ -259,12 +260,12 @@ export class SubsonicService {
     return response;
   }
 
-  getArtist(id: string, username: string) {
+  getArtist(id: string, username: string, context: ViewerContext) {
     const artistId = parseInt(id.startsWith('ar_') ? id.substring(3) : id);
     const artist = this.db.getArtist(artistId);
     if (!artist) return null;
 
-    const libraryAlbums = this.db.getAlbumsByArtist(artistId, VisibilityProfile.ALL_ACCESS);
+    const libraryAlbums = this.db.getAlbumsByArtist(artistId, context);
     const albumIds = libraryAlbums.map(album => album.id);
     const albumStats = new Map<number, { songCount: number; duration: number }>();
 
@@ -291,20 +292,21 @@ export class SubsonicService {
     };
   }
 
-  getAlbum(id: string, username: string) {
+  getAlbum(id: string, username: string, context: ViewerContext) {
     const albumId = parseInt(id.startsWith('al_') ? id.substring(3) : id);
     const album = this.db.getAlbum(albumId) as any;
     if (!album) return null;
 
-    const tracks = this.db.getTracks(albumId, VisibilityProfile.ALL_ACCESS);
+    const tracks = this.db.getTracks(albumId, context);
+    if (!tracks.length && !VisibilityGuardian.isItemVisible(album, context)) return null;
     return {
       ...this.formatAlbum({ ...album, songCount: tracks.length, duration: tracks.reduce((acc: number, t: Track) => acc + (t.duration || 0), 0) }, username),
       song: this.formatTracksBulk(tracks, username)
     };
   }
 
-  getGenres() {
-    const albums = this.db.getAlbums(VisibilityProfile.ALL_ACCESS);
+  getGenres(context: ViewerContext) {
+    const albums = this.db.getAlbums(context);
     const genreMap = new Map<string, { count: number, songCount: number }>();
     const albumIds = albums.map((a: any) => a.id);
     const allTracks = this.db.getTracksByAlbumIds(albumIds);

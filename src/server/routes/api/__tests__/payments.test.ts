@@ -454,6 +454,48 @@ describe('Payments Routes', () => {
             expect(mockDatabase.createUnlockCode).toHaveBeenCalled();
         });
 
+        test('refuses a direct USDC transfer when the track has no payout wallet', async () => {
+            const savedOwner = process.env.TUNECAMP_OWNER_ADDRESS;
+            delete process.env.TUNECAMP_OWNER_ADDRESS;
+            try {
+                mockProvider.getTransaction.mockResolvedValue({
+                    to: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', from: '0xBuyer', data: '0x', value: 0
+                });
+                mockProvider.getTransactionReceipt.mockResolvedValue({ status: 1 });
+                // The buyer sends USDC to themselves: no wallet on the artist, nothing to compare against.
+                mockInterface.parseTransaction.mockReturnValue({ name: 'transfer', args: ['0xBuyer', 5] });
+                mockDatabase.getTrack.mockReturnValue({ id: 5, price_usdc: 5, currency: 'USD' });
+                (ethers.verifyMessage as jest.Mock).mockReturnValue('0xBuyer');
+
+                const res = await request(app)
+                    .post('/api/payments/verify')
+                    .send({ txHash: '0xself', trackId: '5', signature: 'sig' });
+
+                expect(res.status).toBe(400);
+                expect(mockDatabase.createUnlockCode).not.toHaveBeenCalled();
+            } finally {
+                if (savedOwner !== undefined) process.env.TUNECAMP_OWNER_ADDRESS = savedOwner;
+            }
+        });
+
+        test('refuses a zero USDC transfer for a track priced only in ETH', async () => {
+            mockProvider.getTransaction.mockResolvedValue({
+                to: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', from: '0xBuyer', data: '0x', value: 0
+            });
+            mockProvider.getTransactionReceipt.mockResolvedValue({ status: 1 });
+            mockInterface.parseTransaction.mockReturnValue({ name: 'transfer', args: ['0xArtistWallet', 0] });
+            mockDatabase.getTrack.mockReturnValue({ id: 5, walletAddress: '0xArtistWallet', price: 1.0, price_usdc: 0, currency: 'ETH' });
+            (ethers.verifyMessage as jest.Mock).mockReturnValue('0xBuyer');
+
+            const res = await request(app)
+                .post('/api/payments/verify')
+                .send({ txHash: '0xzero', trackId: '5', signature: 'sig' });
+
+            expect(res.status).toBe(400);
+            expect(res.body.error).toContain('no USDC price');
+            expect(mockDatabase.createUnlockCode).not.toHaveBeenCalled();
+        });
+
         test('enforces per-release price override over the track-level price', async () => {
             mockProvider.getTransaction.mockResolvedValue({
                 to: '0xArtistWallet',

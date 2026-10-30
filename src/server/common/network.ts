@@ -20,13 +20,21 @@ export async function drainResponse(res: Response): Promise<void> {
  * If the response is not consumed by the caller, they MUST call drainResponse(res).
  * Implements SSRF protection.
  */
-export async function fetchSafe(url: string, init?: RequestInit): Promise<Response> {
-    const isSafe = await isSafeUrl(url);
-    if (!isSafe) {
-        console.warn(`[Security] Blocked potential SSRF request to: ${url}`);
-        throw new Error(`SSRF Blocked: Invalid or private destination.`);
+export async function fetchSafe(url: string, init?: RequestInit, maxRedirects = 5): Promise<Response> {
+    // Redirects are followed by hand: with fetch's default "follow", a public URL
+    // answering 302 → http://169.254.169.254/ would be fetched unchecked.
+    for (let hop = 0; ; hop++) {
+        if (!(await isSafeUrl(url))) {
+            console.warn(`[Security] Blocked potential SSRF request to: ${url}`);
+            throw new Error(`SSRF Blocked: Invalid or private destination.`);
+        }
+        const res = await fetch(url, { ...init, redirect: 'manual' });
+        const location = res.status >= 300 && res.status < 400 ? res.headers.get('location') : null;
+        if (!location) return res;
+        await drainResponse(res);
+        if (hop >= maxRedirects) throw new Error('Too many redirects');
+        url = new URL(location, url).toString();
     }
-    return fetch(url, init);
 }
 
 /**
@@ -72,13 +80,7 @@ export async function isLiveTuneCamp(url: string, timeoutMs = 5000): Promise<boo
 export async function fetchJsonSafe<T>(url: string, init?: RequestInit): Promise<T | null> {
     let res: Response | null = null;
     try {
-        const isSafe = await isSafeUrl(url);
-        if (!isSafe) {
-            console.warn(`[Security] Blocked potential SSRF request to: ${url}`);
-            return null;
-        }
-
-        res = await fetch(url, init);
+        res = await fetchSafe(url, init);
         if (!res.ok) {
             await drainResponse(res);
             return null;
@@ -88,4 +90,20 @@ export async function fetchJsonSafe<T>(url: string, init?: RequestInit): Promise
         if (res) await drainResponse(res);
         return null;
     }
+}
+
+/** Reads at most `maxBytes` of a response body as text, then stops the download. */
+export async function readCapped(res: Response, maxBytes: number): Promise<string> {
+    if (!res.body) return '';
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    while (size < maxBytes) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        size += value.length;
+    }
+    await reader.cancel().catch(() => {});
+    return Buffer.concat(chunks).subarray(0, maxBytes).toString('utf8');
 }

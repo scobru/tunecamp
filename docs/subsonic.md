@@ -27,6 +27,9 @@ Generate the Subsonic password under **Profile → Settings → Subsonic Passwor
 > [!NOTE]
 > **Roaming Users**: To use Subsonic on a new instance, log in to that instance via the web interface first. This triggers the **Lazy Account Creation** (roaming) which sets up your local profile; then generate a Subsonic password there.
 
+> [!NOTE]
+> **What a client sees** follows the same rules as the web app: administrators see the whole library, other accounts see released public albums plus their own, and a deactivated account sees only what a guest would. `stream.view` refuses a track the account may not see with the same "not found" error as a missing one.
+
 ## Supported Endpoints
 
 TuneCamp implements the core Subsonic specification (v1.16.1) required by mobile clients:

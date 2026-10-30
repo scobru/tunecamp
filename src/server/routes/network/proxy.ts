@@ -1,28 +1,11 @@
 import { Router } from "express";
 import { Readable } from "node:stream";
-import { isSafeUrl } from "../../../utils/networkUtils.js";
+import { fetchSafe } from "../../common/network.js";
 
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createProxyRoutes(container: ServiceContainer): Router {
     const router = Router();
-    const library = container.library;
-
-    const deleteBrokenTrack = (url: string, reason: string) => {
-        try {
-            const tracks = Array.from(library.iterateTracks("url = ? AND file_path IS NULL", [url]));
-            const trackIds: number[] = [];
-            for (const track of tracks) {
-                console.warn(`🧹 [Self-Healing] Deleting broken external track ${track.id} ("${track.title}"): ${reason}`);
-                trackIds.push(track.id);
-            }
-            if (trackIds.length > 0) {
-                library.deleteTracksBatch(trackIds);
-            }
-        } catch (dbErr) {
-            console.error("❌ [Self-Healing] Failed to delete broken track:", dbErr);
-        }
-    };
 
     /**
      * GET /api/proxy/stream
@@ -34,27 +17,22 @@ export function createProxyRoutes(container: ServiceContainer): Router {
             return res.status(400).send("URL is required");
         }
 
-        const safe = await isSafeUrl(url);
-        if (!safe) {
-            console.warn(`⚠️ Proxy target blocked: ${url}`);
-            return res.status(403).send("Forbidden: Invalid or unsafe URL");
-        }
-
         try {
             console.log(`📡 Proxying stream: ${url}`);
-            
-            const response = await fetch(url, {
-                headers: {
-                    'User-Agent': 'Tunecamp/1.0',
-                    'Accept': '*/*'
-                }
-            });
+
+            let response: Response;
+            try {
+                response = await fetchSafe(url, {
+                    headers: { 'User-Agent': 'Tunecamp/1.0', 'Accept': '*/*' }
+                });
+            } catch (e: any) {
+                if (!String(e?.message).startsWith('SSRF Blocked')) throw e;
+                console.warn(`⚠️ Proxy target blocked: ${url}`);
+                return res.status(403).send("Forbidden: Invalid or unsafe URL");
+            }
 
             if (!response.ok) {
                 console.warn(`⚠️ Proxy target returned error: ${response.status}`);
-                if (response.status === 404 || response.status === 410 || response.status === 403) {
-                    deleteBrokenTrack(url, `HTTP ${response.status} from target`);
-                }
                 return res.status(response.status).send(`Failed to fetch remote stream: ${response.statusText}`);
             }
 
@@ -85,10 +63,6 @@ export function createProxyRoutes(container: ServiceContainer): Router {
 
         } catch (error: any) {
             console.error("❌ Proxy error:", error);
-            const isConnectionError = error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT';
-            if (isConnectionError) {
-                deleteBrokenTrack(url, `Connection error (${error.code})`);
-            }
             res.status(500).send("Proxy error");
         }
     });
