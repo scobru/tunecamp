@@ -91,6 +91,17 @@ Per risolvere questo problema, vai in **Admin → Identity → scheda dell'artis
 
 ---
 
+## Cosa accetta l'inbox
+
+Fedify verifica la firma HTTP di ogni attività in arrivo e che la chiave appartenga all'attore dell'attività. La firma prova chi l'ha inviata, non chi ha scritto l'oggetto contenuto, quindi l'inbox aggiunge regole proprie (`src/server/modules/fedify/fedify.ts`):
+
+- **Stesso server.** Un `Create`, un `Update`, una risposta o una release annunciata vengono attribuiti a un autore solo se l'id dell'oggetto sta sul server di quell'autore. Una nota ospitata su un server e attribuita a un account di un altro viene scartata.
+- **Contenuti solo da chi segui.** Post e release vengono salvati solo da attori seguiti da qualcuno qui, o da istanze TuneCamp conosciute (`federated_instances`). Un `Update` aggiorna solo contenuti già salvati.
+- **Cancella solo ciò che hai scritto.** Un `Delete` rimuove una risposta o un contenuto in cache solo se chi lo invia è l'autore salvato. La cancellazione di un attore lo rimuove come follower ovunque.
+- **Move** viene applicato solo se il nuovo account elenca quello vecchio tra i suoi alias (`alsoKnownAs`).
+
+---
+
 ## Feed RSS / Atom
 
 Oltre ad ActivityPub, TuneCamp può seguire semplici **feed RSS/Atom** (podcast, stream Owncast, blog) in modo che i loro elementi compaiano all'interno dei contenuti federati.

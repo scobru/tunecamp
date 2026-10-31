@@ -607,13 +607,89 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 if (object instanceof Note || object instanceof Article || object instanceof Audio) {
                     author = await update.getActor({ documentLoader: docLoader }).catch(() => null) || await update.getActor(ctx).catch(() => null);
                 }
-                handleUpdateObject(dbService, object, update.actorId?.toString(), author, cacheFollowerActor);
+                await handleUpdateObject(dbService, object, update.actorId?.toString(), author, cacheFollowerActor);
             } catch (e) {
                 console.error("❌ Error processing Update:", e);
             }
         });
 
     return federation;
+}
+
+/**
+ * True when both URIs live on the same server. A signed activity proves who sent
+ * it, not who wrote the object it carries: an object (or a claimed author) on
+ * another origin must not be filed under, or edited/deleted by, the sender.
+ */
+export function sameOrigin(a: string | null | undefined, b: string | null | undefined): boolean {
+    try {
+        return !!a && !!b && new URL(a).origin === new URL(b).origin;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Feed content is kept only from actors someone here follows or from known
+ * TuneCamp instances; anything else would let any server grow `remote_content`
+ * without bound and push posts into the public network feed.
+ */
+export function acceptsFeedFrom(dbService: DatabaseService, actorUri: string): boolean {
+    if (dbService.getRemoteActor(actorUri)?.is_followed) return true;
+    try {
+        const origin = new URL(actorUri).origin;
+        return !!dbService.db.prepare("SELECT 1 FROM federated_instances WHERE origin = ?").get(origin);
+    } catch {
+        return false; // malformed URI, or discovery has not created its table yet
+    }
+}
+
+/**
+ * Maps a remote Note/Article/Audio to a `remote_content` row: a release when it
+ * carries audio (an Audio object, or a Note with an audio attachment), else a post.
+ */
+export async function toRemoteContent(object: any, actorUri: string, author: any): Promise<any | null> {
+    const apId = object?.id?.toString();
+    if (!apId) return null;
+    const raw = object.content?.toString() || object.summary?.toString() || "";
+    let audioUrl: string | null = null;
+    let coverUrl: string | null = null;
+    let duration: number | null = null;
+
+    if (object instanceof Audio) {
+        audioUrl = apId || object.url?.toString() || null;
+        duration = object.duration ? object.duration.total("second") : null;
+        const icon: any = await object.getIcon().catch(() => null);
+        coverUrl = icon?.id?.toString() || icon?.url?.toString() || null;
+    } else if (object instanceof Note) {
+        for await (const attachment of object.getAttachments()) {
+            const type = (attachment as any).type?.toString().toLowerCase();
+            const mediaType = (attachment as any).mediaType?.toString().toLowerCase();
+            if (type?.includes("audio") || mediaType?.startsWith("audio/")) {
+                audioUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
+                duration = (attachment as any).duration || null;
+            } else if (type?.includes("image") || mediaType?.startsWith("image/")) {
+                coverUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
+            }
+        }
+    }
+
+    const isRelease = !!audioUrl;
+    const name = author?.name?.toString() || author?.preferredUsername?.toString();
+    return {
+        ap_id: apId,
+        actor_uri: actorUri,
+        type: isRelease ? "release" : "post",
+        title: object.name?.toString() || raw.replace(/<[^>]*>?/gm, "").substring(0, 80) || "Untitled",
+        content: raw,
+        url: object.url?.toString() || null,
+        cover_url: coverUrl,
+        stream_url: audioUrl,
+        artist_name: name || (isRelease ? "Unknown Artist" : "Remote Artist"),
+        album_name: isRelease ? object.summary?.toString() || null : null,
+        duration,
+        published_at: object.published?.toString() || new Date().toISOString(),
+    };
 }
 
 /**
@@ -636,11 +712,13 @@ export function handleDeleteObject(
         return;
     }
 
-    // Object deletion: a reply to one of our notes, or remote content we cached.
-    if (dbService.deleteApReply(objectId)) {
+    // Object deletion: a reply to one of our notes, or remote content we cached —
+    // only the one its sender wrote; anyone can sign a Delete naming any id.
+    if (!actorUri) return;
+    if (dbService.deleteApReply(objectId, actorUri)) {
         console.log(`🗑️ Deleted federated reply ${objectId}`);
     }
-    dbService.deleteRemoteContent(objectId);
+    dbService.deleteRemoteContent(objectId, actorUri);
     console.log(`🗑️ Processed Delete for object ${objectId}`);
 }
 
@@ -649,13 +727,13 @@ export function handleDeleteObject(
  * the inbox closure so the actor-refresh vs content-refresh branching is
  * unit-testable. `cacheActor` is injected (the inbox passes its cacheFollowerActor).
  */
-export function handleUpdateObject(
+export async function handleUpdateObject(
     dbService: DatabaseService,
     object: any,
     updateActorId: string | undefined,
     author: any,
     cacheActor: (actor: any) => void,
-): void {
+): Promise<void> {
     // Actor profile update (avatar/name/key change) → refresh the cached actor.
     // This is the common case and what Mastodon sends on profile edits.
     if (object instanceof Person || object instanceof Service) {
@@ -664,25 +742,15 @@ export function handleUpdateObject(
         return;
     }
 
-    // Content edit → refresh stored remote content (best-effort).
+    // Content edit → refresh stored remote content we already hold, and only
+    // when the sender is on the object's own server.
     if (object instanceof Note || object instanceof Article || object instanceof Audio) {
         const apId = object.id?.toString();
-        const actorUri = updateActorId || (object as any).attributionId?.toString();
-        if (!apId || !actorUri) return;
-        const rawContent = (object as any).content?.toString() || (object as any).summary?.toString() || "";
-        dbService.upsertRemoteContent({
-            ap_id: apId,
-            actor_uri: actorUri,
-            type: object instanceof Audio ? 'release' : 'post',
-            title: (object as any).name?.toString() || rawContent.replace(/<[^>]*>?/gm, '').substring(0, 80) || "Untitled",
-            content: rawContent,
-            url: (object as any).url?.toString() || null,
-            cover_url: null,
-            stream_url: null,
-            artist_name: author?.name?.toString() || author?.preferredUsername?.toString() || "Remote Artist",
-            album_name: (object as any).name?.toString() || null,
-            published_at: object.published?.toString() || new Date().toISOString(),
-        } as any);
+        if (!apId || !updateActorId || !sameOrigin(apId, updateActorId)) return;
+        if (!dbService.getRemoteContent(apId)) return;
+        const row = await toRemoteContent(object, updateActorId, author);
+        if (!row) return;
+        dbService.upsertRemoteContent(row);
         console.log(`🔄 Updated remote content: ${apId}`);
     }
 }
@@ -775,45 +843,17 @@ export function handleAnnounceBoost(dbService: DatabaseService, objectUri: strin
  * `remote_content` schema and caches the author.
  */
 export async function handleAnnounceDiscovery(dbService: DatabaseService, object: InstanceType<typeof Note> | InstanceType<typeof Audio>, author: any): Promise<void> {
-    let audioUrl: string | null = null;
-    let coverUrl: string | null = null;
-    let duration: number | null = null;
-    let title = "Untitled";
-    let content: string | null = null;
+    const authorUri = author?.id?.toString() || "";
+    // The author is whatever `attributedTo` claims: believe it only when the
+    // object lives on the author's own server, or anyone can publish under
+    // the name of an artist we follow.
+    if (!sameOrigin(object.id?.toString(), authorUri)) return;
+    if (!acceptsFeedFrom(dbService, authorUri)) return;
 
-    if (object instanceof Note) {
-        title = object.content?.toString().replace(/<[^>]*>/g, '') || "Untitled";
-        content = object.content?.toString() || null;
+    const row = await toRemoteContent(object, authorUri, author);
+    if (!row || row.type !== "release") return; // Only care about tracks/releases
 
-        for await (const attachment of object.getAttachments()) {
-            const type = (attachment as any).type?.toString().toLowerCase();
-            const mediaType = (attachment as any).mediaType?.toString().toLowerCase();
-
-            if (type?.includes('audio') || mediaType?.startsWith('audio/')) {
-                audioUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
-                duration = (attachment as any).duration || null;
-            } else if (type?.includes('image') || mediaType?.startsWith('image/')) {
-                coverUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
-            }
-        }
-    } else if (object instanceof Audio) {
-        title = object.name?.toString() || "Untitled";
-        content = object.content?.toString() || null;
-        audioUrl = object.id?.toString() || (object as any).url?.toString() || null;
-        // Fedify Audio duration is a Temporal.Duration
-        duration = object.duration ? (object.duration.total('second')) : null;
-
-        const icon = await object.getIcon();
-        if (icon) {
-            coverUrl = icon.id?.toString() || (icon as any).url?.toString() || null;
-        }
-    }
-
-    if (!audioUrl) return; // Only care about tracks/releases
-
-    console.log(`📡 Discovered remote content: ${object.id?.toString()} by ${author.name?.toString()}`);
-
-    const authorUri = author.id?.toString() || "";
+    console.log(`📡 Discovered remote content: ${row.ap_id} by ${row.artist_name}`);
     dbService.upsertRemoteActor({
         uri: authorUri,
         type: author instanceof Person ? 'Person' : 'Service',
@@ -824,21 +864,7 @@ export async function handleAnnounceDiscovery(dbService: DatabaseService, object
         inbox_url: (author as any).inboxId?.toString() || null,
         outbox_url: (author as any).outboxId?.toString() || null,
     });
-
-    dbService.upsertRemoteContent({
-        ap_id: object.id?.toString() || "",
-        actor_uri: authorUri,
-        type: 'release',
-        title,
-        content,
-        url: (object as any).url?.toString() || null,
-        cover_url: coverUrl,
-        stream_url: audioUrl,
-        artist_name: author.name?.toString() || author.preferredUsername?.toString() || "Unknown Artist",
-        album_name: (object as any).summary?.toString() || null,
-        duration,
-        published_at: object.published?.toString() || null,
-    });
+    dbService.upsertRemoteContent(row);
 }
 
 /** Apply an inbound Like (caller has already resolved `objectUri` maps to one of our notes). */
@@ -935,7 +961,7 @@ export async function handleCreateActivity(
 
         if (parentNote) {
             const replyUri = object.id?.toString() || createId;
-            if (replyUri) {
+            if (replyUri && sameOrigin(replyUri, actorUri)) {
                 if (actor) cacheActor(actor);
                 const content = (object as any).content?.toString() || (object as any).summary?.toString() || "";
                 dbService.addApReply(targetNoteId, replyUri, actorUri, content, object.published?.toString() || new Date().toISOString());
@@ -946,110 +972,15 @@ export async function handleCreateActivity(
         return;
     }
 
-    // 2. Feed item handling (Post or Release/Track)
+    // 2. Feed item handling (Post or Release/Track): the sender's own object,
+    //    from an actor we follow or a known TuneCamp instance.
+    if (!sameOrigin(object.id?.toString(), actorUri) || !acceptsFeedFrom(dbService, actorUri)) return;
     if (actor) cacheActor(actor);
 
-    if (object instanceof Note) {
-        const note = object;
-        let audioUrl: string | null = null;
-        let coverUrl: string | null = null;
-        let duration: number | null = null;
-
-        for await (const attachment of note.getAttachments()) {
-            const type = (attachment as any).type?.toString().toLowerCase();
-            const mediaType = (attachment as any).mediaType?.toString().toLowerCase();
-
-            if (type?.includes("audio") || mediaType?.startsWith("audio/")) {
-                audioUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
-                duration = (attachment as any).duration || null;
-            } else if (type?.includes("image") || mediaType?.startsWith("image/")) {
-                coverUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
-            }
-        }
-
-        const apId = note.id?.toString();
-        if (apId) {
-            const rawContent = note.content?.toString() || note.summary?.toString() || "";
-            if (audioUrl) {
-                dbService.upsertRemoteContent({
-                    ap_id: apId,
-                    actor_uri: actorUri,
-                    type: "release",
-                    title: note.content?.toString().replace(/<[^>]*>/g, "").substring(0, 80) || "Untitled",
-                    content: rawContent,
-                    url: (note as any).url?.toString() || null,
-                    cover_url: coverUrl,
-                    stream_url: audioUrl,
-                    artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Unknown Artist",
-                    album_name: (note as any).summary?.toString() || null,
-                    duration,
-                    published_at: note.published?.toString() || new Date().toISOString(),
-                });
-                console.log(`📡 Stored remote release via Create Note inbox: ${apId}`);
-            } else {
-                dbService.upsertRemoteContent({
-                    ap_id: apId,
-                    actor_uri: actorUri,
-                    type: "post",
-                    title: (note as any).name?.toString() || rawContent.replace(/<[^>]*>?/gm, "").substring(0, 80) || "Untitled",
-                    content: rawContent,
-                    url: (note as any).url?.toString() || null,
-                    cover_url: coverUrl,
-                    stream_url: null,
-                    artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Remote Artist",
-                    album_name: null,
-                    published_at: note.published?.toString() || new Date().toISOString(),
-                });
-                console.log(`📡 Stored remote post via Create Note inbox: ${apId}`);
-            }
-        }
-    } else if (object instanceof Article) {
-        const apId = object.id?.toString();
-        if (apId) {
-            const rawContent = (object as any).content?.toString() || (object as any).summary?.toString() || "";
-            dbService.upsertRemoteContent({
-                ap_id: apId,
-                actor_uri: actorUri,
-                type: "post",
-                title: (object as any).name?.toString() || rawContent.replace(/<[^>]*>?/gm, "").substring(0, 80) || "Untitled",
-                content: rawContent,
-                url: (object as any).url?.toString() || null,
-                cover_url: null,
-                stream_url: null,
-                artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Remote Artist",
-                album_name: null,
-                published_at: object.published?.toString() || new Date().toISOString(),
-            });
-            console.log(`📡 Stored remote post via Create Article inbox: ${apId}`);
-        }
-    } else if (object instanceof Audio) {
-        const apId = object.id?.toString();
-        if (apId) {
-            const audioUrl = object.id?.toString() || (object as any).url?.toString() || null;
-            const duration = object.duration ? (object.duration.total("second")) : null;
-            const icon = await object.getIcon();
-            let coverUrl: string | null = null;
-            if (icon) {
-                coverUrl = icon.id?.toString() || (icon as any).url?.toString() || null;
-            }
-            const rawContent = (object as any).content?.toString() || (object as any).summary?.toString() || "";
-            dbService.upsertRemoteContent({
-                ap_id: apId,
-                actor_uri: actorUri,
-                type: "release",
-                title: (object as any).name?.toString() || "Untitled",
-                content: rawContent,
-                url: (object as any).url?.toString() || null,
-                cover_url: coverUrl,
-                stream_url: audioUrl,
-                artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Unknown Artist",
-                album_name: (object as any).summary?.toString() || null,
-                duration,
-                published_at: object.published?.toString() || new Date().toISOString(),
-            });
-            console.log(`📡 Stored remote release via Create Audio inbox: ${apId}`);
-        }
-    }
+    const row = await toRemoteContent(object, actorUri, actor);
+    if (!row) return;
+    dbService.upsertRemoteContent(row);
+    console.log(`📡 Stored remote ${row.type} via Create inbox: ${row.ap_id}`);
 }
 
 /**

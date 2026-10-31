@@ -224,8 +224,10 @@ export function createSocialManager(
         },
         getApReplies: (noteId: string) => db.prepare("SELECT id, note_id, reply_uri, actor_uri, content, published_at, created_at FROM ap_replies WHERE note_id = ? ORDER BY COALESCE(published_at, created_at) ASC").all(noteId) as any[],
         getApReply: (replyUri: string) => db.prepare("SELECT id, note_id, reply_uri, actor_uri, content, published_at, created_at FROM ap_replies WHERE reply_uri = ?").get(replyUri) as any,
-        deleteApReply: (replyUri: string): boolean => {
-            const row = db.prepare("SELECT note_id FROM ap_replies WHERE reply_uri = ?").get(replyUri) as any;
+        // `actorUri` limits the delete to that author's reply (federated Delete).
+        deleteApReply: (replyUri: string, actorUri?: string): boolean => {
+            const row = db.prepare("SELECT note_id, actor_uri FROM ap_replies WHERE reply_uri = ?").get(replyUri) as any;
+            if (row && actorUri && row.actor_uri !== actorUri) return false;
             const result = db.prepare("DELETE FROM ap_replies WHERE reply_uri = ?").run(replyUri);
             if (result.changes > 0 && row) {
                 db.prepare("UPDATE ap_notes SET replies_count = MAX(0, replies_count - 1) WHERE note_id = ?").run(row.note_id);
@@ -246,7 +248,7 @@ export function createSocialManager(
         saveRemoteActor: (a: any) => { remoteActorRepository.saveRemoteActor(a); },
         saveRemotePost: (p: any) => { remoteContentRepository.saveRemotePost(p); },
         deleteRemotePost: (id: string) => { remoteContentRepository.deleteRemotePost(id); },
-        deleteRemoteContent: (id: string) => { remoteContentRepository.deleteRemoteContent(id); },
+        deleteRemoteContent: (id: string, actorUri?: string) => { remoteContentRepository.deleteRemoteContent(id, actorUri); },
         deleteRemoteContentByActorPrefix: (prefix: string) => remoteContentRepository.deleteRemoteContentByActorPrefix(prefix),
 
         // Reports

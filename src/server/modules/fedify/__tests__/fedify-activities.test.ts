@@ -12,6 +12,7 @@ function makeDb() {
         deleteApReply: jest.fn().mockReturnValue(false),
         deleteRemoteContent: jest.fn(),
         upsertRemoteContent: jest.fn(),
+        getRemoteContent: jest.fn().mockReturnValue({ ap_id: 'stored' }),
     } as any;
 }
 
@@ -42,47 +43,47 @@ describe('handleDeleteObject', () => {
         handleDeleteObject(db, objectId, 'https://m.test/users/bob');
 
         expect(db.removeFollower).not.toHaveBeenCalled();
-        expect(db.deleteApReply).toHaveBeenCalledWith(objectId);
-        expect(db.deleteRemoteContent).toHaveBeenCalledWith(objectId);
+        // Scoped to the sender: the store only deletes what that actor wrote.
+        expect(db.deleteApReply).toHaveBeenCalledWith(objectId, 'https://m.test/users/bob');
+        expect(db.deleteRemoteContent).toHaveBeenCalledWith(objectId, 'https://m.test/users/bob');
     });
 
-    test('object deletion still removes remote content when no actor is present', () => {
+    test('object deletion without an actor deletes nothing', () => {
         const db = makeDb();
-        const objectId = 'https://m.test/objects/1';
-        handleDeleteObject(db, objectId, undefined);
-        expect(db.deleteRemoteContent).toHaveBeenCalledWith(objectId);
-        expect(db.removeFollower).not.toHaveBeenCalled();
+        handleDeleteObject(db, 'https://m.test/objects/1', undefined);
+        expect(db.deleteRemoteContent).not.toHaveBeenCalled();
+        expect(db.deleteApReply).not.toHaveBeenCalled();
     });
 });
 
 describe('handleUpdateObject', () => {
-    test('Person update refreshes the cached actor and touches nothing else', () => {
+    test('Person update refreshes the cached actor and touches nothing else', async () => {
         const db = makeDb();
         const cacheActor = jest.fn();
         const person = new Person({ id: uri('https://m.test/users/bob'), name: 'Bob', preferredUsername: 'bob' });
 
-        handleUpdateObject(db, person, 'https://m.test/users/bob', null, cacheActor);
+        await handleUpdateObject(db, person, 'https://m.test/users/bob', null, cacheActor);
 
         expect(cacheActor).toHaveBeenCalledWith(person);
         expect(db.upsertRemoteContent).not.toHaveBeenCalled();
     });
 
-    test('Service update is treated as an actor refresh', () => {
+    test('Service update is treated as an actor refresh', async () => {
         const db = makeDb();
         const cacheActor = jest.fn();
         const svc = new Service({ id: uri('https://m.test/actor'), name: 'Inst' });
-        handleUpdateObject(db, svc, 'https://m.test/actor', null, cacheActor);
+        await handleUpdateObject(db, svc, 'https://m.test/actor', null, cacheActor);
         expect(cacheActor).toHaveBeenCalledWith(svc);
         expect(db.upsertRemoteContent).not.toHaveBeenCalled();
     });
 
-    test('Note edit upserts remote content as type "post"', () => {
+    test('Note edit upserts remote content as type "post"', async () => {
         const db = makeDb();
         const cacheActor = jest.fn();
         const note = new Note({ id: uri('https://m.test/notes/1'), content: 'edited body' });
         const author = new Person({ id: uri('https://m.test/users/bob'), name: 'Bob' });
 
-        handleUpdateObject(db, note, 'https://m.test/users/bob', author, cacheActor);
+        await handleUpdateObject(db, note, 'https://m.test/users/bob', author, cacheActor);
 
         expect(cacheActor).not.toHaveBeenCalled();
         expect(db.upsertRemoteContent).toHaveBeenCalledTimes(1);
@@ -96,42 +97,45 @@ describe('handleUpdateObject', () => {
         });
     });
 
-    test('Audio edit upserts remote content as type "release"', () => {
+    test('Audio edit upserts remote content as type "release"', async () => {
         const db = makeDb();
         const audio = new Audio({ id: uri('https://m.test/tracks/9'), name: 'Song' });
-        handleUpdateObject(db, audio, 'https://m.test/users/bob', null, jest.fn());
+        await handleUpdateObject(db, audio, 'https://m.test/users/bob', null, jest.fn());
 
         const arg = db.upsertRemoteContent.mock.calls[0][0];
         expect(arg.type).toBe('release');
         expect(arg.ap_id).toBe('https://m.test/tracks/9');
-        // no author resolved → falls back to default label
-        expect(arg.artist_name).toBe('Remote Artist');
+        // no author resolved → falls back to the default label for releases
+        expect(arg.artist_name).toBe('Unknown Artist');
     });
 
-    test('Article edit is treated as content (type "post")', () => {
+    test('Article edit is treated as content (type "post")', async () => {
         const db = makeDb();
         const art = new Article({ id: uri('https://m.test/articles/3'), name: 'Title', content: 'long' });
-        handleUpdateObject(db, art, 'https://m.test/users/bob', null, jest.fn());
+        await handleUpdateObject(db, art, 'https://m.test/users/bob', null, jest.fn());
         expect(db.upsertRemoteContent.mock.calls[0][0].type).toBe('post');
     });
 
-    test('content update with no resolvable actor is a no-op', () => {
+    test('content update with no resolvable actor is a no-op', async () => {
         const db = makeDb();
         const note = new Note({ id: uri('https://m.test/notes/1'), content: 'x' });
         // updateActorId undefined and Note has no attributedTo → actorUri unresolved
-        handleUpdateObject(db, note, undefined, null, jest.fn());
+        await handleUpdateObject(db, note, undefined, null, jest.fn());
         expect(db.upsertRemoteContent).not.toHaveBeenCalled();
     });
 
-    test('falls back to the object\'s attributedTo when the Update has no actor', () => {
+    test('an Update for another server\'s object is ignored', async () => {
         const db = makeDb();
-        const note = new Note({
-            id: uri('https://m.test/notes/2'),
-            content: 'x',
-            attribution: uri('https://m.test/users/carol'),
-        });
-        handleUpdateObject(db, note, undefined, null, jest.fn());
-        expect(db.upsertRemoteContent).toHaveBeenCalledTimes(1);
-        expect(db.upsertRemoteContent.mock.calls[0][0].actor_uri).toBe('https://m.test/users/carol');
+        const note = new Note({ id: uri('https://victim.test/notes/2'), content: 'rewritten' });
+        await handleUpdateObject(db, note, 'https://evil.test/users/mallory', null, jest.fn());
+        expect(db.upsertRemoteContent).not.toHaveBeenCalled();
+    });
+
+    test('an Update for content we never stored creates nothing', async () => {
+        const db = makeDb();
+        db.getRemoteContent.mockReturnValue(undefined);
+        const note = new Note({ id: uri('https://m.test/notes/new'), content: 'x' });
+        await handleUpdateObject(db, note, 'https://m.test/users/bob', null, jest.fn());
+        expect(db.upsertRemoteContent).not.toHaveBeenCalled();
     });
 });

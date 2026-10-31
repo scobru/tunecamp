@@ -234,8 +234,8 @@ export function createStatsRoutes(container: ServiceContainer): Router {
                 // 0. Explicitly followed actors are allowed
                 if (actor && actor.is_followed) return true;
 
-                // 1. Site actors are allowed
-                if (actor && (actor.username === 'site' || actor.username === getSiteHandle(dbService))) return true;
+                // (Site actors are not trusted by name: anyone can call an actor "site".
+                // Real TuneCamp instances pass rule 0 or rule 3.)
 
                 // 1b. Followed RSS feeds (podcasts/blogs) are allowed
                 if (actor && actor.type === 'rss') return true;
