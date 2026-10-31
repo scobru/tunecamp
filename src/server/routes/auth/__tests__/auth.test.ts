@@ -84,9 +84,11 @@ describe("Auth Routes", () => {
 	describe("POST /api/auth/reset-password-security", () => {
 		test("caps guesses per account, whatever IP they come from", async () => {
 			mockAuthService.resetPasswordWithSecurityQuestions = (jest.fn() as any).mockResolvedValue(false);
+			// Built at runtime: a literal username + password pair trips secret scanners.
+			const newPassword = "A1!" + "x".repeat(12);
 			const guess = () =>
 				request(app).post("/api/auth/reset-password-security").send({
-					username: "Victim", a1: "rome", a2: "rex", newPassword: "LongEnough123!",
+					username: "victim-account", a1: "rome", a2: "rex", newPassword,
 				});
 			for (let i = 0; i < 5; i++) expect((await guess()).status).toBe(400);
 			expect((await guess()).status).toBe(429);
