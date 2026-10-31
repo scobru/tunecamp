@@ -1266,3 +1266,20 @@ describe("Stripe Connect onboarding (artist accounts)", () => {
 		});
 	});
 });
+
+describe("Asset uploads are refused before anything is stored", () => {
+	// A Curator passes the router's write gate but may not publish without a
+	// linked artist; multer used to store the file before the route refused it.
+	test("a Curator without an artist gets 403 and no file lands in uploads/", async () => {
+		const fsx = (await import("fs-extra")).default;
+		await fsx.ensureDir("uploads");
+		const before = (await fsx.readdir("uploads")).length;
+
+		const res = await request(buildApp({ role: "super_user", userId: 9 }))
+			.post("/admin/assets")
+			.attach("file", Buffer.alloc(64 * 1024), "pack.zip");
+
+		expect(res.status).toBe(403);
+		expect((await fsx.readdir("uploads")).length).toBe(before);
+	});
+});

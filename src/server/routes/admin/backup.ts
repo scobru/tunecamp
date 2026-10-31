@@ -1,9 +1,9 @@
 import express, { Router } from "express";
 import archiver from "archiver";
-import AdmZip from "adm-zip";
 import fs from "fs-extra";
 import path from "path";
 import multer from "multer";
+import yauzl from "yauzl";
 import type { DatabaseService } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
 import type { GoogleDriveService } from "../../modules/storage/google-drive.service.js";
@@ -13,6 +13,37 @@ import { VisibilityProfile } from "../../common/visibility.js";
 fs.ensureDirSync("uploads");
 
 const upload = multer({ dest: "uploads/" });
+
+// Before multer: a non-root admin's restore upload used to be stored first and
+// refused after, leaving the file in uploads/.
+const rootOnly = (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
+    if (req.isRootAdmin) return next();
+    res.status(403).send("Unauthorized: Restore restricted to Root Admin");
+};
+
+/**
+ * True when the ZIP holds a symbolic link. extract-zip creates links as stored,
+ * so a link entry followed by a file "inside" it could write outside the
+ * extraction directory; restores refuse such archives before extracting.
+ */
+export function zipHasSymlinks(zipPath: string): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+        yauzl.open(zipPath, { lazyEntries: true }, (err, zip) => {
+            if (err || !zip) return reject(err);
+            zip.on("entry", (entry: yauzl.Entry) => {
+                const mode = (entry.externalFileAttributes >>> 16) & 0o170000;
+                if (mode === 0o120000) {
+                    zip.close();
+                    return resolve(true);
+                }
+                zip.readEntry();
+            });
+            zip.on("end", () => resolve(false));
+            zip.on("error", reject);
+            zip.readEntry();
+        });
+    });
+}
 
 interface AuthenticatedRequest extends express.Request {
     userId?: number;
@@ -73,6 +104,9 @@ async function performRestore(zipPath: string, config: ServerConfig, database: D
         if (isZip) {
             console.log("📦 [Restore] Detected ZIP format, using extract-zip for secure extraction...");
             // Use extract-zip for .zip files (handles >2GB better than adm-zip and prevents command injection)
+            if (await zipHasSymlinks(path.resolve(zipPath))) {
+                throw new Error("Archive contains symbolic links; refusing to extract it.");
+            }
             const extract = (await import("extract-zip")).default;
             try {
                 await extract(path.resolve(zipPath), { dir: path.resolve(extractPath) });
@@ -394,7 +428,7 @@ export function createBackupRoutes(container: ServiceContainer, restartFn: () =>
      * POST /api/admin/backup/restore
      * Upload and restore backup (Legacy/Single File)
      */
-    router.post("/restore", upload.single("backup") as any, (req: AuthenticatedRequest, res) => {
+    router.post("/restore", rootOnly, upload.single("backup") as any, (req: AuthenticatedRequest, res) => {
         if (!req.isRootAdmin) {
             return res.status(403).send("Unauthorized: Restore restricted to Root Admin");
         }
@@ -415,7 +449,7 @@ export function createBackupRoutes(container: ServiceContainer, restartFn: () =>
      * POST /api/admin/backup/chunk
      * Receive a file chunk
      */
-    router.post("/chunk", upload.single("chunk") as any, async (req: AuthenticatedRequest, res) => {
+    router.post("/chunk", rootOnly, upload.single("chunk") as any, async (req: AuthenticatedRequest, res) => {
         try {
             if (!req.isRootAdmin) return res.status(403).send("Unauthorized");
 

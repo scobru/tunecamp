@@ -260,4 +260,31 @@ describe("Collab Routes", () => {
 			expect(res.body.id).toBe(1);
 		});
 	});
+
+	// ── Uploads refused for permission must not leave temp files ───────────
+	describe("POST /api/collab/:id/stems — refused uploads leave nothing on disk", () => {
+		const stemTemps = async () => {
+			const fsx = (await import("fs-extra")).default;
+			const os = (await import("os")).default;
+			return (await fsx.readdir(os.tmpdir())).filter((f: string) => f.startsWith("stem-")).length;
+		};
+
+		test("a listener without an artist is refused before the file is stored", async () => {
+			currentUser = { id: 3, username: "listener", role: UserRole.NORMAL_USER, artistId: null };
+			const before = await stemTemps();
+			const res = await request(app).post("/api/collab/1/stems").attach("file", Buffer.alloc(2048), "s.mp3");
+			expect(res.status).toBe(403);
+			expect(await stemTemps()).toBe(before);
+		});
+
+		test("an artist refused by the project rule has the stored file removed", async () => {
+			currentUser = { id: 4, username: "artist", role: UserRole.NORMAL_USER, artistId: 8 };
+			mockCollabRepo.getById.mockReturnValue({ id: 1, ownerId: 99, visibility: "private" });
+			const before = await stemTemps();
+			const res = await request(app).post("/api/collab/1/stems").attach("file", Buffer.alloc(2048), "s.mp3");
+			expect(res.status).toBe(403);
+			await new Promise(r => setTimeout(r, 50));
+			expect(await stemTemps()).toBe(before);
+		});
+	});
 });
