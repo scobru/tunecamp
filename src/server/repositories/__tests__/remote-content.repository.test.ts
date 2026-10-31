@@ -72,6 +72,16 @@ describe('RemoteContentRepository', () => {
         });
     });
 
+    describe('deleteRemoteContent', () => {
+        test('with an actor, deletes only content that actor wrote', () => {
+            repo.upsertRemoteContent(remoteContentInput({ ap_id: 'owned', actor_uri: 'actor1' }));
+            repo.deleteRemoteContent('owned', 'actor2');
+            expect(repo.getRemoteContent('owned')).toBeDefined();
+            repo.deleteRemoteContent('owned', 'actor1');
+            expect(repo.getRemoteContent('owned')).toBeUndefined();
+        });
+    });
+
     describe('getRemoteContent', () => {
         test('returns content by ap_id', () => {
             repo.upsertRemoteContent(remoteContentInput({ ap_id: 'get1' }));

@@ -1030,7 +1030,7 @@ export interface SocialManager {
 	): boolean;
 	getApReplies(noteId: string): ApReply[];
 	getApReply(replyUri: string): ApReply | undefined;
-	deleteApReply(replyUri: string): boolean;
+	deleteApReply(replyUri: string, actorUri?: string): boolean;
 
 	// Remote Content & Actors (AP/Fedify)
 	getRemoteActor(uri: string): RemoteActor | undefined;
@@ -1045,7 +1045,7 @@ export interface SocialManager {
 	saveRemoteActor(actor: any): void;
 	saveRemotePost(post: any): void;
 	deleteRemotePost(apId: string): void;
-	deleteRemoteContent(apId: string): void;
+	deleteRemoteContent(apId: string, actorUri?: string): void;
 	deleteRemoteContentByActorPrefix(actorUriPrefix: string): number;
 
 	// Reports

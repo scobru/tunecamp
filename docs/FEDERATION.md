@@ -100,6 +100,17 @@ The action is idempotent and safe to re-run.
 
 ---
 
+## What the Inbox Accepts
+
+Fedify verifies every incoming activity's HTTP signature, and that the signing key belongs to the activity's actor. The signature proves who sent an activity, not who wrote the object inside it, so the inbox adds its own rules (`src/server/modules/fedify/fedify.ts`):
+
+- **Same server.** A `Create`, `Update`, reply or announced release is filed under an author only when the object's id is on that author's server. A note hosted on one server and attributed to an account on another is dropped.
+- **Feed content from people you follow.** Posts and releases are stored only from actors someone here follows, or from known TuneCamp instances (`federated_instances`). An `Update` only refreshes content already stored.
+- **Delete what you wrote.** A `Delete` removes a reply or cached item only when its sender is the stored author. Deleting an actor removes that actor as a follower everywhere.
+- **Move** is applied only when the new account lists the old one in its aliases (`alsoKnownAs`).
+
+---
+
 ## RSS / Atom Feeds
 
 Beyond ActivityPub, Tunecamp can follow plain **RSS/Atom feeds** (podcasts, Owncast
