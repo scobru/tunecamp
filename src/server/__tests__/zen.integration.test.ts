@@ -41,7 +41,7 @@ describe("Zen SEA Integration Routes", () => {
 		database: {
 			prepare: jest.fn(),
 		},
-		config: { jwtSecret: "test-secret", host: "test.tunecamp.net" },
+		config: { jwtSecret: "test-secret", host: "test.tunecamp.net", publicUrl: "https://sudorecords.scobrudot.dev" },
 	};
 
 	// Keyed by username, mirrors the `admin` table rows the real DB would hold.
@@ -334,6 +334,16 @@ describe("Zen SEA Integration Routes", () => {
 		const signature = await signPayload(tokenPayload, keys.priv);
 		return { ...fields, signature };
 	}
+
+	test("POST /api/auth/zen/sso refuses a token issued for another instance", async () => {
+		// A valid, signed token the user gave to some other instance, replayed here.
+		const ssoToken = await buildSsoToken({ instanceDomain: "other-instance.example" });
+		const res = await request(app)
+			.post("/api/auth/zen/sso")
+			.send({ ssoToken, apSeed: crypto.randomBytes(32).toString("hex") });
+		expect(res.status).toBe(400);
+		expect(res.body.error).toContain("another instance");
+	});
 
 	test("POST /api/auth/zen/sso rejects missing ssoToken or apSeed", async () => {
 		const res = await request(app).post("/api/auth/zen/sso").send({});

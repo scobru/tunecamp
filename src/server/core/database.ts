@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import type { Database as DatabaseType } from "better-sqlite3";
 import path from "path";
 import { randomUUID } from "crypto";
+import { hashApiToken, apiTokenHint } from "../common/api-token.js";
 import { TrackRepository } from "../repositories/track.repository.js";
 import { AlbumRepository } from "../repositories/album.repository.js";
 import { ArtistRepository } from "../repositories/artist.repository.js";
@@ -2023,6 +2024,23 @@ export function createDatabase(dbPath: string): DatabaseService {
         CREATE INDEX IF NOT EXISTS idx_reports_release ON reports(release_id);
         -- Legacy indexes on releases removed (releases is now a view)
     `);
+
+	// tc_ API tokens used to be stored as-is. Keep only their hash plus a masked
+	// hint, converting existing rows once (a stored plaintext token starts "tc_").
+	{
+		const cols = db.prepare("PRAGMA table_info(api_tokens)").all() as any[];
+		if (!cols.some((c) => c.name === "token_hint")) {
+			db.exec("ALTER TABLE api_tokens ADD COLUMN token_hint TEXT");
+		}
+		const plain = db.prepare("SELECT id, token FROM api_tokens WHERE token LIKE 'tc\\_%' ESCAPE '\\'").all() as { id: number; token: string }[];
+		if (plain.length) {
+			console.log(`🔐 [Database] Hashing ${plain.length} stored API token(s)...`);
+			const update = db.prepare("UPDATE api_tokens SET token = ?, token_hint = ? WHERE id = ?");
+			db.transaction(() => {
+				for (const row of plain) update.run(hashApiToken(row.token), apiTokenHint(row.token), row.id);
+			})();
+		}
+	}
 
 	// Register Levenshtein
 	db.function("levenshtein", (a: string, b: string) => {
