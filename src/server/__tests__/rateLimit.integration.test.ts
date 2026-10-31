@@ -117,3 +117,24 @@ describe('Rate Limit Integration', () => {
         await request(sensitiveApp).post('/api/auth/login').expect(429); // Triggered by sensitive limit
     });
 });
+
+describe('Rate limit behind one reverse proxy (trust proxy = 1)', () => {
+    test('a client cannot dodge the limit by inventing X-Forwarded-For values', async () => {
+        const { trustProxySetting } = await import('../app.js');
+        const app = express();
+        app.set('trust proxy', trustProxySetting(undefined));
+        app.post('/login', rateLimit({ windowMs: 60000, max: 1 }), (_req, res) => res.status(200).end());
+
+        // nginx appends the address it saw; the client controls only what comes before.
+        await request(app).post('/login').set('X-Forwarded-For', '1.1.1.1, 203.0.113.9').expect(200);
+        await request(app).post('/login').set('X-Forwarded-For', '2.2.2.2, 203.0.113.9').expect(429);
+    });
+
+    test('TUNECAMP_TRUST_PROXY parsing', async () => {
+        const { trustProxySetting } = await import('../app.js');
+        expect(trustProxySetting(undefined)).toBe(1);
+        expect(trustProxySetting('2')).toBe(2);
+        expect(trustProxySetting('false')).toBe(false);
+        expect(trustProxySetting('nonsense')).toBe(1);
+    });
+});

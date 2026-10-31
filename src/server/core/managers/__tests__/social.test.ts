@@ -324,7 +324,7 @@ describe("SocialManager", () => {
             manager.deleteRemotePost("1");
             expect(repos.remoteContentRepository.deleteRemotePost).toHaveBeenCalledWith("1");
             manager.deleteRemoteContent("1");
-            expect(repos.remoteContentRepository.deleteRemoteContent).toHaveBeenCalledWith("1");
+            expect(repos.remoteContentRepository.deleteRemoteContent).toHaveBeenCalledWith("1", undefined);
             manager.deleteRemoteContentByActorPrefix("prefix");
             expect(repos.remoteContentRepository.deleteRemoteContentByActorPrefix).toHaveBeenCalledWith("prefix");
         });

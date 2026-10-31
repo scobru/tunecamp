@@ -128,7 +128,12 @@ export class RemoteContentRepository {
         this.db.prepare("DELETE FROM remote_content WHERE ap_id = ?").run(apId);
     }
 
-    deleteRemoteContent(apId: string): void {
+    /** With `actorUri`, deletes only if that actor is the stored author. */
+    deleteRemoteContent(apId: string, actorUri?: string): void {
+        if (actorUri) {
+            this.db.prepare("DELETE FROM remote_content WHERE ap_id = ? AND actor_uri = ?").run(apId, actorUri);
+            return;
+        }
         this.db.prepare("DELETE FROM remote_content WHERE ap_id = ?").run(apId);
     }
 

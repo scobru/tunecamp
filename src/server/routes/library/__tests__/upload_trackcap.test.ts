@@ -103,6 +103,22 @@ describe('Upload Routes - Track-count cap', () => {
         return req.attach('files', audioPath);
     };
 
+    test('refuses an upload larger than the remaining quota before storing it', async () => {
+        (mockAuthService.getUserByUsername as jest.Mock).mockReturnValue({ id: 55, username: 'listener1', storage_quota: 1000 });
+        (mockAuthService.getStorageInfo as jest.Mock).mockReturnValue({ storage_quota: 1000, storage_used: 0 });
+        const big = path.join(tempMusicDir, 'big.mp3');
+        await fs.writeFile(big, Buffer.alloc(3 * 1024 * 1024));
+
+        const response = await request(app).post('/upload/tracks').attach('files', big);
+
+        expect(response.status).toBe(413);
+        // The pre-multer check answers "Remaining: …"; the post-upload check, which
+        // ran only after the whole body was on disk, answers "Used: …".
+        expect(response.body.error).toMatch(/Remaining/);
+        expect(response.body.error).not.toMatch(/Used:/);
+        expect(mockScanner.processAudioFile).not.toHaveBeenCalled();
+    });
+
     test('blocks upload when the per-user track quota override is exceeded', async () => {
         (mockAuthService.getTrackQuotaInfo as jest.Mock).mockReturnValue({ track_quota: 5, track_quota_floor: 0 });
         (mockLibrary.getTrackCountByOwner as jest.Mock).mockReturnValue(5);

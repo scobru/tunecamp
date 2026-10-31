@@ -1,4 +1,6 @@
+import path from "path";
 import type { DatabaseService, Track } from "../../core/database.js";
+import { audioContentType } from "../../../utils/audioUtils.js";
 import { VisibilityProfile, VisibilityGuardian, ViewerContext } from "../../common/visibility.js";
 
 /**
@@ -12,6 +14,8 @@ export class SubsonicService {
 
   formatTrack(track: Track, username: string, starredSet?: Set<string>, ratingsMap?: Map<string, number>) {
     const id = `tr_${track.id}`;
+    // `format` can hold a codec label ("MPEG 1 Layer 3"); clients expect a file extension here.
+    const suffix = path.extname(track.file_path || '').slice(1).toLowerCase() || track.format || 'mp3';
     return {
       '@id': id,
       '@parent': track.album_id ? `al_${track.album_id}` : undefined,
@@ -24,8 +28,8 @@ export class SubsonicService {
       '@genre': track.genre,
       '@coverArt': track.album_id ? `al_${track.album_id}` : id,
       '@size': 0,
-      '@contentType': this.getContentType(track.format),
-      '@suffix': track.format || 'mp3',
+      '@contentType': audioContentType(suffix),
+      '@suffix': suffix,
       '@duration': Math.floor(track.duration || 0),
       '@bitRate': track.bitrate ? Math.round(track.bitrate / 1000) : 128,
       '@path': track.file_path,
@@ -100,20 +104,11 @@ export class SubsonicService {
     return artists.map((a: any) => this.formatArtist(a, username, ratingsMap, starredSet));
   }
 
-  getContentType(format?: string | null): string {
-    if (!format) return 'audio/mpeg';
-    const f = format.toLowerCase();
-    if (f === 'flac') return 'audio/flac';
-    if (f === 'ogg' || f === 'opus') return 'audio/ogg';
-    if (f === 'wav') return 'audio/wav';
-    if (f === 'm4a' || f === 'mp4') return 'audio/mp4';
-    return 'audio/mpeg';
-  }
 
   // --- Logic Methods ---
 
-  getIndexes(username: string) {
-    const artists = this.db.getArtists(VisibilityProfile.ALL_ACCESS);
+  getIndexes(username: string, context: ViewerContext) {
+    const artists = this.db.getArtists(context);
     const indexes: Record<string, any[]> = {};
     const albumCounts = this.db.getArtistAlbumCounts();
     const countMap = new Map<number, number>();
@@ -137,13 +132,13 @@ export class SubsonicService {
     }));
   }
 
-  getMusicDirectory(id: string, username: string) {
+  getMusicDirectory(id: string, username: string, context: ViewerContext) {
     if (id.startsWith('ar_')) {
       const artistId = parseInt(id.substring(3));
       const artist = this.db.getArtist(artistId);
       if (!artist) return null;
 
-      const libraryAlbums = this.db.getAlbumsByArtist(artistId, VisibilityProfile.ALL_ACCESS);
+      const libraryAlbums = this.db.getAlbumsByArtist(artistId, context);
       const albumIds = libraryAlbums.map((album: any) => album.id);
       const albumStats = new Map<number, { songCount: number; duration: number }>();
 
@@ -177,7 +172,8 @@ export class SubsonicService {
       const album = this.db.getAlbum(albumId) as any;
       if (!album) return null;
 
-      const tracks = this.db.getTracks(albumId, VisibilityProfile.ALL_ACCESS);
+      const tracks = this.db.getTracks(albumId, context);
+      if (!tracks.length && !VisibilityGuardian.isItemVisible(album, context)) return null;
       return {
         '@id': id,
         '@name': album.title,
@@ -189,24 +185,18 @@ export class SubsonicService {
     return null;
   }
 
-  getAlbumList(type: string, size: number, offset: number, username: string) {
-    const allAlbums = this.db.getAlbumsWithStats(VisibilityProfile.ALL_ACCESS);
-    let albums = [...allAlbums];
-    
-    if (type === 'random') albums.sort(() => Math.random() - 0.5);
-    else if (type === 'newest' || type === 'recent') albums.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    else if (type === 'alphabeticalByName') albums.sort((a, b) => a.title.localeCompare(b.title));
-    else if (type === 'alphabeticalByArtist') albums.sort((a, b) => (a.artist_name || '').localeCompare(b.artist_name || ''));
-
-    const paginated = albums.slice(offset, offset + size);
-    return this.formatAlbumsBulk(paginated, username);
+  getAlbumList(type: string, size: number, offset: number, username: string, context: ViewerContext) {
+    // Subsonic caps a page at 500; sorting and slicing happen in SQL.
+    const limit = Math.min(Math.max(size || 0, 0), 500);
+    const albums = this.db.getAlbumsWithStats(context, { order: type, limit, offset: Math.max(offset || 0, 0) });
+    return this.formatAlbumsBulk(albums, username);
   }
 
-  search(query: string, username: string) {
-    const results = this.db.search(query, VisibilityProfile.ALL_ACCESS);
+  search(query: string, username: string, context: ViewerContext) {
+    const results = this.db.search(query, context);
 
     const mappedAlbums = results.albums.map((a: any) => {
-      const tracks = this.db.getTracks(a.id, VisibilityProfile.ALL_ACCESS);
+      const tracks = this.db.getTracks(a.id, context);
       return { ...a, songCount: tracks.length, duration: tracks.reduce((acc: number, t: Track) => acc + (t.duration || 0), 0) };
     });
 
@@ -256,12 +246,12 @@ export class SubsonicService {
     return response;
   }
 
-  getArtist(id: string, username: string) {
+  getArtist(id: string, username: string, context: ViewerContext) {
     const artistId = parseInt(id.startsWith('ar_') ? id.substring(3) : id);
     const artist = this.db.getArtist(artistId);
     if (!artist) return null;
 
-    const libraryAlbums = this.db.getAlbumsByArtist(artistId, VisibilityProfile.ALL_ACCESS);
+    const libraryAlbums = this.db.getAlbumsByArtist(artistId, context);
     const albumIds = libraryAlbums.map(album => album.id);
     const albumStats = new Map<number, { songCount: number; duration: number }>();
 
@@ -288,20 +278,21 @@ export class SubsonicService {
     };
   }
 
-  getAlbum(id: string, username: string) {
+  getAlbum(id: string, username: string, context: ViewerContext) {
     const albumId = parseInt(id.startsWith('al_') ? id.substring(3) : id);
     const album = this.db.getAlbum(albumId) as any;
     if (!album) return null;
 
-    const tracks = this.db.getTracks(albumId, VisibilityProfile.ALL_ACCESS);
+    const tracks = this.db.getTracks(albumId, context);
+    if (!tracks.length && !VisibilityGuardian.isItemVisible(album, context)) return null;
     return {
       ...this.formatAlbum({ ...album, songCount: tracks.length, duration: tracks.reduce((acc: number, t: Track) => acc + (t.duration || 0), 0) }, username),
       song: this.formatTracksBulk(tracks, username)
     };
   }
 
-  getGenres() {
-    const albums = this.db.getAlbums(VisibilityProfile.ALL_ACCESS);
+  getGenres(context: ViewerContext) {
+    const albums = this.db.getAlbums(context);
     const genreMap = new Map<string, { count: number, songCount: number }>();
     const albumIds = albums.map((a: any) => a.id);
     const allTracks = this.db.getTracksByAlbumIds(albumIds);
@@ -411,7 +402,7 @@ export class SubsonicService {
       '@duration': Math.floor(track.duration || 0),
       '@bytes': track.file_size || 0,
       '@coverArt': track.album_id ? `al_${track.album_id}` : id,
-      '@contentType': this.getContentType(track.format),
+      '@contentType': audioContentType(track.format),
       '@isDir': false
     };
   }

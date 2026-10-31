@@ -1,28 +1,13 @@
 import { Router } from "express";
 import { Readable } from "node:stream";
-import { isSafeUrl } from "../../../utils/networkUtils.js";
+import { fetchSafe, drainResponse } from "../../common/network.js";
+
+const PROXIED_MEDIA = /^\s*(audio\/|video\/|image\/|application\/(ogg|octet-stream)|binary\/octet-stream)/i;
 
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createProxyRoutes(container: ServiceContainer): Router {
     const router = Router();
-    const library = container.library;
-
-    const deleteBrokenTrack = (url: string, reason: string) => {
-        try {
-            const tracks = Array.from(library.iterateTracks("url = ? AND file_path IS NULL", [url]));
-            const trackIds: number[] = [];
-            for (const track of tracks) {
-                console.warn(`🧹 [Self-Healing] Deleting broken external track ${track.id} ("${track.title}"): ${reason}`);
-                trackIds.push(track.id);
-            }
-            if (trackIds.length > 0) {
-                library.deleteTracksBatch(trackIds);
-            }
-        } catch (dbErr) {
-            console.error("❌ [Self-Healing] Failed to delete broken track:", dbErr);
-        }
-    };
 
     /**
      * GET /api/proxy/stream
@@ -34,36 +19,39 @@ export function createProxyRoutes(container: ServiceContainer): Router {
             return res.status(400).send("URL is required");
         }
 
-        const safe = await isSafeUrl(url);
-        if (!safe) {
-            console.warn(`⚠️ Proxy target blocked: ${url}`);
-            return res.status(403).send("Forbidden: Invalid or unsafe URL");
-        }
-
         try {
             console.log(`📡 Proxying stream: ${url}`);
-            
-            const response = await fetch(url, {
-                headers: {
-                    'User-Agent': 'Tunecamp/1.0',
-                    'Accept': '*/*'
-                }
-            });
+
+            let response: Response;
+            try {
+                response = await fetchSafe(url, {
+                    headers: { 'User-Agent': 'Tunecamp/1.0', 'Accept': '*/*' }
+                });
+            } catch (e: any) {
+                if (!String(e?.message).startsWith('SSRF Blocked')) throw e;
+                console.warn(`⚠️ Proxy target blocked: ${url}`);
+                return res.status(403).send("Forbidden: Invalid or unsafe URL");
+            }
 
             if (!response.ok) {
                 console.warn(`⚠️ Proxy target returned error: ${response.status}`);
-                if (response.status === 404 || response.status === 410 || response.status === 403) {
-                    deleteBrokenTrack(url, `HTTP ${response.status} from target`);
-                }
                 return res.status(response.status).send(`Failed to fetch remote stream: ${response.statusText}`);
             }
 
-            // Copy headers
-            const contentType = response.headers.get('content-type');
+            // This route answers from our own origin, whose CSP allows inline scripts:
+            // relaying a remote text/html page would run its script here, next to the
+            // login token in localStorage. Media only, and the body may never run code.
+            const contentType = response.headers.get('content-type') || 'application/octet-stream';
+            if (!PROXIED_MEDIA.test(contentType)) {
+                await drainResponse(response);
+                return res.status(415).send("Only audio, video and image content can be proxied");
+            }
+            res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
+
             const contentLength = response.headers.get('content-length');
             const acceptRanges = response.headers.get('accept-ranges');
 
-            if (contentType) res.setHeader('Content-Type', contentType);
+            res.setHeader('Content-Type', contentType);
             if (contentLength) res.setHeader('Content-Length', contentLength);
             if (acceptRanges) res.setHeader('Accept-Ranges', acceptRanges);
             
@@ -85,10 +73,6 @@ export function createProxyRoutes(container: ServiceContainer): Router {
 
         } catch (error: any) {
             console.error("❌ Proxy error:", error);
-            const isConnectionError = error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT';
-            if (isConnectionError) {
-                deleteBrokenTrack(url, `Connection error (${error.code})`);
-            }
             res.status(500).send("Proxy error");
         }
     });

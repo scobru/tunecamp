@@ -204,7 +204,7 @@ export const AdminUserModal = ({
 					{user?.zenAuthMode && (
 						<span className="badge badge-xs ml-2">
 							{user.zenAuthMode === "zen"
-								? "ZEN-only"
+								? "FID-only"
 								: user.zenAuthMode === "hybrid"
 									? "Hybrid"
 									: "Local"}
@@ -233,7 +233,7 @@ export const AdminUserModal = ({
 								{user?.zenAuthMode === "zen" &&
 									dialogRef.current?.dataset.mode === "edit" && (
 										<span className="opacity-50 text-xs font-normal ml-2">
-											(Reset password not available for ZEN-only accounts)
+											(Reset password not available for FID-only accounts)
 										</span>
 									)}
 								{dialogRef.current?.dataset.mode === "edit" && (
@@ -254,7 +254,7 @@ export const AdminUserModal = ({
 							/>
 						) : (
 							<div className="text-xs opacity-60">
-								Password management disabled for ZEN-only accounts.
+								Password management disabled for FID-only accounts.
 							</div>
 						)}
 					</div>

@@ -10,7 +10,9 @@ La maggior parte degli endpoint richiede un **JWT (JSON Web Token)** nell'intest
 Authorization: Bearer <token>
 ```
 
-È possibile ottenere un token inviando le proprie credenziali tramite una richiesta `POST` a `/api/auth/login`.
+È possibile ottenere un token inviando le proprie credenziali tramite una richiesta `POST` a `/api/auth/login`. Vale 7 giorni ed è accettato solo nell'header `Authorization`.
+
+Gli URL che il browser carica da solo (stream `<audio>`, link di download, l'EventSource della bacheca, backup admin) non possono inviare quell'header. Portano `?token=` con un **token URL** ottenuto da `POST /api/auth/url-token`: vale 10 minuti e non funziona come sessione nell'header. Un token di sessione da 7 giorni dentro un URL viene rifiutato. I token API `tc_` restano accettati in quegli URL.
 
 ---
 
@@ -23,6 +25,9 @@ Authorization: Bearer <token>
 | `POST` | `/api/users/register` | Registra un nuovo utente |
 | `POST` | `/api/auth/login` | Autentica l'utente e restituisce un JWT |
 | `GET`  | `/api/auth/status` | Restituisce la sessione corrente e il profilo utente |
+| `POST` | `/api/auth/url-token` | Rilascia un token di 10 minuti per gli URL di media e download |
+| `POST` | `/api/auth/password` | Cambia la propria password. Chiude tutte le altre sessioni e restituisce un token nuovo |
+| `POST` | `/api/auth/logout-all` | Chiude tutte le sessioni dell'account, su tutti i dispositivi |
 
 ### Catalogo Musicale (`/api/catalog`, `/api/tracks`, `/api/albums`)
 

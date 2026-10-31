@@ -1,6 +1,6 @@
 # TuneCamp Collab
 
-**Collab** lets multiple artists on the same instance build a track together: upload stems, save version snapshots, and iterate — no separate app, no realtime, no ZEN.
+**Collab** lets multiple artists on the same instance build a track together: upload stems, save version snapshots, and iterate — no separate app, no realtime.
 
 ## Why native
 
@@ -45,4 +45,4 @@ All routes require login (`authMiddleware.requireUser`).
 
 ## Not (yet) realtime
 
-No live cursors/presence — versioning (append-only rows) covers the collaboration need. Live presence is deferred to the already-planned "Phase C" ZEN-via-`worker_thread`-RPC work (ephemeral presence / real-time collaborative playlists) documented in the repo's session rules — Collab does not duplicate or depend on it.
+No live cursors/presence — versioning (append-only rows) covers the collaboration need. Live presence is out of scope: Collab does not depend on any realtime layer.

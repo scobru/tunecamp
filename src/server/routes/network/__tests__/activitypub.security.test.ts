@@ -231,5 +231,19 @@ describe('ActivityPub Security', () => {
         
         expect(response.status).toBe(200);
     });
+    test('GET /link-preview refuses internal addresses', async () => {
+        const realFetch = globalThis.fetch;
+        const fetchSpy = jest.fn();
+        (globalThis as any).fetch = fetchSpy;
+        try {
+            const response = await request(app)
+                .get('/ap/link-preview?url=' + encodeURIComponent('http://169.254.169.254/latest/meta-data/'))
+                .set('Authorization', 'Bearer user_no_artist');
+            expect(response.status).toBe(400);
+            expect(fetchSpy).not.toHaveBeenCalled();
+        } finally {
+            (globalThis as any).fetch = realFetch;
+        }
+    });
 });
 

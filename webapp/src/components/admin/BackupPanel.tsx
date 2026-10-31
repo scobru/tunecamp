@@ -87,7 +87,7 @@ export const BackupPanel = () => {
                         
                         <div className="flex flex-col gap-3">
                             <a 
-                                href={`/api/admin/backup/full?token=${API.getToken()}`} 
+                                href={`/api/admin/backup/full?token=${API.getUrlToken()}`} 
                                 target="_blank" 
                                 className="btn btn-primary gap-2"
                                 rel="noopener noreferrer"
@@ -122,7 +122,7 @@ export const BackupPanel = () => {
                             <div className="divider my-0"></div>
 
                             <a 
-                                href={`/api/admin/backup/audio?token=${API.getToken()}`} 
+                                href={`/api/admin/backup/audio?token=${API.getUrlToken()}`} 
                                 target="_blank" 
                                 className="btn btn-secondary btn-outline gap-2"
                                 rel="noopener noreferrer"

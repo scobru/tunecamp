@@ -80,6 +80,31 @@ function dnsLookupAll(hostname: string): Promise<dns.LookupAddress[]> {
 }
 
 /**
+ * Private addresses are reachable only when asked for: local multi-instance
+ * federation sets TUNECAMP_ALLOW_PRIVATE_IP or NODE_ENV=development. An install
+ * that simply never set NODE_ENV used to have every SSRF check switched off.
+ */
+function allowPrivateTargets(): boolean {
+    return process.env.TUNECAMP_ALLOW_PRIVATE_IP === 'true' || process.env.NODE_ENV === 'development';
+}
+
+/**
+ * dns.lookup for outgoing connections: refuses a host that resolves to a private
+ * address at the moment the socket opens. isSafeUrl resolves earlier, so a DNS
+ * answer that changes in between (DNS rebinding) would otherwise slip through.
+ */
+export const safeLookup = ((hostname: string, options: any, callback: any) => {
+    if (typeof options === 'function') { callback = options; options = {}; }
+    dns.lookup(hostname, { ...options, all: true }, (err, addrs: dns.LookupAddress[]) => {
+        if (err) return callback(err);
+        const bad = allowPrivateTargets() ? undefined : addrs.find((a) => isPrivateIP(a.address));
+        if (bad) return callback(Object.assign(new Error(`SSRF Blocked: ${hostname} resolves to ${bad.address}`), { code: 'ESSRF' }));
+        if (options.all) return callback(null, addrs);
+        callback(null, addrs[0].address, addrs[0].family);
+    });
+}) as typeof dns.lookup;
+
+/**
  * Validates if a URL is safe to request (no private IPs).
  * Resolves DNS to check against private IP ranges.
  */
@@ -95,10 +120,7 @@ export function isSafeUrl(urlStr: string): Promise<boolean> {
         // If hostname is empty, invalid
         if (!hostname) return Promise.resolve(false);
 
-        // Bypass security/SSRF checks for local development to allow local multi-instance federation
-        const allowPrivate = process.env.TUNECAMP_ALLOW_PRIVATE_IP === 'true' || 
-                             (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test');
-        if (allowPrivate) {
+        if (allowPrivateTargets()) {
             return Promise.resolve(true);
         }
 

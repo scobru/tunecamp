@@ -8,6 +8,7 @@ import { usePlayerStore } from "../stores/usePlayerStore";
 import { Play, Pause, Share, Music } from "lucide-react";
 import { useConfigStore } from "../stores/useConfigStore";
 import { renderMarkdown } from "../utils/markdown";
+import { sanitizeHtml } from "../utils/sanitize";
 
 export const HomeSingleArtist = () => {
     const { settings: siteSettings } = useSiteSettingsStore();
@@ -174,7 +175,7 @@ export const HomeSingleArtist = () => {
                     <h2 className="text-2xl font-black tracking-tighter">About</h2>
                     <div 
                         className="prose prose-sm md:prose-base prose-invert mx-auto opacity-80"
-                        dangerouslySetInnerHTML={{ __html: renderMarkdown(artist.bio) }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(artist.bio)) }}
                     />
                 </div>
             )}

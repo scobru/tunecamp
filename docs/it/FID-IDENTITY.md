@@ -1,6 +1,6 @@
 # FID (Fediverse-ID) Identità Unificata e Passport dell'Istanza
 
-TuneCamp utilizza un **modello di identità decentralizzato e auto-sovrano** basato su [FID (Fediverse-ID)](https://github.com/scobru/fid) (`@scobru/fid`), [Zen SEA](https://github.com/scobru/zen), e la rete di relay P2P (`wss://delay.scobrudot.dev/zen`).
+TuneCamp utilizza un **modello di identità decentralizzato e auto-sovrano** basato su [FID (Fediverse-ID)](https://github.com/scobru/fid) (`fid`): una coppia di chiavi Ed25519 derivata nel browser da alias e passphrase, richieste firmate su HTTPS semplice e nessun relay.
 
 Questa architettura consente agli utenti di unificare i propri profili tra istanze TuneCamp indipendenti senza dipendere da un Single Sign-On (SSO) centralizzato o da un database condiviso.
 
@@ -13,29 +13,15 @@ Il portale centralizzato SSO e d'identità ufficiale è distribuito su:
 
 ---
 
-## 📡 Aiuta la Rete: Ospita un Nodo Relay Zen
-
-La sincronizzazione dei grafi decentralizzati e le comunicazioni P2P in FID si basano su nodi Zen P2P Relay aperti.
-
-Puoi contribuire a rafforzare la resilienza, la velocità e la decentralizzazione della rete eseguendo il tuo nodo Zen P2P Relay!
-
-👉 **Ospita un Nodo Zen Relay:** Visita il repository **[scobru/zen](https://github.com/scobru/zen)** per le istruzioni sull'installazione di un'istanza relay leggera.
-
----
-
 ## 🏛️ Panoramica dell'Architettura
 
 ```
                                 ┌───────────────────────────┐
                                 │   fid-portal.vercel.app   │
-                                │  (Zen SEA Global Portal)  │
+                                │   (Ed25519 identity,      │
+                                │    keys stay in browser)  │
                                 └─────────────┬─────────────┘
-                                              │  WSS (Zen Graph)
-                                ┌─────────────▼─────────────┐
-                                │   wss://delay.scobrudot.dev│
-                                │     Zen P2P Relay         │
-                                └─────────────┬─────────────┘
-                                              │
+                                              │  HTTPS (signed requests)
                         ┌─────────────────────┴─────────────────────┐
                         │                                           │
            ┌────────────▼────────────┐                 ┌────────────▼────────────┐
@@ -56,14 +42,34 @@ Puoi contribuire a rafforzare la resilienza, la velocità e la decentralizzazion
 2. **Passo 2 (fid-portal.vercel.app $\rightarrow$ Istanza)**:
    - Su `fid-portal.vercel.app/profile.html`, l'utente apre **"Collega Istanza"** $\rightarrow$ **"Firma Challenge Istanza"**.
    - L'utente incolla il JSON del Challenge.
-   - Il portale firma il challenge con la chiave privata Zen SEA dell'utente e genera un **JSON del Passaporto**.
+   - Il portale firma il challenge con la chiave privata d'identità dell'utente e genera un **JSON del Passaporto**.
    - L'utente copia il **JSON del Passaporto** e lo incolla nuovamente nell'istanza locale TuneCamp per attivare il collegamento verificato.
 
 ---
 
 ## 🔑 Endpoint
 
-### 1. Genera Challenge Zen
+## 🔁 Dopo `fid` 5.0: ricollegare un account
+
+`fid` 5.0 ha sostituito le chiavi Zen SEA con chiavi Ed25519, quindi lo stesso alias e la stessa passphrase ora derivano una chiave **diversa**. Un account il cui `zen_pub` è la vecchia chiave non viene più raggiunto dall'accesso: l'SSO risponde `Username already exists…` (`FID_KEY_CHANGED`) oppure il collegamento `FID identity not found`.
+
+Gli account creati tramite FID non hanno password, il server rifiuta di scriverne una e la vecchia chiave non si può più verificare (Zen non c'è più): il proprietario non può dimostrare da solo che l'account è suo. Serve l'approvazione di un amministratore.
+
+**Ancora connesso all'istanza (self-service).** Apri **Profilo** e premi **Collega la mia identità FID a questo account**. L'istanza genera un codice monouso (5 minuti) e apre `tunecamp.org/profile.html` con il codice nel frammento dell'URL. Accedi lì con alias e passphrase e premi **Collega questa identità**: la pagina firma la challenge dell'istanza con la nuova chiave e la associa all'account, senza intervento dell'amministratore.
+
+**Dall'interfaccia web.** Il proprietario accede dal portale FID con la nuova chiave. L'istanza risponde `FID_KEY_CHANGED` e registra una **richiesta di ricollegamento** sull'account (vince la prima richiesta: un'altra chiave non può sostituirla finché l'amministratore non la rifiuta). In **Admin → Users** l'account mostra *FID relink requested* con la chiave e i pulsanti **Approve** / **Dismiss** (solo l'amministratore principale). Prima di approvare, conferma con la persona che la chiave è quella mostrata dal suo portale: chiunque conosca un nome utente può inviare una richiesta. Dopo l'approvazione il proprietario accede di nuovo con l'SSO.
+
+**Dall'host.** Lo stesso spostamento senza interfaccia:
+
+```bash
+npm run fid:relink -- <username> <nuova-chiave-pubblica>   # aggiungi --db percorso/del/db se non è quello configurato
+```
+
+La nuova chiave pubblica è quella mostrata dalla pagina del profilo FID dopo aver rifatto l'accesso. Lo strumento rifiuta una chiave malformata o già usata da un altro account, disconnette le sessioni dell'account, azzera i passaporti (erano emessi per la vecchia chiave) e rimuove i record della libreria della vecchia identità, che nessuno può più leggere. Gli account che hanno una password possono accedere normalmente e collegare la nuova chiave dal profilo.
+
+---
+
+### 1. Genera Challenge
 
 - **Endpoint**: `GET /api/auth/zen/challenge`
 - **Autenticazione Richiesta**: Sì (`requireUser`)
@@ -89,7 +95,7 @@ Puoi contribuire a rafforzare la resilienza, la velocità e la decentralizzazion
 
 ```json
 {
-  "zenPubKey": "QmZenPubKey...",
+  "zenPubKey": "bE9DAycqb9gbxMJHTxh5RRxVQRPpG-wrCojHVl0s9sM",
   "challenge": { ... },
   "seaSignature": "SEA.sign_signature_data"
 }
@@ -103,7 +109,7 @@ Puoi contribuire a rafforzare la resilienza, la velocità e la decentralizzazion
   "passport": {
     "instanceDomain": "sudorecords.scobrudot.dev",
     "localUsername": "scobru",
-    "zenPubKey": "QmZenPubKey...",
+    "zenPubKey": "bE9DAycqb9gbxMJHTxh5RRxVQRPpG-wrCojHVl0s9sM",
     "issuedAt": 1721926658000,
     "passportSignature": "HMAC_SHA256_SIGNATURE",
     "publicDataEndpoint": "https://sudorecords.scobrudot.dev/api/auth/zen/user/scobru/public"
@@ -123,7 +129,7 @@ Puoi contribuire a rafforzare la resilienza, la velocità e la decentralizzazion
     "clientId": "tunecamp-webapp",
     "instanceDomain": "sudorecords.scobrudot.dev",
     "username": "scobru",
-    "zenPubKey": "QmZenPubKey...",
+    "zenPubKey": "bE9DAycqb9gbxMJHTxh5RRxVQRPpG-wrCojHVl0s9sM",
     "issuedAt": 1721926658000
   },
   "apSeed": "32_byte_hex_seed..."
@@ -171,3 +177,18 @@ Puoi contribuire a rafforzare la resilienza, la velocità e la decentralizzazion
 - **Tab**: Pubblicazioni, Preferiti (stelle), Playlist — ognuna mostra il badge dell'istanza.
 - **Sincronizzazione Automatica**: Al login, `loadLinkedInstances()` recupera il registro e sincronizza automaticamente le istanze verificate.
 - **Sincronizzazione Manuale**: Pulsante "Sincronizza" per ogni istanza nell'elenco delle Istanze Collegate.
+- **Sync della libreria (player)**: quando un'identità è collegata a un'istanza, il player può replicare la libreria dell'ascoltatore (preferiti, artisti, playlist) su quell'istanza. I record sono cifrati nel browser con una chiave derivata dalla chiave d'identità; l'istanza conserva solo testo cifrato. Vedi sotto.
+
+### 9. Sync della Libreria (player del sito)
+
+Sincronizzazione tra dispositivi della libreria di un ascoltatore, più le playlist condivise pubbliche. HTTP semplice, nessun relay.
+
+- **Endpoint** (tutti sotto `/api/auth/zen/library/:pub`, CORS aperto, nessun cookie):
+  - `GET /:pub?since=<ms>` — i record cambiati dopo `since`, tombstone incluse. Firmato.
+  - `PUT /:pub` — inserisce o aggiorna `{ records: [{ bucket, id, d, at, del }] }`. Un record viene accettato solo se `at` è più recente di quello salvato (vince l'ultima scrittura). Firmato.
+  - `GET /:pub/shared/:id` — una playlist condivisa pubblica `{ name, items, at }`. Anonimo.
+  - `GET /:pub/account` — `{ username }` se l'istanza ha un account attivo collegato alla chiave, altrimenti `404`. Anonimo; un nuovo dispositivo lo usa per trovare dove sta la sua libreria. Espone solo il legame chiave ↔ username che gli endpoint dei passaporti già pubblicano.
+- **Autenticazione**: `X-Fid-Auth: <ts>.<sig>`, dove `sig` è la firma della chiave d'identità su `fid-library:<METODO>:<percorso>:<ts>:<sha256 esadecimale del corpo>`. Timestamp con più di 5 minuti di scarto vengono rifiutati. La chiave deve appartenere a un **account attivo su quell'istanza** (`admin.zen_pub`), così un'istanza non è mai spazio gratuito per sconosciuti.
+- **Bucket**: `favorites`, `artists`, `playlists` (testo cifrato in `d`) e `shared` (JSON in chiaro, fino a 200 brani).
+- **Limiti**: 200 record per richiesta, 64 KB per record, 5000 record e 8 MB per identità, 120 richieste al minuto per IP. Oltre il limite: `413`.
+- **Archiviazione**: tabella `library_sync (pub, bucket, id, d, at, del)`. Un record eliminato mantiene la riga come tombstone con payload vuoto.

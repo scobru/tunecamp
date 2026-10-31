@@ -18,12 +18,17 @@ export function rateLimit(options: RateLimitOptions) {
   // Stores request timestamps for each IP, scoped to this middleware instance
   const hits = new Map<string, number[]>();
 
-  // ponytail: lazy eviction only (on each request), no background interval.
-  // Map only grows with distinct IPs hitting this route, which is bounded in
-  // practice; add a periodic sweep if that stops being true.
   return (req: Request, res: Response, next: NextFunction) => {
     const ip = req.ip || (req.socket ? req.socket.remoteAddress : "unknown") || "unknown";
     const now = Date.now();
+
+    // Drop IPs whose hits have all expired once the map gets large, so a stream
+    // of distinct addresses cannot grow it without bound.
+    if (hits.size > 10_000) {
+      for (const [key, times] of hits) {
+        if (!times.length || now - times[times.length - 1] >= options.windowMs) hits.delete(key);
+      }
+    }
 
     const timestamps = (hits.get(ip) || []).filter(t => now - t < options.windowMs);
 

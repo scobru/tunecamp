@@ -1,3 +1,4 @@
+import dnsForMock from 'dns';
 import { jest, beforeAll } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
@@ -9,6 +10,7 @@ const mockFetch = jest.fn() as any;
 
 // Mock isSafeUrl to avoid DNS query dependency
 jest.unstable_mockModule('../../../../utils/networkUtils.js', () => ({
+    safeLookup: dnsForMock.lookup,
     isSafeUrl: jest.fn(async () => true)
 }));
 
@@ -25,7 +27,7 @@ beforeAll(async () => {
     ({ createBoardRoutes } = await import('../../api/board.js'));
 });
 
-describe('External Tracks & Self-Healing Integration Test', () => {
+describe('External Tracks Integration Test', () => {
     let app: express.Express;
     let database: any;
     let artistId: number;
@@ -144,7 +146,7 @@ describe('External Tracks & Self-Healing Integration Test', () => {
         expect(track2.title).toBe('cool groove');
     });
 
-    it('should automatically delete the track (self-heal) when the proxy returns 404', async () => {
+    it('keeps the track when the proxy target returns 404 (a transient error must not delete data)', async () => {
         const testUrl = 'https://example.com/missing-track.mp3';
 
         // Manually insert an external track
@@ -181,9 +183,8 @@ describe('External Tracks & Self-Healing Integration Test', () => {
             description: 'Test track'
         });
 
-        // Verify it was added
-        let tracks = database.library.getTracksByArtist(artistId, VisibilityProfile.ALL_ACCESS);
-        expect(tracks).toHaveLength(1);
+        const before = database.library.getTracksByArtist(artistId, VisibilityProfile.ALL_ACCESS).length;
+        expect(before).toBeGreaterThan(0);
 
         // Mock fetch response to be 404 Not Found
         mockFetch.mockResolvedValue({
@@ -198,12 +199,10 @@ describe('External Tracks & Self-Healing Integration Test', () => {
 
         expect(res.status).toBe(404);
 
-        // Verify the track has been deleted (self-healing)
-        tracks = database.library.getTracksByArtist(artistId, VisibilityProfile.ALL_ACCESS);
-        expect(tracks).toHaveLength(0);
+        expect(database.library.getTracksByArtist(artistId, VisibilityProfile.ALL_ACCESS)).toHaveLength(before);
     });
 
-    it('should automatically delete the track (self-heal) on proxy fetch connection failure', async () => {
+    it('keeps the track when the proxy target is unreachable', async () => {
         const testUrl = 'https://example.com/song-connection-fail.mp3';
 
         // Manually insert an external track
@@ -240,9 +239,8 @@ describe('External Tracks & Self-Healing Integration Test', () => {
             description: 'Test track'
         });
 
-        // Verify it was added
-        let tracks = database.library.getTracksByArtist(artistId, VisibilityProfile.ALL_ACCESS);
-        expect(tracks).toHaveLength(1);
+        const before = database.library.getTracksByArtist(artistId, VisibilityProfile.ALL_ACCESS).length;
+        expect(before).toBeGreaterThan(0);
 
         // Mock fetch to fail with connection error
         const mockError: any = new Error('getaddrinfo ENOTFOUND example.com');
@@ -255,8 +253,6 @@ describe('External Tracks & Self-Healing Integration Test', () => {
 
         expect(res.status).toBe(500);
 
-        // Verify the track has been deleted (self-healing)
-        tracks = database.library.getTracksByArtist(artistId, VisibilityProfile.ALL_ACCESS);
-        expect(tracks).toHaveLength(0);
+        expect(database.library.getTracksByArtist(artistId, VisibilityProfile.ALL_ACCESS)).toHaveLength(before);
     });
 });

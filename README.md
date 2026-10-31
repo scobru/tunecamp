@@ -253,6 +253,7 @@ Configuration is managed via environment variables (or an `.env` file).
 | `TUNECAMP_PUBLIC_URL`   | Public HTTPS URL (required for ActivityPub federation) | —                                                        |
 | `TUNECAMP_SITE_NAME`    | Human-readable instance name                           | `My TuneCamp Server`                                     |
 | `TUNECAMP_CORS_ORIGINS` | Comma-separated origins allowed to call the API cross-origin | _same-origin only_                                       |
+| `TUNECAMP_TRUST_PROXY`  | Number of reverse proxies in front of the server (`false` if clients connect directly). Rate limits use the client IP these proxies report | `1`                                                      |
 | `TUNECAMP_DOWNLOAD_DIR` | Directory for download-provider plugins (e.g. Sidecamp) | `./music/downloads` (local) / `/data/downloads` (Docker) |
 
 > `TUNECAMP_CORS_ORIGINS` unset is the **restrictive** default, not an open one: no

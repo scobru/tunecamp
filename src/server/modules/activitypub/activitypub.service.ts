@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { promisify } from "util";
-import { drainResponse, fetchJsonSafe } from "../../common/network.js";
+import { drainResponse, fetchJsonSafe, fetchSafe } from "../../common/network.js";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 import type { Federation } from "@fedify/fedify";
 import { Follow, Announce } from "@fedify/fedify";
@@ -1921,7 +1921,7 @@ export class ActivityPubService {
         try {
             const resource = `acct:${username}@${domain}`;
             const wfUrl = `https://${domain}/.well-known/webfinger?resource=${encodeURIComponent(resource)}`;
-            const res = await fetch(wfUrl, { headers: { "Accept": "application/jrd+json, application/json" } });
+            const res = await fetchSafe(wfUrl, { headers: { "Accept": "application/jrd+json, application/json" } });
             if (!res.ok) {
                 await drainResponse(res);
                 return null;
@@ -1934,7 +1934,7 @@ export class ActivityPubService {
 
     private async getActorIdFromNodeInfo(origin: string): Promise<string | null> {
         try {
-            const wellKnownRes = await fetch(`${origin}/.well-known/nodeinfo`);
+            const wellKnownRes = await fetchSafe(`${origin}/.well-known/nodeinfo`);
             if (!wellKnownRes.ok) {
                 await drainResponse(wellKnownRes);
                 return null;
@@ -1942,7 +1942,7 @@ export class ActivityPubService {
             const wellKnown = await wellKnownRes.json() as any;
             const nodeInfoLink = wellKnown.links?.find((l: any) => l.rel?.includes("nodeinfo"));
             if (!nodeInfoLink?.href) return null;
-            const niRes = await fetch(nodeInfoLink.href);
+            const niRes = await fetchSafe(nodeInfoLink.href);
             if (!niRes.ok) {
                 await drainResponse(niRes);
                 return null;
@@ -1960,7 +1960,7 @@ export class ActivityPubService {
      */
     private async getActorIdFromCustomNodeInfo(origin: string): Promise<string | null> {
         try {
-            const res = await fetch(`${origin}/api/v1/instance/nodeinfo/2.0`, {
+            const res = await fetchSafe(`${origin}/api/v1/instance/nodeinfo/2.0`, {
                 headers: { "Accept": "application/json" },
             });
             if (!res.ok) {

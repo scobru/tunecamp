@@ -10,6 +10,7 @@ import type { DatabaseService as Database } from "./core/database.js";
 import { securityHeaders } from "./middleware/security.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { errorHandler } from "./middleware/error-handling.js";
+import { StringUtils } from "../utils/stringUtils.js";
 
 const _serverFilename = fileURLToPath(import.meta.url);
 const _serverDirname = path.dirname(_serverFilename);
@@ -20,9 +21,20 @@ export interface AppSetupResult {
     strictCors: express.RequestHandler;
 }
 
+/** `TUNECAMP_TRUST_PROXY`: number of proxy hops (default 1), or "false" for none. */
+export function trustProxySetting(value: string | undefined): number | boolean {
+    if (value === undefined || value.trim() === "") return 1;
+    if (value === "false") return false;
+    const hops = parseInt(value, 10);
+    return Number.isFinite(hops) && hops >= 0 ? hops : 1;
+}
+
 export function createApp(config: ServerConfig): AppSetupResult {
     const app = express();
-    app.set('trust proxy', true); // Required for CapRover/Nginx
+    // Trust exactly the reverse proxies in front of us (CapRover/nginx = 1). `true`
+    // trusted every hop, so req.ip became the first X-Forwarded-For value — which
+    // the client writes — and each request could claim a new IP past every rate limit.
+    app.set('trust proxy', trustProxySetting(process.env.TUNECAMP_TRUST_PROXY));
 
     // Middleware
     app.use(compression());
@@ -160,6 +172,20 @@ export function createApp(config: ServerConfig): AppSetupResult {
         });
     });
 
+    // POST /api/auth/zen/set, when the FID portal binds a key with a one-time link code from the
+    // user's own webapp instead of the session token. The code proves the account, the signed
+    // challenge proves the key; a request that carries a cookie or Authorization header is the
+    // webapp's own and keeps strict CORS.
+    const setPortalCors = cors({ origin: '*', credentials: false, methods: ['POST', 'OPTIONS'] });
+    app.use('/api/auth/zen/set', (req, res, next) => {
+        if (req.path !== '/' || !!req.headers.cookie || !!req.headers.authorization) return next();
+        setPortalCors(req, res, (err?: any) => {
+            if (err) return next(err);
+            res.locals.skipStrictCors = true;
+            next();
+        });
+    });
+
     // GET /api/auth/zen/challenge is step 1 of the same portal flow /link completes, so
     // it needs the same cross-origin allowance — without it the portal's fetch is blocked
     // by the browser before it ever reaches the route. It hands out nothing but a nonce;
@@ -174,6 +200,24 @@ export function createApp(config: ServerConfig): AppSetupResult {
         });
     });
 
+    // The website player syncs a listener's library from another origin. Authentication is
+    // a signature in X-Fid-Auth, not a cookie or Authorization header, so wildcard CORS
+    // without credentials exposes nothing a signature holder couldn't already do.
+    const librarySyncCors = cors({
+        origin: '*',
+        credentials: false,
+        methods: ['GET', 'PUT', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'X-Fid-Auth'],
+    });
+    app.use('/api/auth/zen/library', (req, res, next) => {
+        if (!!req.headers.cookie || !!req.headers.authorization) return next();
+        librarySyncCors(req, res, (err?: any) => {
+            if (err) return next(err);
+            res.locals.skipStrictCors = true;
+            next();
+        });
+    });
+
     app.use((req, res, next) => {
         if (res.locals.skipStrictCors) {
             return next();
@@ -182,6 +226,13 @@ export function createApp(config: ServerConfig): AppSetupResult {
     });
 
     return { app, publicFederationCors, strictCors };
+}
+
+// Titles, names and bios come from users and from federated metadata: escape
+// them, or a title like `"><script>` runs in every visitor's page.
+function renderOgTags(title: string, description: string, imageUrl: string): string {
+    const e = StringUtils.escapeHtml;
+    return `<meta property="og:title" content="${e(title)}" /><meta property="og:description" content="${e(description)}" /><meta property="og:image" content="${e(imageUrl)}" />`;
 }
 
 export function setupStaticAndFallbackRoutes(app: express.Express, config: ServerConfig, database: Database): void {
@@ -246,7 +297,7 @@ export function setupStaticAndFallbackRoutes(app: express.Express, config: Serve
         try {
             let html = getCachedHtml();
             const publicUrl = (database.getSetting("publicUrl") || config.publicUrl || `${req.protocol}://${req.get('host')}`).trim().replace(/\/$/, "");
-            const ogTags = `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><meta property="og:image" content="${publicUrl}${image}" />`;
+            const ogTags = renderOgTags(title, description, `${publicUrl}${image}`);
             html = html.replace('<head>', '<head>' + ogTags);
             res.send(html);
         } catch (e) { res.redirect(`/#/share/${id}`); }
@@ -262,7 +313,7 @@ export function setupStaticAndFallbackRoutes(app: express.Express, config: Serve
                 const title = artist.name || "Artist Profile";
                 const description = artist.bio || `Listen to ${artist.name} on TuneCamp`;
                 const image = `/api/artists/${artist.id}/cover`;
-                const ogTags = `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><meta property="og:image" content="${publicUrl}${image}" />`;
+                const ogTags = renderOgTags(title, description, `${publicUrl}${image}`);
                 html = html.replace('<head>', '<head>' + ogTags);
                 return res.send(html);
             }
@@ -290,7 +341,7 @@ export function setupStaticAndFallbackRoutes(app: express.Express, config: Serve
                         const title = artist.name || "Artist Profile";
                         const description = artist.bio || `Listen to ${artist.name} on TuneCamp`;
                         const image = `/api/artists/${artist.id}/cover`;
-                        const ogTags = `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><meta property="og:image" content="${publicUrl}${image}" />`;
+                        const ogTags = renderOgTags(title, description, `${publicUrl}${image}`);
                         html = html.replace('<head>', '<head>' + ogTags);
                     }
                 }

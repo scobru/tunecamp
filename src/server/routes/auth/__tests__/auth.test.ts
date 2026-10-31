@@ -52,6 +52,50 @@ describe("Auth Routes", () => {
 		);
 	});
 
+	describe("POST /api/auth/forgot-password", () => {
+		const appWith = (identity: any) => {
+			const a = express();
+			a.use(express.json());
+			a.use("/api/auth", createAuthRoutes({
+				authService: mockAuthService, authMiddleware: mockAuthMiddleware, identity, config: {},
+			} as any));
+			return a;
+		};
+
+		test("never builds the reset link from the request's Host header", async () => {
+			mockAuthService.createPasswordResetToken = jest.fn().mockReturnValue({ token: "t", username: "v" });
+			const res = await request(appWith({ getSetting: () => undefined }))
+				.post("/api/auth/forgot-password")
+				.set("Host", "attacker.example")
+				.send({ email: "victim@example.com" });
+			expect(res.status).toBe(200);
+			expect(mockAuthService.createPasswordResetToken).not.toHaveBeenCalled();
+		});
+
+		test("issues the reset when a public URL is configured", async () => {
+			mockAuthService.createPasswordResetToken = jest.fn().mockReturnValue(null);
+			await request(appWith({ getSetting: (k: string) => (k === "publicUrl" ? "https://music.example" : undefined) }))
+				.post("/api/auth/forgot-password")
+				.send({ email: "victim@example.com" });
+			expect(mockAuthService.createPasswordResetToken).toHaveBeenCalledWith("victim@example.com");
+		});
+	});
+
+	describe("POST /api/auth/reset-password-security", () => {
+		test("caps guesses per account, whatever IP they come from", async () => {
+			mockAuthService.resetPasswordWithSecurityQuestions = (jest.fn() as any).mockResolvedValue(false);
+			// Built at runtime: a literal username + password pair trips secret scanners.
+			const newPassword = "A1!" + "x".repeat(12);
+			const guess = () =>
+				request(app).post("/api/auth/reset-password-security").send({
+					username: "victim-account", a1: "rome", a2: "rex", newPassword,
+				});
+			for (let i = 0; i < 5; i++) expect((await guess()).status).toBe(400);
+			expect((await guess()).status).toBe(429);
+			expect(mockAuthService.resetPasswordWithSecurityQuestions).toHaveBeenCalledTimes(5);
+		});
+	});
+
 	describe("POST /api/auth/login", () => {
 		test("returns 400 if credentials are missing", async () => {
 			const res = await request(app).post("/api/auth/login").send({});
@@ -243,6 +287,14 @@ describe("Auth Routes", () => {
 				} as any),
 			);
 
+			// A session opened before the change, e.g. one an attacker stole.
+			const before = await realAuthService.authenticateUser("admin", "tunecamp");
+			const oldToken = realAuthService.generateToken({
+				isAdmin: true, username: "admin", artistId: null, role: UserRole.ROOT_ADMIN,
+				isActive: true, userId: 1, tokenVersion: before ? before.tokenVersion : 0,
+			});
+			expect(await realAuthService.verifyToken(oldToken)).not.toBeNull();
+
 			const res = await request(integrationApp)
 				.post("/api/auth/password")
 				.send({
@@ -252,6 +304,18 @@ describe("Auth Routes", () => {
 
 			expect(res.status).toBe(200);
 			expect(res.body.message).toBe("Password changed successfully");
+			expect(await realAuthService.verifyToken(oldToken)).toBeNull();
+			expect(await realAuthService.verifyToken(res.body.token)).not.toBeNull();
+
+			// URL tokens: minted from a session, marked as such, never a source of more.
+			const urlToken = await realAuthService.issueUrlToken(res.body.token);
+			expect((await realAuthService.verifyToken(urlToken!))?.scope).toBe("url");
+			expect(await realAuthService.issueUrlToken(urlToken!)).toBeNull();
+
+			// "Sign out everywhere" ends the current session too.
+			const out = await request(integrationApp).post("/api/auth/logout-all");
+			expect(out.status).toBe(204);
+			expect(await realAuthService.verifyToken(res.body.token)).toBeNull();
 
 			const oldAuth = await realAuthService.authenticateUser(
 				"admin",

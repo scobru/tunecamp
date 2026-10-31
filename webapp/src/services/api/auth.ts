@@ -2,12 +2,37 @@ import { api, handleResponse } from "./client";
 import type { AuthStatus, User } from "../../types";
 import API from "./index";
 
+// URLs the browser loads by itself (<audio>, download links, EventSource) carry a
+// 10-minute url token, never the 7-day session: URLs end up in logs, history and
+// shared links. It is refreshed in the background well before it expires.
+// shortcut: right after page load it can be missing for a moment, so a private
+// track played in that instant fails once; fetch it on demand if that bites.
+let urlToken: string | null = null;
+const refreshUrlToken = async () => {
+	if (!localStorage.getItem("tunecamp_token")) {
+		urlToken = null;
+		return;
+	}
+	try {
+		urlToken = (await api.post<{ token: string }>("auth/url-token")).data.token;
+	} catch {
+		urlToken = null;
+	}
+};
+if (typeof window !== "undefined") {
+	void refreshUrlToken();
+	setInterval(refreshUrlToken, 4 * 60 * 1000);
+}
+
 export const authApi = {
 	getToken: () => localStorage.getItem("tunecamp_token"),
 	setToken: (token: string | null) => {
 		if (token) localStorage.setItem("tunecamp_token", token);
 		else localStorage.removeItem("tunecamp_token");
+		void refreshUrlToken();
 	},
+	/** Token to put in a URL query string; see refreshUrlToken. */
+	getUrlToken: () => urlToken,
 
 	// --- Auth ---
 	getAuthStatus: () => handleResponse(api.get<AuthStatus>("auth/status")),
@@ -60,6 +85,8 @@ export const authApi = {
 				password,
 			}),
 		),
+	/** Ends every session of this account, including this one. */
+	logoutEverywhere: () => api.post("auth/logout-all"),
 	changePassword: (currentPassword: string, newPassword: string) =>
 		handleResponse(api.post("auth/password", { currentPassword, newPassword })),
 	forgotPassword: (email: string) =>
@@ -126,6 +153,18 @@ export const authApi = {
 				isNewUser: boolean;
 				username: string;
 			}>("auth/zen/sso", { ssoToken, apSeed }),
+		),
+
+	/**
+	 * A one-time code for the FID portal to bind a key to the account that is signed in here.
+	 * The portal is another origin and must not receive the session token, so it carries this
+	 * code instead (in the URL fragment) and the signed challenge proves the key.
+	 */
+	createFidLinkCode: () =>
+		handleResponse(
+			api.post<{ success: boolean; code: string; expiresInSeconds: number }>(
+				"auth/zen/link-code",
+			),
 		),
 
 	/** Trades the one-time code left by the portal in the callback URL for the session JWT. */

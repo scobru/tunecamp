@@ -38,6 +38,9 @@ function makeDb(overrides: Record<string, any> = {}) {
     } as any;
 }
 
+// Feed content is stored only for actors someone here follows.
+const FOLLOWED = { getRemoteActor: jest.fn().mockReturnValue({ is_followed: 1 }) };
+
 describe('handleFollowActivity', () => {
     test('site follow: persists + auto-accepts unconditionally', () => {
         const db = makeDb();
@@ -135,7 +138,7 @@ describe('handleAnnounceDiscovery', () => {
     });
 
     test('stores a Note with an audio attachment as a release', async () => {
-        const db = makeDb();
+        const db = makeDb(FOLLOWED);
         const note = new Note({
             id: uri('https://m.test/notes/2'),
             content: 'new track!',
@@ -155,7 +158,7 @@ describe('handleAnnounceDiscovery', () => {
     });
 
     test('stores a standalone Audio object as a release', async () => {
-        const db = makeDb();
+        const db = makeDb(FOLLOWED);
         const audio = new Audio({ id: uri('https://m.test/tracks/1'), name: 'Song' });
         const author = new Person({ id: uri('https://m.test/users/erin'), name: 'Erin' });
 
@@ -288,7 +291,7 @@ describe('handleCreateActivity', () => {
     });
 
     test('stores a plain Note as a post feed item', async () => {
-        const db = makeDb();
+        const db = makeDb(FOLLOWED);
         const note = new Note({ id: uri('https://m.test/notes/3'), content: 'hello world' });
         const actor = new Person({ id: uri('https://m.test/users/hank'), name: 'Hank' });
 
@@ -302,7 +305,7 @@ describe('handleCreateActivity', () => {
     });
 
     test('stores a Note with an audio attachment as a release feed item', async () => {
-        const db = makeDb();
+        const db = makeDb(FOLLOWED);
         const note = new Note({
             id: uri('https://m.test/notes/4'),
             content: 'new song',
@@ -320,7 +323,7 @@ describe('handleCreateActivity', () => {
     });
 
     test('stores an Article as a post feed item', async () => {
-        const db = makeDb();
+        const db = makeDb(FOLLOWED);
         const article = new Article({ id: uri('https://m.test/articles/1'), name: 'Title', content: 'long form' });
         await handleCreateActivity(db, article, 'https://m.test/users/ivy', null, undefined, jest.fn());
 
@@ -332,7 +335,7 @@ describe('handleCreateActivity', () => {
     });
 
     test('stores an Audio object as a release feed item', async () => {
-        const db = makeDb();
+        const db = makeDb(FOLLOWED);
         const audio = new Audio({ id: uri('https://m.test/tracks/5'), name: 'Track 5' });
         await handleCreateActivity(db, audio, 'https://m.test/users/jill', null, undefined, jest.fn());
 
@@ -385,5 +388,51 @@ describe('handleMoveActivity', () => {
             is_followed: true,
         }));
         expect(db.unfollowActor).toHaveBeenCalledWith('https://old.test/users/bob');
+    });
+});
+
+describe('origin and follow checks on inbound content', () => {
+    test('Announce: a release claiming an author on another server is not stored', async () => {
+        const db = makeDb(FOLLOWED);
+        // Hosted on evil.test, attributed to an artist we follow on m.test.
+        const audio = new Audio({ id: uri('https://evil.test/tracks/1'), name: 'Fake single' });
+        const author = new Person({ id: uri('https://m.test/users/alice'), name: 'Alice' });
+
+        await handleAnnounceDiscovery(db, audio, author);
+        expect(db.upsertRemoteContent).not.toHaveBeenCalled();
+    });
+
+    test('Announce: releases by actors nobody follows are not stored', async () => {
+        const db = makeDb();
+        const audio = new Audio({ id: uri('https://m.test/tracks/2'), name: 'Song' });
+        const author = new Person({ id: uri('https://m.test/users/stranger'), name: 'Stranger' });
+
+        await handleAnnounceDiscovery(db, audio, author);
+        expect(db.upsertRemoteContent).not.toHaveBeenCalled();
+    });
+
+    test('Create: posts from actors nobody follows are not stored', async () => {
+        const db = makeDb();
+        const note = new Note({ id: uri('https://spam.test/notes/1'), content: 'buy now' });
+        await handleCreateActivity(db, note, 'https://spam.test/users/bot', null, undefined, jest.fn());
+        expect(db.upsertRemoteContent).not.toHaveBeenCalled();
+    });
+
+    test('Create: another server\'s post is not filed under the sender', async () => {
+        const db = makeDb(FOLLOWED);
+        const note = new Note({ id: uri('https://victim.test/notes/1'), content: 'real post' });
+        await handleCreateActivity(db, note, 'https://evil.test/users/mallory', null, undefined, jest.fn());
+        expect(db.upsertRemoteContent).not.toHaveBeenCalled();
+    });
+
+    test('Create: a reply hosted on another server is not credited to the sender', async () => {
+        const db = makeDb({ getApNote: jest.fn().mockReturnValue({ id: 1 }) });
+        const note = new Note({
+            id: uri('https://victim.test/notes/reply'),
+            content: 'nice',
+            replyTarget: uri('https://site.test/notes/1'),
+        });
+        await handleCreateActivity(db, note, 'https://evil.test/users/mallory', null, undefined, jest.fn());
+        expect(db.addApReply).not.toHaveBeenCalled();
     });
 });

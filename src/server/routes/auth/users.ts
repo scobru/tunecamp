@@ -1,4 +1,5 @@
 import { Router, json } from "express";
+import { hashApiToken, apiTokenHint } from "../../common/api-token.js";
 import crypto from "crypto";
 import { validateUsername } from "../../../utils/audioUtils.js";
 import type { DatabaseService } from "../../core/database.js";
@@ -299,18 +300,14 @@ export function createUsersRoutes(container: ServiceContainer): Router {
                 return res.status(403).json({ error: "Access denied: API tokens are only available for Curators, Managers, and Admins" });
             }
 
-            const tokens = database.db.prepare("SELECT id, name, token, created_at, expires_at FROM api_tokens WHERE user_id = ? ORDER BY created_at DESC").all(req.userId!) as any[];
-            
-            // Mask the tokens in the response so they are not fully exposed in subsequent listings
+            const tokens = database.db.prepare("SELECT id, name, token_hint, created_at, expires_at FROM api_tokens WHERE user_id = ? ORDER BY created_at DESC").all(req.userId!) as any[];
+
+            // Only the hash is stored; the list shows the masked hint saved at creation.
             const maskedTokens = tokens.map(t => {
-                const tokenStr = t.token;
-                const masked = tokenStr.length > 10
-                    ? `${tokenStr.substring(0, 7)}...${tokenStr.substring(tokenStr.length - 4)}`
-                    : tokenStr;
                 return {
                     id: t.id,
                     name: t.name,
-                    token: masked,
+                    token: t.token_hint || "tc_...",
                     created_at: t.created_at,
                     expires_at: t.expires_at
                 };
@@ -342,7 +339,7 @@ export function createUsersRoutes(container: ServiceContainer): Router {
             const randomBytes = crypto.randomBytes(32).toString("hex");
             const token = `tc_${randomBytes}`;
 
-            database.db.prepare("INSERT INTO api_tokens (user_id, token, name) VALUES (?, ?, ?)").run(req.userId!, token, name.trim());
+            database.db.prepare("INSERT INTO api_tokens (user_id, token, token_hint, name) VALUES (?, ?, ?, ?)").run(req.userId!, hashApiToken(token), apiTokenHint(token), name.trim());
 
             res.json({ token, name: name.trim() });
         } catch (error) {

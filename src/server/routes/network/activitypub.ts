@@ -3,6 +3,7 @@ import type { DatabaseService } from "../../core/database.js";
 import type { ActivityPubService } from "../../modules/activitypub/activitypub.service.js";
 import { type AuthenticatedRequest } from "../../middleware/auth.js";
 import { getSiteHandle, SITE_ACTOR_ID } from "../../core/site-actor.js";
+import { fetchSafe, readCapped } from "../../common/network.js";
 
 import type { ServiceContainer } from "../../core/container.js";
 
@@ -540,13 +541,21 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 5000);
-            const response = await fetch(url, {
-                signal: controller.signal as any,
-                headers: { 'User-Agent': 'TuneCamp/1.0 (link preview)' }
-            });
+            let response: Response;
+            try {
+                response = await fetchSafe(url, {
+                    signal: controller.signal as any,
+                    headers: { 'User-Agent': 'TuneCamp/1.0 (link preview)' }
+                });
+            } catch (e: any) {
+                clearTimeout(timeout);
+                if (String(e?.message).startsWith('SSRF Blocked')) return res.status(400).json({ error: "URL not allowed" });
+                throw e;
+            }
             clearTimeout(timeout);
             if (!response.ok) return res.status(400).json({ error: "Failed to fetch URL" });
-            const html = await response.text();
+            // Meta tags live in <head>; never buffer more than 1 MB of someone else's page.
+            const html = await readCapped(response, 1024 * 1024);
             const getTag = (name: string): string | null => {
                 const m = html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${name}["'][^>]+content=["']([^"']+)["']`, 'i'))
                     || html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${name}["']`, 'i'));
@@ -607,7 +616,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
         instanceUrl = instanceUrl.replace(/\/$/, "");
 
         try {
-            const response = await fetch(`${instanceUrl}/api/v1/statuses`, {
+            const response = await fetchSafe(`${instanceUrl}/api/v1/statuses`, {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${postParams.token}`, "Content-Type": "application/json" },
                 body: JSON.stringify({ status: statusText })

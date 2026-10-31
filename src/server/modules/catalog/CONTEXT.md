@@ -6,7 +6,7 @@
 The internal, owner-only collection of music scanned from local directories or cloud imports. Content in Santuario is in a **Draft** state and is not federated.
 
 ### Arena (Public Stage)
-The public-facing catalog of **Formal Releases**. Content here is visible to the Fediverse and decentralized networks (Zen/IPFS).
+The public-facing catalog of **Formal Releases**. Content here is visible to the Fediverse and decentralized networks (IPFS).
 
 ### Library Album
 A collection of tracks in **Santuario**. It represents a physical folder structure.

@@ -406,7 +406,7 @@ const Search = () => {
                                     // other instance's public /federated-stream; local ones use the token tunnel.
                                     const peerStreamUrl = (t: any) => t.origin
                                         ? `${t.origin}/api/peers/${t.session_id}/tracks/${t.id}/federated-stream`
-                                        : `/api/peers/${t.session_id}/tracks/${t.id}/stream?token=${API.getToken()}`;
+                                        : `/api/peers/${t.session_id}/tracks/${t.id}/stream?token=${API.getUrlToken()}`;
                                     const peerTrackId = `peer:${track.session_id}:${track.id}`;
                                     const isCurrent = currentTrack?.id === peerTrackId;
                                     const isCurrentlyPlaying = isCurrent && isPlaying;

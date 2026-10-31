@@ -31,8 +31,8 @@ Each **artist** in TuneCamp is an **ActivityPub Actor** (a "Person") — federat
 - Profile: `https://your-domain.com/actor/@username`
 - Outgoing activities are signed with the artist's **RSA 4096-bit keypair**, generated automatically per artist.
 
-> Note: earlier versions tied identity to Zen (SEA) keypairs. That has been removed —
-> authentication is username/password (JWT) and federation signing uses RSA keys.
+> Note: authentication is username/password (JWT); an optional FID identity (an Ed25519 key)
+> can be linked for cross-instance SSO, and federation signing uses RSA keys.
 > See [FEDERATION.md](FEDERATION.md).
 
 ## 5. Release Reporting & Moderation

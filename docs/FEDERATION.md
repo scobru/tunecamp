@@ -6,7 +6,7 @@ Tunecamp leverages two primary technologies to enable a decentralized music ecos
 
 Tunecamp discovers other instances by **gossip over HTTP** — there is no central relay and no shared registry. An instance crawls outward from a set of seed instances (its ActivityPub-followed TuneCamp sites plus `TUNECAMP_FEDERATION_SEEDS`), validates that each peer is a live TuneCamp via its NodeInfo, and stores the reachable set in local SQLite (`federated_instances`). Implemented in `src/server/modules/network/federated-discovery.service.ts`.
 
-> **History**: earlier versions used the **Zen** decentralized graph for instance signaling, and before that for user identity (SEA keypairs), Zen-first auth, wallet derivation, and cross-instance roaming. **Zen has been removed entirely** (PRs #369/#370/#372): authentication is username/password (JWT), discovery is the HTTP gossip described here, and catalogs are exchanged directly over HTTP. The `zen` dependency and all `TUNECAMP_ZEN_*` env vars are gone.
+> **History**: earlier versions used the **Zen** decentralized graph for instance signaling, and before that for user identity (SEA keypairs), Zen-first auth, wallet derivation, and cross-instance roaming. **Zen has been removed entirely** (PRs #369/#370/#372): authentication is username/password (JWT), discovery is the HTTP gossip described here, and catalogs are exchanged directly over HTTP. The `zen` dependency and all `TUNECAMP_ZEN_*` env vars are gone. FID identities themselves are now plain Ed25519 keys (`fid` 5.0.0), still carried in the `zen_pub` / `zenPubKey` fields.
 
 ### Key Roles
 
@@ -97,6 +97,17 @@ Fix it from **Admin → Identity → the artist card → "Refresh federation"**
 valid RSA key pair and broadcasts a signed `Update(Person)` to followers and the
 relay, forcing remotes to re-fetch the actor document and replace the cached key.
 The action is idempotent and safe to re-run.
+
+---
+
+## What the Inbox Accepts
+
+Fedify verifies every incoming activity's HTTP signature, and that the signing key belongs to the activity's actor. The signature proves who sent an activity, not who wrote the object inside it, so the inbox adds its own rules (`src/server/modules/fedify/fedify.ts`):
+
+- **Same server.** A `Create`, `Update`, reply or announced release is filed under an author only when the object's id is on that author's server. A note hosted on one server and attributed to an account on another is dropped.
+- **Feed content from people you follow.** Posts and releases are stored only from actors someone here follows, or from known TuneCamp instances (`federated_instances`). An `Update` only refreshes content already stored.
+- **Delete what you wrote.** A `Delete` removes a reply or cached item only when its sender is the stored author. Deleting an actor removes that actor as a follower everywhere.
+- **Move** is applied only when the new account lists the old one in its aliases (`alsoKnownAs`).
 
 ---
 

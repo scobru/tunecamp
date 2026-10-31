@@ -71,5 +71,5 @@ export interface FederationProvider {
   addApReply(noteId: string, replyUri: string, actorUri: string, content: string, publishedAt?: string): boolean;
   getApReplies(noteId: string): ApReply[];
   getApReply(replyUri: string): ApReply | undefined;
-  deleteApReply(replyUri: string): boolean;
+  deleteApReply(replyUri: string, actorUri?: string): boolean;
 }

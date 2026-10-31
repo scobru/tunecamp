@@ -96,7 +96,16 @@ export class AlbumRepository {
         return rows.map(row => this.mapAlbum(row)) as Album[];
     }
 
-    getWithStats(profile?: VisibilityProfile | ViewerContext): (Album & { songCount: number; duration: number })[] {
+    static readonly STATS_ORDER: Record<string, string> = {
+        random: "RANDOM()",
+        newest: "a.created_at DESC",
+        recent: "a.created_at DESC",
+        alphabeticalByName: "a.title COLLATE NOCASE",
+        alphabeticalByArtist: "a.artist_name COLLATE NOCASE",
+    };
+
+    /** `page` sorts and slices in SQL; `order` is a key of STATS_ORDER, anything else keeps date order. */
+    getWithStats(profile?: VisibilityProfile | ViewerContext, page?: { order: string; limit: number; offset: number }): (Album & { songCount: number; duration: number })[] {
         const context = getContextFromProfile(profile);
         const filter = VisibilityGuardian.getAlbumFilter(context, "a");
         const sql = `
@@ -108,9 +117,11 @@ export class AlbumRepository {
             LEFT JOIN tracks t ON t.album_id = a.id
             WHERE ${AlbumRepository.LIBRARY_FILTER.replace("is_release", "a.is_release")} AND (${filter.sql})
             GROUP BY a.id
-            ORDER BY a.date DESC
+            ORDER BY ${(page && AlbumRepository.STATS_ORDER[page.order]) || "a.date DESC"}
+            ${page ? "LIMIT ? OFFSET ?" : ""}
         `;
-        const rows = this.db.prepare(sql).all(...filter.params);
+        const params = page ? [...filter.params, page.limit, page.offset] : filter.params;
+        const rows = this.db.prepare(sql).all(...params);
         return rows.map(row => this.mapAlbum(row)) as any[];
     }
 
