@@ -21,9 +21,20 @@ export interface AppSetupResult {
     strictCors: express.RequestHandler;
 }
 
+/** `TUNECAMP_TRUST_PROXY`: number of proxy hops (default 1), or "false" for none. */
+export function trustProxySetting(value: string | undefined): number | boolean {
+    if (value === undefined || value.trim() === "") return 1;
+    if (value === "false") return false;
+    const hops = parseInt(value, 10);
+    return Number.isFinite(hops) && hops >= 0 ? hops : 1;
+}
+
 export function createApp(config: ServerConfig): AppSetupResult {
     const app = express();
-    app.set('trust proxy', true); // Required for CapRover/Nginx
+    // Trust exactly the reverse proxies in front of us (CapRover/nginx = 1). `true`
+    // trusted every hop, so req.ip became the first X-Forwarded-For value — which
+    // the client writes — and each request could claim a new IP past every rate limit.
+    app.set('trust proxy', trustProxySetting(process.env.TUNECAMP_TRUST_PROXY));
 
     // Middleware
     app.use(compression());

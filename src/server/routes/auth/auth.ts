@@ -341,10 +341,16 @@ export function createAuthRoutes(container: ServiceContainer): Router {
 			}
 
 			try {
-				const result = authService.createPasswordResetToken(email);
+				// The link must point at the configured public URL, never the request's
+				// Host header: a forged Host would mail a real token to the attacker's site.
+				const base = String(
+					(identity || database)?.getSetting?.("publicUrl") || config?.publicUrl || "",
+				).replace(/\/$/, "");
+				const result = base ? authService.createPasswordResetToken(email) : null;
+				if (!base) {
+					console.warn("[Auth] Password reset requested, but no public URL is configured; no link sent.");
+				}
 				if (result) {
-					const base =
-						config.publicUrl || `${req.protocol}://${req.get("host")}`;
 					const resetUrl = `${base}/reset-password?token=${result.token}`;
 					await sendBrevoEmail(
 						config,
@@ -501,6 +507,11 @@ export function createAuthRoutes(container: ServiceContainer): Router {
 	/**
 	 * POST /api/auth/reset-password-security
 	 */
+	// shortcut: in-memory per process, like the IP limiter; fine for one process.
+	const SECURITY_RESET_MAX = 5;
+	const SECURITY_RESET_WINDOW_MS = 60 * 60 * 1000;
+	const securityResetAttempts = new Map<string, number[]>();
+
 	router.post(
 		"/reset-password-security",
 		rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }),
@@ -509,6 +520,22 @@ export function createAuthRoutes(container: ServiceContainer): Router {
 				const { username, a1, a2, newPassword } = req.body;
 				if (!username || !a1 || !a2 || !newPassword)
 					return res.status(400).json({ error: "All fields required" });
+
+				// Two short answers are easy to guess: cap attempts per account, not
+				// only per IP (an attacker can rotate addresses).
+				const key = String(username).toLowerCase();
+				const now = Date.now();
+				if (securityResetAttempts.size > 10_000) {
+					for (const [k, times] of securityResetAttempts) {
+						if (!times.some((t) => now - t < SECURITY_RESET_WINDOW_MS)) securityResetAttempts.delete(k);
+					}
+				}
+				const recent = (securityResetAttempts.get(key) || []).filter((t) => now - t < SECURITY_RESET_WINDOW_MS);
+				if (recent.length >= SECURITY_RESET_MAX) {
+					return res.status(429).json({ error: "Too many attempts for this account. Try again later." });
+				}
+				recent.push(now);
+				securityResetAttempts.set(key, recent);
 
 				const passwordValidation = validatePassword(newPassword);
 				if (!passwordValidation.valid) {

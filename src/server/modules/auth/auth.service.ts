@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import { hashApiToken } from "../../common/api-token.js";
 import jwt from "jsonwebtoken";
 import type { Database } from "better-sqlite3";
 import crypto from "crypto";
@@ -576,7 +577,7 @@ export function createAuthService(
 				if (token.startsWith("tc_")) {
 					const apiTokenRow = db
 						.prepare("SELECT user_id FROM api_tokens WHERE token = ?")
-						.get(token) as { user_id: number } | undefined;
+						.get(hashApiToken(token)) as { user_id: number } | undefined;
 					if (!apiTokenRow) {
 						return null;
 					}

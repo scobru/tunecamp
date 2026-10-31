@@ -42,6 +42,8 @@ services:
     environment:
       # Core Paths & Port
       - NODE_ENV=production
+      # Reverse proxies in front of the container (set to false if exposed directly)
+      - TUNECAMP_TRUST_PROXY=${TUNECAMP_TRUST_PROXY:-1}
       - TUNECAMP_PORT=1970
       # In-container library path. Fixed: it is the mount target above.
       - TUNECAMP_MUSIC_DIR=/music

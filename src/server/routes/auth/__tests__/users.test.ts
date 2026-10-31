@@ -188,7 +188,7 @@ describe('Users Routes', () => {
             });
 
             const mockAll = jest.fn().mockReturnValue([
-                { id: 1, name: 'Token 1', token: 'tc_12345678901234567890', created_at: '2026-06-13' }
+                { id: 1, name: 'Token 1', token_hint: 'tc_1234...7890', created_at: '2026-06-13' }
             ]);
             mockPrepare.mockReturnValue({ all: mockAll });
 
@@ -199,7 +199,7 @@ describe('Users Routes', () => {
             expect(res.status).toBe(200);
             expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('SELECT id, name'));
             expect(res.body[0].name).toBe('Token 1');
-            expect(res.body[0].token).toBe('tc_1234...7890'); // masked
+            expect(res.body[0].token).toBe('tc_1234...7890'); // the stored hint; the token itself is not kept
         });
 
         test('POST /api/users/me/api-tokens creates a new token', async () => {
@@ -221,7 +221,12 @@ describe('Users Routes', () => {
             expect(res.status).toBe(200);
             expect(res.body.name).toBe('Script Key');
             expect(res.body.token).toMatch(/^tc_[a-f0-9]+$/);
-            expect(mockRun).toHaveBeenCalledWith(10, expect.stringMatching(/^tc_/), 'Script Key');
+            // Stored as a hash plus a masked hint, never the token itself.
+            const [userId, stored, hint, name] = mockRun.mock.calls[0];
+            expect([userId, name]).toEqual([10, 'Script Key']);
+            expect(stored).toMatch(/^sha256:[a-f0-9]{64}$/);
+            expect(stored).not.toContain(res.body.token);
+            expect(hint).toMatch(/^tc_.{4}\.\.\..{4}$/);
         });
 
         test('DELETE /api/users/me/api-tokens/:id revokes the token', async () => {

@@ -52,6 +52,48 @@ describe("Auth Routes", () => {
 		);
 	});
 
+	describe("POST /api/auth/forgot-password", () => {
+		const appWith = (identity: any) => {
+			const a = express();
+			a.use(express.json());
+			a.use("/api/auth", createAuthRoutes({
+				authService: mockAuthService, authMiddleware: mockAuthMiddleware, identity, config: {},
+			} as any));
+			return a;
+		};
+
+		test("never builds the reset link from the request's Host header", async () => {
+			mockAuthService.createPasswordResetToken = jest.fn().mockReturnValue({ token: "t", username: "v" });
+			const res = await request(appWith({ getSetting: () => undefined }))
+				.post("/api/auth/forgot-password")
+				.set("Host", "attacker.example")
+				.send({ email: "victim@example.com" });
+			expect(res.status).toBe(200);
+			expect(mockAuthService.createPasswordResetToken).not.toHaveBeenCalled();
+		});
+
+		test("issues the reset when a public URL is configured", async () => {
+			mockAuthService.createPasswordResetToken = jest.fn().mockReturnValue(null);
+			await request(appWith({ getSetting: (k: string) => (k === "publicUrl" ? "https://music.example" : undefined) }))
+				.post("/api/auth/forgot-password")
+				.send({ email: "victim@example.com" });
+			expect(mockAuthService.createPasswordResetToken).toHaveBeenCalledWith("victim@example.com");
+		});
+	});
+
+	describe("POST /api/auth/reset-password-security", () => {
+		test("caps guesses per account, whatever IP they come from", async () => {
+			mockAuthService.resetPasswordWithSecurityQuestions = (jest.fn() as any).mockResolvedValue(false);
+			const guess = () =>
+				request(app).post("/api/auth/reset-password-security").send({
+					username: "Victim", a1: "rome", a2: "rex", newPassword: "LongEnough123!",
+				});
+			for (let i = 0; i < 5; i++) expect((await guess()).status).toBe(400);
+			expect((await guess()).status).toBe(429);
+			expect(mockAuthService.resetPasswordWithSecurityQuestions).toHaveBeenCalledTimes(5);
+		});
+	});
+
 	describe("POST /api/auth/login", () => {
 		test("returns 400 if credentials are missing", async () => {
 			const res = await request(app).post("/api/auth/login").send({});

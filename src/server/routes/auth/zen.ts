@@ -100,6 +100,20 @@ export function createZenRoutes(container: ServiceContainer): Router {
 	const db = (database as any).db || database;
 	const config = container.config;
 	const router = Router();
+
+	/**
+	 * This instance's hostname for audience checks: the configured public URL,
+	 * else the raw Host header. Not req.hostname, which follows a client-supplied
+	 * X-Forwarded-Host behind the proxy.
+	 */
+	const ownInstanceHostname = (req: { get(name: string): string | undefined }): string | null => {
+		const publicUrl = (database as any).getSetting?.("publicUrl") || config.publicUrl;
+		try {
+			if (publicUrl) return new URL(publicUrl).hostname.toLowerCase();
+		} catch { /* fall through to the Host header */ }
+		const host = req.get("host");
+		return host ? host.replace(/:\d+$/, "").toLowerCase() : null;
+	};
 	router.use(json());
 
 	const passportSecret =
@@ -613,6 +627,14 @@ export function createZenRoutes(container: ServiceContainer): Router {
 				if (!validation.valid) {
 					const status = validation.error?.includes("expired") ? 401 : 400;
 					return res.status(status).json({ error: validation.error });
+				}
+
+				// The token names the instance it was issued for. fid checks the signature,
+				// expiry and replay (per process), not the audience: without this, any
+				// instance a user signs in to could replay their token here within 15 minutes.
+				const ownDomain = ownInstanceHostname(req);
+				if (!ownDomain || String(ssoToken.instanceDomain || "").toLowerCase() !== ownDomain) {
+					return res.status(400).json({ error: "SSO token was issued for another instance" });
 				}
 
 				// Derive Ed25519 keypair from apSeed (Zero-Knowledge Proof of Master Key)
