@@ -14,6 +14,7 @@ import {
 } from "../../common/visibility.js";
 
 import multer from "multer";
+import { discardUploadOnError } from "../../middleware/uploads.js";
 
 import { getDownloadService } from "../../modules/catalog/download.service.js";
 import { isDownloadProviderEnabled } from "../../middleware/provider-gate.js";
@@ -32,7 +33,19 @@ import {
 	recomputeUserStorage,
 } from "../../modules/storage/storage-usage.service.js";
 
-const upload = multer({ dest: "uploads/" });
+// Assets can be large (stem packs, sample archives), but not unbounded.
+const upload = multer({ dest: "uploads/", limits: { fileSize: 2 * 1024 * 1024 * 1024 } });
+
+/**
+ * Runs before multer on the asset routes: /api/admin only requires a signed-in
+ * account, and multer used to store the whole body before the route refused it.
+ * The routes still apply their full ownership rules afterwards.
+ */
+const mayUploadAssets = (req: AuthenticatedRequest, res: any, next: any) => {
+	const canPublish = VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! });
+	if (req.isAdmin || canPublish) return next();
+	res.status(403).json({ error: "Access denied: publishing requires a Curator or Manager account" });
+};
 
 // --- Upstream update check -------------------------------------------------
 // Compares the running version (package.json) against the latest version on
@@ -2953,6 +2966,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 	 */
 	router.post(
 		"/assets",
+		mayUploadAssets,
+		discardUploadOnError,
 		upload.single("file"),
 		async (req: AuthenticatedRequest, res: any) => {
 			try {
@@ -3039,6 +3054,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 	 */
 	router.put(
 		"/assets/:id",
+		mayUploadAssets,
+		discardUploadOnError,
 		upload.single("file"),
 		async (req: AuthenticatedRequest, res: any) => {
 			try {
@@ -3095,6 +3112,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 	 */
 	router.post(
 		"/assets/:id/cover",
+		mayUploadAssets,
+		discardUploadOnError,
 		upload.single("cover"),
 		async (req: AuthenticatedRequest, res: any) => {
 			try {

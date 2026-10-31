@@ -1,5 +1,6 @@
 import express, { Router } from "express";
 import multer from "multer";
+import { discardUploadOnError } from "../../middleware/uploads.js";
 import crypto from "crypto";
 import path from "path";
 import os from "os";
@@ -118,7 +119,15 @@ export function createCollabRoutes(container: ServiceContainer): Router {
     /**
      * POST /api/collab/:id/stems
      */
-    router.post("/:id(\\d+)/stems", upload.single("file"), wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+    // Permission is checked before multer stores anything, and a refused or failed
+    // request has its temp file removed (discardUploadOnError).
+    const mayUploadStems = (req: AuthenticatedRequest, res: any, next: any) => {
+        const context = req.context ?? VisibilityGuardian.deriveContext(req);
+        if (VisibilityGuardian.canPublishContent(context)) return next();
+        res.status(403).json({ error: "Publishing not permitted" });
+    };
+
+    router.post("/:id(\\d+)/stems", mayUploadStems, discardUploadOnError, upload.single("file"), wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const project = collabRepository.getById(parseInt(req.params.id, 10));
         if (!project) throw new NotFoundError("Collab project not found");
         const context = req.context ?? VisibilityGuardian.deriveContext(req);
