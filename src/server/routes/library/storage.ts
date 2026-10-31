@@ -65,10 +65,10 @@ export function createStorageRouter(container: ServiceContainer) {
                 }
             }
 
-            res.send("<h1>Google Drive Connected!</h1><p>You can close this window and return to TuneCamp.</p><script>setTimeout(() => window.location.href='/', 2000)</script>");
+            res.send('<meta http-equiv="refresh" content="2;url=/"><h1>Google Drive Connected!</h1><p>You can close this window and return to TuneCamp.</p>');
         } catch (error: any) {
             console.error("GDrive OAuth Error:", error.response?.data || error.message);
-            res.status(500).send("Authentication failed: " + (error.response?.data?.error_description || error.message));
+            res.status(500).type("text/plain").send("Authentication failed: " + (error.response?.data?.error_description || error.message));
         }
     });
 

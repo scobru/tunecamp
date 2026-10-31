@@ -1,4 +1,5 @@
 import { api, handleResponse } from './client';
+import API from './index';
 import type {
     ArtistEvent, ArtistEventInput, Post, PublicProfile, NowListeningEntry
 } from '../../types';
@@ -53,7 +54,7 @@ export const socialApi = {
         handleResponse(api.post<any>('board/messages', { message, trackMetadata })),
     deleteBoardMessage: (id: number) => handleResponse<{ success: boolean }>(api.delete(`board/messages/${id}`)),
     getBoardStreamUrl: () => {
-        const token = localStorage.getItem('tunecamp_token');
+        const token = API.getUrlToken();
         return `/api/board/stream${token ? `?token=${encodeURIComponent(token)}` : ''}`;
     },
     // --- Public listener profile (opt-in) ---

@@ -243,6 +243,14 @@ describe("Auth Routes", () => {
 				} as any),
 			);
 
+			// A session opened before the change, e.g. one an attacker stole.
+			const before = await realAuthService.authenticateUser("admin", "tunecamp");
+			const oldToken = realAuthService.generateToken({
+				isAdmin: true, username: "admin", artistId: null, role: UserRole.ROOT_ADMIN,
+				isActive: true, userId: 1, tokenVersion: before ? before.tokenVersion : 0,
+			});
+			expect(await realAuthService.verifyToken(oldToken)).not.toBeNull();
+
 			const res = await request(integrationApp)
 				.post("/api/auth/password")
 				.send({
@@ -252,6 +260,18 @@ describe("Auth Routes", () => {
 
 			expect(res.status).toBe(200);
 			expect(res.body.message).toBe("Password changed successfully");
+			expect(await realAuthService.verifyToken(oldToken)).toBeNull();
+			expect(await realAuthService.verifyToken(res.body.token)).not.toBeNull();
+
+			// URL tokens: minted from a session, marked as such, never a source of more.
+			const urlToken = await realAuthService.issueUrlToken(res.body.token);
+			expect((await realAuthService.verifyToken(urlToken!))?.scope).toBe("url");
+			expect(await realAuthService.issueUrlToken(urlToken!)).toBeNull();
+
+			// "Sign out everywhere" ends the current session too.
+			const out = await request(integrationApp).post("/api/auth/logout-all");
+			expect(out.status).toBe(204);
+			expect(await realAuthService.verifyToken(res.body.token)).toBeNull();
 
 			const oldAuth = await realAuthService.authenticateUser(
 				"admin",

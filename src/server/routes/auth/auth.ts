@@ -221,6 +221,29 @@ export function createAuthRoutes(container: ServiceContainer): Router {
 	);
 
 	/**
+	 * POST /api/auth/logout-all
+	 * Ends every session of the caller's account, on every device. Signing out of
+	 * one browser alone only forgets the token there; it stays valid for 7 days.
+	 */
+	router.post("/logout-all", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
+		if (!req.userId) return res.status(401).json({ error: "Session required" });
+		authService.revokeTokens(req.userId);
+		res.status(204).end();
+	});
+
+	/**
+	 * POST /api/auth/url-token
+	 * A 10-minute token for URLs the browser loads by itself (<audio>, download
+	 * links, EventSource), which cannot send the Authorization header.
+	 */
+	router.post("/url-token", authMiddleware.requireUser, async (req, res) => {
+		const header = req.headers.authorization || "";
+		const token = header.startsWith("Bearer ") ? await authService.issueUrlToken(header.substring(7)) : null;
+		if (!token) return res.status(401).json({ error: "Session required" });
+		res.json({ token, expiresIn: 600 });
+	});
+
+	/**
 	 * POST /api/auth/password
 	 * Change own password (any authenticated user)
 	 */

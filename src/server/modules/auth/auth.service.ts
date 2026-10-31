@@ -13,6 +13,7 @@ if (typeof global !== "undefined" && !global.crypto) {
 
 const SALT_ROUNDS = 10;
 const JWT_EXPIRES_IN = "7d";
+const URL_TOKEN_EXPIRES_IN = "10m";
 
 export interface TokenPayload {
 	isAdmin: boolean;
@@ -23,12 +24,15 @@ export interface TokenPayload {
 	userId: number;
 	tokenVersion: number;
 	isRootAdmin?: boolean;
+	/** "url": a short-lived token meant for a URL query string (see issueUrlToken). */
+	scope?: "url";
 }
 
 export interface AuthService {
 	hashPassword(password: string): Promise<string>;
 	verifyPassword(password: string, hash: string): Promise<boolean>;
 	generateToken(payload: TokenPayload): string;
+	issueUrlToken(sessionToken: string): Promise<string | null>;
 	verifyToken(token: string): Promise<TokenPayload | null>;
 	revokeTokens(userId: number): void;
 	/** True when the account authenticates only through its Zen keypair and has no local password. */
@@ -555,6 +559,18 @@ export function createAuthService(
 			return jwt.sign(payload, jwtSecret, { expiresIn: JWT_EXPIRES_IN });
 		},
 
+		/**
+		 * A 10-minute copy of a session for <audio>, <a download> and EventSource,
+		 * which cannot send an Authorization header. URLs land in access logs,
+		 * history and shared links, so they never carry the 7-day session itself.
+		 */
+		async issueUrlToken(sessionToken: string): Promise<string | null> {
+			const payload = await this.verifyToken(sessionToken);
+			if (!payload || payload.scope === "url") return null;
+			const { scope: _scope, ...claims } = payload;
+			return jwt.sign({ ...claims, scope: "url" }, jwtSecret, { expiresIn: URL_TOKEN_EXPIRES_IN });
+		},
+
 		async verifyToken(token: string): Promise<TokenPayload | null> {
 			try {
 				if (token.startsWith("tc_")) {
@@ -627,6 +643,7 @@ export function createAuthService(
 					userId: decoded.userId || 0,
 					tokenVersion: user.token_version,
 					isRootAdmin: isRoot,
+					scope: decoded.scope,
 				};
 			} catch {
 				return null;
@@ -1406,6 +1423,10 @@ export function createAuthService(
 				"UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ? COLLATE NOCASE",
 			).run(hash, username);
 			clearDefaultPasswordCache();
+			// A new password must end every session, or a stolen token outlives it.
+			// Callers that keep the user signed in issue a fresh token afterwards.
+			const row = db.prepare("SELECT id FROM admin WHERE username = ? COLLATE NOCASE").get(username) as { id: number } | undefined;
+			if (row) this.revokeTokens(row.id);
 		},
 
 		setEmail(username: string, email: string | null): void {

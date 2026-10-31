@@ -18,7 +18,8 @@ function makeAuthService(overrides: Partial<AuthService> & { payload?: TokenPayl
     const payload = overrides.payload !== undefined ? overrides.payload : PAYLOAD;
     const svc: any = {
         verifyToken: jest.fn(async (token: string) =>
-            token === 'valid-token' ? payload : null
+            token === 'valid-token' || token === 'tc_app' ? payload
+                : token === 'url-token' && payload ? { ...payload, scope: 'url' } : null
         ),
         getUserByUsername: jest.fn(() => undefined),
         getUserByZenPubKey: jest.fn(() => undefined),
@@ -59,7 +60,7 @@ describe('auth middleware query-token scoping', () => {
     });
 
     test('accepts ?token= on track stream URLs (native <audio> cannot set headers)', async () => {
-        const req = makeReq('/api/tracks/123/stream?token=valid-token', { queryToken: 'valid-token' });
+        const req = makeReq('/api/tracks/123/stream?token=url-token', { queryToken: 'url-token' });
         await middleware.optionalAuth(req, makeRes(), next);
 
         expect(next).toHaveBeenCalled();
@@ -68,7 +69,7 @@ describe('auth middleware query-token scoping', () => {
     });
 
     test('accepts ?token= on download URLs', async () => {
-        const req = makeReq('/api/tracks/123/download?token=valid-token', { queryToken: 'valid-token' });
+        const req = makeReq('/api/tracks/123/download?token=url-token', { queryToken: 'url-token' });
         await middleware.requireUser(req, makeRes(), next);
 
         expect(next).toHaveBeenCalled();
@@ -76,7 +77,7 @@ describe('auth middleware query-token scoping', () => {
     });
 
     test('accepts ?token= on the board SSE stream (EventSource cannot set headers)', async () => {
-        const req = makeReq('/api/board/stream?token=valid-token', { queryToken: 'valid-token' });
+        const req = makeReq('/api/board/stream?token=url-token', { queryToken: 'url-token' });
         await middleware.optionalAuth(req, makeRes(), next);
 
         expect(next).toHaveBeenCalled();
@@ -84,7 +85,7 @@ describe('auth middleware query-token scoping', () => {
     });
 
     test('accepts ?token= on admin backup download links', async () => {
-        const req = makeReq('/api/admin/backup/full?token=valid-token', { queryToken: 'valid-token' });
+        const req = makeReq('/api/admin/backup/full?token=url-token', { queryToken: 'url-token' });
         await middleware.optionalAuth(req, makeRes(), next);
 
         expect(next).toHaveBeenCalled();
@@ -92,7 +93,7 @@ describe('auth middleware query-token scoping', () => {
     });
 
     test('ignores ?token= on generic API routes (header-only, avoids log leakage)', async () => {
-        const req = makeReq('/api/tracks?token=valid-token', { queryToken: 'valid-token' });
+        const req = makeReq('/api/tracks?token=url-token', { queryToken: 'url-token' });
         const res = makeRes();
         await middleware.requireUser(req, res, next);
 
@@ -101,7 +102,7 @@ describe('auth middleware query-token scoping', () => {
     });
 
     test('treats query token as anonymous on generic routes with optionalAuth', async () => {
-        const req = makeReq('/api/playlists?token=valid-token', { queryToken: 'valid-token' });
+        const req = makeReq('/api/playlists?token=url-token', { queryToken: 'url-token' });
         await middleware.optionalAuth(req, makeRes(), next);
 
         expect(next).toHaveBeenCalled();
@@ -115,6 +116,31 @@ describe('auth middleware query-token scoping', () => {
 
         expect(next).toHaveBeenCalled();
         expect(req.username).toBe('listener');
+    });
+
+    test('rejects the 7-day session token in a URL, even on media routes', async () => {
+        const req = makeReq('/api/tracks/123/download?token=valid-token', { queryToken: 'valid-token' });
+        const res = makeRes();
+        await middleware.requireUser(req, res, next);
+
+        expect(next).not.toHaveBeenCalled();
+        expect(res.status).toHaveBeenCalledWith(401);
+    });
+
+    test('a url token is not a session: refused in the Authorization header', async () => {
+        const req = makeReq('/api/playlists', { header: 'Bearer url-token' });
+        const res = makeRes();
+        await middleware.requireUser(req, res, next);
+
+        expect(next).not.toHaveBeenCalled();
+        expect(res.status).toHaveBeenCalledWith(401);
+    });
+
+    test('still accepts a tc_ API token in a media URL (apps choose to put it there)', async () => {
+        const req = makeReq('/api/tracks/123/stream?token=tc_app', { queryToken: 'tc_app' });
+        await middleware.requireUser(req, makeRes(), next);
+
+        expect(next).toHaveBeenCalled();
     });
 
     test('rejects an invalid query token on media routes', async () => {

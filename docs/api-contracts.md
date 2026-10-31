@@ -10,7 +10,9 @@ Most endpoints require a **JWT (JSON Web Token)** in the `Authorization` header:
 Authorization: Bearer <token>
 ```
 
-Obtain a token by posting credentials to `POST /api/auth/login`.
+Obtain a token by posting credentials to `POST /api/auth/login`. It is valid for 7 days and is accepted only in the `Authorization` header.
+
+URLs the browser loads by itself (`<audio>` streams, download links, the board EventSource, admin backups) cannot send that header. They carry `?token=` with a **URL token** from `POST /api/auth/url-token`: it is valid for 10 minutes, and it does not work as a session in the header. A 7-day session token in a URL is refused. `tc_` API tokens are still accepted in those URLs.
 
 ---
 
@@ -23,6 +25,9 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 | `POST` | `/api/users/register` | Register a new user |
 | `POST` | `/api/auth/login` | Authenticate and receive a JWT |
 | `GET` | `/api/auth/status` | Return the current session and user profile |
+| `POST` | `/api/auth/url-token` | Issue a 10-minute token for media and download URLs |
+| `POST` | `/api/auth/password` | Change own password. Ends every other session and returns a fresh token |
+| `POST` | `/api/auth/logout-all` | End every session of the account, on all devices |
 
 ### Music Catalog (`/api/catalog`, `/api/tracks`, `/api/albums`)
 
