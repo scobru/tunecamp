@@ -6,7 +6,7 @@ TuneCamp sfrutta principalmente due tecnologie per abilitare un ecosistema music
 
 TuneCamp individua le altre istanze tramite un meccanismo di **gossip su HTTP** — non esiste un relay centrale né un registro condiviso. Ciascuna istanza effettua una scansione a partire da un gruppo di istanze seed (i siti TuneCamp seguiti tramite ActivityPub più quelli elencati in `TUNECAMP_FEDERATION_SEEDS`), verifica che ogni peer corrisponda a un'istanza TuneCamp attiva leggendo il suo NodeInfo e ne memorizza i dati nel database SQLite locale (`federated_instances`). Implementato in `src/server/modules/network/federated-discovery.service.ts`.
 
-> **Note storiche**: le versioni precedenti utilizzavano il grafo decentralizzato **Zen** per le comunicazioni tra istanze, e ancora prima per l'identità utente (coppie di chiavi SEA), autenticazione Zen-first, derivazione dei wallet e roaming tra istanze. **Zen è stato rimosso del tutto** (PR #369/#370/#372): l'autenticazione avviene tramite nome utente/password (JWT), la scoperta si basa sul gossip HTTP sopra descritto e lo scambio dei cataloghi avviene direttamente tramite chiamate HTTP. La dipendenza `zen` e tutte le variabili d'ambiente `TUNECAMP_ZEN_*` sono state eliminate.
+> **Note storiche**: le versioni precedenti utilizzavano il grafo decentralizzato **Zen** per le comunicazioni tra istanze, e ancora prima per l'identità utente (coppie di chiavi SEA), autenticazione Zen-first, derivazione dei wallet e roaming tra istanze. **Zen è stato rimosso del tutto** (PR #369/#370/#372): l'autenticazione avviene tramite nome utente/password (JWT), la scoperta si basa sul gossip HTTP sopra descritto e lo scambio dei cataloghi avviene direttamente tramite chiamate HTTP. La dipendenza `zen` e tutte le variabili d'ambiente `TUNECAMP_ZEN_*` sono state eliminate. Le identità FID sono ora semplici chiavi Ed25519 (`fid` 5.0.0), ancora riportate nei campi `zen_pub` / `zenPubKey`.
 
 ### Aspetti Chiave
 
@@ -88,6 +88,17 @@ ActivityPub consente a TuneCamp di comunicare con altre piattaforme quali Mastod
 I server remoti (es. Mastodon) memorizzano la chiave pubblica di un attore la prima volta che lo rilevano, continuando a verificare le firme a partire da quella copia memorizzata. Se in seguito la chiave dell'attore cambia — o se lo stesso URL `/users/{nomeutente}` serviva in precedenza un'identità *diversa* (ad esempio un **account ascoltatore prima che diventasse artista**) — il server remoto mantiene la chiave non più valida e rifiuta qualsiasi attività con l'errore `401 {"error":"Public key not found for key .../users/{nomeutente}#main-key"}`.
 
 Per risolvere questo problema, vai in **Admin → Identity → scheda dell'artista → "Refresh federation"** (`POST /api/admin/artists/:id/refresh-identity`). Questo assicura che l'artista possieda una coppia di chiavi RSA valida e trasmette una richiesta `Update(Person)` firmata ai follower e al relay, forzando i nodi remoti a scaricare nuovamente il descrittore dell'attore aggiornando la chiave memorizzata. L'azione è idempotente e sicura da rieseguire.
+
+---
+
+## Cosa accetta l'inbox
+
+Fedify verifica la firma HTTP di ogni attività in arrivo e che la chiave appartenga all'attore dell'attività. La firma prova chi l'ha inviata, non chi ha scritto l'oggetto contenuto, quindi l'inbox aggiunge regole proprie (`src/server/modules/fedify/fedify.ts`):
+
+- **Stesso server.** Un `Create`, un `Update`, una risposta o una release annunciata vengono attribuiti a un autore solo se l'id dell'oggetto sta sul server di quell'autore. Una nota ospitata su un server e attribuita a un account di un altro viene scartata.
+- **Contenuti solo da chi segui.** Post e release vengono salvati solo da attori seguiti da qualcuno qui, o da istanze TuneCamp conosciute (`federated_instances`). Un `Update` aggiorna solo contenuti già salvati.
+- **Cancella solo ciò che hai scritto.** Un `Delete` rimuove una risposta o un contenuto in cache solo se chi lo invia è l'autore salvato. La cancellazione di un attore lo rimuove come follower ovunque.
+- **Move** viene applicato solo se il nuovo account elenca quello vecchio tra i suoi alias (`alsoKnownAs`).
 
 ---
 

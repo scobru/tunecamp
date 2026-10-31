@@ -18,6 +18,7 @@ import { createImportRoutes } from "./routes/library/import.js";
 import { createStatsRoutes } from "./routes/admin/stats.js";
 import { createUsersRoutes } from "./routes/auth/users.js";
 import { createZenRoutes } from "./routes/auth/zen.js";
+import { createLibrarySyncRoutes } from "./routes/auth/library.js";
 import { createMcpRoutes } from "./routes/api/mcp.js";
 import { createCommentsRoutes } from "./routes/network/comments.js";
 import { createCommunityRoutes } from "./routes/network/community.js";
@@ -117,6 +118,7 @@ export function registerRoutes(
 		authMiddleware.optionalAuth,
 		createAuthRoutes(container),
 	);
+	app.use("/api/auth/zen/library", createLibrarySyncRoutes(container));
 	app.use("/api/auth/zen", createZenRoutes(container));
 	app.use(
 		"/api/admin",

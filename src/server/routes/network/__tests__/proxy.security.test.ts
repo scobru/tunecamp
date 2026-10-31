@@ -72,3 +72,24 @@ describe('Proxy Security (SSRF Protection)', () => {
         expect(res.text).toContain('Forbidden');
     });
 });
+
+describe('Proxy content types (no remote HTML on our origin)', () => {
+    const respond = (body: string, type: string) => {
+        (globalThis as any).fetch = jest.fn(async () => new Response(body, { status: 200, headers: { 'content-type': type } }));
+    };
+
+    it('refuses to relay an HTML page', async () => {
+        respond('<script>alert(localStorage.tunecamp_token)</script>', 'text/html; charset=utf-8');
+        const res = await request(app).get('/api/proxy/stream?url=https://93.184.216.34/page.html');
+        expect(res.status).toBe(415);
+        expect(res.text).not.toContain('<script>');
+    });
+
+    it('relays audio inside a sandbox CSP', async () => {
+        respond('ID3', 'audio/mpeg');
+        const res = await request(app).get('/api/proxy/stream?url=https://93.184.216.34/track.mp3');
+        expect(res.status).toBe(200);
+        expect(res.headers['content-type']).toBe('audio/mpeg');
+        expect(res.headers['content-security-policy']).toContain('sandbox');
+    });
+});

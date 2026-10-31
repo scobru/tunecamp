@@ -93,7 +93,7 @@ export const catalogApi = {
         if (format) params.set('format', format);
 
         // Add token for private library streaming if it's a local request
-        const token = API.getToken();
+        const token = API.getUrlToken();
         if (token && isLocal) {
             params.set('token', token);
         }
@@ -104,7 +104,7 @@ export const catalogApi = {
     },
     getTrackDownloadUrl: (id: string | number) => {
         const url = `${API_URL}/tracks/${id}/download`;
-        const token = API.getToken();
+        const token = API.getUrlToken();
         return token ? `${url}?token=${token}` : url;
     },
     getLyrics: (trackId: string) => handleResponse(api.get<{ lyrics: string | { text: string }[] }>(`tracks/${trackId}/lyrics`)),

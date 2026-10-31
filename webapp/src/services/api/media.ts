@@ -66,7 +66,7 @@ export const mediaApi = {
     rejectSample: (id: number, notes?: string) => handleResponse(api.post<Sample>(`samples/${id}/reject`, { notes })),
     getSampleDownloadUrl: (id: number) => {
         const url = `${API_URL}/samples/${id}/download`;
-        const token = API.getToken();
+        const token = API.getUrlToken();
         return token ? `${url}?token=${token}` : url;
     },
     getSampleWaveformUrl: (id: number) => `${API_URL}/samples/${id}/waveform`,
@@ -120,7 +120,7 @@ export const mediaApi = {
     deleteCollabStem: (projectId: number, stemId: number) => handleResponse(api.delete(`collab/${projectId}/stems/${stemId}`)),
     getCollabStemUrl: (projectId: number, stemId: number) => {
         const url = `${API_URL}/collab/${projectId}/stems/${stemId}/download`;
-        const token = API.getToken();
+        const token = API.getUrlToken();
         return token ? `${url}?token=${token}` : url;
     },
     rejectSamplePack: (id: number, notes?: string) => handleResponse(api.post<SamplePack>(`sample-packs/${id}/reject`, { notes })),

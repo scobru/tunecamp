@@ -14,12 +14,14 @@ import {
 } from "../../common/visibility.js";
 
 import multer from "multer";
+import { discardUploadOnError } from "../../middleware/uploads.js";
 
 import { getDownloadService } from "../../modules/catalog/download.service.js";
 import { isDownloadProviderEnabled } from "../../middleware/provider-gate.js";
 import { aiService } from "../../modules/ai/ai.service.js";
 import { taskManager } from "../../modules/workers/task-manager.js";
 import { createRssService } from "../../modules/network/rss.service.js";
+import { approveRelink, dismissRelink } from "../../modules/auth/fid-relink.js";
 import {
 	getSiteHandle,
 	slugifySiteName,
@@ -31,7 +33,19 @@ import {
 	recomputeUserStorage,
 } from "../../modules/storage/storage-usage.service.js";
 
-const upload = multer({ dest: "uploads/" });
+// Assets can be large (stem packs, sample archives), but not unbounded.
+const upload = multer({ dest: "uploads/", limits: { fileSize: 2 * 1024 * 1024 * 1024 } });
+
+/**
+ * Runs before multer on the asset routes: /api/admin only requires a signed-in
+ * account, and multer used to store the whole body before the route refused it.
+ * The routes still apply their full ownership rules afterwards.
+ */
+const mayUploadAssets = (req: AuthenticatedRequest, res: any, next: any) => {
+	const canPublish = VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! });
+	if (req.isAdmin || canPublish) return next();
+	res.status(403).json({ error: "Access denied: publishing requires a Curator or Manager account" });
+};
 
 // --- Upstream update check -------------------------------------------------
 // Compares the running version (package.json) against the latest version on
@@ -2553,6 +2567,58 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 	);
 
 	/**
+	 * POST /api/admin/system/users/:id/approve-fid-relink
+	 * Moves a FID-only account to the key it asked to be relinked to. The request was made by
+	 * someone who signed in through the FID portal with a key the account does not have yet
+	 * (fid 5.0 re-keyed every identity), so the primary admin approves it only after confirming
+	 * with the person that the key shown is theirs.
+	 */
+	router.post(
+		"/system/users/:id/approve-fid-relink",
+		(req: AuthenticatedRequest, res: any) => {
+			try {
+				if (
+					!req.context ||
+					!VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)
+				) {
+					return res
+						.status(403)
+						.json({ error: "Only the primary admin can approve FID relink requests" });
+				}
+				const result = approveRelink(database.db, parseInt(req.params.id, 10));
+				res.json({ success: true, ...result });
+			} catch (error) {
+				res.status(400).json({ error: (error as Error).message });
+			}
+		},
+	);
+
+	/**
+	 * DELETE /api/admin/system/users/:id/fid-relink
+	 * Dismiss a pending FID relink request without changing the account.
+	 */
+	router.delete(
+		"/system/users/:id/fid-relink",
+		(req: AuthenticatedRequest, res: any) => {
+			try {
+				if (
+					!req.context ||
+					!VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)
+				) {
+					return res
+						.status(403)
+						.json({ error: "Only the primary admin can manage FID relink requests" });
+				}
+				dismissRelink(database.db, parseInt(req.params.id, 10));
+				res.json({ success: true });
+			} catch (error) {
+				console.error("Error dismissing FID relink request:", error);
+				res.status(500).json({ error: "Failed to dismiss the FID relink request" });
+			}
+		},
+	);
+
+	/**
 	 * DELETE /api/admin/system/users/:id
 	 * Delete admin user (root admin only)
 	 */
@@ -2900,6 +2966,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 	 */
 	router.post(
 		"/assets",
+		mayUploadAssets,
+		discardUploadOnError,
 		upload.single("file"),
 		async (req: AuthenticatedRequest, res: any) => {
 			try {
@@ -2986,6 +3054,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 	 */
 	router.put(
 		"/assets/:id",
+		mayUploadAssets,
+		discardUploadOnError,
 		upload.single("file"),
 		async (req: AuthenticatedRequest, res: any) => {
 			try {
@@ -3042,6 +3112,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 	 */
 	router.post(
 		"/assets/:id/cover",
+		mayUploadAssets,
+		discardUploadOnError,
 		upload.single("cover"),
 		async (req: AuthenticatedRequest, res: any) => {
 			try {

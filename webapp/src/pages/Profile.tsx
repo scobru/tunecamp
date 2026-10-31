@@ -80,6 +80,7 @@ const Profile = () => {
 			setActiveTab("settings");
 		}
 	}, [hasArtistProfile, activeTab]);
+	const [isOpeningFidLink, setIsOpeningFidLink] = useState(false);
 	const [alias, setAlias] = useState(user?.alias || "");
 	const [avatar, setAvatar] = useState<string | null>(user?.avatar || null);
 	const [email, setEmail] = useState(user?.email || "");
@@ -903,27 +904,59 @@ const Profile = () => {
 								</div>
 								<div>
 									<h3 className="font-semibold text-text-primary text-base">
-										Identità Globale Decentralizzata (Zen SEA)
+										Identità Globale Decentralizzata (FID)
 									</h3>
 									<p className="text-text-muted text-xs">
-										Gestisci il collegamento della tua identità Zen e le istanze
+										Gestisci il collegamento della tua identità FID e le istanze
 										federate su <code>tunecamp.org</code>.
 									</p>
 								</div>
 							</div>
-							<button
-								type="button"
-								onClick={() =>
-									window.open(
-										"https://tunecamp.org/profile.html",
-										"_blank",
-										"noreferrer",
-									)
-								}
-								className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-medium transition-colors"
-							>
-								Apri Gestione Identità Zen
-							</button>
+							<div className="flex flex-wrap gap-2">
+								<button
+									type="button"
+									disabled={isOpeningFidLink}
+									onClick={async () => {
+										// The portal is another origin and must not get the session, so it
+										// gets a one-time code (in the fragment, which is never sent to a
+										// server) that lets it bind the key it signs with to THIS account.
+										setIsOpeningFidLink(true);
+										try {
+											const { code } = await API.createFidLinkCode();
+											window.open(
+												`https://tunecamp.org/profile.html#linkCode=${encodeURIComponent(code)}&instance=${encodeURIComponent(window.location.host)}`,
+												"_blank",
+												"noreferrer",
+											);
+										} catch (e: any) {
+											notify.error(e, "Impossibile avviare il collegamento FID");
+										} finally {
+											setIsOpeningFidLink(false);
+										}
+									}}
+									className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+								>
+									Collega la mia identità FID a questo account
+								</button>
+								<button
+									type="button"
+									onClick={() =>
+										window.open(
+											"https://tunecamp.org/profile.html",
+											"_blank",
+											"noreferrer",
+										)
+									}
+									className="inline-flex items-center gap-2 px-4 py-2.5 bg-surface-hover text-text-primary rounded-lg text-sm font-medium transition-colors"
+								>
+									Apri Gestione Identità
+								</button>
+							</div>
+							<p className="text-text-muted text-xs mt-3">
+								Hai rifatto l'identità FID dopo l'aggiornamento a FID 5.0 e non
+								riesci più ad accedere con l'SSO? Da qui, mentre sei connesso,
+								puoi collegare la nuova chiave a questo account.
+							</p>
 						</div>
 
 						{/* API Tokens Panel */}

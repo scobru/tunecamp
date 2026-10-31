@@ -79,6 +79,31 @@ export const AdminUsersList = () => {
 		}
 	};
 
+	const handleApproveFidRelink = async (u: any) => {
+		if (
+			!(await confirm(
+				`Move ${u.username} to the FID key ${u.fid_relink_pub}?\n\nOnly approve this if the person confirms that this is the key their FID portal shows. Anyone who knows the username can send a request.`,
+			))
+		)
+			return;
+		try {
+			await API.approveFidRelink(u.id);
+			notify.success(`${u.username} can now sign in with the new FID key`);
+			loadUsers();
+		} catch (e: any) {
+			notify.error(e, "Failed to approve the FID relink");
+		}
+	};
+
+	const handleDismissFidRelink = async (id: string | number) => {
+		try {
+			await API.dismissFidRelink(id);
+			loadUsers();
+		} catch (e: any) {
+			notify.error(e, "Failed to dismiss the FID relink request");
+		}
+	};
+
 	const handleDeleteBatch = async () => {
 		if (selectedIds.length === 0) return;
 		if (
@@ -198,11 +223,44 @@ export const AdminUsersList = () => {
 										)}
 									>
 										{u.zen_auth_mode === "zen"
-											? "ZEN-only"
+											? "FID-only"
 											: u.zen_auth_mode === "hybrid"
 												? "Hybrid"
 												: "Local"}
 									</span>
+								)}
+								{u.fid_relink_pub && (
+									<div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+										<span
+											className="badge badge-warning badge-outline badge-sm tooltip"
+											data-tip="Someone signed in through the FID portal with a new key for this account (FID 5.0 re-keyed every identity)"
+										>
+											FID relink requested
+										</span>
+										<code
+											className="opacity-70 select-all"
+											title={u.fid_relink_pub}
+										>
+											{u.fid_relink_pub.slice(0, 10)}…{u.fid_relink_pub.slice(-6)}
+										</code>
+										{isRootAdmin && (
+											<>
+												<button
+													className="btn btn-xs btn-success btn-outline gap-1"
+													onClick={() => handleApproveFidRelink(u)}
+												>
+													<Check size={12} /> Approve
+												</button>
+												<button
+													className="btn btn-xs btn-ghost text-error tooltip"
+													data-tip="Dismiss request"
+													onClick={() => handleDismissFidRelink(u.id)}
+												>
+													<X size={12} />
+												</button>
+											</>
+										)}
+									</div>
 								)}
 							</td>
 							<td className="opacity-70">

@@ -12,6 +12,7 @@ import type { PublishingService } from "../../modules/publishing/publishing.serv
 import { sanitizeFilename } from "../../../utils/audioUtils.js";
 import type { StorageEngine } from "../../modules/storage/storage.engine.js";
 import { createAuthMiddleware } from "../../middleware/auth.js";
+import { discardUploadOnError } from "../../middleware/uploads.js";
 import { VisibilityGuardian } from "../../common/visibility.js";
 
 /** Ceiling for a single uploaded file, shared by the upload and inspect routes. */
@@ -282,7 +283,26 @@ export function createUploadRoutes(container: ServiceContainer): Router {
      * POST /api/admin/upload/tracks
      * Upload one or more audio files
      */
-    router.post("/tracks", rejectAs400(upload.array("files", 50)), async (req: any, res: any) => {
+    /**
+     * Refuses a /tracks upload that cannot fit the uploader's quota before multer
+     * writes it: the quota used to be checked only after up to 50 × 1 GB had
+     * landed in the temp dir. Uses the declared Content-Length (multipart
+     * overhead is under 1 MB of slack); a body without one is still checked after.
+     */
+    const rejectOverQuota = (req: any, res: any, next: any) => {
+        const declared = Number(req.headers["content-length"] || 0);
+        if (req.isAdmin || !declared || !authService || !req.username) return next();
+        const user: any = authService.getUserByUsername(req.username);
+        if (!user || !(user.storage_quota > 0)) return next();
+        const used = authService.getStorageInfo(user.id)?.storage_used || 0;
+        if (declared - 1024 * 1024 > user.storage_quota - used) {
+            const remainingMB = (Math.max(0, user.storage_quota - used) / 1024 / 1024).toFixed(1);
+            return res.status(413).json({ error: `Storage quota exceeded. Remaining: ${remainingMB}MB.` });
+        }
+        next();
+    };
+
+    router.post("/tracks", rejectOverQuota, discardUploadOnError, rejectAs400(upload.array("files", 50)), async (req: any, res: any) => {
         try {
             const files = req.files as Express.Multer.File[];
             const { releaseSlug, artistId: bodyArtistId, artist: bodyArtistName, album: bodyAlbumTitle, title: bodyTrackTitle, trackNum: bodyTrackNum } = req.body;

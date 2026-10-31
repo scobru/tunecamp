@@ -49,7 +49,7 @@ src/
 ├── components/   # UI by domain (admin/, artist/, player/, layout/, modals/, ui/)
 ├── pages/        # route entry points (Home, Library, Network, Admin, Dig, Live, ...)
 ├── stores/       # Zustand stores (useAuthStore, usePlayerStore, useWalletStore, ...)
-├── services/     # api.ts (REST client), wallet.ts, zen.ts (instance discovery)
+├── services/     # api.ts (REST client), wallet.ts
 ├── hooks/        # custom React hooks
 └── main.tsx      # app mount point
 ```

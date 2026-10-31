@@ -1,7 +1,9 @@
+import dnsForMock from 'dns';
 import { jest, describe, test, expect, beforeEach, afterEach, beforeAll } from '@jest/globals';
 import Database from 'better-sqlite3';
 
 jest.unstable_mockModule('../../../utils/networkUtils.js', () => ({
+    safeLookup: dnsForMock.lookup,
     isSafeUrl: jest.fn<any>().mockResolvedValue(true)
 }));
 

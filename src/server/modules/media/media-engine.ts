@@ -7,6 +7,8 @@ import type { GoogleDriveService } from "../storage/google-drive.service.js";
 import type { StreamingService } from "../streaming/streaming.service.js";
 import { transcode, transcodeToFile, tryAcquireLiveSlot, releaseLiveSlot } from "./ffmpeg.js";
 import { NotFoundError, ServiceUnavailableError } from "../../common/errors.js";
+import { resolveSafePath } from "../../../utils/fileUtils.js";
+import { audioContentType } from "../../../utils/audioUtils.js";
 
 export interface StreamOptions {
   trackId?: number;
@@ -138,10 +140,6 @@ export class MediaEngine {
       return this.handleExternalStream(extId, track, options.range);
     }
 
-    // 4. Handle Fallback to Streaming Providers
-    const fallback = await this.handleStreamingFallback(track);
-    if (fallback) return fallback;
-
     throw new NotFoundError("Audio source not found");
   }
 
@@ -216,24 +214,17 @@ export class MediaEngine {
   }
 
   private async resolveLocalPath(track: Track): Promise<{ trackPath: string | null; isLosslessFallback: boolean }> {
-    let trackPath = path.join(this.musicDir, track.file_path!);
-    let isLosslessFallback = false;
+    // resolveSafePath refuses anything that escapes musicDir (e.g. "../package.json").
+    const candidates = (rel: string) => [resolveSafePath(this.musicDir, rel), resolveSafePath(this.musicDir, decodeURIComponent(rel))];
 
-    if (await fs.pathExists(trackPath)) return { trackPath, isLosslessFallback };
-
-    // Try decoded path
-    const decoded = decodeURIComponent(trackPath);
-    if (await fs.pathExists(decoded)) return { trackPath: decoded, isLosslessFallback };
-
-    // Try lossless fallback
-    if (track.lossless_path) {
-      let lp = path.join(this.musicDir, track.lossless_path);
-      if (await fs.pathExists(lp)) return { trackPath: lp, isLosslessFallback: true };
-      
-      const lpDecoded = decodeURIComponent(lp);
-      if (await fs.pathExists(lpDecoded)) return { trackPath: lpDecoded, isLosslessFallback: true };
+    for (const p of candidates(track.file_path!)) {
+      if (p && await fs.pathExists(p)) return { trackPath: p, isLosslessFallback: false };
     }
-
+    if (track.lossless_path) {
+      for (const p of candidates(track.lossless_path)) {
+        if (p && await fs.pathExists(p)) return { trackPath: p, isLosslessFallback: true };
+      }
+    }
     return { trackPath: null, isLosslessFallback: false };
   }
 
@@ -244,7 +235,10 @@ export class MediaEngine {
     isLosslessFallback: boolean
   ): Promise<StreamResult> {
     const ext = path.extname(trackPath).toLowerCase();
-    const sourceFormat = (track.format || ext.substring(1)).toLowerCase();
+    // The scanner stores the codec label ("MPEG 1 Layer 3", "mpeg"), not the
+    // extension; without this every mp3 went through ffmpeg.
+    const codec = (track.format || ext.substring(1)).toLowerCase();
+    const sourceFormat = codec === 'mpeg' || /layer 3/.test(codec) ? 'mp3' : codec;
 
     // Formats a browser <audio> element can decode from a raw byte stream.
     // Anything else must be transcoded to mp3, even when no explicit target
@@ -276,17 +270,9 @@ export class MediaEngine {
     return !isNaN(target) && (sourceBitrate / 1000) > target;
   }
 
-  private contentTypeForFormat(format: string): string {
-    const map: Record<string, string> = {
-      mp3: 'audio/mpeg', aac: 'audio/aac', ogg: 'audio/ogg',
-      opus: 'audio/opus', flac: 'audio/flac', wav: 'audio/wav',
-    };
-    return map[format] || 'audio/mpeg';
-  }
-
   private async streamTranscoded(trackPath: string, format: string, options: StreamOptions): Promise<StreamResult> {
     const bitrate = options.bitrate ? parseInt(options.bitrate) : undefined;
-    const contentType = this.contentTypeForFormat(format);
+    const contentType = audioContentType(format);
 
     // Seek requests are transient and would explode the cache key space — transcode live, don't cache.
     if (options.seek && options.seek > 0) {
@@ -401,16 +387,7 @@ export class MediaEngine {
     contentTypeOverride?: string
   ): Promise<StreamResult> {
     const ext = path.extname(absPath).toLowerCase();
-    const contentTypeMap: any = {
-        ".mp3": "audio/mpeg",
-        ".flac": "audio/flac",
-        ".ogg": "audio/ogg",
-        ".wav": "audio/wav",
-        ".m4a": "audio/mp4",
-        ".aac": "audio/aac",
-        ".opus": "audio/opus"
-    };
-    const contentType = contentTypeOverride || contentTypeMap[ext] || "audio/mpeg";
+    const contentType = contentTypeOverride || audioContentType(ext);
 
     // X-Accel offload: hand the file to nginx, which serves bytes + Range itself.
     // No read stream is opened and no stat is needed — Node leaves the data path.
@@ -526,18 +503,4 @@ export class MediaEngine {
     return warmed;
   }
 
-  private async handleStreamingFallback(track: Track): Promise<StreamResult | null> {
-    if (!this.streamingService) return null;
-    
-    const title = track.title || "";
-    const artist = track.artist_name || "";
-    const streamUrl = await this.streamingService.resolve(title, artist).catch(() => null);
-    
-    if (streamUrl) {
-      console.log(`📡 [MediaEngine] Local file missing, falling back to streaming provider for: ${artist} - ${title}`);
-      throw new Error(`REDIRECT:/api/proxy/stream?url=${encodeURIComponent(streamUrl)}`);
-    }
-    
-    return null;
-  }
 }

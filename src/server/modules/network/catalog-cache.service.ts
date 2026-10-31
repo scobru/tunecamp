@@ -1,4 +1,5 @@
 import type { Database as DatabaseType } from "better-sqlite3";
+import { fetchSafe } from "../../common/network.js";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 import { isPubliclyDownloadableTrack } from "../../common/download-access.js";
 
@@ -111,13 +112,13 @@ export function createCatalogCacheService(db: DatabaseType): CatalogCacheService
                 // Prefer the complete federation catalog; fall back to the legacy
                 // /api/catalog overview for peers running older versions that don't
                 // expose /full (the overview is truncated, but better than nothing).
-                let response = await fetch(`${siteUrl}/api/catalog/full`, {
+                let response = await fetchSafe(`${siteUrl}/api/catalog/full`, {
                     signal: controller.signal,
                     headers
                 });
                 if (response.status === 404) {
                     await drainBody(response);
-                    response = await fetch(`${siteUrl}/api/catalog`, {
+                    response = await fetchSafe(`${siteUrl}/api/catalog`, {
                         signal: controller.signal,
                         headers
                     });

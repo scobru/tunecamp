@@ -161,6 +161,23 @@ describe("Express App Bootstrap & Routing Setup", () => {
 			expect(res.status).toBe(200);
 		});
 
+		test("/share/:id escapes a hostile track title instead of injecting it", async () => {
+			const { app } = createApp(dummyConfig);
+			setupStaticAndFallbackRoutes(app, dummyConfig, dbService);
+
+			const artistId = dbService.createArtist("XSS Artist");
+			const trackId = dbService.createTrack({
+				title: '"><img src=x onerror=alert(1)>',
+				artist_id: artistId,
+				file_path: "tracks/xss.mp3",
+			});
+
+			const res = await request(app).get(`/share/tr_${trackId}`);
+			expect(res.status).toBe(200);
+			expect(res.text).not.toContain("<img src=x onerror");
+			expect(res.text).toContain("&quot;&gt;&lt;img src=x onerror=alert(1)&gt;");
+		});
+
 		test("/@:slug injects OpenGraph tags for artist profile", async () => {
 			const { app } = createApp(dummyConfig);
 			setupStaticAndFallbackRoutes(app, dummyConfig, dbService);

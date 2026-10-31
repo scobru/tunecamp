@@ -151,7 +151,7 @@ Quando un utente effettua l'accesso e la password del suo account è una di quel
 
 Il blocco si applica solo alle richieste *autenticate*. Navigazione anonima, streaming e federazione non sono toccati, quindi gli ascoltatori continuano a funzionare mentre l'amministratore è confinato alla correzione della credenziale. Il codice è `403` e non `401` di proposito: il client API dell'applicazione web tratta il `401` come sessione morta ed esegue il logout, il che intrappolerebbe l'amministratore in un ciclo di login senza mai raggiungere la procedura guidata.
 
-Gli account con una password vera non entrano mai in questo percorso — il controllo è memoizzato per username e invalidato a ogni scrittura della password, quindi il costo è un confronto bcrypt per username per processo. Gli account FID/Zen-only hanno `password_hash` vuoto e non vengono mai intercettati.
+Gli account con una password vera non entrano mai in questo percorso — il controllo è memoizzato per username e invalidato a ogni scrittura della password, quindi il costo è un confronto bcrypt per username per processo. Gli account FID-only hanno `password_hash` vuoto e non vengono mai intercettati.
 
 Ciò che la procedura guidata mostra dipende dal ruolo:
 

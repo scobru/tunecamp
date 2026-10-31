@@ -1,20 +1,11 @@
 /**
  * Test double for the `fid` package (github:scobru/fid), wired up in jest.config.js.
  *
- * `fid` is a git dependency whose crypto layer is Zen SEA (secp256k1, via the
- * `@akaoio/zen` git dependency). This stand-in keeps the suite hermetic and installable
- * without those checkouts.
- *
- * Everything that is not SEA is a faithful port of upstream: the passport HMAC, the
- * challenge lifecycle, the replay guard and the SSO token checks behave exactly like the
- * real ones — same argument order, same return shapes, same error strings — because the
- * routes under test branch on them (`validateSsoToken().error` decides 400 vs 401) and
- * the tests assert on them.
- *
- * Only sign/verify are substituted: Node's Ed25519 stands in for secp256k1, keeping SEA's
- * shape — a signature carries the message it was made over, and verification decodes that
- * message and compares it to the expected payload. So a signature made with the wrong key,
- * or over a different payload, still fails, which is what the forgery tests exercise.
+ * Keeps the suite hermetic and installable without fetching the git dependency. It is a
+ * faithful port of upstream: Ed25519 sign/verify, the passport HMAC, the challenge lifecycle,
+ * the replay guard and the SSO token checks behave exactly like the real ones — same argument
+ * order, same return shapes, same error strings — because the routes under test branch on
+ * them (`validateSsoToken().error` decides 400 vs 401) and the tests assert on them.
  */
 import crypto from "node:crypto";
 import { Buffer } from "node:buffer";
@@ -49,8 +40,6 @@ export interface FidPassport {
 export interface FidKeyPair {
 	pub: string;
 	priv: string;
-	epub: string;
-	epriv: string;
 }
 
 export interface FidSignedPayload<T = unknown> {
@@ -95,32 +84,19 @@ export interface FidSsoToken {
 	masterKeySource?: PublicMasterKeySource;
 }
 
-// ── Crypto: SEA stand-in (mirrors fid/src/crypto/sea.ts) ──────────────────────
-
-/** An Ed25519 pair encoded as base64url DER, standing in for a Zen SEA secp256k1 pair. */
-function newEd25519Pair(): { pub: string; priv: string } {
-	const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
-	return {
-		pub: publicKey.export({ type: "spki", format: "der" }).toString("base64url"),
-		priv: privateKey
-			.export({ type: "pkcs8", format: "der" })
-			.toString("base64url"),
-	};
-}
+// ── Crypto: Ed25519 (mirrors fid/src/crypto/sea.ts) ───────────────────────────
+// `pub` / `priv` are the base64url JWK `x` / `d` of an Ed25519 key; signatures are detached
+// base64url over the UTF-8 payload.
 
 export function generateNonce(lengthBytes: number = 16): string {
 	return crypto.randomBytes(lengthBytes).toString("hex");
 }
 
 export async function generateKeyPair(): Promise<FidKeyPair> {
-	const identity = newEd25519Pair();
-	const ephemeral = newEd25519Pair();
-	return {
-		pub: identity.pub,
-		priv: identity.priv,
-		epub: ephemeral.pub,
-		epriv: ephemeral.priv,
-	};
+	const { x, d } = crypto
+		.generateKeyPairSync("ed25519")
+		.privateKey.export({ format: "jwk" });
+	return { pub: x!, priv: d! };
 }
 
 export async function signPayload(
@@ -128,17 +104,13 @@ export async function signPayload(
 	priv: string,
 ): Promise<string> {
 	const key = crypto.createPrivateKey({
-		key: Buffer.from(priv, "base64url"),
+		key: Buffer.concat([ED25519_PKCS8_HEADER, Buffer.from(priv, "base64url")]),
 		format: "der",
 		type: "pkcs8",
 	});
-	const signature = crypto.sign(null, Buffer.from(payload, "utf8"), key);
-	// SEA signatures carry the message they were made over; zenVerify returns that
-	// message rather than a boolean, which is why verifySignature below compares.
-	return Buffer.from(
-		JSON.stringify({ m: payload, s: signature.toString("base64url") }),
-		"utf8",
-	).toString("base64url");
+	return crypto
+		.sign(null, Buffer.from(payload, "utf8"), key)
+		.toString("base64url");
 }
 
 export async function verifySignature(
@@ -150,24 +122,16 @@ export async function verifySignature(
 		return false;
 	}
 	try {
-		const envelope = JSON.parse(
-			Buffer.from(signature, "base64url").toString("utf8"),
-		) as { m?: string; s?: string };
-		if (typeof envelope.m !== "string" || typeof envelope.s !== "string") {
-			return false;
-		}
 		const key = crypto.createPublicKey({
-			key: Buffer.from(pubKey, "base64url"),
-			format: "der",
-			type: "spki",
+			key: { kty: "OKP", crv: "Ed25519", x: pubKey },
+			format: "jwk",
 		});
-		const signed = crypto.verify(
+		return crypto.verify(
 			null,
-			Buffer.from(envelope.m, "utf8"),
+			Buffer.from(payload, "utf8"),
 			key,
-			Buffer.from(envelope.s, "base64url"),
+			Buffer.from(signature, "base64url"),
 		);
-		return signed && envelope.m === payload;
 	} catch {
 		return false;
 	}

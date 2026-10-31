@@ -1,9 +1,10 @@
+import dnsForMock from 'dns';
 import { jest, describe, test, expect, beforeEach, afterEach, beforeAll } from '@jest/globals';
 
 // ESM module namespaces are read-only, so spying on the binding directly fails.
 // Mock the module instead and import the SUT dynamically so it picks up the mock.
 const isSafeUrl = jest.fn<(urlStr: string) => Promise<boolean>>();
-jest.unstable_mockModule('../../utils/networkUtils.js', () => ({ isSafeUrl }));
+jest.unstable_mockModule('../../utils/networkUtils.js', () => ({ isSafeUrl, safeLookup: dnsForMock.lookup }));
 
 let network: typeof import('./network.js');
 
@@ -59,6 +60,22 @@ describe('Network Utilities', () => {
             isSafeUrl.mockResolvedValue(false);
             await expect(network.fetchSafe('http://192.168.1.1/api')).rejects.toThrow('SSRF Blocked');
             expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Blocked potential SSRF'));
+        });
+
+        test('re-checks every redirect hop and refuses one that lands on a private address', async () => {
+            const realFetch = globalThis.fetch;
+            const fetchMock = jest.fn(async (u: any) => u === 'https://public.example/a'
+                ? new Response(null, { status: 302, headers: { location: 'http://169.254.169.254/latest' } })
+                : new Response('secret'));
+            (globalThis as any).fetch = fetchMock;
+            isSafeUrl.mockImplementation(async (u: string) => !u.includes('169.254'));
+            try {
+                await expect(network.fetchSafe('https://public.example/a')).rejects.toThrow('SSRF Blocked');
+                expect(fetchMock).toHaveBeenCalledTimes(1);
+                expect((fetchMock.mock.calls[0] as any)[1].redirect).toBe('manual');
+            } finally {
+                (globalThis as any).fetch = realFetch;
+            }
         });
     });
 

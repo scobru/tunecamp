@@ -47,16 +47,24 @@ export function createAuthMiddleware(authService: AuthService) {
      */
     async function extractPayload(req: AuthenticatedRequest): Promise<TokenPayload | null> {
         let token: string | undefined;
+        let fromQuery = false;
         const authHeader = req.headers.authorization;
 
         if (authHeader && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
         } else if (typeof req.query.token === "string" && allowsQueryToken(req)) {
             token = req.query.token;
+            fromQuery = true;
         }
 
         if (!token) return null;
-        return await authService.verifyToken(token);
+        const payload = await authService.verifyToken(token);
+        if (!payload) return null;
+        // A URL carries only a short url-scoped token (or a tc_ API token an app chose
+        // to put there), never the 7-day session; and a url token is not a session.
+        if (fromQuery && !token.startsWith("tc_") && payload.scope !== "url") return null;
+        if (!fromQuery && payload.scope === "url") return null;
+        return payload;
     }
 
     /**

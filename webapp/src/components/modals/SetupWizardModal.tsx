@@ -41,7 +41,9 @@ export const SetupWizardModal = () => {
 
         setLoading(true);
         try {
-            await API.changePassword(currentPassword, newPassword);
+            const res: any = await API.changePassword(currentPassword, newPassword);
+            // The old token is revoked by the change; keep the session on the new one.
+            if (res?.token) API.setToken(res.token);
             if (isRootAdmin) {
                 setStep(2);
             } else {

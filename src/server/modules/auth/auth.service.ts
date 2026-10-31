@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import { hashApiToken } from "../../common/api-token.js";
 import jwt from "jsonwebtoken";
 import type { Database } from "better-sqlite3";
 import crypto from "crypto";
@@ -13,6 +14,7 @@ if (typeof global !== "undefined" && !global.crypto) {
 
 const SALT_ROUNDS = 10;
 const JWT_EXPIRES_IN = "7d";
+const URL_TOKEN_EXPIRES_IN = "10m";
 
 export interface TokenPayload {
 	isAdmin: boolean;
@@ -23,12 +25,15 @@ export interface TokenPayload {
 	userId: number;
 	tokenVersion: number;
 	isRootAdmin?: boolean;
+	/** "url": a short-lived token meant for a URL query string (see issueUrlToken). */
+	scope?: "url";
 }
 
 export interface AuthService {
 	hashPassword(password: string): Promise<string>;
 	verifyPassword(password: string, hash: string): Promise<boolean>;
 	generateToken(payload: TokenPayload): string;
+	issueUrlToken(sessionToken: string): Promise<string | null>;
 	verifyToken(token: string): Promise<TokenPayload | null>;
 	revokeTokens(userId: number): void;
 	/** True when the account authenticates only through its Zen keypair and has no local password. */
@@ -167,6 +172,8 @@ export interface AuthService {
 		is_root: boolean;
 		can_peer: number;
 		zen_auth_mode: string;
+		fid_relink_pub: string | null;
+		fid_relink_requested_at: string | null;
 	}[];
 	deleteAdmin(id: number): void;
 	deleteUsersBatch(ids: number[]): void;
@@ -553,12 +560,24 @@ export function createAuthService(
 			return jwt.sign(payload, jwtSecret, { expiresIn: JWT_EXPIRES_IN });
 		},
 
+		/**
+		 * A 10-minute copy of a session for <audio>, <a download> and EventSource,
+		 * which cannot send an Authorization header. URLs land in access logs,
+		 * history and shared links, so they never carry the 7-day session itself.
+		 */
+		async issueUrlToken(sessionToken: string): Promise<string | null> {
+			const payload = await this.verifyToken(sessionToken);
+			if (!payload || payload.scope === "url") return null;
+			const { scope: _scope, ...claims } = payload;
+			return jwt.sign({ ...claims, scope: "url" }, jwtSecret, { expiresIn: URL_TOKEN_EXPIRES_IN });
+		},
+
 		async verifyToken(token: string): Promise<TokenPayload | null> {
 			try {
 				if (token.startsWith("tc_")) {
 					const apiTokenRow = db
 						.prepare("SELECT user_id FROM api_tokens WHERE token = ?")
-						.get(token) as { user_id: number } | undefined;
+						.get(hashApiToken(token)) as { user_id: number } | undefined;
 					if (!apiTokenRow) {
 						return null;
 					}
@@ -625,6 +644,7 @@ export function createAuthService(
 					userId: decoded.userId || 0,
 					tokenVersion: user.token_version,
 					isRootAdmin: isRoot,
+					scope: decoded.scope,
 				};
 			} catch {
 				return null;
@@ -1286,10 +1306,12 @@ export function createAuthService(
 			is_root: boolean;
 			can_peer: number;
 			zen_auth_mode: string;
+			fid_relink_pub: string | null;
+			fid_relink_requested_at: string | null;
 		}[] {
 			const rows = db
 				.prepare(`
-                SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, a.artist_requested_at, a.can_peer, ar.name as artist_name, a.zen_auth_mode
+                SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, a.artist_requested_at, a.can_peer, ar.name as artist_name, a.zen_auth_mode, a.fid_relink_pub, a.fid_relink_requested_at
                 FROM admin a
                 LEFT JOIN artists ar ON a.artist_id = ar.id
                 ORDER BY a.username
@@ -1402,6 +1424,10 @@ export function createAuthService(
 				"UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ? COLLATE NOCASE",
 			).run(hash, username);
 			clearDefaultPasswordCache();
+			// A new password must end every session, or a stolen token outlives it.
+			// Callers that keep the user signed in issue a fresh token afterwards.
+			const row = db.prepare("SELECT id FROM admin WHERE username = ? COLLATE NOCASE").get(username) as { id: number } | undefined;
+			if (row) this.revokeTokens(row.id);
 		},
 
 		setEmail(username: string, email: string | null): void {

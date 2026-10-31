@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { KeyRound } from 'lucide-react';
 import API from '../../services/api';
 import { notify } from '../../utils/notify';
+import { useAuthStore } from '../../stores/useAuthStore';
 
 export const ChangePasswordCard = () => {
     const [currentPassword, setCurrentPassword] = useState('');
@@ -87,6 +88,24 @@ export const ChangePasswordCard = () => {
                 <button type="submit" className="btn btn-primary shadow-level-1" disabled={loading}>
                     {loading ? <span className="loading loading-spinner loading-xs" /> : <KeyRound size={16} />}
                     Update Password
+                </button>
+                <p className="text-xs opacity-60 pt-2">
+                    Think someone else is signed in? This ends every session of your account, here too.
+                </p>
+                <button
+                    type="button"
+                    className="btn btn-outline btn-error btn-sm"
+                    onClick={async () => {
+                        if (!window.confirm('Sign out of every device, including this one?')) return;
+                        try {
+                            await API.logoutEverywhere();
+                            useAuthStore.getState().logout();
+                        } catch (err: any) {
+                            notify.error(err, 'Could not sign out of other devices');
+                        }
+                    }}
+                >
+                    Sign out everywhere
                 </button>
             </form>
         </div>

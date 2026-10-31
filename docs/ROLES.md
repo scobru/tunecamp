@@ -152,7 +152,7 @@ When a user logs in and their account password is a built-in default, the web ap
 
 The lockdown applies only to *authenticated* requests. Anonymous browsing, streaming and federation are unaffected, so listeners keep working while the admin is confined to fixing the credential. The status code is `403` rather than `401` on purpose: the web app's API client treats `401` as a dead session and logs out, which would trap the admin in a login loop with no way to reach the wizard.
 
-Accounts with a real password never enter any of this — the check is memoised per username and cleared on any password write, so the cost is one bcrypt comparison per username per process. FID/Zen-only accounts store an empty `password_hash` and are never matched.
+Accounts with a real password never enter any of this — the check is memoised per username and cleared on any password write, so the cost is one bcrypt comparison per username per process. FID-only accounts store an empty `password_hash` and are never matched.
 
 What the wizard shows depends on the role:
 
