@@ -83,7 +83,7 @@ function getUserIdFromRequest(req: express.Request, jwtSecret: string): number |
     try {
         const decoded = jwt.verify(authHeader.split(" ")[1], jwtSecret) as any;
         if (!decoded || typeof decoded.userId !== 'number') return null;
-        if (decoded.purpose === 'download') return null;
+        if (decoded.purpose === 'download' || decoded.scope === 'url') return null;
         return decoded.userId;
     } catch {
         return null;

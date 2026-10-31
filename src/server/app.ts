@@ -10,6 +10,7 @@ import type { DatabaseService as Database } from "./core/database.js";
 import { securityHeaders } from "./middleware/security.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { errorHandler } from "./middleware/error-handling.js";
+import { StringUtils } from "../utils/stringUtils.js";
 
 const _serverFilename = fileURLToPath(import.meta.url);
 const _serverDirname = path.dirname(_serverFilename);
@@ -216,6 +217,13 @@ export function createApp(config: ServerConfig): AppSetupResult {
     return { app, publicFederationCors, strictCors };
 }
 
+// Titles, names and bios come from users and from federated metadata: escape
+// them, or a title like `"><script>` runs in every visitor's page.
+function renderOgTags(title: string, description: string, imageUrl: string): string {
+    const e = StringUtils.escapeHtml;
+    return `<meta property="og:title" content="${e(title)}" /><meta property="og:description" content="${e(description)}" /><meta property="og:image" content="${e(imageUrl)}" />`;
+}
+
 export function setupStaticAndFallbackRoutes(app: express.Express, config: ServerConfig, database: Database): void {
     const webappPath = path.join(_serverDirname, "..", "..", "webapp");
     const webappDistPath = path.join(webappPath, "dist");
@@ -278,7 +286,7 @@ export function setupStaticAndFallbackRoutes(app: express.Express, config: Serve
         try {
             let html = getCachedHtml();
             const publicUrl = (database.getSetting("publicUrl") || config.publicUrl || `${req.protocol}://${req.get('host')}`).trim().replace(/\/$/, "");
-            const ogTags = `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><meta property="og:image" content="${publicUrl}${image}" />`;
+            const ogTags = renderOgTags(title, description, `${publicUrl}${image}`);
             html = html.replace('<head>', '<head>' + ogTags);
             res.send(html);
         } catch (e) { res.redirect(`/#/share/${id}`); }
@@ -294,7 +302,7 @@ export function setupStaticAndFallbackRoutes(app: express.Express, config: Serve
                 const title = artist.name || "Artist Profile";
                 const description = artist.bio || `Listen to ${artist.name} on TuneCamp`;
                 const image = `/api/artists/${artist.id}/cover`;
-                const ogTags = `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><meta property="og:image" content="${publicUrl}${image}" />`;
+                const ogTags = renderOgTags(title, description, `${publicUrl}${image}`);
                 html = html.replace('<head>', '<head>' + ogTags);
                 return res.send(html);
             }
@@ -322,7 +330,7 @@ export function setupStaticAndFallbackRoutes(app: express.Express, config: Serve
                         const title = artist.name || "Artist Profile";
                         const description = artist.bio || `Listen to ${artist.name} on TuneCamp`;
                         const image = `/api/artists/${artist.id}/cover`;
-                        const ogTags = `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><meta property="og:image" content="${publicUrl}${image}" />`;
+                        const ogTags = renderOgTags(title, description, `${publicUrl}${image}`);
                         html = html.replace('<head>', '<head>' + ogTags);
                     }
                 }
