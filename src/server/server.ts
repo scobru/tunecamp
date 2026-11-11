@@ -36,11 +36,10 @@ export async function startServer(config: ServerConfig): Promise<void> {
         radioService,
         pluginCleanups,
         jobHandles,
-        gdriveService
     } = await bootstrapServices(config);
 
     // Register API & Subsonic & Fedify routes
-    registerRoutes(app, server, container, federation, !!gdriveService);
+    registerRoutes(app, server, container, federation);
 
     // Static assets, OpenGraph meta injection, SPA fallback & Error handlers
     setupStaticAndFallbackRoutes(app, config, database);

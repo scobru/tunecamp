@@ -41,16 +41,6 @@ Stripe Connect ti consente di instradare i pagamenti in valuta fiat direttamente
 
 ---
 
-## 3. Archiviazione Cloud
-
-### Google Drive (Streaming e Importazione)
-1. Vai sulla [Google Cloud Console](https://console.cloud.google.com/).
-2. Crea un nuovo progetto.
-3. Abilita la **Google Drive API**.
-4. Vai su *API e servizi > Credenziali*.
-5. Crea un **ID client OAuth 2.0** (tipo "Applicazione Web").
-6. Aggiungi gli URI di reindirizzamento autorizzati: `https://tuo-dominio.com/api/storage/gdrive/callback`.
-7. Copia l'`ID client` e il `Client Secret`.
 
 ---
 
@@ -116,4 +106,4 @@ Per la guida alla configurazione e su come utilizzare lo script di bridge, vedi 
 
 ## Verifica
 
-Dopo aver inserito le chiavi, riavvia il server di TuneCamp. Controlla i log di avvio per assicurarti che i servizi (Telegram, Google Drive) siano inizializzati correttamente senza errori di autenticazione.
+Dopo aver inserito le chiavi, riavvia il server di TuneCamp. Controlla i log di avvio per assicurarti che i servizi (Telegram, ecc.) siano inizializzati correttamente senza errori di autenticazione.

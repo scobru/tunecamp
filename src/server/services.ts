@@ -24,8 +24,6 @@ import { createPublishingService } from "./modules/publishing/publishing.service
 import { LifecycleService } from "./modules/catalog/lifecycle.service.js";
 import { CatalogService } from "./modules/catalog/catalog.service.js";
 import { DiscoveryService } from "./modules/catalog/discovery.service.js";
-import { GoogleDriveService } from "./modules/storage/google-drive.service.js";
-import { initStorageService } from "./modules/storage/storage.service.js";
 import { AutoTaggerService } from "./modules/catalog/autotagger.service.js";
 import { MaintenanceRepository } from "./repositories/maintenance.repository.js";
 import { MaintenanceService } from "./modules/catalog/maintenance.service.js";
@@ -56,7 +54,6 @@ export interface BootstrappedServices {
 	radioService: RadioService;
 	pluginCleanups: (() => void)[];
 	jobHandles: JobHandle[];
-	gdriveService?: GoogleDriveService;
 }
 
 export async function bootstrapServices(
@@ -182,8 +179,6 @@ export async function bootstrapServices(
 	// Shared stale-while-revalidate cache for remote peer catalogs (HTTP federation).
 	const catalogCache = createCatalogCacheService(database.db);
 
-	let gdriveService: GoogleDriveService | undefined;
-
 	const jobHandles: JobHandle[] = [];
 
 	const isSolo = database.getSetting("mode") === "single_artist";
@@ -305,27 +300,6 @@ export async function bootstrapServices(
 		metadataService,
 	);
 
-	if (config.gdriveClientId && config.gdriveClientSecret) {
-		const dbPublicUrl = database.getSetting("publicUrl");
-		const publicUrl = (
-			dbPublicUrl ||
-			config.publicUrl ||
-			`http://localhost:${config.port}`
-		)
-			.trim()
-			.replace(/\/$/, "");
-		const redirectUri = `${publicUrl}/api/storage/gdrive/callback`;
-		gdriveService = new GoogleDriveService(database, {
-			clientId: config.gdriveClientId,
-			clientSecret: config.gdriveClientSecret,
-			redirectUri,
-		});
-		const adminRow = database.db
-			.prepare("SELECT id FROM admin ORDER BY id ASC LIMIT 1")
-			.get() as any;
-		initStorageService(gdriveService, adminRow?.id ?? 1);
-	}
-
 	const autotaggerService = new AutoTaggerService(
 		database,
 		catalogService,
@@ -344,7 +318,6 @@ export async function bootstrapServices(
 	const mediaEngine = new MediaEngine(
 		database,
 		config.musicDir,
-		gdriveService,
 		streamingService,
 		{
 			transcodeCacheDir: config.transcodeCacheDir,
@@ -442,7 +415,6 @@ export async function bootstrapServices(
 		samplePacksRepository,
 		collabRepository,
 		torrentService,
-		gdriveService,
 		openRouterService,
 		storage,
 	};
@@ -457,6 +429,5 @@ export async function bootstrapServices(
 		radioService,
 		pluginCleanups,
 		jobHandles,
-		gdriveService,
 	};
 }

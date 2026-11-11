@@ -47,7 +47,7 @@ Once you're up and running, the guides below go deeper.
 | [Getting Started](./getting-started.md) | **Install → first login → add music → listen** (start here) |
 | [Adding Music](./adding-music.md) | Library layout on disk, scanning, and draft → public release — the reference for getting audio in |
 | [Deploy on Railway](./railway.md) | One-click deploy on Railway — no VPS required, HTTPS included |
-| [API & Services Setup](./api-setup-guide.md) | Step-by-step configuration for Stripe, Google Drive, AI, and other integrations |
+| [API & Services Setup](./api-setup-guide.md) | Step-by-step configuration for Stripe, AI, and other integrations |
 | [Nginx Configuration](./NGINX.md) | Reverse proxy setup for SSL, WebSocket, and HLS |
 | [Backup & Migration](./backup-migration.md) | Database backup, restore, and moving your instance |
 
@@ -106,7 +106,6 @@ Optional third-party services you can connect to your instance.
 | ----- | ------------- |
 | [AI Integrations](./ai-integrations.md) | Metadata automation and recommendations via OpenRouter |
 | [Smart Contracts](./smart-contracts.md) | Solidity contracts (Factory, NFT, Checkout) on Base |
-| [Google Drive](./google-drive.md) | Cloud storage backend for media files |
 | [Sidecamp](./sidecamp.md) | P2P acquisition (Soulseek, BitTorrent, yt-dlp) via the desktop companion app |
 | [Telegram Bot](./telegram.md) | Rapid file ingestion and remote management |
 

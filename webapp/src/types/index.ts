@@ -295,8 +295,6 @@ export interface SiteSettings {
 	lastfm_api_key?: string;
 	lastfm_session_key?: string;
 	listenbrainz_token?: string;
-	google_drive_client_id?: string;
-	google_drive_client_secret?: string;
 	hideLive?: boolean | string;
 	hideStore?: boolean | string;
 	hideSocial?: boolean | string;
@@ -619,26 +617,6 @@ export interface NetworkStatus {
 	activitypub?: {
 		enabled: boolean;
 	};
-}
-
-export interface StorageAccount {
-	id: number;
-	user_id: number;
-	provider: string;
-	account_email: string | null;
-	access_token: string;
-	refresh_token: string | null;
-	expiry_date: number | null;
-	created_at: string;
-}
-
-export interface GoogleDriveFile {
-	id: string;
-	name: string;
-	mimeType: string;
-	size?: string;
-	parents?: string[];
-	isImported?: boolean;
 }
 
 export interface Report {

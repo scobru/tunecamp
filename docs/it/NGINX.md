@@ -101,7 +101,7 @@ Aggiungi queste righe **all'interno del blocco `server { ... }`** (accanto a `lo
 
 La direttiva `internal` significa che questi percorsi possono essere raggiunti solo tramite una richiesta `X-Accel-Redirect` proveniente dall'applicazione — non sono mai direttamente accessibili dai client, garantendo che l'autenticazione venga comunque eseguita da TuneCamp prima del reindirizzamento.
 
-> **Nota:** Questo metodo ottimizza solo i file *locali*. Lo streaming da Google Drive, provider esterni e le transcodifiche in tempo reale (seek) continueranno a passare attraverso Node, come è giusto che sia. La **cache** di transcodifica (abilitata in modo indipendente) è ciò che rende la maggior parte degli stream transcodificati idonei all'ottimizzazione dopo la prima richiesta.
+> **Nota:** Questo metodo ottimizza solo i file *locali*. Lo streaming da provider esterni e le transcodifiche in tempo reale (seek) continueranno a passare attraverso Node, come è giusto che sia. La **cache** di transcodifica (abilitata in modo indipendente) è ciò che rende la maggior parte degli stream transcodificati idonei all'ottimizzazione dopo la prima richiesta.
 
 ## Istruzioni Specifiche per CapRover
 

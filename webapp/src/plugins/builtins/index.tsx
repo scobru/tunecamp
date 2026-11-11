@@ -1,5 +1,5 @@
 
-import { MessageSquare, Cpu, Activity, CreditCard, Globe, Mail } from 'lucide-react';
+import { MessageSquare, Cpu, Activity, CreditCard, Mail } from 'lucide-react';
 import { pluginRegistry } from '../../core/plugins/registry';
 
 // Brevo (Email)
@@ -132,30 +132,6 @@ pluginRegistry.register({
             <div className="form-control">
                 <label className="label text-xs">Webhook Secret</label>
                 <input type="password" className="input input-sm input-bordered" value={settings?.stripe_webhook_secret || ''} onChange={e => setSettings({ ...settings!, stripe_webhook_secret: e.target.value })} />
-            </div>
-        </div>
-    )
-});
-
-// Google Drive
-pluginRegistry.register({
-    id: 'gdrive',
-    name: 'Google Drive',
-    icon: <Globe className="text-blue-500" />,
-    description: 'Cloud storage for track localization and backup.',
-    statusCheck: (status) => ({
-        status: status?.gdrive?.configured && status?.gdrive?.active ? 'online' : 'offline',
-        details: status?.gdrive?.configured ? (status.gdrive.active ? "Integration active" : "Service disabled") : "Client ID/Secret missing"
-    }),
-    configPanel: ({ settings, setSettings }) => (
-        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
-            <div className="form-control">
-                <label className="label text-xs">Client ID</label>
-                <input type="text" className="input input-sm input-bordered" value={settings?.google_drive_client_id || ''} onChange={e => setSettings({ ...settings!, google_drive_client_id: e.target.value })} />
-            </div>
-            <div className="form-control">
-                <label className="label text-xs">Client Secret</label>
-                <input type="password" className="input input-sm input-bordered" value={settings?.google_drive_client_secret || ''} onChange={e => setSettings({ ...settings!, google_drive_client_secret: e.target.value })} />
             </div>
         </div>
     )

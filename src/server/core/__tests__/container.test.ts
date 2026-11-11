@@ -32,7 +32,6 @@ describe("ServiceContainer", () => {
 
 		expect(resolveService(container, "ytdlpService" as any)).toBeUndefined();
 		expect(resolveService(container, "torrentService" as any)).toBeUndefined();
-		expect(resolveService(container, "gdriveService" as any)).toBeUndefined();
 	});
 
 	test("resolveService falls back to container.database if service is not found", () => {

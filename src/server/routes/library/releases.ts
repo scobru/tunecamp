@@ -361,12 +361,11 @@ export function createReleaseRouter(container: ServiceContainer): Router {
         if (!tracks || tracks.length === 0) throw new NotFoundError("No tracks found");
 
         // Only local audio files can be bundled; streaming/linked tracks
-        // (null, http(s) or gdrive:// paths) have no on-disk payload to zip.
+        // (null or http(s) paths) have no on-disk payload to zip.
         const localTracks = tracks.filter((t: any) =>
             t.file_path &&
             !t.file_path.startsWith('http://') &&
-            !t.file_path.startsWith('https://') &&
-            !t.file_path.startsWith('gdrive://')
+            !t.file_path.startsWith('https://')
         );
         if (localTracks.length === 0) throw new NotFoundError("No downloadable audio files for this release");
 

@@ -31,7 +31,6 @@ export function createTracksRoutes(container: ServiceContainer): Router {
     const discoveryService = resolveService(container, 'discoveryService');
     const musicDir = resolveService(container, 'musicDir');
     const authService = resolveService(container, 'authService');
-    const gdriveService = resolveService(container, 'gdriveService');
     const mediaEngine = resolveService(container, 'mediaEngine');
     const social = resolveService(container, 'social');
     const library = resolveService(container, 'library');
@@ -150,9 +149,8 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         if (!req.isAdmin && !req.isActive) throw new ForbiddenError("Account not active");
 
         // No `localize` here on purpose: downloading audio off a streaming
-        // platform is not something this server does (see POST /:id/localize,
-        // which only handles gdrive://). A track created here is a link or a
-        // placeholder until a real file is uploaded for it.
+        // platform is not something this server does. A track created here
+        // is a link or a placeholder until a real file is uploaded for it.
         const { title, albumId, artistId: bodyArtistId, trackNum, url, service, externalArtwork, duration, lyrics, currency, priceUsdc } = req.body;
         
         let finalArtistId = bodyArtistId;
@@ -262,16 +260,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
             const track = database.getTrack(trackId);
             if (!track) throw new NotFoundError("Track not found");
 
-            let updatedTrack;
-            if (track.file_path && track.file_path.startsWith('gdrive://')) {
-                // Cloud imports are legally handled by the core catalog
-                if (!gdriveService) throw new BadRequestError("Google Drive service not available");
-                updatedTrack = await catalogService.localizeTrack(trackId, gdriveService);
-            } else {
-                throw new BadRequestError("Localization for streaming platforms is no longer supported on TuneCamp. Use Sidecamp instead.");
-            }
-            
-            res.json({ success: true, track: updatedTrack });
+            throw new BadRequestError("Localization for streaming platforms is no longer supported on TuneCamp. Use Sidecamp instead.");
         } catch (error: any) {
             console.error(`❌ [API] Localization failed for track ${trackId}:`, error.message);
             res.status(500).json({ error: error.message });
@@ -556,19 +545,6 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         assertTrackDownloadable(track, req);
 
         if (!track.file_path) throw new NotFoundError("Track file not found");
-        if (track.file_path.startsWith("gdrive://")) {
-            if (!gdriveService) throw new Error("Google Drive service not available");
-            const fileId = track.file_path.substring(9);
-            const ownerId = track.owner_id || integration.getPrimaryAdminId() || 1;
-            const { stream, headers } = await gdriveService.getFileStream(ownerId, fileId);
-            const ext = headers['content-type']?.includes('flac') ? '.flac' : headers['content-type']?.includes('wav') ? '.wav' : '.mp3';
-            const filename = `${track.artist_name || 'Unknown'} - ${track.title || 'Untitled'}${ext}`;
-            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
-            res.setHeader('Content-Type', headers['content-type'] || 'application/octet-stream');
-            if (headers['content-length']) res.setHeader('Content-Length', headers['content-length']);
-            stream.pipe(res);
-            return;
-        }
 
         let trackPath = resolveSafePath(musicDir, track.file_path);
         if (!trackPath) throw new BadRequestError("Invalid path");

@@ -99,7 +99,7 @@ La chat peer è stata rimossa; `peer_chat_messages`, `peer_chat_bans`, `peer_cha
 - **`play_history`**: Registro degli ascolti per statistiche, scrobbling e raccomandazioni.
 - **`unlock_codes`**: Codici di sblocco per l'accesso a contenuti protetti o a pagamento.
 - **`torrents`**: Integrazioni per la ricerca e il recupero di contenuti tramite file sharing (l'acquisizione P2P risiede nell'app companion [Sidecamp](./sidecamp.md)).
-- **`assets`** / **`storage_accounts`**: Risorse e account di archiviazione cloud connessi (es. Google Drive).
+- **`assets`** / **`storage_accounts`**: Risorse e account di archiviazione cloud connessi.
 - **`track_stats`** / **`release_stats`**: Contatori aggregati degli ascolti e statistiche sul tempo di riproduzione.
 - **`settings`**: Configurazione chiave/valore dell'istanza.
 - **`api_tokens`** / **`oauth_clients`** / **`oauth_links`**: Token API personali (es. MCP) e collegamenti OAuth.

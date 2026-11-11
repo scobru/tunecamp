@@ -42,7 +42,6 @@ describe('createBackupRoutes', () => {
 
         expect(routes).toEqual(expect.arrayContaining([
             { path: '/full', methods: ['get'] },
-            { path: '/gdrive', methods: ['post'] },
             { path: '/audio', methods: ['get'] },
             { path: '/restore', methods: ['post'] },
             { path: '/chunk', methods: ['post'] },

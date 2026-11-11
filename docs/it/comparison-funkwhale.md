@@ -49,7 +49,6 @@ Questo documento fornisce un confronto onesto e dettagliato tra **Funkwhale** e 
 * **TuneCamp** include strumenti di acquisizione dedicati per gli utenti che collezionano grandi librerie musicali:
   * **Soulseek e Torrent (opt-in, disabilitati di default)**: Integrazione che consente di cercare e scaricare album dalle reti P2P direttamente dal pannello di amministrazione. Trattandosi di fonti legalmente "grigie" — problematiche come impostazione predefinita su una piattaforma che vende musica — questi plugin sono registrati come disabilitati e richiedono l'attivazione esplicita da parte dell'amministratore tramite l'opzione dei plugin. Lo stesso vale per gli scraper di flussi SoundCloud/Bandcamp. La responsabilità legale dell'attivazione ricade sull'amministratore dell'istanza.
   * **Bot Telegram**: Un bot dedicato in cui l'amministratore dell'istanza può semplicemente inoltrare i file audio in una chat per vederli aggiunti ed elaborati automaticamente sul proprio server TuneCamp.
-  * **Archiviazione su Google Drive**: Consente di utilizzare una cartella Drive remota anziché lo spazio su disco locale per ospitare i file musicali.
 
 ---
 
@@ -64,4 +63,4 @@ Questo documento fornisce un confronto onesto e dettagliato tra **Funkwhale** e 
 * Sei un artista indipendente, un produttore o una piccola etichetta che vuole vendere musica direttamente, senza commissioni di piattaforma se ospiti autonomamente la tua istanza (rimangono solo le commissioni di Stripe del ~2,9% + 0,30 € e i costi del VPS — vedi [pagamenti.md](./payments.md) per un'analisi onesta dei costi).
 * Desideri una soluzione configurabile in pochi minuti su un server (VPS) economico senza dover configurare molteplici componenti infrastrutturali (Redis, PostgreSQL, Celery).
 * Vuoi sperimentare la distribuzione basata su blockchain (Base Network) per creare NFT musicali e attivare un modello di possesso da parte dei fan.
-* Vuoi flessibilità nella gestione dei file tramite bot Telegram o archiviazione su Google Drive.
+* Vuoi flessibilità nella gestione dei file tramite bot Telegram.

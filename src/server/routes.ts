@@ -37,7 +37,6 @@ import { createBoardRoutes } from "./routes/api/board.js";
 import { createLiveRoutes } from "./routes/api/live.js";
 import { createNowPlayingRoutes } from "./routes/api/now-playing.js";
 import { createSearchRoutes } from "./routes/network/search.js";
-import { createStorageRouter } from "./routes/library/storage.js";
 import { createTaskRoutes } from "./routes/admin/tasks.js";
 import { createRadioRoutes } from "./routes/api/radio.js";
 import { createPeerWsHandler } from "./modules/peer/peer.ws.js";
@@ -52,7 +51,6 @@ export function registerRoutes(
 	server: http.Server,
 	container: ServiceContainer,
 	federation: any,
-	hasGDrive: boolean,
 ): void {
 	const { authMiddleware } = container;
 	const isSolo = container.catalogService.isSingleArtist();
@@ -171,10 +169,6 @@ export function registerRoutes(
 			requireModuleEnabled(container, "hideCollab", { allowAdmin: true }),
 			createCollabRoutes(container),
 		);
-	}
-
-	if (hasGDrive) {
-		app.use("/api/storage", createStorageRouter(container));
 	}
 
 	app.use(

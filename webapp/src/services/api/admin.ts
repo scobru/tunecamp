@@ -1,7 +1,7 @@
 import { api, handleResponse, uploadProgressConfig } from './client';
 import type {
     Track, Album, Artist, SiteSettings, User, Release,
-    AdminStats, StorageAccount, GoogleDriveFile, InstanceStorage,
+    AdminStats, InstanceStorage,
     RecomputeStorageResult, SystemResources, UpdateCheck
 } from '../../types';
 
@@ -317,8 +317,6 @@ export const adminApi = {
         }));
     },
 
-    backupToGDrive: () => handleResponse(api.post<{ success: boolean, fileId: string, fileName: string }>('admin/backup/gdrive')),
-
     // --- Identity ---
     getSiteApIdentity: () => handleResponse(api.get<{ publicKey: string, privateKey: string, handle?: string }>('admin/system/ap-identity')),
 
@@ -352,13 +350,6 @@ export const adminApi = {
         handleResponse(api.post<{ success: boolean, inboxes: number, message: string }>(`admin/artists/${artistId}/refresh-identity`)),
 
     // --- Storage ---
-    getGDriveAuthUrl: () => handleResponse(api.get<{ url: string }>('storage/gdrive/auth')),
-    getGDriveAccounts: () => handleResponse(api.get<StorageAccount[]>('storage/gdrive/accounts')),
-    getGDriveFiles: (folderId?: string) => handleResponse(api.get<GoogleDriveFile[]>(`storage/gdrive/files${folderId ? `?folderId=${folderId}` : ''}`)),
-    importGDriveFile: (fileId: string, artistId?: number, albumId?: number) => handleResponse(api.post<{ success: boolean, trackId: number }>('storage/gdrive/import', { fileId, artistId, albumId })),
-    importGDriveFolderRecursive: (folderId: string, artistId?: number, albumId?: number) => handleResponse(api.post<{ success: boolean, count: number, message: string }>('storage/gdrive/import-folder', { folderId, artistId, albumId })),
-    localizeGDriveTrack: (trackId: string | number) => handleResponse(api.post<{ success: boolean, track: Track }>(`storage/gdrive/localize/${trackId}`)),
-    deleteGDriveAccount: (id: number) => handleResponse(api.delete(`storage/gdrive/accounts/${id}`)),
     getStorageOverview: () => handleResponse(api.get<InstanceStorage>('admin/storage/overview')),
     recomputeStorage: () => handleResponse(api.post<RecomputeStorageResult>('admin/storage/recompute')),
     getSystemResources: () => handleResponse(api.get<SystemResources>('admin/system/resources')),

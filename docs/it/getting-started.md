@@ -90,7 +90,7 @@ TuneCamp leggerà i tag dei metadati, genererà le forme d'onda e caricherà le 
 
 Per caricare invece tramite browser, **`/admin/release/new`** crea una release e ne carica l'audio in un colpo solo, compilando titolo, artista, anno ed elenco tracce dai tag dei file stessi.
 
-Puoi anche importare file musicali tramite il [bot Telegram](./telegram.md), l'[app desktop Sidecamp](./sidecamp.md) (Soulseek, torrent, yt-dlp) o [Google Drive](./google-drive.md).
+Puoi anche importare file musicali tramite il [bot Telegram](./telegram.md) o l'[app desktop Sidecamp](./sidecamp.md) (Soulseek, torrent, yt-dlp).
 
 **[Aggiungere Musica](./adding-music.md) è il riferimento completo** — struttura della libreria su disco, a cosa serve ogni cartella sotto `music/` e come modificare la libreria senza confondere il database.
 

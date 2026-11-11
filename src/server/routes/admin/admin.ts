@@ -113,7 +113,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 	const torrentService = container.torrentService;
 	const metadataService = container.metadataService;
 	const streamingService = container.streamingService;
-	const gdriveService = container.gdriveService;
 	const playlistService = container.playlistService;
 	const scrobbleService = container.scrobbleService;
 	const maintenance = container.maintenanceService;
@@ -588,8 +587,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 				lastfm_api_key,
 				lastfm_session_key,
 				listenbrainz_token,
-				google_drive_client_id,
-				google_drive_client_secret,
 				themeFont,
 				themeBlur,
 				themeOverlayOpacity,
@@ -958,16 +955,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
 			if (listenbrainz_token !== undefined) {
 				identity.setSetting("listenbrainz_token", listenbrainz_token);
-			}
-
-			if (google_drive_client_id !== undefined) {
-				identity.setSetting("google_drive_client_id", google_drive_client_id);
-			}
-			if (google_drive_client_secret !== undefined) {
-				identity.setSetting(
-					"google_drive_client_secret",
-					google_drive_client_secret,
-				);
 			}
 
 			// Restart telegram bot if settings changed
@@ -3286,12 +3273,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 		results.stripe = {
 			configured: !!stripeKey,
 			webhookConfigured: !!stripeWebhook,
-		};
-
-		// 8. Google Drive
-		results.gdrive = {
-			configured: !!(config.gdriveClientId && config.gdriveClientSecret),
-			active: !!gdriveService,
 		};
 
 		// 9. YouTube
