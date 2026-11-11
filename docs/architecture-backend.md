@@ -78,8 +78,6 @@ TuneCamp uses **SQLite** as its relational database engine for managing music me
 
 ### Retired: chat tables
 
-Peer chat was removed; `peer_chat_messages`, `peer_chat_bans`, `peer_chat_mutes`, `chat_rooms`, `chat_room_members` and `chat_room_messages` are still created for rollback safety but nothing reads or writes them. Dropping them is a pending migration.
-
 ### P2P Peer Sharing (Sidecamp)
 
 - **`peer_sessions`**: Active daemon connection sessions authenticated over `/ws/peer`.
