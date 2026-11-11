@@ -25,15 +25,6 @@ describe("ServiceContainer", () => {
 		expect(resolved).toBe(mockIdentity);
 	});
 
-	test("resolveService returns undefined for optional services if not present", () => {
-		const container: any = {
-			database: { someOtherProp: true },
-		};
-
-		expect(resolveService(container, "ytdlpService" as any)).toBeUndefined();
-		expect(resolveService(container, "torrentService" as any)).toBeUndefined();
-	});
-
 	test("resolveService falls back to container.database if service is not found", () => {
 		const mockDb: any = { query: () => {} };
 		const container: any = {

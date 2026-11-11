@@ -47,7 +47,7 @@ describe('Database core: schema, views, triggers & utilities', () => {
 			'playlists', 'playlist_tracks', 'starred_items', 'item_ratings',
 			'play_history', 'posts', 'followers', 'following', 'remote_actors',
 			'remote_content', 'settings', 'api_tokens', 'zen_users',
-			'unlock_codes', 'assets', 'storage_accounts', 'torrents',
+			'unlock_codes', 'assets', 'storage_accounts',
 			'system_plugins', 'bookmarks', 'fedify_kv', 'comments', 'reports',
 			'board_messages', 'peer_chat_messages', 'peer_chat_bans',
 			'peer_chat_mutes', 'chat_rooms', 'chat_room_members',

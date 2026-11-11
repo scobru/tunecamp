@@ -135,10 +135,6 @@ const mockMediaEngine = {
     getStream: jest.fn(),
 } as any;
 
-const mockYtdlpService = {
-    localizeTrack: jest.fn().mockResolvedValue({ id: 4242 } as never),
-} as any;
-
 describe('Tracks Routes', () => {
     let app: express.Express;
 
@@ -169,7 +165,6 @@ describe('Tracks Routes', () => {
             social: mockSocial,
             discoveryService: mockDiscoveryService,
             mediaEngine: mockMediaEngine,
-            ytdlpService: mockYtdlpService,
             musicDir: '/tmp/music'
         } as any);
         app.use('/tracks', router);

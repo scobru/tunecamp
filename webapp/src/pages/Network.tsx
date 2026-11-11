@@ -322,19 +322,6 @@ const TrackCard = memo(({
           <div className="text-xs font-mono opacity-40">
             {formatDuration(duration)}
           </div>
-          {item.magnetUri && (
-            <button
-              className="btn btn-xs btn-ghost btn-circle tooltip tooltip-left"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigator.clipboard.writeText(item.magnetUri!);
-                notify.success("Magnet link copied");
-              }}
-              data-tip="Copy magnet link"
-            >
-              <Magnet size={14} className="opacity-70" />
-            </button>
-          )}
           {isAdmin && isPeer && item.downloadUrl && (
             <button
               className="btn btn-xs btn-ghost btn-circle tooltip tooltip-left"
@@ -711,7 +698,7 @@ const Network = () => {
           <input
             type="text"
             className="grow"
-            placeholder="Search title, artist, magnet..."
+            placeholder="Search title, artist..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />

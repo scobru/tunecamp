@@ -29,5 +29,5 @@ export async function registerBuiltInDownloadProviders(
 		console.error("Failed to sync download registry:", e);
 	}
 
-	return { cleanups, torrentService: undefined, ytdlpService: undefined };
+	return { cleanups };
 }

@@ -82,52 +82,6 @@ describe('PublishingService', () => {
         });
     }
 
-    describe('setTorrentService', () => {
-        test('should allow setting torrent service and using it for seeding', async () => {
-            const torrentServiceMock = {
-                seedFiles: jest.fn<any>().mockResolvedValue('magnet:?xt=urn:btih:testmagnet')
-            };
-
-            publishingService.setTorrentService(torrentServiceMock);
-
-            db.createUser('testuser10', 'hash');
-db.createArtist('Test Artist 10', 'bio', 'photo', [], null, null, 'public', 'external');
-const albumId = db.createAlbum({
-                title: 'Torrent Album',
-                slug: 'torrent-album',
-                artist_id: 1,
-                date: '2023-01-01',
-                visibility: 'public',
-                published_to_zen: true,
-                published_to_ap: true,
-                cover_path: null,
-                genre: null,
-                description: null,
-                download: 'free',
-                external_links: null,
-                published_at: null,
-                type: 'album',
-                year: 2023,
-                owner_id: 1,
-                price: 0,
-                price_usdc: 0,
-                currency: 'USD',
-                status: 'released',
-                license: null,
-                is_public: true,
-                is_release: false,
-                use_nft: true,
-                album_artist: null
-            });
-            createFullTrack(albumId);
-            db.promoteToRelease(albumId);
-
-            await publishingService.syncRelease(albumId);
-
-            expect(torrentServiceMock.seedFiles).toHaveBeenCalled();
-        });
-    });
-
     describe('syncCommunityFollows', () => {
         test('should discover and follow new community sites', async () => {
             federatedDiscoveryMock.getCommunitySites = jest.fn<any>().mockReturnValue([

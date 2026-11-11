@@ -17,7 +17,6 @@ import multer from "multer";
 import { discardUploadOnError } from "../../middleware/uploads.js";
 
 import { getDownloadService } from "../../modules/catalog/download.service.js";
-import { isDownloadProviderEnabled } from "../../middleware/provider-gate.js";
 import { aiService } from "../../modules/ai/ai.service.js";
 import { taskManager } from "../../modules/workers/task-manager.js";
 import { createRssService } from "../../modules/network/rss.service.js";
@@ -110,7 +109,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 	const publishingService = container.publishingService;
 	const apService = container.apService;
 	const telegramBotService = container.telegramBotService;
-	const torrentService = container.torrentService;
 	const metadataService = container.metadataService;
 	const streamingService = container.streamingService;
 	const playlistService = container.playlistService;
@@ -3180,32 +3178,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 			return res.status(403).json({ error: "Admin access required" });
 
 		const results: any = {};
-
-		// 1. Torrent
-		try {
-			if (
-				torrentService &&
-				getDownloadService()?.getRegistry().isEnabled("torrent")
-			) {
-				const torrents = torrentService.getTorrentsStatus();
-				const totalPeers = torrents.reduce(
-					(sum: number, t: any) => sum + (t.numPeers || 0),
-					0,
-				);
-				results.torrent = {
-					connected: true,
-					totalPeers,
-					activeTorrents: torrents.length,
-				};
-			} else {
-				results.torrent = {
-					connected: false,
-					error: torrentService ? "Disabled" : "Plugin not loaded",
-				};
-			}
-		} catch (e) {
-			results.torrent = { connected: false, error: "Service error" };
-		}
 
 		// 2. iTunes
 		try {

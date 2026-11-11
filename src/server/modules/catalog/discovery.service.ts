@@ -76,17 +76,6 @@ export class DiscoveryService {
         }
         (mapped as any).tracks = tracks;
 
-        // Surface an active seed's magnet so peers can offer a torrent download
-        // alongside streaming. Matched by title against the torrents table since
-        // seeds aren't FK-linked to releases (seeding predates and postdates
-        // publishing — see PublishingService.seedReleaseForDistribution).
-        try {
-            const torrent = (this.database as any).db
-                .prepare("SELECT magnet_uri FROM torrents WHERE name = ? COLLATE NOCASE AND status IN ('seeding', 'completed') AND magnet_uri IS NOT NULL")
-                .get(r.title) as { magnet_uri: string } | undefined;
-            if (torrent) (mapped as any).magnetUri = torrent.magnet_uri;
-        } catch { /* best effort */ }
-
         return mapped;
     }
 
