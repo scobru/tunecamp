@@ -108,7 +108,6 @@ TuneCamp supports three distinct operating modes, selectable during the setup wi
 ### Content Acquisition
 
 - 🏷️ **Discogs Metadata**: Match tracks against the Discogs database for accurate tagging.
-- ☁️ **Google Drive Storage**: Optional Google Drive backend for media storage. See [google-drive.md](docs/google-drive.md).
 - 🔌 **Sidecamp Acquisition**: Music acquisition (Soulseek, BitTorrent, yt-dlp, Internet Archive) lives in [Sidecamp](#tunecamp-ecosystem), the desktop companion app — the server stays a pure host.
 
 ### Deployment
@@ -282,8 +281,6 @@ Configuration is managed via environment variables (or an `.env` file).
 | `OPENROUTER_API_KEY`            | OpenRouter API key for the Linda AI assistant                    | —                 |
 | `OPENROUTER_MODEL`              | OpenRouter model id                                              | `openrouter/free` |
 | `DISCOGS_TOKEN`                 | Discogs API token for metadata matching (also settable in admin) | —                 |
-| `TUNECAMP_GDRIVE_CLIENT_ID`     | Google Drive OAuth client ID for storage backend                 | —                 |
-| `TUNECAMP_GDRIVE_CLIENT_SECRET` | Google Drive OAuth client secret                                 | —                 |
 
 > Last.fm and ListenBrainz scrobbling are configured per-user in the app settings (no environment variable needed).
 

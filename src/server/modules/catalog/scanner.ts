@@ -928,9 +928,9 @@ export class Scanner implements ScannerService {
 
         for (const t of tracksIter) {
             if (!t.file_path) continue;
-            // Ignore Google Drive and remote tracks
+            // Ignore remote tracks
             if (t.service && t.service !== 'local-fs') continue;
-            if (t.file_path.startsWith('gdrive://') || t.file_path.startsWith('http://') || t.file_path.startsWith('https://')) continue;
+            if (t.file_path.startsWith('http://') || t.file_path.startsWith('https://')) continue;
 
             const pKey = t.file_path.toLowerCase();
             const pExists = knownFiles.has(pKey);

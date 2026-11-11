@@ -31,7 +31,7 @@ Full session rules live in `.claude/CLAUDE.md` (git workflow, architecture decis
 ## Work Guidance
 
 - Root `package.json` workspaces include `webapp` — installing at repo root covers both.
-- `postinstall` runs `scripts/patch-ffmpeg.js` and `scripts/patch-slsk.js`; don't remove without checking why they exist (native module patches).
+- `postinstall` runs `scripts/patch-ffmpeg.js`; don't remove without checking why it exists (native module patch).
 
 ## Verification
 

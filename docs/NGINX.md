@@ -116,7 +116,7 @@ paths must point to your `TUNECAMP_MUSIC_DIR` and your transcode cache directory
 the app — they are never directly accessible to clients, so auth is still enforced by
 Tunecamp before the redirect is issued.
 
-> **Note:** This only offloads *local* files. Google Drive, external providers, and
+> **Note:** This only offloads *local* files. External providers and
 > live (seek) transcodes still stream through Node, which is correct. The transcode
 > **cache** (enabled independently) is what makes most transcoded streams eligible
 > for offload after the first request.

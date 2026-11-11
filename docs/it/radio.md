@@ -8,7 +8,7 @@ TuneCamp può trasmettere una singola **stazione radio sempre attiva** attingend
 
 Quando avvii la stazione, TuneCamp risolve le sorgenti selezionate in una coda di tracce, scrive una playlist `concat` per FFmpeg e avvia un processo FFmpeg per produrre uno stream HLS ciclico (`-stream_loop -1`, in modo che la coda si ripeta all'infinito). Gli ascoltatori scaricano la playlist HLS; la stazione sopravvive al riavvio del server e riprende automaticamente (vedi la guida al [Monitoraggio](./monitoring.md) per lo stato di salute dei processi).
 
-> **Solo file locali.** La radio può trasmettere solo tracce che dispongono di un file audio reale memorizzato sul server. Le tracce su cloud (`gdrive://`), esterne e di rete non hanno un file locale e vengono saltate silenziosamente. Se *nessuna* delle tue scelte dispone di un file locale, l'avvio della stazione fallirà con un errore chiaro.
+> **Solo file locali.** La radio può trasmettere solo tracce che dispongono di un file audio reale memorizzato sul server. Le tracce esterne e di rete non hanno un file locale e vengono saltate silenziosamente. Se *nessuna* delle tue scelte dispone di un file locale, l'avvio della stazione fallirà con un errore chiaro.
 
 ## Creare una stazione (Admin → Radio)
 

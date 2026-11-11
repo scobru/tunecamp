@@ -313,27 +313,6 @@ export interface ScannerProvider extends TuneCampProvider {
 }
 
 /**
- * Provider for cloud/remote storage backends (Google Drive, S3, IPFS, etc.)
- * Handles storing and retrieving user-uploaded music files.
- */
-export interface StorageProvider extends TuneCampProvider {
-    /** Uploads a file from a local path to the remote storage */
-    upload(localPath: string, remotePath: string): Promise<string>;
-
-    /** Downloads a file from remote storage to a local path */
-    download(remotePath: string, localPath: string): Promise<void>;
-
-    /** Returns a public/signed URL for a remote file */
-    getUrl(remotePath: string): Promise<string | null>;
-
-    /** Checks if a remote file exists */
-    exists(remotePath: string): Promise<boolean>;
-
-    /** Deletes a file from remote storage */
-    delete(remotePath: string): Promise<void>;
-}
-
-/**
  * Provider for AI/LLM services (OpenRouter, Ollama, local models, etc.)
  * Used for generating metadata, descriptions, tags, and recommendations.
  */

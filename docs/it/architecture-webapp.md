@@ -48,7 +48,7 @@ Le integrazioni opzionali (Telegram, OpenRouter/AI, provider di metadati, YouTub
 Store Zustand, uno per ciascuna area:
 
 - `useAuthStore`: utente connesso, stato sessione/JWT, ruolo.
-- `useConfigStore`: salute delle integrazioni backend (Soulseek, iTunes, MusicBrainz, Discogs, Telegram, OpenRouter, Stripe, MoonPay, Google Drive, YouTube, Spotify, …) usata per i badge di stato dei plugin.
+- `useConfigStore`: salute delle integrazioni backend (Soulseek, iTunes, MusicBrainz, Discogs, Telegram, OpenRouter, Stripe, MoonPay, YouTube, Spotify, …) usata per i badge di stato dei plugin.
 - `useSiteSettingsStore`: impostazioni pubbliche dell'istanza e flag di visibilità per modulo (`hideLive`, `hideStore`, `hideSocial`, `hideNetwork`, `hideSamples`, `hideCollab`) consumati da `ModuleGuard`.
 - `usePlayerStore`: stato di riproduzione — traccia corrente, coda, coda originale/shuffle, volume, avanzamento (persistito).
 - `useNowPlayingStore`: preferenza opt-in "now listening" dell'utente, sincronizzata con l'heartbeat del player.

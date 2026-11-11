@@ -16,7 +16,7 @@ A full TuneCamp backup is a gzipped TAR archive (`.tar.gz`) that contains:
 Admins can trigger a backup via the UI or API:
 - **Route**: `GET /api/admin/backup/full`
 - **Output**: A downloadable `.tar.gz` archive (`Content-Type: application/gzip`).
-- **Other routes**: `GET /api/admin/backup/audio` (audio-only), `POST /api/admin/backup/gdrive` (back up to Google Drive).
+- **Other routes**: `GET /api/admin/backup/audio` (audio-only).
 
 ## 3. Migration (Restore) Flow
 

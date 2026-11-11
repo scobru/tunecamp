@@ -17,7 +17,6 @@ import multer from "multer";
 import { discardUploadOnError } from "../../middleware/uploads.js";
 
 import { getDownloadService } from "../../modules/catalog/download.service.js";
-import { isDownloadProviderEnabled } from "../../middleware/provider-gate.js";
 import { aiService } from "../../modules/ai/ai.service.js";
 import { taskManager } from "../../modules/workers/task-manager.js";
 import { createRssService } from "../../modules/network/rss.service.js";
@@ -110,10 +109,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 	const publishingService = container.publishingService;
 	const apService = container.apService;
 	const telegramBotService = container.telegramBotService;
-	const torrentService = container.torrentService;
 	const metadataService = container.metadataService;
 	const streamingService = container.streamingService;
-	const gdriveService = container.gdriveService;
 	const playlistService = container.playlistService;
 	const scrobbleService = container.scrobbleService;
 	const maintenance = container.maintenanceService;
@@ -588,8 +585,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 				lastfm_api_key,
 				lastfm_session_key,
 				listenbrainz_token,
-				google_drive_client_id,
-				google_drive_client_secret,
 				themeFont,
 				themeBlur,
 				themeOverlayOpacity,
@@ -958,16 +953,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
 			if (listenbrainz_token !== undefined) {
 				identity.setSetting("listenbrainz_token", listenbrainz_token);
-			}
-
-			if (google_drive_client_id !== undefined) {
-				identity.setSetting("google_drive_client_id", google_drive_client_id);
-			}
-			if (google_drive_client_secret !== undefined) {
-				identity.setSetting(
-					"google_drive_client_secret",
-					google_drive_client_secret,
-				);
 			}
 
 			// Restart telegram bot if settings changed
@@ -3194,32 +3179,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
 		const results: any = {};
 
-		// 1. Torrent
-		try {
-			if (
-				torrentService &&
-				getDownloadService()?.getRegistry().isEnabled("torrent")
-			) {
-				const torrents = torrentService.getTorrentsStatus();
-				const totalPeers = torrents.reduce(
-					(sum: number, t: any) => sum + (t.numPeers || 0),
-					0,
-				);
-				results.torrent = {
-					connected: true,
-					totalPeers,
-					activeTorrents: torrents.length,
-				};
-			} else {
-				results.torrent = {
-					connected: false,
-					error: torrentService ? "Disabled" : "Plugin not loaded",
-				};
-			}
-		} catch (e) {
-			results.torrent = { connected: false, error: "Service error" };
-		}
-
 		// 2. iTunes
 		try {
 			const controller = new AbortController();
@@ -3286,12 +3245,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 		results.stripe = {
 			configured: !!stripeKey,
 			webhookConfigured: !!stripeWebhook,
-		};
-
-		// 8. Google Drive
-		results.gdrive = {
-			configured: !!(config.gdriveClientId && config.gdriveClientSecret),
-			active: !!gdriveService,
 		};
 
 		// 9. YouTube

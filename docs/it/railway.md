@@ -47,7 +47,6 @@ Modifica la password immediatamente in **Admin → Impostazioni**.
 I volumi di Railway rimangono intatti dopo i re-deploy. Il tuo database SQLite e i file multimediali caricati/scansionati risiedono all'interno del volume. Se devi caricare una grande libreria, utilizza uno dei percorsi di acquisizione remota anziché lo script di scansione locale:
 
 - [Bot Telegram](./telegram.md)
-- [Google Drive](./google-drive.md)
 
 ## Limiti
 

@@ -40,19 +40,6 @@ Stripe Connect lets you route fiat payments directly to each artist's Stripe acc
 
 ---
 
-## 3. Cloud Storage
-
-### Google Drive (Streaming & Import)
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
-2. Create a new project.
-3. Enable the **Google Drive API**.
-4. Go to *APIs & Services > Credentials*.
-5. Create an **OAuth 2.0 Client ID** (type "Web application").
-6. Add the authorized redirect URIs: `https://your-domain.com/api/storage/gdrive/callback`.
-7. Copy the `Client ID` and the `Client Secret`.
-
----
-
 ## 4. Transactional Email
 
 ### Brevo (Password Reset)
@@ -114,4 +101,4 @@ For the setup guide and how to use the bridge script, see [mcp-setup-guide.md](.
 ---
 
 ## Verification
-After entering the keys, restart the TuneCamp server. Check the startup logs to make sure the services (Telegram, GDrive) are initialized correctly without authentication errors.
+After entering the keys, restart the TuneCamp server. Check the startup logs to make sure the services (Telegram, etc.) are initialized correctly without authentication errors.

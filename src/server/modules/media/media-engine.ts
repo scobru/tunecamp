@@ -3,7 +3,6 @@ import fs from "fs-extra";
 import crypto from "crypto";
 import { Readable } from "stream";
 import type { DatabaseService, Track } from "../../core/database.js";
-import type { GoogleDriveService } from "../storage/google-drive.service.js";
 import type { StreamingService } from "../streaming/streaming.service.js";
 import { transcode, transcodeToFile, tryAcquireLiveSlot, releaseLiveSlot } from "./ffmpeg.js";
 import { NotFoundError, ServiceUnavailableError } from "../../common/errors.js";
@@ -81,7 +80,6 @@ export class MediaEngine {
   constructor(
     private database: DatabaseService,
     private musicDir: string,
-    private gdriveService?: GoogleDriveService,
     private streamingService?: StreamingService,
     opts: MediaEngineOptions = {}
   ) {
@@ -96,7 +94,7 @@ export class MediaEngine {
 
   /**
    * Main entry point for streaming a track.
-   * Handles local files, Google Drive, and streaming provider fallbacks.
+   * Handles local files and streaming provider fallbacks.
    */
   async getStream(options: StreamOptions): Promise<StreamResult> {
     let track: Track | undefined;
@@ -109,7 +107,7 @@ export class MediaEngine {
         
         // 2. If not in DB, handle as direct external stream (e.g. from global search)
         if (!track) {
-            return this.handleExternalStream(options.externalId, undefined, options.range);
+            return this.handleExternalStream(options.externalId);
         }
     }
 
@@ -117,12 +115,7 @@ export class MediaEngine {
       throw new NotFoundError("Track not found");
     }
 
-    // 1. Handle Google Drive
-    if (track.file_path?.startsWith("gdrive://")) {
-      return this.handleGDriveStream(track, options.range);
-    }
-
-    // 2. Handle Local Files (a localized/ripped track always wins over any
+    // 1. Handle Local Files (a localized/ripped track always wins over any
     // leftover external_id/url from before it was downloaded)
     if (track.file_path) {
       const { trackPath, isLosslessFallback } = await this.resolveLocalPath(track);
@@ -135,51 +128,24 @@ export class MediaEngine {
     const extId = track.external_id || track.url;
     if (extId && (extId.startsWith("ext:") || extId.startsWith("http://") || extId.startsWith("https://"))) {
       if (extId.startsWith("http://") || extId.startsWith("https://")) {
-        return this.handleExternalStream(`ext:link:${extId}`, track, options.range);
+        return this.handleExternalStream(`ext:link:${extId}`);
       }
-      return this.handleExternalStream(extId, track, options.range);
+      return this.handleExternalStream(extId);
     }
 
     throw new NotFoundError("Audio source not found");
   }
 
-  private async handleExternalStream(extId: string, track?: Track, range?: string): Promise<StreamResult> {
+  private async handleExternalStream(extId: string): Promise<StreamResult> {
     const parts = extId.split(":");
     const providerId = parts[1];
     const originalId = parts.slice(2).join(":");
 
-    // If providerId is 'link', 'gdrive', or 'dropbox', the originalId is already the direct stream/download URL.
+    // If providerId is 'link', 'gdrive', or 'dropbox', the originalId is already a
+    // direct stream/download URL (incl. public Google Drive export links) — just
+    // redirect the client to the generic streaming proxy.
     if (providerId === 'link' || providerId === 'gdrive' || providerId === 'dropbox') {
-      const url = originalId;
-      
-      // If it is a Google Drive URL, extract file ID and stream/proxy
-      if (url.includes("drive.google.com")) {
-        const gdriveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
-                            url.match(/id=([a-zA-Z0-9_-]+)/) ||
-                            url.match(/\/uc\?export=download&id=([a-zA-Z0-9_-]+)/);
-        const gdriveFileId = gdriveMatch ? gdriveMatch[1] : null;
-
-        if (gdriveFileId) {
-          if (this.gdriveService) {
-            const ownerId = track?.owner_id || this.database.getPrimaryAdminId() || 1;
-            const { stream, status, headers } = await this.gdriveService.getFileStream(ownerId, gdriveFileId, range);
-            return {
-              stream: stream as Readable,
-              contentType: headers['content-type'] || 'audio/mpeg',
-              contentLength: headers['content-length'] ? parseInt(headers['content-length'] as string) : undefined,
-              contentRange: headers['content-range'] as string,
-              statusCode: status
-            };
-          } else {
-            // Fallback to Google Drive public export link via proxy
-            const downloadUrl = `https://drive.google.com/uc?export=download&id=${gdriveFileId}`;
-            throw new Error(`REDIRECT:/api/proxy/stream?url=${encodeURIComponent(downloadUrl)}`);
-          }
-        }
-      }
-
-      // Otherwise, redirect to proxy for direct stream
-      throw new Error(`REDIRECT:/api/proxy/stream?url=${encodeURIComponent(url)}`);
+      throw new Error(`REDIRECT:/api/proxy/stream?url=${encodeURIComponent(originalId)}`);
     }
 
     if (!this.streamingService) throw new Error("Streaming service not available");
@@ -195,22 +161,6 @@ export class MediaEngine {
     if (!url) throw new NotFoundError("External stream not found");
 
     throw new Error(`REDIRECT:/api/proxy/stream?url=${encodeURIComponent(url)}`);
-  }
-
-  private async handleGDriveStream(track: Track, range?: string): Promise<StreamResult> {
-    if (!this.gdriveService) throw new Error("Google Drive service not available");
-    
-    const fileId = track.file_path!.substring(9);
-    const ownerId = track.owner_id || this.database.getPrimaryAdminId() || 1;
-    const { stream, status, headers } = await this.gdriveService.getFileStream(ownerId, fileId, range);
-
-    return {
-      stream: stream as Readable,
-      contentType: headers['content-type'] || 'audio/mpeg',
-      contentLength: headers['content-length'] ? parseInt(headers['content-length'] as string) : undefined,
-      contentRange: headers['content-range'] as string,
-      statusCode: status
-    };
   }
 
   private async resolveLocalPath(track: Track): Promise<{ trackPath: string | null; isLosslessFallback: boolean }> {

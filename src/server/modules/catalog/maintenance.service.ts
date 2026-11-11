@@ -708,7 +708,7 @@ export class MaintenanceService {
             const missingLimit = pLimit(20);
             const missingChecks = await Promise.all(tracks.map(t => missingLimit(async () => {
                 const p = t.file_path;
-                if (!p || p.startsWith('http') || p.startsWith('gdrive://')) return null;
+                if (!p || p.startsWith('http')) return null;
                 const abs = path.isAbsolute(p) ? p : path.join(this.musicDir, p);
                 return (await fs.pathExists(abs)) ? null : t;
             })));

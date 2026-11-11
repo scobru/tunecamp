@@ -39,9 +39,9 @@ URLs the browser loads by itself (`<audio>` streams, download links, the board E
 | `POST` | `/api/tracks` | Create a track from metadata (a link, or a row awaiting its file). The audio is **not** fetched: the track is created with no `file_path` until a file is uploaded for it. There is no `localize` option here — this server does not download audio from streaming platforms |
 | `GET` | `/api/tracks` | List tracks visible to the caller. Each row carries `downloadable`: whether THIS viewer may take the file, not just stream it (clients offering a download button read it instead of guessing) |
 | `GET` | `/api/tracks/:id` | Track metadata |
-| `GET` | `/api/tracks/:id/stream` | Binary audio stream (supports `Range` for cloud tracks) |
+| `GET` | `/api/tracks/:id/stream` | Binary audio stream (supports `Range`) |
 | `GET` | `/api/tracks/:id/download` | Download a single track's local audio file. Gated by the release's distribution mode: paid content needs an unlock code (`?code=`), a recorded purchase or an active subscription (`402` otherwise), streaming-only and external-showcase releases answer `403`. Staff, the owner and the linked artist bypass it |
-| `POST` | `/api/tracks/:id/localize` | Admin-only: copy a cloud-backed track (a `gdrive://` path) into a durable local file. Streaming platforms are refused with `400` — use [Sidecamp](./sidecamp.md) |
+| `POST` | `/api/tracks/:id/localize` | Disabled: localizing a cloud-backed track is no longer supported, always answers `400` — use [Sidecamp](./sidecamp.md) |
 | `GET` | `/api/albums/:id/download` | Download a ZIP of the album's local audio files (skips streaming/linked tracks). Same distribution-mode gate as the single-track route |
 | `GET` | `/api/releases/:id/download` | Download a ZIP of a release's local audio files. Resolves numeric id or slug; private releases gated to owner/admin, and the same distribution-mode gate as the single-track route applies |
 | `GET` | `/api/waveform/:id` | Waveform data for visualisation |
@@ -105,15 +105,6 @@ All routes require login. See [COLLAB.md](COLLAB.md) for the full feature writeu
 | `POST` | `/api/payments/verify` | Verify an on-chain transaction (ETH/USDC) on Base |
 | `GET` | `/api/payments/download/:trackId?code=...` | Download a purchased track via unlock code |
 | `GET` | `/api/payments/rate/USD` | Current ETH/USD exchange rate |
-
-### Storage & Cloud (`/api/storage`)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/storage/gdrive/auth` | Start the Google Drive OAuth2 flow |
-| `GET` | `/api/storage/gdrive/files` | List files and folders on Google Drive |
-| `POST` | `/api/storage/gdrive/import` | Import a Drive file as a `gdrive://` reference |
-| `POST` | `/api/storage/gdrive/localize/:id` | Permanently download a cloud file to the local server |
 
 ### Metadata & External Search (`/api/metadata`)
 

@@ -87,7 +87,7 @@ Altre due strade d'ingresso, entrambe con scansione del file all'arrivo:
 
 - **Caricamento dall'interfaccia web** — vedi *Caricare dall'interfaccia web* qui
   sotto.
-- **[Bot Telegram](./telegram.md)**, **[Google Drive](./google-drive.md)** o
+- **[Bot Telegram](./telegram.md)** o
   l'app desktop **[Sidecamp](./sidecamp.md)** (Soulseek, torrent, yt-dlp).
 
 ## 4. Da bozza a pubblico: cosa crea davvero una scansione
@@ -219,5 +219,4 @@ elimina e ascolta l'audio in anteprima.
 - [Avvio Rapido](./getting-started.md) — installazione e primo accesso
 - [Ruoli e Permessi](./ROLES.md) — chi può caricare e pubblicare
 - [Backup e Migrazione](./backup-migration.md) — spostare libreria e database
-- [Telegram](./telegram.md) · [Google Drive](./google-drive.md) ·
-  [Sidecamp](./sidecamp.md) — altri percorsi di ingestione
+- [Telegram](./telegram.md) · [Sidecamp](./sidecamp.md) — altri percorsi di ingestione

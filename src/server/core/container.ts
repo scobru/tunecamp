@@ -19,7 +19,6 @@ import type { CatalogService } from "../modules/catalog/catalog.service.js";
 import type { DiscoveryService } from "../modules/catalog/discovery.service.js";
 import type { MetadataService } from "../modules/catalog/metadata.service.js";
 import type { MaintenanceService } from "../modules/catalog/maintenance.service.js";
-import type { YtdlpServiceContract } from "./plugin-contracts.js";
 import type { MediaEngine } from "../modules/media/media-engine.js";
 import type { WaveformService } from "../modules/waveform/waveform.service.js";
 import type { StreamingService } from "../modules/streaming/streaming.service.js";
@@ -29,8 +28,6 @@ import type { FederatedDiscoveryService } from "../modules/network/federated-dis
 import type { CatalogCacheService } from "../modules/network/catalog-cache.service.js";
 import type { LifecycleService } from "../modules/catalog/lifecycle.service.js";
 import type { TelegramBotService } from "../modules/integrations/telegram-bot.js";
-import type { TorrentServiceContract } from "./plugin-contracts.js";
-import type { GoogleDriveService } from "../modules/storage/google-drive.service.js";
 import type { SubsonicService } from "../modules/subsonic/subsonic.service.js";
 import type { ScrobbleService } from "../modules/scrobble/scrobble.service.js";
 import type { PlaylistService } from "../modules/catalog/playlist.service.js";
@@ -66,7 +63,6 @@ export interface ServiceContainer {
 	discoveryService: DiscoveryService;
 	metadataService: MetadataService;
 	maintenanceService: MaintenanceService;
-	ytdlpService?: YtdlpServiceContract;
 
 	// Media & Playback
 	mediaEngine: MediaEngine;
@@ -85,8 +81,6 @@ export interface ServiceContainer {
 
 	// Integrations
 	telegramBotService: TelegramBotService;
-	torrentService?: TorrentServiceContract;
-	gdriveService?: GoogleDriveService;
 	boardService: BoardService;
 	liveService: LiveService;
 	radioService: RadioService;
@@ -117,7 +111,7 @@ export function resolveService<K extends keyof ServiceContainer>(
 	}
 
 	// Optional services should not fall back to the database itself when not present
-	const optionalKeys = ["ytdlpService", "torrentService", "gdriveService"];
+	const optionalKeys: string[] = [];
 	if (optionalKeys.includes(key as string)) {
 		return undefined as any;
 	}

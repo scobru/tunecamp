@@ -16,7 +16,7 @@ Un backup completo di TuneCamp è un archivio TAR compresso (`.tar.gz`) che cont
 Gli amministratori possono avviare un backup tramite l'interfaccia utente (UI) o l'API:
 - **Rotta**: `GET /api/admin/backup/full`
 - **Output**: Un archivio `.tar.gz` scaricabile (`Content-Type: application/gzip`).
-- **Altre rotte**: `GET /api/admin/backup/audio` (solo file audio), `POST /api/admin/backup/gdrive` (backup su Google Drive).
+- **Altre rotte**: `GET /api/admin/backup/audio` (solo file audio).
 
 ## 3. Flusso di Migrazione (Ripristino)
 

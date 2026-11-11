@@ -35,7 +35,6 @@ describe('useConfigStore', () => {
             openrouter: { configured: true, model: 'gpt-4' },
             stripe: { configured: true, webhookConfigured: true },
             moonpay: { configured: false },
-            gdrive: { configured: true, active: true },
             youtube: { online: true },
             spotify: { online: true },
             soundcloud: { online: true },
@@ -75,7 +74,6 @@ describe('useConfigStore', () => {
     test('isConfigured works correctly based on service status properties', () => {
         const mockHealth: any = {
             stripe: { configured: true },
-            gdrive: { active: true },
             youtube: { online: true },
             telegram: { active: false },
         };
@@ -84,7 +82,6 @@ describe('useConfigStore', () => {
         const store = useConfigStore.getState();
 
         expect(store.isConfigured('stripe')).toBe(true);
-        expect(store.isConfigured('gdrive')).toBe(true);
         expect(store.isConfigured('youtube')).toBe(true);
         expect(store.isConfigured('telegram')).toBe(false);
         expect(store.isConfigured('discogs')).toBe(false); // not in mockHealth

@@ -90,7 +90,7 @@ TuneCamp reads tags, generates waveforms, and processes cover art. Scanned folde
 
 To upload via browser instead of dropping files, **`/admin/release/new`** creates a release and uploads its audio in one pass, filling the title, artist, year and track list from the files' own tags.
 
-You can also ingest music via the [Telegram bot](./telegram.md), [Sidecamp desktop app](./sidecamp.md) (Soulseek, torrents, yt-dlp), or [Google Drive](./google-drive.md).
+You can also ingest music via the [Telegram bot](./telegram.md) or the [Sidecamp desktop app](./sidecamp.md) (Soulseek, torrents, yt-dlp).
 
 **[Adding Music](./adding-music.md) is the full reference** — library layout on disk, what each folder under `music/` is for, and how to edit the library without confusing the database.
 

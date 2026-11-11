@@ -49,7 +49,6 @@ This document provides an honest and detailed comparison between **Funkwhale** a
 * **TuneCamp** includes dedicated ingestion tools for users collecting large music libraries:
   * **Soulseek & Torrent (opt-in, disabled by default)**: Integration that allows searching and downloading albums from P2P networks directly from the admin panel. Since these are legally "grey" sources — problematic as a default on a platform that sells music — these plugins are registered as disabled and require explicit activation by the admin via plugin toggles. The same applies to SoundCloud/Bandcamp stream scrapers. Legal responsibility for activation lies with the instance administrator.
   * **Telegram Bot**: A dedicated bot where the instance administrator can simply forward audio files in a chat to have them automatically added and processed on their TuneCamp server.
-  * **Google Drive Storage**: Allows using a remote Drive folder instead of local disk space to host music files.
 
 ---
 
@@ -64,4 +63,4 @@ This document provides an honest and detailed comparison between **Funkwhale** a
 * You are an independent artist, producer, or small label who wants to sell music directly, with no platform fees if you self-host your instance (only Stripe fees of ~2.9% + €0.30 and VPS costs remain — see [payments.md § 3.1](payments.md) for an honest breakdown).
 * You want a solution that can be configured in a few minutes on a small, cheap server (VPS) without having to configure multiple infrastructural components (Redis, PostgreSQL, Celery).
 * You want to experiment with blockchain-based distribution (Base Network) to create music NFTs and activate a fan-ownership model.
-* You want flexibility in file management via a Telegram bot or Google Drive storage.
+* You want flexibility in file management via a Telegram bot.

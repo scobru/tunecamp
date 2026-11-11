@@ -1,6 +1,6 @@
 {
   "name": "tunecamp",
-  "version": "6.3.8",
+  "version": "6.4.1",
   "description": "A decentralized music platform for artists and labels, with streaming, federation, and Subsonic API support",
   "main": "dist/server/server.js",
   "type": "module",
@@ -90,9 +90,6 @@
     "xmlbuilder2": "^4.0.3",
     "yaml": "^2.3.4",
     "yauzl": "^2.10.0"
-  },
-  "optionalDependencies": {
-    "webtorrent": "^2.8.5"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",

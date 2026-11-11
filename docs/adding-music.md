@@ -84,7 +84,7 @@ to an off-peak hour. It is `Disabled` by default.
 Two other ways in, both of which scan the file as it arrives:
 
 - **Upload through the web UI** — see *Uploading through the web UI* below.
-- **[Telegram bot](./telegram.md)**, **[Google Drive](./google-drive.md)**, or
+- **[Telegram bot](./telegram.md)** or
   the **[Sidecamp desktop app](./sidecamp.md)** (Soulseek, torrents, yt-dlp).
 
 ## 4. Draft → public: what a scan actually creates
@@ -214,5 +214,4 @@ audio in place.
 - [Getting Started](./getting-started.md) — install and first login
 - [Roles & Permissions](./ROLES.md) — who is allowed to upload and publish
 - [Backup & Migration](./backup-migration.md) — moving the library and database
-- [Telegram](./telegram.md) · [Google Drive](./google-drive.md) ·
-  [Sidecamp](./sidecamp.md) — other ingestion paths
+- [Telegram](./telegram.md) · [Sidecamp](./sidecamp.md) — other ingestion paths

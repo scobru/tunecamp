@@ -381,35 +381,6 @@ interface ListeningStats {
 	topGenres?: { genre: string; count: number }[];
 }
 
-export interface Torrent {
-	info_hash: string;
-	infoHash?: string;
-	name: string | null;
-	artist: string | null;
-	magnet_uri: string;
-	owner_id: number | null;
-	status:
-		| "metadata"
-		| "downloading"
-		| "seeding"
-		| "paused"
-		| "error"
-		| "completed"
-		| "failed";
-	progress: number;
-	download_speed: number;
-	downloadSpeed?: number;
-	upload_speed: number;
-	uploadSpeed?: number;
-	num_peers: number;
-	numPeers?: number;
-	size: number;
-	path: string | null;
-	added_at: string;
-	done?: boolean;
-	files?: any[];
-}
-
 export interface StorageAccount {
 	id: number;
 	user_id: number;
@@ -1068,24 +1039,6 @@ export interface IntegrationManager {
 	updateStorageAccount(id: number, account: Partial<StorageAccount>): void;
 	deleteStorageAccount(id: number): void;
 	getPrimaryAdminId(): number | null;
-
-	// Torrent downloads
-	getTorrents(): Torrent[];
-	getTorrent(hash: string): Torrent | undefined;
-	getTorrentsStatus(): any[];
-	createTorrent(torrent: Partial<Torrent>): void;
-	updateTorrentProgress(
-		infoHash: string,
-		progress: number,
-		status: Torrent["status"],
-		downloadSpeed: number,
-		uploadSpeed: number,
-		numPeers: number,
-		size: number,
-		path: string | null,
-	): void;
-	updateTorrentStatus(infoHash: string, status: Torrent["status"]): void;
-	deleteTorrent(hash: string): void;
 
 	// Unlock Codes
 	createUnlockCode(

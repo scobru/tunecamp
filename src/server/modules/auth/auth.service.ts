@@ -1378,11 +1378,6 @@ export function createAuthService(
 				// 4. Delete storage accounts (OAuth tokens)
 				db.prepare("DELETE FROM storage_accounts WHERE user_id = ?").run(id);
 
-				// 5. Reset torrent ownership
-				db.prepare(
-					"UPDATE torrents SET owner_id = NULL WHERE owner_id = ?",
-				).run(id);
-
 				// 7. Finally, delete the user
 				db.prepare("DELETE FROM admin WHERE id = ?").run(id);
 			})();
