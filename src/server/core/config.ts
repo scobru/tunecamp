@@ -26,8 +26,6 @@ export interface ServerConfig {
 	openrouterModel?: string;
 	stripeSecretKey?: string;
 	stripeWebhookSecret?: string;
-	gdriveClientId?: string;
-	gdriveClientSecret?: string;
 	brevoApiKey?: string;
 	brevoSenderEmail?: string;
 	brevoSenderName?: string;
@@ -200,11 +198,6 @@ export async function loadConfig(
 			process.env.STRIPE_SECRET_KEY || overrides?.stripeSecretKey,
 		stripeWebhookSecret:
 			process.env.STRIPE_WEBHOOK_SECRET || overrides?.stripeWebhookSecret,
-		gdriveClientId:
-			process.env.TUNECAMP_GDRIVE_CLIENT_ID || overrides?.gdriveClientId,
-		gdriveClientSecret:
-			process.env.TUNECAMP_GDRIVE_CLIENT_SECRET ||
-			overrides?.gdriveClientSecret,
 		brevoApiKey: process.env.BREVO_API_KEY || overrides?.brevoApiKey,
 		brevoSenderEmail:
 			process.env.BREVO_SENDER_EMAIL || overrides?.brevoSenderEmail,

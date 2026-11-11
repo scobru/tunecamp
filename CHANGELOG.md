@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Removed
+
+- **Google Drive integration.** OAuth connect/import/browse, `gdrive://` cloud streaming and localization, and Drive backup upload are gone end-to-end: the `google-drive.service`, its `StorageProvider`/`StorageService` wrapper, the `/api/storage/gdrive/*` router, the admin Client ID/Secret settings, and the "Cloud Storage" and "Save to Google Drive" admin UI sections. Reasoning: anyone with Drive mounted locally can already drop files straight into the regular upload flow — the OAuth round-trip, per-file Range-proxied streaming and the separate file-browser UI bought nothing a plain upload didn't. Tracks with an existing `gdrive://` path from before this release can no longer stream, localize or download — re-upload them locally. `storage_accounts` (DB table + CRUD helpers) stays, since it's generic per-user OAuth storage, not Drive-specific.
+
 ### Added
 
 - **Self-service FID relink from the Profile page.** A user still signed in on the instance (password or an old session) presses **Link my FID identity to this account** in Profile. `POST /api/auth/zen/link-code` mints a single-use code (5 minutes, in memory); the webapp opens `tunecamp.org/profile.html#linkCode=…&instance=…`, where the portal signs the instance challenge with the new key and calls `/api/auth/zen/challenge?linkCode=…` and `/api/auth/zen/set` with the code. The code, not a cookie, authorizes that one call (CORS for `/set` is open only when no credentials are sent), and a successful link clears any pending relink request. The `FID_KEY_CHANGED` answer now points to this button.

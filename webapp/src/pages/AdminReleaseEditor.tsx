@@ -69,8 +69,7 @@ interface LocalTrack {
  * One line of an imported tracklist, waiting for its audio.
  *
  * Importing a release elsewhere gives us titles, order and durations but never
- * the audio: this server does not pull files off streaming platforms (see
- * `POST /api/tracks/:id/localize`, which only localizes gdrive://). So an
+ * the audio: this server does not pull files off streaming platforms. So an
  * import fills these slots instead of creating tracks — a slot lives only in
  * the editor until the artist attaches a file to it, and a slot left empty at
  * save time creates nothing. That is the whole point: what used to land in the

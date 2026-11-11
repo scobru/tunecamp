@@ -39,9 +39,9 @@ Gli URL che il browser carica da solo (stream `<audio>`, link di download, l'Eve
 | `POST` | `/api/tracks` | Crea una traccia dai metadati (un link, o una riga in attesa del suo file). L'audio **non** viene scaricato: la traccia nasce senza `file_path` finché non le si carica un file. Qui non esiste alcuna opzione `localize` — questo server non scarica audio dalle piattaforme di streaming |
 | `GET`  | `/api/tracks` | Elenca le tracce visibili al chiamante. Ogni riga porta `downloadable`: se QUESTO utente può prendere il file, non solo ascoltarlo (i client che offrono un pulsante di download lo leggono invece di tirare a indovinare) |
 | `GET`  | `/api/tracks/:id` | Metadati della traccia |
-| `GET`  | `/api/tracks/:id/stream` | Stream audio binario (supporta l'intestazione `Range` per le tracce cloud) |
+| `GET`  | `/api/tracks/:id/stream` | Stream audio binario (supporta l'intestazione `Range`) |
 | `GET`  | `/api/tracks/:id/download` | Scarica il file audio locale di una singola traccia. Vincolato alla modalità di distribuzione della release: il contenuto a pagamento richiede un codice di sblocco (`?code=`), un acquisto registrato o un abbonamento attivo (altrimenti `402`); le release solo-streaming ed external showcase rispondono `403`. Staff, proprietario e artista collegato scavalcano il gate |
-| `POST` | `/api/tracks/:id/localize` | Solo admin: copia una traccia su cloud (percorso `gdrive://`) in un file locale durevole. Le piattaforme di streaming vengono rifiutate con `400` — si usa [Sidecamp](./sidecamp.md) |
+| `POST` | `/api/tracks/:id/localize` | Disabilitato: la localizzazione di una traccia su cloud non è più supportata, risponde sempre `400` — si usa [Sidecamp](./sidecamp.md) |
 | `GET`  | `/api/albums/:id/download` | Scarica uno ZIP dei file audio locali dell'album (esclude le tracce streaming/linkate). Stesso gate sulla modalità di distribuzione della rotta a traccia singola |
 | `GET`  | `/api/releases/:id/download` | Scarica uno ZIP dei file audio locali di una release. Risolve id numerico o slug; le release private sono limitate a proprietario/admin e vale lo stesso gate sulla modalità di distribuzione della rotta a traccia singola |
 | `GET`  | `/api/waveform/:id` | Dati della forma d'onda per la visualizzazione grafica |
@@ -105,15 +105,6 @@ Tutte le route richiedono l'autenticazione. Vedi [COLLAB.md](COLLAB.md) per la d
 | `POST` | `/api/payments/verify` | Verifica una transazione on-chain (ETH/USDC) su Base |
 | `GET`  | `/api/payments/download/:trackId?code=...` | Scarica una traccia acquistata tramite codice di sblocco |
 | `GET`  | `/api/payments/rate/USD` | Tasso di cambio corrente ETH/USD |
-
-### Archiviazione e Cloud (`/api/storage`)
-
-| Metodo | Percorso | Descrizione |
-|--------|----------|-------------|
-| `GET`  | `/api/storage/gdrive/auth` | Avvia il flusso OAuth2 di Google Drive |
-| `GET`  | `/api/storage/gdrive/files` | Elenca file e cartelle su Google Drive |
-| `POST` | `/api/storage/gdrive/import` | Importa un file di Drive come riferimento `gdrive://` |
-| `POST` | `/api/storage/gdrive/localize/:id` | Scarica permanentemente un file cloud sul server locale |
 
 ### Metadati e Ricerca Esterna (`/api/metadata`)
 

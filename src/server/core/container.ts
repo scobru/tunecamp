@@ -30,7 +30,6 @@ import type { CatalogCacheService } from "../modules/network/catalog-cache.servi
 import type { LifecycleService } from "../modules/catalog/lifecycle.service.js";
 import type { TelegramBotService } from "../modules/integrations/telegram-bot.js";
 import type { TorrentServiceContract } from "./plugin-contracts.js";
-import type { GoogleDriveService } from "../modules/storage/google-drive.service.js";
 import type { SubsonicService } from "../modules/subsonic/subsonic.service.js";
 import type { ScrobbleService } from "../modules/scrobble/scrobble.service.js";
 import type { PlaylistService } from "../modules/catalog/playlist.service.js";
@@ -86,7 +85,6 @@ export interface ServiceContainer {
 	// Integrations
 	telegramBotService: TelegramBotService;
 	torrentService?: TorrentServiceContract;
-	gdriveService?: GoogleDriveService;
 	boardService: BoardService;
 	liveService: LiveService;
 	radioService: RadioService;
@@ -117,7 +115,7 @@ export function resolveService<K extends keyof ServiceContainer>(
 	}
 
 	// Optional services should not fall back to the database itself when not present
-	const optionalKeys = ["ytdlpService", "torrentService", "gdriveService"];
+	const optionalKeys = ["ytdlpService", "torrentService"];
 	if (optionalKeys.includes(key as string)) {
 		return undefined as any;
 	}

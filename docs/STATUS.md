@@ -20,7 +20,7 @@ An honest snapshot of how production-ready each part of TuneCamp is. Updated 202
 | MCP server | **New / opt-in** | Exposes the catalog to AI clients (search, stats, scan) over SSE, token-gated. See [mcp-setup-guide.md](mcp-setup-guide.md). |
 | Collab | **New** | Multi-artist collaborative track building on one instance: shared/private projects, append-only version history, stem uploads. Open collaboration (any artist can contribute), versioning only — no realtime. See [COLLAB.md](COLLAB.md). |
 | Admin System panel | **New** | Live CPU/RAM/storage/task metrics for leak hunting. See [monitoring.md](monitoring.md). |
-| Telegram bot, Google Drive storage | **Beta** | Functional, less test coverage. |
+| Telegram bot | **Beta** | Functional, less test coverage. |
 | SoundCloud & Bandcamp streaming | **Opt-in** | Streaming integration via SoundCloud / Bandcamp providers; enable under Admin → Integrations. |
 | Soulseek & Torrents | **Delegated to Sidecamp** | P2P downloading is fully offloaded to the Sidecamp desktop app to keep the server clean. |
 | Backup & restore | **Stable** | UI + CLI tools; see [backup-migration.md](backup-migration.md). Consider Litestream for continuous replication ([scaling.md](scaling.md)). |

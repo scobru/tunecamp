@@ -17,9 +17,9 @@ pull the HLS playlist; the station survives a server restart and resumes
 automatically (see [Monitoring](./monitoring.md) for process health).
 
 > **Local files only.** The radio can only broadcast tracks that have a real
-> audio file on the server. Cloud (`gdrive://`), external, and network tracks
-> have no local file and are silently skipped. If *none* of your picks have a
-> local file, starting the station fails with a clear error.
+> audio file on the server. External and network tracks have no local file
+> and are silently skipped. If *none* of your picks have a local file,
+> starting the station fails with a clear error.
 
 ## Building a station (Admin → Radio)
 

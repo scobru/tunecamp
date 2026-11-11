@@ -6,7 +6,6 @@ import multer from "multer";
 import yauzl from "yauzl";
 import type { DatabaseService } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
-import type { GoogleDriveService } from "../../modules/storage/google-drive.service.js";
 import { VisibilityProfile } from "../../common/visibility.js";
 
 // Ensure uploads directory exists
@@ -298,7 +297,6 @@ import type { ServiceContainer } from "../../core/container.js";
 
 export function createBackupRoutes(container: ServiceContainer, restartFn: () => void): Router {
     const config = container.config;
-    const gdriveService = container.gdriveService;
     const library = container.library;
     const identity = container.identity;
     const database = container.database;
@@ -340,62 +338,6 @@ export function createBackupRoutes(container: ServiceContainer, restartFn: () =>
         } catch (error) {
             console.error("Backup failed:", error);
             if (!res.headersSent) res.status(500).send("Backup failed");
-        }
-    });
-
-    /**
-     * POST /api/admin/backup/gdrive
-     * Create backup and upload to Google Drive
-     */
-    router.post("/gdrive", async (req: AuthenticatedRequest, res) => {
-        try {
-            if (!req.isRootAdmin) {
-                return res.status(403).send("Unauthorized: Backups restricted to Root Admin");
-            }
-
-            if (!gdriveService) {
-                return res.status(503).send("Google Drive service not configured");
-            }
-
-            const userId = req.userId;
-            if (!userId) return res.status(401).send("User not authenticated");
-
-            // 1. Prepare Database Snapshot
-            const dbBackupPath = path.join(config.dbPath + ".backup");
-            try {
-                if (fs.existsSync(dbBackupPath)) fs.unlinkSync(dbBackupPath);
-                database.db.prepare(`VACUUM INTO ?`).run(dbBackupPath);
-            } catch (e) {
-                console.error("❌ [Backup] Database snapshot failed:", e);
-                return res.status(500).send("Database backup failed: Unable to create snapshot.");
-            }
-
-            const fileName = `tunecamp_backup_${new Date().toISOString().split('T')[0]}.tar.gz`;
-            const archive = assembleFullBackup(database, config, dbBackupPath);
-
-            console.log(`📤 [Backup] Uploading ${fileName} to Google Drive...`);
-            
-            // We can finalize and upload
-            // archive is a readable stream
-            try {
-                const uploadPromise = gdriveService.uploadFile(userId, fileName, "application/gzip", archive);
-                archive.finalize();
-                
-                const file = await uploadPromise;
-                
-                // Cleanup
-                if (fs.existsSync(dbBackupPath)) fs.unlinkSync(dbBackupPath);
-                
-                res.json({ success: true, fileId: file.id, fileName: file.name });
-            } catch (uploadError: any) {
-                console.error("❌ [Backup] GDrive Upload failed:", uploadError.response?.data || uploadError.message);
-                if (fs.existsSync(dbBackupPath)) fs.unlinkSync(dbBackupPath);
-                throw uploadError;
-            }
-
-        } catch (error: any) {
-            console.error("Google Drive Backup failed:", error);
-            res.status(500).send("Backup to Google Drive failed: " + error.message);
         }
     });
 

@@ -47,7 +47,6 @@ Change the password immediately in **Admin → Settings**.
 Railway volumes persist across redeploys. Your SQLite database and uploaded/scanned media live inside the volume. If you need to upload a large library, use one of the remote ingestion paths instead of local file scan:
 
 - [Telegram bot](./telegram.md)
-- [Google Drive](./google-drive.md)
 
 ## Limits
 

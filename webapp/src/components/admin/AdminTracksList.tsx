@@ -17,8 +17,6 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [showBatchEdit, setShowBatchEdit] = useState(false);
-  const [localizing, setLocalizing] = useState<string | number | null>(null);
-  const [isLocalizingBatch, setIsLocalizingBatch] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "title", direction: "asc" });
   const [loading, setLoading] = useState(true);
 
@@ -90,76 +88,6 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
     }
   };
 
-  const handleLocalize = async (id: string | number, name: string, isGDrive: boolean) => {
-    const confirmMsg = isGDrive 
-      ? `Do you want to download "${name}" from Google Drive and save it on the server? This will replace the Google Drive link with a local file.`
-      : `Do you want to download and localize "${name}"? This will save the audio to the server's local library.`;
-    
-    if (!await confirm(confirmMsg)) return;
-    
-    setLocalizing(id);
-    try {
-      if (isGDrive) {
-        await API.localizeGDriveTrack(id);
-      } else {
-        await API.localizeTrack(id);
-      }
-      loadTracks();
-      notify.success(`Track "${name}" successfully localized to server!`);
-    } catch (e: any) {
-      console.error(e);
-      notify.error(e, "Localization failed");
-    } finally {
-      setLocalizing(null);
-    }
-  };
-
-  const handleBatchLocalize = async () => {
-    const toLocalize = Array.from(selectedIds).filter(id => {
-      const t = tracks.find(track => track.id === id);
-      return t && t.service && t.service !== 'local' && t.path?.startsWith('gdrive://') && !t.path?.startsWith('cloud_imports/');
-    });
-
-    if (toLocalize.length === 0) {
-      notify.warning("None of the selected tracks need localization.");
-      return;
-    }
-
-    if (!await confirm(`Are you sure you want to localize ${toLocalize.length} tracks? This will download them to the server library.`)) return;
-    
-    setIsLocalizingBatch(true);
-    let success = 0;
-    let failed = 0;
-    try {
-      const CHUNK_SIZE = 5;
-      for (let i = 0; i < toLocalize.length; i += CHUNK_SIZE) {
-        const chunk = toLocalize.slice(i, i + CHUNK_SIZE);
-        await Promise.all(
-          chunk.map(async (id) => {
-            try {
-              await API.localizeGDriveTrack(id);
-              success++;
-            } catch {
-              failed++;
-            }
-          })
-        );
-      }
-      notify.success(`Localization Processed!\n\nSuccess: ${success}\nFailed: ${failed}`);
-      loadTracks();
-      setSelectedIds(new Set());
-    } finally {
-      setIsLocalizingBatch(false);
-    }
-  };
-
-  const hasLocalizableSelected = useMemo(() => {
-    return Array.from(selectedIds).some(id => {
-      const t = tracks.find(track => track.id === id);
-      return t && t.service && t.service !== 'local' && t.path?.startsWith('gdrive://') && !t.path?.startsWith('cloud_imports/');
-    });
-  }, [selectedIds, tracks]);
-
   const toggleSelect = (id: string | number) => {
     const newSelected = new Set(selectedIds);
     if (newSelected.has(id)) newSelected.delete(id);
@@ -221,17 +149,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
             <button className="btn btn-xs btn-ghost" onClick={() => setSelectedIds(new Set())}>Clear</button>
           </div>
           <div className="flex gap-2">
-            {hasLocalizableSelected && (
-              <button 
-                className="btn btn-sm btn-outline btn-primary gap-2"
-                onClick={handleBatchLocalize}
-                disabled={isLocalizingBatch}
-              >
-                {isLocalizingBatch ? <span className="loading loading-spinner loading-xs"></span> : <Music size={16} />}
-                Localize Selected
-              </button>
-            )}
-            <button 
+            <button
               className="btn btn-sm btn-primary gap-2"
               onClick={() => setShowBatchEdit(true)}
             >
@@ -317,9 +235,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
                   {t.title}
                   {t.service && t.service !== "local" && (() => {
                     const isBoard = t.description?.includes("Board") || t.external_id?.startsWith("ext:link:");
-                    const badgeText = isBoard 
-                      ? (t.service === "gdrive" ? "board-gdrive" : t.service === "dropbox" ? "board-dropbox" : `board-${t.service}`)
-                      : t.service;
+                    const badgeText = isBoard ? `board-${t.service}` : t.service;
                     const badgeClass = isBoard 
                       ? "badge badge-outline badge-neutral badge-xs gap-1 opacity-70" 
                       : "badge badge-secondary badge-xs gap-1 opacity-70";
@@ -366,16 +282,6 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
                 >
                   Download
                 </a>
-                {t.service && t.service !== 'local' && t.path?.startsWith('gdrive://') && !t.path?.startsWith('cloud_imports/') && (
-                  <button
-                    className="btn btn-xs btn-ghost text-warning tooltip tooltip-top"
-                    onClick={() => handleLocalize(t.id, t.title, true)}
-                    disabled={localizing === t.id}
-                    data-tip="Download from GDrive and save to server"
-                  >
-                    {localizing === t.id ? "..." : "Localize"}
-                  </button>
-                )}
                 <button
                   className="btn btn-xs btn-ghost text-primary"
                   onClick={() =>

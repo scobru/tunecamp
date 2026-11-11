@@ -9,7 +9,6 @@ interface HealthStatus {
   openrouter: { configured: boolean; model: string };
   stripe: { configured: boolean; webhookConfigured: boolean };
   moonpay: { configured: boolean };
-  gdrive: { configured: boolean; active: boolean };
   youtube: { online: boolean };
   spotify: { online: boolean };
   soundcloud: { online: boolean };

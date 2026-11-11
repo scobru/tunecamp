@@ -47,7 +47,7 @@ Una volta avviato, le guide qui sotto ti permetteranno di approfondire.
 | [Inizia](./getting-started.md) | **Installazione → primo accesso → aggiunta musica → ascolto** (inizia da qui) |
 | [Aggiungere Musica](./adding-music.md) | Struttura della libreria su disco, scansione e passaggio da bozza a release pubblica |
 | [Deploy su Railway](./railway.md) | Deploy con un solo click su Railway — nessuna VPS richiesta, HTTPS incluso |
-| [Configurazione API e Servizi](./api-setup-guide.md) | Configurazione passo-passo per Stripe, Google Drive, IA e altre integrazioni |
+| [Configurazione API e Servizi](./api-setup-guide.md) | Configurazione passo-passo per Stripe, IA e altre integrazioni |
 | [Configurazione Nginx](./NGINX.md) | Configurazione del reverse proxy per SSL, WebSocket e HLS |
 | [Backup e Migrazione](./backup-migration.md) | Backup del database, ripristino e spostamento dell'istanza |
 
@@ -106,7 +106,6 @@ Servizi di terze parti opzionali che puoi collegare alla tua istanza.
 | ----- | ------------- |
 | [Integrazioni IA](./ai-integrations.md) | Automazione dei metadati e raccomandazioni tramite OpenRouter |
 | [Smart Contracts](./smart-contracts.md) | Contratti Solidity (Factory, NFT, Checkout) su Base |
-| [Google Drive](./google-drive.md) | Backend di archiviazione cloud per file multimediali |
 | [Sidecamp](./sidecamp.md) | Acquisizione P2P (Soulseek, BitTorrent, yt-dlp) tramite l'app desktop companion |
 | [Bot Telegram](./telegram.md) | Acquisizione rapida di file e gestione remota |
 

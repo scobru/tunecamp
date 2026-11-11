@@ -135,10 +135,6 @@ const mockMediaEngine = {
     getStream: jest.fn(),
 } as any;
 
-const mockGdriveService = {
-    getFileStream: jest.fn(),
-} as any;
-
 const mockYtdlpService = {
     localizeTrack: jest.fn().mockResolvedValue({ id: 4242 } as never),
 } as any;
@@ -173,7 +169,6 @@ describe('Tracks Routes', () => {
             social: mockSocial,
             discoveryService: mockDiscoveryService,
             mediaEngine: mockMediaEngine,
-            gdriveService: mockGdriveService,
             ytdlpService: mockYtdlpService,
             musicDir: '/tmp/music'
         } as any);
@@ -417,17 +412,7 @@ describe('Tracks Routes', () => {
             expect(res.status).toBe(400);
         });
 
-        test('localizes a gdrive-backed track', async () => {
-            (mockDatabase.getTrack as jest.Mock).mockReturnValue({ id: 1, file_path: 'gdrive://abc' });
-            (mockCatalogService.localizeTrack as jest.Mock).mockResolvedValue({ id: 1, file_path: '/local/abc.mp3' } as never);
-
-            const res = await request(app).post('/tracks/1/localize');
-            expect(res.status).toBe(200);
-            expect(res.body.success).toBe(true);
-            expect(mockCatalogService.localizeTrack).toHaveBeenCalledWith(1, mockGdriveService);
-        });
-
-        test('rejects localizing a non-gdrive track (caught and reported as 500)', async () => {
+        test('rejects localizing a track (unsupported, caught and reported as 500)', async () => {
             (mockDatabase.getTrack as jest.Mock).mockReturnValue({ id: 1, file_path: '/local/already-here.mp3' });
             const res = await request(app).post('/tracks/1/localize');
             expect(res.status).toBe(500);
