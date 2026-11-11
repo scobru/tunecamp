@@ -643,22 +643,6 @@ export function createDatabase(dbPath: string): DatabaseService {
         );
 
 
-        CREATE TABLE IF NOT EXISTS torrents (
-            info_hash TEXT PRIMARY KEY,
-            name TEXT,
-            artist TEXT,
-            magnet_uri TEXT NOT NULL,
-            owner_id INTEGER REFERENCES admin(id) ON DELETE SET NULL,
-            status TEXT DEFAULT 'metadata',
-            progress REAL DEFAULT 0,
-            download_speed REAL DEFAULT 0,
-            upload_speed REAL DEFAULT 0,
-            num_peers INTEGER DEFAULT 0,
-            size INTEGER DEFAULT 0,
-            path TEXT,
-            added_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-
         CREATE TABLE IF NOT EXISTS system_plugins (
             id TEXT PRIMARY KEY,
             enabled INTEGER DEFAULT 0,
@@ -1747,23 +1731,6 @@ export function createDatabase(dbPath: string): DatabaseService {
 					"📦 [Database] Migrating peer_tracks: adding magnet_uri column...",
 				);
 				db.exec("ALTER TABLE peer_tracks ADD COLUMN magnet_uri TEXT");
-			}
-		}
-
-		const torrentsExists = db
-			.prepare(
-				"SELECT name FROM sqlite_master WHERE type='table' AND name='torrents'",
-			)
-			.get();
-		if (torrentsExists) {
-			const torrentCols = db
-				.prepare("PRAGMA table_info(torrents)")
-				.all() as any[];
-			if (!torrentCols.some((col) => col.name === "artist")) {
-				console.log(
-					"📦 [Database] Migrating torrents table: adding artist column...",
-				);
-				db.exec("ALTER TABLE torrents ADD COLUMN artist TEXT");
 			}
 		}
 

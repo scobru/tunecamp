@@ -2,7 +2,6 @@ import type { Database as DatabaseType } from "better-sqlite3";
 import type {
 	IntegrationManager,
 	StorageAccount,
-	Torrent,
 } from "../database.types.js";
 
 export function createIntegrationManager(db: DatabaseType): IntegrationManager {
@@ -68,59 +67,6 @@ export function createIntegrationManager(db: DatabaseType): IntegrationManager {
 				)
 				.get() as any;
 			return a ? a.id : null;
-		},
-
-		// Torrents
-		getTorrents: () => db.prepare("SELECT * FROM torrents").all() as Torrent[],
-		getTorrent: (h: string) =>
-			db
-				.prepare("SELECT * FROM torrents WHERE info_hash = ? COLLATE NOCASE")
-				.get(h.toLowerCase()) as Torrent | undefined,
-		getTorrentsStatus: () => [],
-		createTorrent: (t: any) => {
-			db.prepare(`
-                INSERT INTO torrents (info_hash, magnet_uri, status, owner_id, name, artist, path)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(info_hash) DO UPDATE SET
-                    magnet_uri = excluded.magnet_uri,
-                    status = excluded.status,
-                    owner_id = COALESCE(excluded.owner_id, owner_id),
-                    name = COALESCE(excluded.name, name),
-                    artist = COALESCE(excluded.artist, artist),
-                    path = COALESCE(excluded.path, path)
-            `).run(
-				t.info_hash.toLowerCase(),
-				t.magnet_uri,
-				t.status || "metadata",
-				t.owner_id ?? null,
-				t.name ?? null,
-				t.artist ?? null,
-				t.path ?? null,
-			);
-		},
-		updateTorrentProgress: (
-			ih: string,
-			p: number,
-			s: any,
-			ds: number,
-			us: number,
-			np: number,
-			sz: number,
-			path: string | null,
-		) => {
-			db.prepare(
-				"UPDATE torrents SET progress = ?, status = ?, download_speed = ?, upload_speed = ?, num_peers = ?, size = ?, path = ? WHERE info_hash = ? COLLATE NOCASE",
-			).run(p, s, ds, us, np, sz, path, ih.toLowerCase());
-		},
-		updateTorrentStatus: (ih: string, s: any) => {
-			db.prepare(
-				"UPDATE torrents SET status = ? WHERE info_hash = ? COLLATE NOCASE",
-			).run(s, ih.toLowerCase());
-		},
-		deleteTorrent: (h: string) => {
-			db.prepare("DELETE FROM torrents WHERE info_hash = ? COLLATE NOCASE").run(
-				h.toLowerCase(),
-			);
 		},
 
 		// Unlock Codes

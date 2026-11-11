@@ -347,11 +347,9 @@ export async function bootstrapServices(
 
 	const downloadService = initDownloadService(database);
 
-	// Dynamically register optional P2P providers
+	// Dynamically register optional download providers
 	const {
 		cleanups: pluginCleanups,
-		torrentService,
-		ytdlpService,
 	} = await registerBuiltInDownloadProviders(downloadService, {
 		database,
 		scanner,
@@ -394,7 +392,6 @@ export async function bootstrapServices(
 		discoveryService,
 		metadataService,
 		maintenanceService,
-		ytdlpService,
 		mediaEngine,
 		waveformService,
 		streamingService,
@@ -414,7 +411,6 @@ export async function bootstrapServices(
 		samplesRepository,
 		samplePacksRepository,
 		collabRepository,
-		torrentService,
 		openRouterService,
 		storage,
 	};

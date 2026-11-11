@@ -68,42 +68,6 @@ describe("Integration Manager", () => {
 		});
 	});
 
-	// ── Torrents ────────────────────────────────────────────────────────────
-
-	describe("Torrents", () => {
-		const infoHash = "0123456789abcdef0123456789abcdef01234567";
-
-		test("createTorrent, getTorrent and updateTorrentProgress", () => {
-			db.createTorrent({
-				info_hash: infoHash,
-				magnet_uri: `magnet:?xt=urn:btih:${infoHash}`,
-				status: "downloading",
-				owner_id: primaryUserId,
-				name: "Cool Album FLAC",
-				artist: "Cool Artist",
-			});
-
-			let torrent = db.getTorrent(infoHash);
-			expect(torrent).toBeDefined();
-			expect(torrent.name).toBe("Cool Album FLAC");
-			expect(torrent.status).toBe("downloading");
-
-			// Update progress
-			db.updateTorrentProgress(infoHash, 0.75, "downloading", 1024, 512, 10, 1000000, "/tmp/cool.torrent");
-			torrent = db.getTorrent(infoHash);
-			expect(torrent.progress).toBe(0.75);
-			expect(torrent.num_peers).toBe(10);
-
-			// Update status
-			db.updateTorrentStatus(infoHash, "seeding");
-			expect(db.getTorrent(infoHash).status).toBe("seeding");
-
-			// Delete
-			db.deleteTorrent(infoHash);
-			expect(db.getTorrent(infoHash)).toBeUndefined();
-		});
-	});
-
 	// ── Unlock Codes ────────────────────────────────────────────────────────
 
 	describe("Unlock Codes", () => {
