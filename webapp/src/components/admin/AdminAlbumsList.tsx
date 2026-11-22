@@ -1,10 +1,11 @@
 import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Disc, Edit, Trash2, Globe, Lock, Share2 } from "lucide-react";
+import { Disc, Edit, Trash2, Globe, Lock, Share2, Sparkles } from "lucide-react";
 import clsx from "clsx";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useConfigStore } from "../../stores/useConfigStore";
+import { AiAssistantModal } from "../ai/AiAssistantModal";
 import { notify } from "../../utils/notify";
 
 export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
@@ -14,6 +15,19 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [aiAlbum, setAiAlbum] = useState<any | null>(null);
+  const [aiAvailable, setAiAvailable] = useState(false);
+
+  const configStatus = useConfigStore(s => s.status);
+  const isConfigOpenRouter = useConfigStore(s => s.isConfigured("openrouter"));
+
+  useEffect(() => {
+    if (configStatus?.openrouter) {
+      setAiAvailable(isConfigOpenRouter);
+      return;
+    }
+    API.aiStatus().then(res => setAiAvailable(!!res.configured)).catch(() => {});
+  }, [configStatus, isConfigOpenRouter]);
 
   const loadAlbums = async () => {
     setLoading(true);
@@ -233,6 +247,15 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
                     >
                       <Edit size={14} /> Edit
                     </button>
+                    {aiAvailable && (
+                      <button
+                        className="btn btn-xs btn-ghost text-secondary gap-1 tooltip tooltip-top"
+                        onClick={() => setAiAlbum(a)}
+                        data-tip="Ask AI Assistant about this album"
+                      >
+                        <Sparkles size={14} /> AI
+                      </button>
+                    )}
                     <button
                       className="btn btn-xs btn-ghost text-primary gap-1 tooltip tooltip-top"
                       onClick={() => handlePromote(a.id)}
@@ -253,6 +276,14 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
           </tbody>
         </table>
       </div>
+
+      <AiAssistantModal
+        isOpen={!!aiAlbum}
+        onClose={() => setAiAlbum(null)}
+        context={aiAlbum ? { albumId: Number(aiAlbum.id), view: "albums" } : undefined}
+        contextSummary={aiAlbum ? `Album: ${aiAlbum.title} — ${aiAlbum.artistName || "Unknown Artist"}` : undefined}
+        onApplied={loadAlbums}
+      />
     </div>
   );
 };

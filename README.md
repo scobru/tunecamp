@@ -120,7 +120,7 @@ TuneCamp supports three distinct operating modes, selectable during the setup wi
 
 In addition to the core server, the TuneCamp ecosystem includes several companion projects:
 
-- [**sidecamp**](https://github.com/scobru/sidecamp): A standalone Electron desktop & mobile Capacitor app that handles all P2P content acquisition — Soulseek search & download, BitTorrent, and yt-dlp audio ripping — plus peer file-sharing with any TuneCamp instance via a reverse WebSocket tunnel. Keeps the core server clean and compliant.
+- [**sidecamp**](https://github.com/scobru/sidecamp): A standalone Electron desktop app that handles all P2P content acquisition — Soulseek search & download, BitTorrent, and yt-dlp audio ripping — plus peer file-sharing with any TuneCamp instance via a reverse WebSocket tunnel. Keeps the core server clean and compliant.
 - [**sidecamp-cli**](https://github.com/scobru/sidecamp/tree/main/apps/sidecamp-cli): Headless terminal client for the same Sidecamp functionality without Electron — multi-source search/download, track upload, and the P2P sharing daemon (`sidecamp share`). Published as global bin `sidecamp`.
 - [**tunecamp-website**](https://github.com/scobru/tunecamp-website): The landing page, global community directory, and web-based community audio player.
 - **Design System**: `tunecamp-design-system` has been deprecated. Design tokens are now inlined directly in app styles.

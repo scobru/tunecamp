@@ -37,8 +37,8 @@ jest.unstable_mockModule('../../../../utils/fileUtils.js', () => ({
 
 const mockProviders = {
     soundcloudMetadataProvider: { id: 'soundcloud', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn() },
-    itunesProvider: { id: 'itunes', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn() },
-    musicbrainzProvider: { id: 'musicbrainz', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn(), getCoverUrl: jest.fn() },
+    itunesProvider: { id: 'itunes', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn(), getReleaseDetails: jest.fn() },
+    musicbrainzProvider: { id: 'musicbrainz', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn(), getCoverUrl: jest.fn(), getReleaseDetails: jest.fn() },
     discogsProvider: { id: 'discogs', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn(), setSettings: jest.fn() },
     theaudiodbProvider: { id: 'theaudiodb', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn(), setSettings: jest.fn() },
     spotifyProvider: { id: 'spotify', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn() },
@@ -232,6 +232,37 @@ describe('MetadataService', () => {
 
             const url = await metadataService.getCoverUrl('mb-id-1');
             expect(url).toBeNull();
+        });
+    });
+
+    describe('getReleaseDetails', () => {
+        test('delegates to enabled provider and caches result', async () => {
+            const providerRegistry = metadataService.getRegistry();
+            providerRegistry.get.mockReturnValue(mockProviders.musicbrainzProvider);
+            providerRegistry.isEnabled.mockReturnValue(true);
+            mockProviders.musicbrainzProvider.getReleaseDetails.mockResolvedValueOnce({
+                id: 'mb-rel-1',
+                source: 'musicbrainz',
+                title: 'Acidi e basi',
+                artist: 'Bluvertigo',
+                tracks: [{ position: 1, title: 'Track A', duration: 254 }]
+            });
+
+            const first = await metadataService.getReleaseDetails('musicbrainz', 'mb-rel-1');
+            const second = await metadataService.getReleaseDetails('musicbrainz', 'mb-rel-1');
+
+            expect(first?.title).toBe('Acidi e basi');
+            expect(second?.tracks).toHaveLength(1);
+            expect(mockProviders.musicbrainzProvider.getReleaseDetails).toHaveBeenCalledTimes(1);
+        });
+
+        test('returns null if provider is disabled or lacks getReleaseDetails', async () => {
+            const providerRegistry = metadataService.getRegistry();
+            providerRegistry.get.mockReturnValue(mockProviders.soundcloudMetadataProvider);
+            providerRegistry.isEnabled.mockReturnValue(true);
+
+            const res = await metadataService.getReleaseDetails('soundcloud', '123');
+            expect(res).toBeNull();
         });
     });
 

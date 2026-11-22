@@ -1,20 +1,14 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
-import { metadataService } from '../metadata.service.js';
 import { MaintenanceService } from '../maintenance.service.js';
-
-const searchRecordingSpy = jest.spyOn(metadataService, 'searchRecording' as any);
 
 const mockRepo = {};
 
 const mockDb = {
-    getTracksByIds: jest.fn(),
     getTracksMissingMetadata: jest.fn(),
-    getTrack: jest.fn(),
-    getAlbum: jest.fn(),
-    getAlbumByTitle: jest.fn(),
-    createAlbum: jest.fn(),
-    updateArtist: jest.fn(),
+    getAlbumsMissingMetadata: jest.fn(),
+    getArtistsMissingMetadata: jest.fn(),
     getTracks: jest.fn(),
+    getTracksByAlbum: jest.fn(),
 };
 
 const mockCatalogService = {
@@ -22,20 +16,8 @@ const mockCatalogService = {
     updateAlbum: jest.fn(),
 };
 
-const mockOpenRouter = {
-    enrichMetadata: jest.fn(),
-    identifyArtist: jest.fn(),
-    identifyAlbum: jest.fn(),
-};
-
-const mockAutotagger = {
-    startAudit: jest.fn(),
-    getStatus: jest.fn(),
-    stopAudit: jest.fn(),
-};
-
 describe('MaintenanceService', () => {
-    let maintenanceService: any;
+    let maintenanceService: MaintenanceService;
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -43,49 +25,37 @@ describe('MaintenanceService', () => {
             mockRepo as any,
             mockDb as any,
             mockCatalogService as any,
-            mockOpenRouter as any,
-            mockAutotagger as any,
             '/tmp'
         );
     });
 
-    test('getTracksWithMissingMetadata should call DB with correct filter', () => {
+    test('getTracksWithMissingMetadata calls DB with correct filter', () => {
         maintenanceService.getTracksWithMissingMetadata('genre');
         expect(mockDb.getTracksMissingMetadata).toHaveBeenCalledWith('genre');
     });
 
-    test('applyMetadataToTrack should update DB and create album if missing', async () => {
-        const trackId = 1;
-        const metadata = {
-            genre: 'Rock',
-            year: 1971,
-            albumTitle: 'New Album'
-        };
-        const track = { id: 1, artist_id: 10, owner_id: 100 };
+    test('getTracksWithGenericTitles identifies generic track titles', () => {
+        (mockDb.getTracks as any).mockReturnValue([
+            { id: 1, title: 'AudioTrack 01' },
+            { id: 2, title: 'Track 16' },
+            { id: 3, title: 'Untitled' },
+            { id: 4, title: '04' },
+            { id: 5, title: 'Bluvertigo - Altre forme di vita' },
+        ]);
 
-        (mockDb.getTrack as any).mockReturnValue(track);
-        (mockDb.getAlbumByTitle as any).mockReturnValue(null);
-        (mockDb.createAlbum as any).mockReturnValue(50);
-
-        await maintenanceService.applyMetadataToTrack(trackId, metadata);
-
-        expect(mockDb.createAlbum).toHaveBeenCalled();
-        expect(mockCatalogService.updateTrack).toHaveBeenCalledWith(trackId, expect.objectContaining({
-            genre: 'Rock',
-            year: 1971,
-            albumId: 50
-        }));
+        const generic = maintenanceService.getTracksWithGenericTitles();
+        expect(generic.map(t => t.id)).toEqual([1, 2, 3, 4]);
     });
 
-    test('autofillMetadata should process tracks and skip if no match', async () => {
-        const trackIds = [1];
-        const tracks = [{ id: 1, title: 'Song', artist_name: 'Artist' }];
-        (mockDb.getTracksByIds as any).mockReturnValue(tracks);
-        searchRecordingSpy.mockResolvedValue([] as any);
+    test('propagateAlbumMetadataToTracks only fills missing fields unless forced', async () => {
+        (mockDb.getTracksByAlbum as any).mockReturnValue([
+            { id: 1, genre: 'Library', year: 0 },
+            { id: 2, genre: 'Electronic', year: 1995 },
+        ]);
 
-        const result = await maintenanceService.autofillMetadata(trackIds, { fields: ['genre'] });
+        await maintenanceService.propagateAlbumMetadataToTracks(10, { genre: 'Rock', year: 1995 }, false);
 
-        expect(result.skipped).toBe(1);
-        expect(mockCatalogService.updateTrack).not.toHaveBeenCalled();
+        expect(mockCatalogService.updateTrack).toHaveBeenCalledTimes(1);
+        expect(mockCatalogService.updateTrack).toHaveBeenCalledWith(1, { genre: 'Rock', year: 1995 });
     });
 });

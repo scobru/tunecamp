@@ -37,7 +37,6 @@ describe('CatalogService.batchUpdateTracks', () => {
             mockPublishing as any,
             {} as any, // storage
             '/music', // musicDir
-            {} as any, // openRouter
             mockMetadata as any
         );
         // updateTrack does heavy DB/file work; stub it to echo back a track with the given id.
@@ -126,7 +125,7 @@ describe('CatalogService library write operations', () => {
         mockStorage.pathExists.mockResolvedValue(false);
         service = new CatalogService(
             mockDbFull, mockPublishingFull as any, mockStorage, '/music',
-            {} as any, {} as any, mockApService as any
+            {} as any, mockApService as any
         );
     });
 
@@ -276,7 +275,7 @@ describe('CatalogService read helpers', () => {
         mockDbFull.getSetting.mockReturnValue(undefined);
         service = new CatalogService(
             mockDbFull, mockPublishingFull as any, mockStorage, '/music',
-            {} as any, {} as any
+            {} as any
         );
     });
 
@@ -338,7 +337,7 @@ describe('CatalogService.updateAlbum', () => {
         jest.clearAllMocks();
         service = new CatalogService(
             mockDbFull, mockPublishingFull as any, mockStorage, '/music',
-            {} as any, {} as any
+            {} as any
         );
     });
 

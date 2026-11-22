@@ -149,10 +149,31 @@ export interface MetadataResult {
     coverUrl?: string;
     albumTitle?: string;
     description?: string;
+    trackCount?: number;
     source: string;
 }
 
 export type MetadataMatch = MetadataResult;
+
+export interface ExternalTrack {
+    position: number;
+    disc?: number;
+    title: string;
+    artist?: string;
+    duration?: number; // seconds
+}
+
+export interface ExternalReleaseDetails {
+    id: string;
+    source: string;
+    title: string;
+    artist: string;
+    year?: number;
+    date?: string;
+    genre?: string;
+    coverUrl?: string;
+    tracks: ExternalTrack[];
+}
 
 export interface ArtistMetadata {
     id: string;
@@ -170,6 +191,7 @@ export interface MetadataProvider extends TuneCampProvider {
     searchRelease(query: string): Promise<MetadataResult[]>;
     searchRecording(query: string): Promise<MetadataResult[]>;
     getCoverUrl(id: string): Promise<string | null>;
+    getReleaseDetails?(id: string): Promise<ExternalReleaseDetails | null>;
     searchArtist?(query: string): Promise<ArtistMetadata[]>;
 }
 
@@ -310,24 +332,4 @@ export interface ScannerProvider extends TuneCampProvider {
 
     /** Returns a stream for a specific file */
     getFileStream(path: string): Promise<NodeJS.ReadableStream>;
-}
-
-/**
- * Provider for AI/LLM services (OpenRouter, Ollama, local models, etc.)
- * Used for generating metadata, descriptions, tags, and recommendations.
- */
-export interface AIProvider extends TuneCampProvider {
-    /** Generates or enriches metadata for a track/album */
-    enrichMetadata(context: { title: string; artist?: string; album?: string; genre?: string }): Promise<Partial<{
-        description: string;
-        genre: string;
-        tags: string[];
-        mood: string;
-    }>>;
-
-    /** Generates a text response for a free-form prompt */
-    complete(prompt: string): Promise<string | null>;
-
-    /** Whether the provider is currently available (API key configured, etc.) */
-    isAvailable(): Promise<boolean>;
 }

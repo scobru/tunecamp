@@ -32,6 +32,7 @@ import type { SubsonicService } from "../modules/subsonic/subsonic.service.js";
 import type { ScrobbleService } from "../modules/scrobble/scrobble.service.js";
 import type { PlaylistService } from "../modules/catalog/playlist.service.js";
 import type { OpenRouterService } from "../modules/ai/openrouter.service.js";
+import type { AssistantService } from "../modules/ai/assistant.service.js";
 import type { LocalDiskStorage } from "../modules/storage/storage.engine.js";
 import type { Scanner } from "../modules/catalog/scanner.js";
 import type { BoardService } from "../modules/board/board.service.js";
@@ -91,6 +92,7 @@ export interface ServiceContainer {
 
 	// AI
 	openRouterService: OpenRouterService;
+	assistantService: AssistantService;
 
 	// Storage
 	storage: LocalDiskStorage;

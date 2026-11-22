@@ -1,53 +1,45 @@
 # Integrazioni IA (Intelligenza Artificiale)
 
-TuneCamp sfrutta l'Intelligenza Artificiale per automatizzare l'arricchimento dei metadati, migliorare le raccomandazioni e semplificare l'acquisizione dei contenuti.
+TuneCamp utilizza **OpenRouter** per alimentare un **AI Library Assistant** conversazionale con tool calling, raccomandazioni musicali intelligenti e parsing automatico delle didascalie su Telegram.
 
 ## 1. Provider: OpenRouter
 
-Il motore IA principale è **OpenRouter**, che fornisce un accesso unificato tramite API a molteplici modelli LLM (Large Language Models).
-
 - **Servizio**: `src/server/modules/ai/openrouter.service.ts`
-- **Modello Predefinito**: Configurabile tramite `openrouter_model` (di default fa riferimento ai modelli gratuiti di OpenRouter come `meta-llama/llama-3-8b-instruct:free`).
+- **Modello Predefinito**: Configurabile tramite `OPENROUTER_MODEL` oppure `openrouter_model` in **Admin → Integrations** (predefinito `openrouter/free`).
+- **Consiglio**: Seleziona un modello con supporto al *tool calling* (come `google/gemini-2.5-flash`, `openai/gpt-4o-mini` o `anthropic/claude-sonnet-4`) per ottenere i risultati migliori con l'assistente.
 
-## 2. Funzionalità Chiave
+## 2. AI Library Assistant
 
-### Arricchimento dei Metadati
-- **Scopo**: Compila automaticamente i dettagli mancanti per tracce e album.
-- **Dati Estratti**: Genere, Anno di Pubblicazione, Mood (atmosfera), Tag di Stile e brevi descrizioni.
-- **Flusso**: Quando un nuovo elemento viene scansionato o arricchito manualmente, il sistema invia il titolo e l'artista all'IA per "indovinare" o fornire i metadati canonici.
+- **Servizio**: `src/server/modules/ai/assistant.service.ts`
+- **API**: `GET /api/ai/status`, `POST /api/ai/chat`, `POST /api/ai/apply`
+- **Dove si trova nella UI**:
+  - **Admin → Maintenance**: Box interattivo integrato accanto alle 4 operazioni di sistema (`Rescan Library`, `Sync Tags`, `Pre-warm Cache`, `Optimize DB`).
+  - **My Catalog → Tracks / Albums** e **Album Details**: Pulsante contestuale **Ask AI** che passa automaticamente come contesto le tracce selezionate/filtrate o l'album aperto.
 
-### Acquisizione Intelligente dei Contenuti (Telegram)
-- **Scopo**: Analizza testi o didascalie disordinate per estrarre dati strutturati.
-- **Funzionamento**: Quando un file audio viene inviato al bot Telegram con una didascalia, l'IA estrae l'Artista, l'Album, l'Anno e rileva persino eventuali **URL di Bandcamp** per avviare il recupero dei dati relativi.
+### Flusso Tool-Calling e Anteprima prima di Applicare
 
-### Raccomandazioni Intelligenti
-- **Scopo**: Suggerisce "Tracce Simili" in base alle caratteristiche musicali piuttosto che a semplici tag.
-- **Meccanismo**: Il sistema fornisce all'IA un elenco di tracce "candidate" presenti nella libreria locale. L'IA analizza lo stile, l'atmosfera e l'epoca per restituire le prime 5 raccomandazioni più pertinenti.
+Al posto di maschere rigide campo per campo, l'assistente usa gli strumenti interni di TuneCamp e i provider esterni:
 
-### Identificazione di Artisti e Album
-- **Scopo**: Aiuta a confermare l'identità degli artisti confrontando i dati con database esterni come MusicBrainz.
-- **Funzionamento**: L'IA genera "query di ricerca raffinate" e brevi biografie per aiutare il server a trovare la corrispondenza esatta nei database musicali globali.
+1. **Ispezione libreria**: `search_library`, `get_album_details`, `list_missing_metadata` (incluso `generic_titles` per individuare titoli generici come `AudioTrack 01..`), e `get_library_stats`.
+2. **Ricerca esterna**: `search_external_releases`, `get_external_release_tracklist` (recupera le tracklist ufficiali con numero traccia e durata da iTunes, MusicBrainz e Discogs), `search_external_recordings` e `search_external_artists`.
+3. **Proposta con diff**: `propose_track_updates`, `propose_album_update`, `propose_artist_update` e `propose_system_action` (solo admin).
+4. **Conferma e Applicazione**: Le modifiche non vengono mai salvate automaticamente sul database. L'assistente mostra un'anteprima `prima → dopo` selezionabile; cliccando **Apply Selected** le modifiche vengono applicate tramite `CatalogService` sincronizzando anche i tag dei file audio.
 
-## 3. Configurazione
+## 3. Altre Funzionalità IA
 
-Per abilitare le funzionalità IA, è necessario configurare una chiave API di OpenRouter.
+- **Raccomandazioni Intelligenti** (`DiscoveryService`): Suggerisce tracce simili nella libreria locale in base a stile, atmosfera ed epoca.
+- **Parsing Didascalie Telegram** (`TelegramMetadataParser`): Estrae artista, album, anno, genere e URL di Bandcamp da messaggi non strutturati.
+
+## 4. Configurazione
 
 ### Variabili d'Ambiente
 - `OPENROUTER_API_KEY`: La tua chiave segreta di OpenRouter.
-- `OPENROUTER_MODEL`: (Opzionale) L'ID del modello specifico da utilizzare.
+- `OPENROUTER_MODEL`: (Opzionale) ID del modello da utilizzare.
 
-### Impostazioni nel Database (Pannello Amministratore)
-- `openrouter_api_key`: Può essere inserita direttamente nella dashboard di amministrazione.
-- `openrouter_model`: Può essere sovrascritto per singola istanza.
-
-## 4. Ottimizzazione e Costi
-
-Per mantenere i costi bassi (o azzerati):
-1. **Modelli Gratuiti**: TuneCamp è ottimizzato per funzionare con i modelli del piano gratuito di OpenRouter.
-2. **Cache Aggressiva**: Le risposte dell'IA vengono memorizzate nella cache del database SQLite. Il sistema non interroga mai due volte l'IA per lo stesso brano/artista.
-3. **Attivazione Selettiva**: L'arricchimento tramite IA viene solitamente avviato da azioni esplicite dell'amministratore o durante la fase iniziale di acquisizione dei file, non per ogni singola richiesta dell'utente.
+### Impostazioni nel Database (Admin → Integrations)
+- `openrouter_api_key`: Configurabile direttamente dal pannello Admin → Integrations.
+- `openrouter_model`: Campo libero con preset consigliati.
 
 ## 5. Model Context Protocol (MCP)
 
-TuneCamp può fungere da server MCP, consentendo a client IA esterni (come Claude Desktop o agenti personalizzati) di interrogare e controllare la tua istanza TuneCamp.
-Per istruzioni dettagliate sulla generazione delle chiavi API e sulla configurazione del tuo client IA, consulta la guida al [Protocollo MCP](./mcp-setup-guide.md).
+TuneCamp può fungere anche da server MCP per client IA esterni (Claude Desktop, agenti personalizzati). Consulta la guida [mcp-setup-guide.md](../mcp-setup-guide.md).

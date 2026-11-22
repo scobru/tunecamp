@@ -144,7 +144,4 @@ export const catalogApi = {
     postComment: (trackId: string, data: { text: string }) => handleResponse(api.post('comments/track/' + trackId, data)),
     deleteComment: (commentId: string | number) => handleResponse(api.delete(`comments/${commentId}`)),
     patchProfile: (data: { alias?: string; avatar?: string; email?: string | null }) => handleResponse(api.patch('auth/profile', data)),
-    startLibraryAudit: (options: { forceRepair?: boolean, useAI?: boolean }) => handleResponse(api.post('metadata/maintenance/audit-all', options)),
-    getAuditStatus: () => handleResponse(api.get('metadata/maintenance/audit-status')),
-    stopLibraryAudit: () => handleResponse(api.post('metadata/maintenance/audit-stop')),
 };

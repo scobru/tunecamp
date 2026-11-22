@@ -1,7 +1,7 @@
 import path from "path";
 import NodeID3 from "node-id3";
 import { drainResponse } from "../../common/network.js";
-import { ProviderRegistry, TuneCampProvider, MetadataMatch, MetadataProvider, ArtistMetadata, syncRegistryWithDatabase, USER_AGENT } from "../../core/provider.js";
+import { ProviderRegistry, TuneCampProvider, MetadataMatch, MetadataProvider, ArtistMetadata, ExternalTrack, ExternalReleaseDetails, syncRegistryWithDatabase, USER_AGENT } from "../../core/provider.js";
 import type { DatabaseService, Track } from "../../core/database.js";
 import { writeMetadata } from "../media/ffmpeg.js";
 import { getFastFileHash } from "../../../utils/fileUtils.js";
@@ -147,6 +147,32 @@ export class MetadataService {
         return null;
     }
 
+    async getReleaseDetails(source: string, id: string): Promise<ExternalReleaseDetails | null> {
+        const cacheKey = `release-details:${source}:${id}`;
+        const cached = this.searchCache.get(cacheKey);
+        if (cached) return cached;
+
+        const provider = this.registry.get(source);
+        if (!provider || !this.registry.isEnabled(source) || typeof provider.getReleaseDetails !== "function") {
+            return null;
+        }
+
+        try {
+            const details = await Promise.race([
+                provider.getReleaseDetails(id),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Provider ${source} timeout (15s)`)), 15000))
+            ]) as ExternalReleaseDetails | null;
+
+            if (details) {
+                this.searchCache.set(cacheKey, details);
+            }
+            return details;
+        } catch (e: any) {
+            console.warn(`[MetadataService] Provider ${source} getReleaseDetails failed or timed out:`, e.message);
+            return null;
+        }
+    }
+
     async getLyrics(artist: string, title: string): Promise<LyricsResult | null> {
         const url = `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`;
         try {
@@ -238,4 +264,4 @@ export async function initMetadataService(db: DatabaseService): Promise<Metadata
 }
 
 // Export types for consumers
-export type { MetadataMatch, MetadataProvider, ArtistMetadata };
+export type { MetadataMatch, MetadataProvider, ArtistMetadata, ExternalTrack, ExternalReleaseDetails };

@@ -20,6 +20,7 @@ import { createUsersRoutes } from "./routes/auth/users.js";
 import { createZenRoutes } from "./routes/auth/zen.js";
 import { createLibrarySyncRoutes } from "./routes/auth/library.js";
 import { createMcpRoutes } from "./routes/api/mcp.js";
+import { createAiRoutes } from "./routes/api/ai.js";
 import { createCommentsRoutes } from "./routes/network/comments.js";
 import { createCommunityRoutes } from "./routes/network/community.js";
 import { createLibraryStatsRoutes } from "./routes/admin/library-stats.js";
@@ -195,6 +196,7 @@ export function registerRoutes(
 	);
 	app.use("/api/users", createUsersRoutes(container));
 	app.use("/api/mcp", authMiddleware.requireUser, createMcpRoutes(container));
+	app.use("/api/ai", authMiddleware.requireUser, createAiRoutes(container));
 	app.use("/api/comments", createCommentsRoutes(container));
 	if (!isSolo) {
 		app.use(

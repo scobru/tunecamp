@@ -77,7 +77,7 @@ pluginRegistry.register({
     id: 'openrouter',
     name: 'AI (OpenRouter)',
     icon: <Cpu className="text-warning" />,
-    description: 'AI-powered metadata enrichment and suggestions.',
+    description: 'AI Library Assistant (tool calling), smart recommendations, and Telegram caption parsing.',
     statusCheck: (status) => ({
         status: status?.openrouter?.configured ? 'online' : 'offline',
         details: status?.openrouter?.configured ? `Active: ${status.openrouter.model}` : "API Key missing"
@@ -90,12 +90,26 @@ pluginRegistry.register({
             </div>
             <div className="form-control">
                 <label className="label text-xs">Model Selection</label>
-                <select className="select select-sm select-bordered" value={settings?.openrouter_model || ''} onChange={e => setSettings({ ...settings!, openrouter_model: e.target.value })}>
-                    <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-                    <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
-                    <option value="openai/gpt-4o">GPT-4o</option>
-                    <option value="openai/gpt-4o-mini">GPT-4o-Mini</option>
-                </select>
+                <input
+                    type="text"
+                    list="openrouter-model-presets"
+                    className="input input-sm input-bordered font-mono text-xs"
+                    placeholder="openrouter/free or e.g. google/gemini-2.5-flash"
+                    value={settings?.openrouter_model || ''}
+                    onChange={e => setSettings({ ...settings!, openrouter_model: e.target.value })}
+                />
+                <datalist id="openrouter-model-presets">
+                    <option value="openrouter/free" />
+                    <option value="google/gemini-2.5-flash" />
+                    <option value="openai/gpt-4o-mini" />
+                    <option value="anthropic/claude-sonnet-4" />
+                    <option value="anthropic/claude-3.5-haiku" />
+                    <option value="deepseek/deepseek-chat-v3-0324" />
+                    <option value="qwen/qwen3-235b-a22b" />
+                </datalist>
+                <span className="text-[11px] opacity-60 mt-1">
+                    Tool-capable models work best for the Library Assistant.
+                </span>
             </div>
         </div>
     )

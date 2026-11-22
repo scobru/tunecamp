@@ -78,8 +78,6 @@ TuneCamp utilizza **SQLite** come motore di database relazionale per la gestione
 
 ### Ritirate: tabelle della chat
 
-La chat peer è stata rimossa; `peer_chat_messages`, `peer_chat_bans`, `peer_chat_mutes`, `chat_rooms`, `chat_room_members` e `chat_room_messages` vengono ancora create per sicurezza in caso di rollback, ma nessuno le legge o le scrive. Eliminarle è una migrazione ancora da scrivere.
-
 ### Condivisione P2P Peer Sharing (Sidecamp)
 
 - **`peer_sessions`**: Sessioni attive di connessione dei daemon autenticate su `/ws/peer`.
