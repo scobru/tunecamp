@@ -198,7 +198,7 @@ Lo stile grafico fa uso di fogli di stile CSS standard con variabili per il tema
 | Repo | Descrizione |
 | ------ | ------------- |
 | [tunecamp](https://github.com/scobru/tunecamp) | Server principale + webapp |
-| [sidecamp](https://github.com/scobru/sidecamp) | App Desktop e Mobile per Condivisione Peer, Soulseek e Torrents (monorepo npm-workspaces: Sidecamp + Sidecamp CLI) |
+| [sidecamp](https://github.com/scobru/sidecamp) | App Desktop per Condivisione Peer, Soulseek e Torrents (monorepo npm-workspaces: Sidecamp + Sidecamp CLI) |
 | [fid](https://github.com/scobru/fid) | FID (Fediverse-ID) — protocollo identità e SSO auto-sovrano, chiavi Ed25519 |
 | [tunecamp-iris](https://github.com/scobru/tunecamp-iris) | Trasferimento file ottico air-gapped (fountain codes + WASM), standalone |
 | [tunecamp-website](https://github.com/scobru/tunecamp-website) | Landing page, directory community e portale identità FID globale |

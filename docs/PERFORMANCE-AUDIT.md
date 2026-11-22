@@ -54,7 +54,7 @@ Sequential I/O where concurrency is trivial (per-file `await` in `for` loops), m
 - [ ] `electron/providers/search.ts:132-172` `searchArchiveOrg()` — up to 10 extra metadata calls per search, zero caching.
 - [ ] No HTTP keep-alive anywhere in `electron/` (`network.ts`, `uploader/index.ts` use plain axios, no shared `Agent`).
 - [ ] `electron/providers/ytdlp.ts:23-68` — synchronous `fs.existsSync`/`mkdirSync`/`copyFileSync`/`chmodSync` block Electron main process on every download/search.
-- [ ] `src/services/platform/capacitorAdapter.ts:5-10,154-159` — listener arrays only ever `.push()`, no unsubscribe; remount duplicates callbacks.
+- [x] `src/services/platform/capacitorAdapter.ts:5-10,154-159` — listener arrays only ever `.push()`, no unsubscribe; remount duplicates callbacks. (removed with Capacitor/Android drop)
 
 ### Low
 - [ ] `electron/providers/network.ts:47-48,98-99` — blocking `fs.existsSync` in async functions.

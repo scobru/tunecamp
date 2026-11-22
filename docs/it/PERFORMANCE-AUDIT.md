@@ -52,7 +52,7 @@ I/O sequenziale dove la concorrenza è banale (`await` per-file nei cicli `for`)
 - [ ] `electron/providers/search.ts:132-172` `searchArchiveOrg()` — fino a 10 chiamate di metadati extra per ricerca, zero caching.
 - [ ] Nessun HTTP keep-alive presente in `electron/` (`network.ts`, `uploader/index.ts` usano axios base, nessun `Agent` condiviso).
 - [ ] `electron/providers/ytdlp.ts:23-68` — `fs.existsSync`/`mkdirSync`/`copyFileSync`/`chmodSync` sincroni bloccano il processo principale Electron a ogni download/ricerca.
-- [ ] `src/services/platform/capacitorAdapter.ts:5-10,154-159` — gli array di listener eseguono solo `.push()`, nessun annullamento dell'iscrizione; il rimontaggio duplica le callback.
+- [x] `src/services/platform/capacitorAdapter.ts:5-10,154-159` — gli array di listener eseguono solo `.push()`, nessun annullamento dell'iscrizione; il rimontaggio duplica le callback. (rimosso con la dismissione di Capacitor/Android)
 
 ---
 
