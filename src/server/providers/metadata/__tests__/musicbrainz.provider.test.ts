@@ -141,4 +141,44 @@ describe('MusicBrainzProvider', () => {
             expect(await provider.getCoverUrl('abc')).toBe('https://coverartarchive.org/release/abc/front');
         });
     });
+
+    describe('getReleaseDetails', () => {
+        test('maps release media tracks and converts ms duration to seconds', async () => {
+            (fetch as any).mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({
+                    id: 'rel-123',
+                    title: 'Acidi e basi',
+                    'artist-credit': [{ name: 'Bluvertigo' }],
+                    date: '1995',
+                    genres: [{ name: 'Alternative Rock' }],
+                    media: [
+                        {
+                            position: 1,
+                            tracks: [
+                                { position: 1, title: 'Cominciamo bene', length: 254000 },
+                                { position: 2, title: 'Salute', recording: { length: 325400 } }
+                            ]
+                        }
+                    ]
+                })
+            });
+
+            const details = await provider.getReleaseDetails('rel-123');
+            expect(details).toBeDefined();
+            expect(details.title).toBe('Acidi e basi');
+            expect(details.artist).toBe('Bluvertigo');
+            expect(details.year).toBe(1995);
+            expect(details.tracks).toEqual([
+                { position: 1, disc: 1, title: 'Cominciamo bene', artist: 'Bluvertigo', duration: 254 },
+                { position: 2, disc: 1, title: 'Salute', artist: 'Bluvertigo', duration: 325 }
+            ]);
+        });
+
+        test('returns null on error response', async () => {
+            const text = jest.fn(async () => '');
+            (fetch as any).mockResolvedValueOnce({ ok: false, status: 404, bodyUsed: false, text });
+            expect(await provider.getReleaseDetails('missing')).toBeNull();
+        });
+    });
 });

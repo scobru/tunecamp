@@ -25,6 +25,54 @@ export interface AudioTags {
     discNo?: number | null;
 }
 
+export interface AiChatMessage {
+    role: 'user' | 'assistant';
+    content: string;
+}
+
+export interface AiContext {
+    albumId?: number;
+    trackIds?: number[];
+    artistId?: number;
+    searchQuery?: string;
+    view?: 'maintenance' | 'tracks' | 'albums' | 'album_detail';
+}
+
+export interface AiFieldDiff {
+    field: string;
+    before: string | number | null;
+    after: string | number | null;
+}
+
+export interface AiProposedAction {
+    id: string;
+    type: 'track_update' | 'album_update' | 'artist_update' | 'system_action';
+    targetId?: number;
+    label: string;
+    reason?: string;
+    diffs: AiFieldDiff[];
+    previewImageUrl?: string;
+    applied?: boolean;
+}
+
+export interface AiProposal {
+    id: string;
+    actions: AiProposedAction[];
+}
+
+export interface AiChatResponse {
+    reply: string;
+    toolTrace: Array<{ name: string; summary: string }>;
+    proposal?: AiProposal;
+}
+
+export interface AiApplyResponse {
+    applied: number;
+    failed: number;
+    errors: string[];
+    results: Array<{ actionId: string; ok: boolean; message: string }>;
+}
+
 export const adminApi = {
     // --- Admin: Releases & Content ---
     getAdminReleases: (options: { mine?: boolean, includeLibrary?: boolean } = {}) => {
@@ -236,29 +284,13 @@ export const adminApi = {
     syncActivityPub: () => handleResponse(api.post('ap/sync')),
     purgeLocalFederationCache: () => handleResponse(api.delete('admin/network/local-cache')),
     getAPIHealth: () => handleResponse(api.get<any>('admin/system/health')),
-    getMaintenanceMissing: (filter: 'genre' | 'year' | 'cover' | 'album' | 'description' | 'artist' = 'genre') => handleResponse(api.get<any[]>(`metadata/maintenance/missing?filter=${filter}`)),
-    getAlbumsMissingMetadata: (filter: 'genre' | 'year' | 'cover' | 'description' | 'artist' = 'genre') => handleResponse(api.get<any[]>(`metadata/maintenance/albums/missing?filter=${filter}`)),
-    getMetadataCandidates: (trackId: number) => handleResponse(api.get<any[]>(`metadata/maintenance/candidates/${trackId}`)),
-    getAlbumMetadataCandidates: (albumId: number) => handleResponse(api.get<any[]>(`metadata/maintenance/albums/candidates/${albumId}`)),
-    applyTrackMetadata: (trackId: number, metadata: any) => handleResponse(api.post<{ success: boolean }>(`metadata/maintenance/apply-track`, { trackId, metadata })),
-    applyAlbumMetadata: (albumId: number, metadata: any) => handleResponse(api.post<{ success: boolean }>(`metadata/maintenance/albums/apply`, { albumId, metadata })),
-    getArtistsMissingPhotos: () => handleResponse(api.get<any[]>(`metadata/maintenance/artists/missing`)),
-    getArtistMetadataCandidates: (artistId: number) => handleResponse(api.get<any[]>(`metadata/maintenance/artists/candidates/${artistId}`)),
-    applyArtistMetadata: (artistId: number, metadata: any) => handleResponse(api.post<{ success: boolean, photoPath?: string }>(`metadata/maintenance/artists/apply`, { artistId, metadata })),
-    autofillMetadata: (trackIds: (string | number)[], fields?: ('genre' | 'year' | 'cover' | 'album' | 'artist')[], force?: boolean) =>
-        handleResponse<{ success: number, failed: number, skipped: number, errors: string[] }>(api.post('metadata/maintenance/autofill', { trackIds, fields, force })),
 
-    aiAutofillMetadata: (trackIds: (string | number)[], force?: boolean) =>
-        handleResponse(api.post<{ success: number, failed: number, skipped: number, errors: string[] }>('metadata/maintenance/ai-autofill', { trackIds, force })),
-
-    autofillAlbumMetadata: (albumIds: (string | number)[], fields?: ('genre' | 'year' | 'cover' | 'description' | 'artist')[], force?: boolean) =>
-        handleResponse<{ success: number, failed: number, skipped: number, errors: string[] }>(api.post('metadata/maintenance/albums/autofill', { albumIds, fields, force })),
-
-    aiAutofillAlbumMetadata: (albumIds: (string | number)[], force?: boolean) =>
-        handleResponse(api.post<{ success: number, failed: number, skipped: number, errors: string[] }>('metadata/maintenance/albums/ai-autofill', { albumIds, force })),
-
-    autofillArtistMetadata: (artistIds: (string | number)[], force?: boolean) =>
-        handleResponse<{ success: number, failed: number, skipped: number, errors: string[] }>(api.post('metadata/maintenance/artists/autofill', { artistIds, force })),
+    // --- AI Library Assistant ---
+    aiStatus: () => handleResponse(api.get<{ configured: boolean; model: string }>('ai/status')),
+    aiChat: (messages: AiChatMessage[], context?: AiContext) =>
+        handleResponse(api.post<AiChatResponse>('ai/chat', { messages, context }, { timeout: 120000 })),
+    aiApply: (proposalId: string, actionIds?: string[]) =>
+        handleResponse(api.post<AiApplyResponse>('ai/apply', { proposalId, actionIds }, { timeout: 120000 })),
 
     getRelatedTracks: (trackId: string | number, limit = 5) =>
         handleResponse(api.get<Track[]>(`catalog/tracks/${trackId}/related?limit=${limit}`)),

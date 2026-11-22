@@ -174,7 +174,6 @@ export interface ScannerService {
     clearCaches(): void;
 }
 
-import type { AutoTaggerService } from "./autotagger.service.js";
 import type { CatalogService } from "./catalog.service.js";
 
 export class Scanner implements ScannerService {
@@ -201,11 +200,10 @@ export class Scanner implements ScannerService {
     constructor(
         private database: DatabaseService,
         private storage: StorageEngine,
-        private autotagger?: AutoTaggerService,
         private catalogService?: CatalogService
     ) {
         this.lookupPrimaryAdmin();
-        this.librarySync = new LibrarySync(database, autotagger, this.primaryAdminId);
+        this.librarySync = new LibrarySync(database, this.primaryAdminId);
     }
 
     private lookupPrimaryAdmin() {

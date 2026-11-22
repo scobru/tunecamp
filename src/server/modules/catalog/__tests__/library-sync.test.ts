@@ -15,7 +15,6 @@ jest.unstable_mockModule('../../../../utils/audioUtils.js', () => ({
 describe('LibrarySync', () => {
     let librarySync: any;
     let mockDb: any;
-    let mockAutotagger: any;
 
     beforeEach(async () => {
         jest.clearAllMocks();
@@ -52,12 +51,8 @@ describe('LibrarySync', () => {
             updateTrackLosslessPath: jest.fn(),
         };
 
-        mockAutotagger = {
-            auditTrack: jest.fn().mockResolvedValue(undefined)
-        };
-
         const { LibrarySync } = await import('../library-sync.js');
-        librarySync = new LibrarySync(mockDb, mockAutotagger, 1);
+        librarySync = new LibrarySync(mockDb, 1);
     });
 
     test('syncFile should create a new track when not existing', async () => {
@@ -288,19 +283,6 @@ describe('LibrarySync', () => {
 
         expect(result.action).toBe('updated');
         expect(mockDb.updateTrackTitle).toHaveBeenCalledWith(10, 'New Title');
-    });
-
-    test('createNewTrack catches autotagger audit error', async () => {
-        mockDb.getTrackByHash.mockReturnValue(null);
-        mockDb.getTrackByPath.mockReturnValue(null);
-        mockDb.getTrackByMetadata.mockReturnValue(null);
-        mockDb.getTrack.mockReturnValue({ id: 10, artist_name: 'Unknown Artist', album_id: null });
-
-        mockAutotagger.auditTrack.mockRejectedValueOnce(new Error('Audit error'));
-
-        const result = await librarySync.syncFile('/music/01-song.mp3', {}, { musicDir: '/music' });
-        expect(result.action).toBe('created');
-        // The error should be caught internally
     });
 
     test('getMimeType covers different extensions', async () => {

@@ -1,4 +1,4 @@
-import { TuneCampProvider, MetadataProvider, MetadataMatch, USER_AGENT, ArtistMetadata } from "../../core/provider.js";
+import { TuneCampProvider, MetadataProvider, MetadataMatch, USER_AGENT, ArtistMetadata, ExternalReleaseDetails, ExternalTrack } from "../../core/provider.js";
 // @ts-ignore
 import pkg from "disconnect";
 const { Client: DiscogsClient } = pkg;
@@ -144,6 +144,66 @@ export class DiscogsProvider implements TuneCampProvider, MetadataProvider {
         } catch (error) {
             console.error("Error searching Discogs artists:", error);
             return [];
+        }
+    }
+
+    async getReleaseDetails(id: string): Promise<ExternalReleaseDetails | null> {
+        try {
+            const db = this.getClient().database();
+            const data = await new Promise<any>((resolve, reject) => {
+                try {
+                    db.getRelease(id, (err: any, releaseData: any) => {
+                        if (err) {
+                            if (err.message && (err.message.includes('Unexpected token') || err.message.includes('Unexpected non-whitespace'))) {
+                                resolve(null);
+                            } else {
+                                reject(err);
+                            }
+                        } else {
+                            resolve(releaseData);
+                        }
+                    });
+                } catch (e) {
+                    reject(e);
+                }
+            });
+
+            if (!data) return null;
+
+            const rawTracks = (data.tracklist || []).filter((t: any) => !t.type_ || t.type_ === "track");
+            const tracks: ExternalTrack[] = rawTracks.map((t: any, idx: number) => {
+                const posMatch = typeof t.position === "string" ? t.position.match(/\d+/) : null;
+                const position = posMatch ? parseInt(posMatch[0], 10) : idx + 1;
+                let duration: number | undefined;
+                if (typeof t.duration === "string" && t.duration.trim()) {
+                    const parts = t.duration.trim().split(":").map(Number);
+                    if (parts.every((n: number) => Number.isFinite(n))) {
+                        if (parts.length === 2) duration = parts[0] * 60 + parts[1];
+                        else if (parts.length === 3) duration = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                    }
+                }
+                return {
+                    position,
+                    title: t.title || "",
+                    artist: t.artists?.[0]?.name || undefined,
+                    duration
+                };
+            });
+
+            return {
+                id: String(data.id || id),
+                source: "discogs",
+                title: data.title || "",
+                artist: data.artists_sort || data.artists?.[0]?.name || "Unknown",
+                date: data.released || (data.year ? String(data.year) : ""),
+                year: typeof data.year === "number" && data.year > 0 ? data.year : undefined,
+                genre: data.genres?.[0] || data.styles?.[0] || undefined,
+                coverUrl: data.images?.[0]?.resource_url || undefined,
+                tracks
+            };
+        } catch (error) {
+            console.error("Error fetching Discogs release details:", error);
+            return null;
         }
     }
 }

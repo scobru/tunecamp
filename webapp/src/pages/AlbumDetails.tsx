@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import API from "../services/api";
-import { Share2, Play, Heart, Download, Unlock, ExternalLink, CheckCircle2, Wallet, Copyright, Mic, ListPlus, ListMusic, MoreVertical, Flag, X } from "lucide-react";
+import { Share2, Play, Heart, Download, Unlock, ExternalLink, CheckCircle2, Wallet, Copyright, Mic, ListPlus, ListMusic, MoreVertical, Flag, X, Sparkles } from "lucide-react";
 
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { usePlayerStore } from "../stores/usePlayerStore";
@@ -22,6 +22,7 @@ import { Comments } from "../components/Comments";
 import { RelatedTracks } from "../components/RelatedTracks";
 import { GenreTags } from "../components/GenreTags";
 import { ReportReleaseModal } from "../components/modals/ReportReleaseModal";
+import { AiAssistantModal } from "../components/ai/AiAssistantModal";
 
 const AlbumDetails = () => {
   const { idOrSlug } = useParams();
@@ -42,8 +43,25 @@ const AlbumDetails = () => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [activeArtworkIndex, setActiveArtworkIndex] = useState<number | null>(null);
   const [seedingMagnet, setSeedingMagnet] = useState<string | null>(null);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiAvailable, setAiAvailable] = useState(false);
+
+  const configStatus = useConfigStore(s => s.status);
+  const isConfigOpenRouter = useConfigStore(s => s.isConfigured("openrouter"));
 
   const canEditGenre = isAdmin || Boolean(user?.artistId && String(album?.artistId) === String(user?.artistId));
+
+  useEffect(() => {
+    if (!canEditGenre) {
+      setAiAvailable(false);
+      return;
+    }
+    if (configStatus?.openrouter) {
+      setAiAvailable(isConfigOpenRouter);
+      return;
+    }
+    API.aiStatus().then(res => setAiAvailable(!!res.configured)).catch(() => {});
+  }, [canEditGenre, configStatus, isConfigOpenRouter]);
 
   const isTrackUnlocked = (track: any) => {
     return isAdmin || isPurchased(track.id) || 
@@ -66,31 +84,34 @@ const AlbumDetails = () => {
     }
   }, [idOrSlug]);
 
-  useEffect(() => {
-    if (idOrSlug) {
-      const fetchCall = isRelease ? API.getRelease(idOrSlug) : API.getAlbum(idOrSlug);
-      fetchCall
-        .then((data: any) => {
-          setAlbum(data);
-          setIsAlbumLiked(!!data.starred);
-          if (data.tracks) {
-            const backendLiked = new Set(data.tracks.filter((t: any) => t && t.starred).map((t: any) => String(t.id)));
-            const allAlbumTrackIds = new Set<string>(data.tracks.filter((t: any) => t).map((t: any) => String(t.id)));
-            // Smart merge: apply backend truth for tracks in this album, preserve other state
-            setLikedTrackIds(prev => {
-              const next = new Set(prev);
-              allAlbumTrackIds.forEach(id => {
-                if (backendLiked.has(id)) next.add(id);
-                else next.delete(id);
-              });
-              return next;
+  const loadAlbum = useCallback(() => {
+    if (!idOrSlug) return;
+    const fetchCall = isRelease ? API.getRelease(idOrSlug) : API.getAlbum(idOrSlug);
+    fetchCall
+      .then((data: any) => {
+        setAlbum(data);
+        setIsAlbumLiked(!!data.starred);
+        if (data.tracks) {
+          const backendLiked = new Set(data.tracks.filter((t: any) => t && t.starred).map((t: any) => String(t.id)));
+          const allAlbumTrackIds = new Set<string>(data.tracks.filter((t: any) => t).map((t: any) => String(t.id)));
+          // Smart merge: apply backend truth for tracks in this album, preserve other state
+          setLikedTrackIds(prev => {
+            const next = new Set(prev);
+            allAlbumTrackIds.forEach(id => {
+              if (backendLiked.has(id)) next.add(id);
+              else next.delete(id);
             });
-          }
-        })
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    }
+            return next;
+          });
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [idOrSlug, isRelease]);
+
+  useEffect(() => {
+    loadAlbum();
+  }, [loadAlbum]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -457,6 +478,17 @@ const AlbumDetails = () => {
               >
                 <Flag size={24} className="opacity-60 text-warning" />
               </button>
+
+              {!album.isExternal && canEditGenre && aiAvailable && (
+                <button
+                  className="btn btn-lg btn-square rounded-2xl border border-secondary/30 bg-secondary/10 hover:bg-secondary/20 transition-all tooltip tooltip-top text-secondary"
+                  onClick={() => setAiModalOpen(true)}
+                  data-tip="Ask AI Assistant"
+                  aria-label="Ask AI Assistant"
+                >
+                  <Sparkles size={22} />
+                </button>
+              )}
 
 
 
@@ -847,6 +879,16 @@ const AlbumDetails = () => {
             <span className="text-3xl">&rsaquo;</span>
           </button>
         </div>
+      )}
+
+      {!album.isExternal && canEditGenre && (
+        <AiAssistantModal
+          isOpen={aiModalOpen}
+          onClose={() => setAiModalOpen(false)}
+          context={{ albumId: Number(album.id), view: "album_detail" }}
+          contextSummary={`Album: ${album.title} — ${album.album_artist || album.albumArtist || album.artistName || album.artist_name || "Unknown Artist"}`}
+          onApplied={loadAlbum}
+        />
       )}
 
     </div>

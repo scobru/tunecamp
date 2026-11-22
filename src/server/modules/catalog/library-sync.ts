@@ -2,7 +2,6 @@ import path from "path";
 import { slugify } from "../../../utils/audioUtils.js";
 import { getFastFileHash } from "../../../utils/fileUtils.js";
 import type { DatabaseService, Track } from "../../core/database.js";
-import type { AutoTaggerService } from "./autotagger.service.js";
 import { getDurationFromFfmpeg } from "../media/ffmpeg.js";
 
 export interface SyncOptions {
@@ -42,7 +41,6 @@ export class LibrarySync {
 
   constructor(
     private database: DatabaseService,
-    private autotagger?: AutoTaggerService,
     private primaryAdminId?: number | null
   ) {}
 
@@ -372,13 +370,6 @@ export class LibrarySync {
         file_hash: hash,
         version: metadataHints?.version || null
     });
-
-    if (this.autotagger) {
-        const track = this.database.getTrack(trackId);
-        if (track && (track.artist_name === 'Unknown Artist' || !track.album_id)) {
-            this.autotagger.auditTrack(track, { forceRepair: false, useAI: true }).catch(() => {});
-        }
-    }
 
     // Queue MP3 pre-transcoding for every lossless source (.wav AND .flac):
     // file_path already points at the future .mp3, so without this the file

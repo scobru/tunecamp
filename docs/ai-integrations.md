@@ -1,53 +1,45 @@
 # AI Integrations
 
-TuneCamp leverages Artificial Intelligence to automate metadata enrichment, improve recommendations, and simplify content ingestion.
+TuneCamp uses **OpenRouter** to power a conversational, tool-using **AI Library Assistant**, smart track recommendations, and intelligent Telegram caption parsing.
 
 ## 1. Provider: OpenRouter
 
-The primary AI engine is **OpenRouter**, which provides a unified API access to multiple LLMs (Large Language Models).
-
 - **Service**: `src/server/modules/ai/openrouter.service.ts`
-- **Default Model**: Configurable via `openrouter_model` (defaults to `openrouter/free` models like `meta-llama/llama-3-8b-instruct:free`).
+- **Default Model**: Configurable via `OPENROUTER_MODEL` or `openrouter_model` in **Admin → Integrations** (defaults to `openrouter/free`).
+- **Recommendation**: Select a tool-capable model (such as `google/gemini-2.5-flash`, `openai/gpt-4o-mini`, or `anthropic/claude-sonnet-4`) for best results with the AI Library Assistant.
 
-## 2. Key Features
+## 2. AI Library Assistant
 
-### Metadata Enrichment
-- **Purpose**: Automatically fills in missing details for tracks and albums.
-- **Data Extracted**: Genre, Release Year, Mood, Style Tags, and short descriptions.
-- **Workflow**: When a new item is scanned or manually enriched, the system sends the title and artist to the AI to "guess" or provide canonical metadata.
+- **Service**: `src/server/modules/ai/assistant.service.ts`
+- **API**: `GET /api/ai/status`, `POST /api/ai/chat`, `POST /api/ai/apply`
+- **UI Locations**:
+  - **Admin → Maintenance**: Inline assistant alongside system operations (`Rescan Library`, `Sync Tags`, `Pre-warm Cache`, `Optimize DB`).
+  - **My Catalog → Tracks / Albums** & **Album Details**: Contextual **Ask AI** button that automatically passes selected or filtered tracks/albums as context.
 
-### Intelligent Content Ingestion (Telegram)
-- **Purpose**: Parses messy text or captions into structured data.
-- **Functionality**: When an audio file is sent to the Telegram bot with a caption, the AI extracts the Artist, Album, Year, and even detects **Bandcamp URLs** to trigger further scraping.
+### Tool-Calling & Preview-Before-Apply Workflow
 
-### Smart Recommendations
-- **Purpose**: Suggests "Similar Tracks" based on musicality rather than just simple tags.
-- **Mechanism**: The system provides the AI with a list of "candidate" tracks from the local library. The AI analyzes the style, mood, and era to return the top 5 most relevant recommendations.
+Instead of rigid single-field batch forms, the AI Library Assistant uses OpenAI-compatible function calling over TuneCamp's own catalog and metadata providers:
 
-### Artist & Album Identification
-- **Purpose**: Helps confirm identities against external databases like MusicBrainz.
-- **Functionality**: The AI generates "refined search queries" and short biographies to help the server find the exact match in global music databases.
+1. **Inspect**: `search_library`, `get_album_details`, `list_missing_metadata` (including `generic_titles` for `AudioTrack 01..` placeholders), and `get_library_stats`.
+2. **Lookup**: `search_external_releases`, `get_external_release_tracklist` (fetches official tracklists with track numbers and durations from iTunes, MusicBrainz, and Discogs), `search_external_recordings`, and `search_external_artists`.
+3. **Stage Diffs**: `propose_track_updates`, `propose_album_update`, `propose_artist_update`, and `propose_system_action` (admin only).
+4. **Confirm & Apply**: Write actions never mutate the database automatically. The assistant returns a structured proposal (`before → after` diffs) for review; clicking **Apply Selected** persists the checked edits via `CatalogService` and syncs ID3/file tags.
 
-## 3. Configuration
+## 3. Additional AI Features
 
-To enable AI features, you must configure an OpenRouter API Key.
+- **Smart Recommendations** (`DiscoveryService`): Suggests similar tracks from the local library based on style, mood, and era.
+- **Telegram Caption Parsing** (`TelegramMetadataParser`): Extracts artist, album, year, genre, and Bandcamp URLs from unstructured captions.
+
+## 4. Configuration
 
 ### Environment Variables
 - `OPENROUTER_API_KEY`: Your OpenRouter secret key.
-- `OPENROUTER_MODEL`: (Optional) The specific model ID to use.
+- `OPENROUTER_MODEL`: (Optional) Model ID override.
 
-### Database Settings (Admin UI)
-- `openrouter_api_key`: Can be set directly in the Admin dashboard.
-- `openrouter_model`: Can be overridden per instance.
-
-## 4. Optimization & Costs
-
-To keep costs low (or zero):
-1. **Free Models**: TuneCamp is optimized to work with OpenRouter's free tier models.
-2. **Aggressive Caching**: AI results are cached in the SQLite database. The system never asks the same question twice for the same track/artist.
-3. **Selective Triggers**: AI enrichment is typically triggered by admin actions or during initial ingestion, not on every user request.
+### Database Settings (Admin → Integrations)
+- `openrouter_api_key`: Configured directly in Admin → Integrations.
+- `openrouter_model`: Free-text model ID with quick presets.
 
 ## 5. Model Context Protocol (MCP)
 
-TuneCamp can act as an MCP server, allowing external AI clients (such as Claude Desktop or custom agents) to query and control your TuneCamp instance. 
-For detailed instructions on generating API keys and configuring your AI client, see the [mcp-setup-guide.md](./mcp-setup-guide.md).
+TuneCamp can also act as an MCP server for external AI clients (Claude Desktop, custom agents). See [mcp-setup-guide.md](./mcp-setup-guide.md).

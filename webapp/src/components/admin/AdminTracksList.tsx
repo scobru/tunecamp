@@ -1,8 +1,10 @@
 import { confirm } from '@/utils/confirm';
 import { useState, useEffect, useMemo } from "react";
 import API from "../../services/api";
-import { Link as LinkIcon, Edit, Trash2, ChevronUp, ChevronDown, Search, X, Music } from "lucide-react";
+import { Link as LinkIcon, Edit, Trash2, ChevronUp, ChevronDown, Search, X, Music, Sparkles } from "lucide-react";
 import { BatchTrackEditModal } from "../modals/BatchTrackEditModal";
+import { AiAssistantModal } from "../ai/AiAssistantModal";
+import { useConfigStore } from "../../stores/useConfigStore";
 import { notify } from "../../utils/notify";
 import { formatDuration } from "../../utils/format";
 
@@ -17,8 +19,21 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [showBatchEdit, setShowBatchEdit] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiAvailable, setAiAvailable] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "title", direction: "asc" });
   const [loading, setLoading] = useState(true);
+
+  const configStatus = useConfigStore(s => s.status);
+  const isConfigOpenRouter = useConfigStore(s => s.isConfigured("openrouter"));
+
+  useEffect(() => {
+    if (configStatus?.openrouter) {
+      setAiAvailable(isConfigOpenRouter);
+      return;
+    }
+    API.aiStatus().then(res => setAiAvailable(!!res.configured)).catch(() => {});
+  }, [configStatus, isConfigOpenRouter]);
 
   const loadTracks = () => {
     setLoading(true);
@@ -58,6 +73,31 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
     }
     return result;
   }, [tracks, sortConfig, searchTerm]);
+
+  const aiContextTracks = useMemo(() => {
+    if (selectedIds.size > 0) {
+      return tracks.filter(t => selectedIds.has(t.id)).slice(0, 50);
+    }
+    return filteredAndSortedTracks.slice(0, 50);
+  }, [tracks, selectedIds, filteredAndSortedTracks]);
+
+  const aiContextSummary = useMemo(() => {
+    if (aiContextTracks.length === 0) return undefined;
+    const albums = new Set(aiContextTracks.map(t => t.album_title).filter(Boolean));
+    const artists = new Set(aiContextTracks.map(t => t.artist_name).filter(Boolean));
+    if (albums.size === 1) {
+      const albumTitle = Array.from(albums)[0];
+      const artistName = artists.size === 1 ? ` — ${Array.from(artists)[0]}` : "";
+      return `${aiContextTracks.length} tracks from "${albumTitle}"${artistName}`;
+    }
+    if (selectedIds.size > 0) {
+      return `${selectedIds.size} selected track(s)`;
+    }
+    if (searchTerm) {
+      return `${aiContextTracks.length} tracks matching "${searchTerm}"`;
+    }
+    return `${aiContextTracks.length} tracks`;
+  }, [aiContextTracks, selectedIds.size, searchTerm]);
 
   const requestSort = (key: SortKey) => {
     let direction: "asc" | "desc" = "asc";
@@ -149,6 +189,14 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
             <button className="btn btn-xs btn-ghost" onClick={() => setSelectedIds(new Set())}>Clear</button>
           </div>
           <div className="flex gap-2">
+            {aiAvailable && (
+              <button
+                className="btn btn-sm btn-secondary gap-2"
+                onClick={() => setAiModalOpen(true)}
+              >
+                <Sparkles size={16} /> Ask AI
+              </button>
+            )}
             <button
               className="btn btn-sm btn-primary gap-2"
               onClick={() => setShowBatchEdit(true)}
@@ -185,11 +233,21 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
           )}
         </div>
         
-        {searchTerm && (
-          <div className="text-sm opacity-50">
-            Found {filteredAndSortedTracks.length} matches
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {searchTerm && (
+            <div className="text-sm opacity-50">
+              Found {filteredAndSortedTracks.length} matches
+            </div>
+          )}
+          {aiAvailable && filteredAndSortedTracks.length > 0 && (
+            <button
+              className="btn btn-sm btn-secondary btn-outline gap-2"
+              onClick={() => setAiModalOpen(true)}
+            >
+              <Sparkles size={15} /> Ask AI
+            </button>
+          )}
+        </div>
       </div>
 
       <table className="table">
@@ -323,6 +381,18 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
           onClose={() => setShowBatchEdit(false)}
         />
       )}
+
+      <AiAssistantModal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        context={{
+          trackIds: aiContextTracks.map(t => Number(t.id)).filter(n => Number.isFinite(n)),
+          searchQuery: searchTerm || undefined,
+          view: "tracks"
+        }}
+        contextSummary={aiContextSummary}
+        onApplied={loadTracks}
+      />
     </>
   );
 };

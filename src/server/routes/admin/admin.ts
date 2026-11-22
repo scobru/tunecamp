@@ -17,7 +17,6 @@ import multer from "multer";
 import { discardUploadOnError } from "../../middleware/uploads.js";
 
 import { getDownloadService } from "../../modules/catalog/download.service.js";
-import { aiService } from "../../modules/ai/ai.service.js";
 import { taskManager } from "../../modules/workers/task-manager.js";
 import { createRssService } from "../../modules/network/rss.service.js";
 import { approveRelink, dismissRelink } from "../../modules/auth/fid-relink.js";
@@ -114,6 +113,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 	const playlistService = container.playlistService;
 	const scrobbleService = container.scrobbleService;
 	const maintenance = container.maintenanceService;
+	const openRouterService = container.openRouterService;
 
 	const library = container.library;
 	const identity = container.identity;
@@ -3635,7 +3635,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 				?.getRegistry()
 				.getRegistryInfo()
 				.map((p: any) => ({ ...p, type: "download" })) || []),
-			...(aiService
+			...(openRouterService
 				?.getRegistry()
 				.getRegistryInfo()
 				.map((p: any) => ({ ...p, type: "ai" })) || []),
@@ -3744,7 +3744,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 					playlistService?.getRegistry(),
 					scrobbleService?.getRegistry(),
 					getDownloadService()?.getRegistry(),
-					aiService?.getRegistry(),
+					openRouterService?.getRegistry(),
 				].filter(Boolean);
 
 				let found = false;

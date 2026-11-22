@@ -82,7 +82,7 @@ describe('Orphan Release Fix Verification', () => {
         db.db.prepare("INSERT OR IGNORE INTO admin (username, password_hash, role) VALUES (?, ?, ?)").run("admin", "admin", "admin");
 
         const repo = new MaintenanceRepository(db.db);
-        const maintenance = new MaintenanceService(repo, db, {} as any, {} as any, {} as any, TEST_MUSIC_DIR);
+        const maintenance = new MaintenanceService(repo, db, {} as any, TEST_MUSIC_DIR);
         await maintenance.runStartupRepairs();
 
         album = db.getAlbum(albumId);

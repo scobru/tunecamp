@@ -12,10 +12,11 @@ describe("OpenRouter Service", () => {
 		mockDatabase = {
 			getSetting: jest.fn().mockImplementation((k: string) => {
 				if (k === "openrouter_api_key") return "sk-test-key-123";
-				if (k === "openrouter_model") return "meta-llama/llama-3-8b";
+				if (k === "openrouter_model") return "google/gemini-2.5-flash";
 				return null;
 			}),
 			getPluginState: jest.fn().mockReturnValue({ enabled: true }),
+			getAllPluginsState: jest.fn().mockReturnValue([]),
 		};
 		mockConfig = {
 			openrouterApiKey: "sk-config-key",
@@ -27,8 +28,6 @@ describe("OpenRouter Service", () => {
 	afterEach(() => {
 		global.fetch = originalFetch;
 	});
-
-	// ── isEnabled ───────────────────────────────────────────────────────────
 
 	describe("isEnabled", () => {
 		test("returns true when plugin is enabled and API key is present", () => {
@@ -47,79 +46,108 @@ describe("OpenRouter Service", () => {
 		});
 	});
 
-	// ── enrichMetadata ──────────────────────────────────────────────────────
-
-	describe("enrichMetadata", () => {
-		test("returns null when API key is not configured", async () => {
+	describe("chat", () => {
+		test("returns error without calling fetch when API key is missing", async () => {
 			mockDatabase.getSetting.mockReturnValue(null);
 			mockConfig.openrouterApiKey = undefined;
 
-			const result = await service.enrichMetadata("Track 1", "Artist 1");
-			expect(result).toBeNull();
+			const res = await service.chat([{ role: "user", content: "Hello" }]);
+			expect(res.ok).toBe(false);
+			if (!res.ok) {
+				expect(res.error).toContain("OpenRouter AI is not configured");
+			}
 		});
 
-		test("calls OpenRouter API and parses JSON response", async () => {
+		test("sends messages and tools to OpenRouter and returns assistant message", async () => {
 			const mockApiResponse = {
 				choices: [
 					{
 						message: {
-							content: JSON.stringify({
-								genre: "Synthwave",
-								year: 1984,
-								description: "A retro futuristic track.",
-								mood: "nostalgic, energetic",
-								tags: ["retrowave", "synthpop", "cyberpunk"],
-							}),
-						},
-					},
-				],
+							role: "assistant",
+							content: null,
+							tool_calls: [
+								{
+									id: "call_1",
+									type: "function",
+									function: {
+										name: "search_external_releases",
+										arguments: JSON.stringify({ query: "Bluvertigo - Acidi e basi" })
+									}
+								}
+							]
+						}
+					}
+				]
 			};
 
 			global.fetch = jest.fn().mockImplementation(async () => ({
 				ok: true,
 				status: 200,
-				json: async () => mockApiResponse,
-				text: async () => JSON.stringify(mockApiResponse),
+				json: async () => mockApiResponse
 			})) as any;
 
-			const result = await service.enrichMetadata("Nightcall", "Kavinsky");
-			expect(result).toBeDefined();
-			expect(result?.genre).toBe("Synthwave");
-			expect(result?.year).toBe(1984);
-			expect(result?.tags).toContain("retrowave");
+			const res = await service.chat(
+				[{ role: "user", content: "Find tracks" }],
+				{
+					tools: [
+						{
+							type: "function",
+							function: {
+								name: "search_external_releases",
+								description: "Search releases",
+								parameters: { type: "object", properties: { query: { type: "string" } } }
+							}
+						}
+					]
+				}
+			);
+
+			expect(res.ok).toBe(true);
+			if (res.ok) {
+				expect(res.message.tool_calls).toHaveLength(1);
+				expect(res.message.tool_calls?.[0].function.name).toBe("search_external_releases");
+			}
 			expect(global.fetch).toHaveBeenCalledWith(
 				"https://openrouter.ai/api/v1/chat/completions",
 				expect.objectContaining({
 					method: "POST",
 					headers: expect.objectContaining({
-						Authorization: "Bearer sk-test-key-123",
-					}),
-				}),
+						Authorization: "Bearer sk-test-key-123"
+					})
+				})
 			);
 		});
 
-		test("returns null on API failure (non-200 status)", async () => {
+		test("flags toolUseUnsupported when model rejects tool calling", async () => {
 			global.fetch = jest.fn().mockImplementation(async () => ({
 				ok: false,
-				status: 429,
-				text: async () => "Rate limit exceeded",
+				status: 404,
+				text: async () => JSON.stringify({ error: { message: "No endpoints found that support tool use" } })
 			})) as any;
 
-			const result = await service.enrichMetadata("Nightcall", "Kavinsky");
-			expect(result).toBeNull();
+			const res = await service.chat([{ role: "user", content: "Hello" }], {
+				tools: [{ type: "function", function: { name: "t", description: "d", parameters: {} } }]
+			});
+
+			expect(res.ok).toBe(false);
+			if (!res.ok) {
+				expect(res.toolUseUnsupported).toBe(true);
+				expect(res.error).toContain("google/gemini-2.5-flash");
+			}
 		});
 
-		test("returns null when fetch throws network error", async () => {
+		test("handles network exceptions cleanly", async () => {
 			global.fetch = jest.fn().mockImplementation(async () => {
 				throw new Error("Network unreachable");
 			}) as any;
 
-			const result = await service.enrichMetadata("Nightcall", "Kavinsky");
-			expect(result).toBeNull();
+			const res = await service.chat([{ role: "user", content: "Hello" }]);
+			expect(res.ok).toBe(false);
+			if (!res.ok) {
+				expect(res.error).toContain("Network unreachable");
+			}
 		});
 	});
-
-	// ── suggestRelatedTracks ────────────────────────────────────────────────
 
 	describe("suggestRelatedTracks", () => {
 		test("returns recommended track IDs matching candidate library", async () => {
@@ -133,18 +161,17 @@ describe("OpenRouter Service", () => {
 				choices: [
 					{
 						message: {
-							content: JSON.stringify({
-								recommendedIds: [2, 3],
-							}),
-						},
-					},
-				],
+							role: "assistant",
+							content: "```json\n{\"recommendedIds\": [2, 3]}\n```"
+						}
+					}
+				]
 			};
 
 			global.fetch = jest.fn().mockImplementation(async () => ({
 				ok: true,
 				status: 200,
-				json: async () => mockApiResponse,
+				json: async () => mockApiResponse
 			})) as any;
 
 			const result = await service.suggestRelatedTracks(target, candidates);
@@ -157,33 +184,25 @@ describe("OpenRouter Service", () => {
 		});
 	});
 
-	// ── identifyArtist ──────────────────────────────────────────────────────
-
-	describe("identifyArtist", () => {
-		test("generates search query and summary for artist", async () => {
-			const mockApiResponse = {
-				choices: [
-					{
-						message: {
-							content: JSON.stringify({
-								searchQuery: "Aphex Twin Richard D James",
-								bio: "Pioneering British electronic musician and composer.",
-							}),
-						},
-					},
-				],
-			};
-
+	describe("parseMetadataFromText", () => {
+		test("parses structured metadata JSON from response", async () => {
 			global.fetch = jest.fn().mockImplementation(async () => ({
 				ok: true,
 				status: 200,
-				json: async () => mockApiResponse,
+				json: async () => ({
+					choices: [
+						{
+							message: {
+								role: "assistant",
+								content: JSON.stringify({ artist: "Bluvertigo", album: "Acidi e basi", year: 1995 })
+							}
+						}
+					]
+				})
 			})) as any;
 
-			const result = await service.identifyArtist("Aphex Twin", ["Selected Ambient Works"]);
-			expect(result).toBeDefined();
-			expect(result?.searchQuery).toBe("Aphex Twin Richard D James");
-			expect(result?.bio).toContain("electronic musician");
+			const res = await service.parseMetadataFromText("Bluvertigo - Acidi e basi (1995)");
+			expect(res).toEqual({ artist: "Bluvertigo", album: "Acidi e basi", year: 1995 });
 		});
 	});
 });

@@ -7,7 +7,7 @@ import {
 } from "./core/database.js";
 import { LocalDiskStorage } from "./modules/storage/storage.engine.js";
 import { OpenRouterService } from "./modules/ai/openrouter.service.js";
-import { initAIService } from "./modules/ai/ai.service.js";
+import { AssistantService } from "./modules/ai/assistant.service.js";
 import { createAuthService } from "./modules/auth/auth.service.js";
 import { createAuthMiddleware } from "./middleware/auth.js";
 import { getScrobbleService } from "./modules/scrobble/scrobble.service.js";
@@ -24,7 +24,6 @@ import { createPublishingService } from "./modules/publishing/publishing.service
 import { LifecycleService } from "./modules/catalog/lifecycle.service.js";
 import { CatalogService } from "./modules/catalog/catalog.service.js";
 import { DiscoveryService } from "./modules/catalog/discovery.service.js";
-import { AutoTaggerService } from "./modules/catalog/autotagger.service.js";
 import { MaintenanceRepository } from "./repositories/maintenance.repository.js";
 import { MaintenanceService } from "./modules/catalog/maintenance.service.js";
 import { MediaEngine } from "./modules/media/media-engine.js";
@@ -65,8 +64,8 @@ export async function bootstrapServices(
 	const storage = new LocalDiskStorage();
 
 	const openRouterService = new OpenRouterService(database, config);
-	initAIService(openRouterService, database);
-	console.log(`🔌 [Plugins] AIService initialized with OpenRouter provider`);
+	openRouterService.syncWithDatabase().catch(() => {});
+	console.log(`🔌 [Plugins] OpenRouter AI service initialized`);
 
 	// Startup maintenance and scanner are now triggered manually via frontend
 	console.log(
@@ -290,7 +289,6 @@ export async function bootstrapServices(
 		publishingService,
 		storage,
 		config.musicDir,
-		openRouterService,
 		metadataService,
 		apService,
 	);
@@ -300,18 +298,11 @@ export async function bootstrapServices(
 		metadataService,
 	);
 
-	const autotaggerService = new AutoTaggerService(
-		database,
-		catalogService,
-		openRouterService,
-	);
 	const maintenanceRepo = new MaintenanceRepository(database.db);
 	const maintenanceService = new MaintenanceService(
 		maintenanceRepo,
 		database,
 		catalogService,
-		openRouterService,
-		autotaggerService,
 		config.musicDir,
 	);
 
@@ -332,10 +323,22 @@ export async function bootstrapServices(
 	const scanner = new Scanner(
 		database,
 		storage,
-		autotaggerService,
 		catalogService,
 	);
 	const scannerService = await initScannerService(database, scanner);
+
+	const assistantService = new AssistantService({
+		database,
+		library: database.library,
+		catalogService,
+		metadataService,
+		maintenanceService,
+		openRouterService,
+		scannerService,
+		mediaEngine,
+		config,
+		musicDir: config.musicDir,
+	});
 
 	// Automatic library directory watcher (#1197)
 	const isWatcherEnabled =
@@ -411,7 +414,9 @@ export async function bootstrapServices(
 		samplesRepository,
 		samplePacksRepository,
 		collabRepository,
+		// AI
 		openRouterService,
+		assistantService,
 		storage,
 	};
 

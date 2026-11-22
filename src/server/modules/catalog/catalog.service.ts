@@ -1,5 +1,4 @@
 import type { DatabaseService, Album, Release, Track, TrackDTO, AlbumDTO } from "../../core/database.js";
-import type { OpenRouterService } from "../ai/openrouter.service.js";
 import type { MetadataService } from "./metadata.service.js";
 import type { PublishingService } from "../publishing/publishing.service.js";
 import type { StorageEngine } from "../storage/storage.engine.js";
@@ -23,7 +22,6 @@ export class CatalogService {
         private publishing: PublishingService,
         private storage: StorageEngine,
         private musicDir: string,
-        private openRouter: OpenRouterService,
         private metadataService: MetadataService,
         private apService?: ActivityPubService
     ) {}
