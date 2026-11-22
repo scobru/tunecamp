@@ -5,7 +5,7 @@ import type { ServiceContainer } from "../../core/container.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
 
 /**
- * Cross-device sync of a listener's library (favorites, artists, playlists) and the
+ * Cross-device sync of a listener's library (favorites, albums, artists, playlists) and the
  * public "shared" playlists of the TuneCamp website player.
  *
  * The server stores opaque records and never interprets them: the private buckets
@@ -19,7 +19,7 @@ import { rateLimit } from "../../middleware/rateLimit.js";
  * active account on this instance, so the instance is never free storage for strangers.
  */
 
-const BUCKETS = new Set(["favorites", "artists", "playlists", "shared"]);
+const BUCKETS = new Set(["favorites", "albums", "artists", "playlists", "shared"]);
 const MAX_BODY = 1024 * 1024;
 const MAX_RECORDS_PER_PUT = 200;
 const MAX_RECORD_BYTES = 64 * 1024;

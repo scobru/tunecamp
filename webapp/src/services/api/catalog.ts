@@ -3,6 +3,8 @@ import type {
     SiteSettings, LegalPages, Album, Release, Artist, Track, Playlist
 } from '../../types';
 import API from './index';
+import { queryClient } from '../../lib/queryClient';
+import { queryKeys } from '../../hooks/queries';
 
 
 
@@ -118,20 +120,46 @@ export const catalogApi = {
     },
 
     // --- Star/Rating ---
-    starTrack: (id: string | number, metadata?: any) => handleResponse(api.post<{ success: boolean, starred: boolean, trackId?: number }>(`tracks/${encodeURIComponent(String(id))}/star`, metadata)),
-    unstarTrack: (id: string | number) => handleResponse(api.delete<{ success: boolean, starred: boolean }>(`tracks/${encodeURIComponent(String(id))}/star`)),
+    starTrack: async (id: string | number, metadata?: any) => {
+        const res = await handleResponse(api.post<{ success: boolean, starred: boolean, trackId?: number }>(`tracks/${encodeURIComponent(String(id))}/star`, metadata));
+        queryClient.invalidateQueries({ queryKey: ['tracks'] });
+        return res;
+    },
+    unstarTrack: async (id: string | number) => {
+        const res = await handleResponse(api.delete<{ success: boolean, starred: boolean }>(`tracks/${encodeURIComponent(String(id))}/star`));
+        queryClient.invalidateQueries({ queryKey: ['tracks'] });
+        return res;
+    },
     rateTrack: (id: string | number, rating: number) => handleResponse(api.post<{ success: boolean, rating: number }>(`tracks/${encodeURIComponent(String(id))}/rating`, { rating })),
     localizeTrack: (id: string | number) => handleResponse(api.post<{ success: boolean, track: Track }>(`tracks/${encodeURIComponent(String(id))}/localize`)),
     getStarredTracks: () => handleResponse(api.get<string[]>('tracks/starred')),
     getStarredAlbums: () => handleResponse(api.get<string[]>('albums/starred')),
 
-    starAlbum: (id: string | number, metadata?: any) => handleResponse(api.post<{ success: boolean, starred: boolean }>(`albums/${id}/star`, metadata)),
-    unstarAlbum: (id: string | number) => handleResponse(api.delete<{ success: boolean, starred: boolean }>(`albums/${id}/star`)),
+    starAlbum: async (id: string | number, metadata?: any) => {
+        const res = await handleResponse(api.post<{ success: boolean, starred: boolean }>(`albums/${id}/star`, metadata));
+        queryClient.invalidateQueries({ queryKey: queryKeys.albums });
+        queryClient.invalidateQueries({ queryKey: queryKeys.releases });
+        return res;
+    },
+    unstarAlbum: async (id: string | number) => {
+        const res = await handleResponse(api.delete<{ success: boolean, starred: boolean }>(`albums/${id}/star`));
+        queryClient.invalidateQueries({ queryKey: queryKeys.albums });
+        queryClient.invalidateQueries({ queryKey: queryKeys.releases });
+        return res;
+    },
     rateAlbum: (id: string | number, rating: number) => handleResponse(api.post<{ success: boolean, rating: number }>(`albums/${id}/rating`, { rating })),
     getStarredArtists: () => handleResponse(api.get<string[]>('artists/starred')),
 
-    starArtist: (id: string | number, metadata?: any) => handleResponse(api.post<{ success: boolean, starred: boolean }>(`artists/${id}/star`, metadata)),
-    unstarArtist: (id: string | number) => handleResponse(api.delete<{ success: boolean, starred: boolean }>(`artists/${id}/star`)),
+    starArtist: async (id: string | number, metadata?: any) => {
+        const res = await handleResponse(api.post<{ success: boolean, starred: boolean }>(`artists/${id}/star`, metadata));
+        queryClient.invalidateQueries({ queryKey: queryKeys.artists });
+        return res;
+    },
+    unstarArtist: async (id: string | number) => {
+        const res = await handleResponse(api.delete<{ success: boolean, starred: boolean }>(`artists/${id}/star`));
+        queryClient.invalidateQueries({ queryKey: queryKeys.artists });
+        return res;
+    },
     rateArtist: (id: string | number, rating: number) => handleResponse(api.post<{ success: boolean, rating: number }>(`artists/${id}/rating`, { rating })),
 
     // --- Stats ---

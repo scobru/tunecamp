@@ -148,7 +148,7 @@ The new public key is the one the FID profile page shows after signing in again.
 
 - **Endpoint**: `GET /api/auth/zen/user/:username/public`
 - **Auth Required**: No (Public)
-- **Response**: Returns **only** public profile info, public releases, and public playlists for cross-instance aggregation on `fid-portal.vercel.app`.
+- **Response**: Returns **only** public profile info (`publicProfile`), public releases (`publicReleases`), public playlists (`publicPlaylists`), starred public tracks and albums (`publicLikes`, with album/track metadata), and followed artists (`publicArtists`) for cross-instance aggregation on `fid-portal.vercel.app` and `tunecamp-website`.
 
 ### 5. Instance Discovery for Portal
 
@@ -174,10 +174,10 @@ The new public key is the one the FID profile page shows after signing in again.
 
 - **Data Source**: Aggregates `publicReleases`, `publicLikes`, `publicPlaylists` from all linked instances via their `/api/auth/zen/user/:username/public` endpoints.
 - **Storage**: Caches per-instance data in `localStorage` (`tunecamp_instance_data`).
-- **Tabs**: Releases, Favorites (starred), Playlists — each shows instance badge.
+- **Tabs**: Releases, Favorites (starred), Albums, Playlists, Artists — each shows instance badge.
 - **Auto-sync**: On login, `loadLinkedInstances()` fetches registry and auto-syncs verified instances.
 - **Manual sync**: "Sync" button per instance in the Linked Instances list.
-- **Library sync (player)**: when an identity is linked to an instance, the player can mirror the listener's library (favorites, artists, playlists) to that instance. Records are encrypted in the browser with a key derived from the identity key; the instance only stores ciphertext. See below.
+- **Library sync (player)**: when an identity is linked to an instance, the player can mirror the listener's library (favorites, albums, artists, playlists) to that instance. Records are encrypted in the browser with a key derived from the identity key; the instance only stores ciphertext. See below.
 
 ### 9. Library Sync (website player)
 
@@ -189,6 +189,6 @@ Cross-device sync of a listener's library, plus public shared playlists. Plain H
   - `GET /:pub/shared/:id` — one public shared playlist `{ name, items, at }`. Anonymous.
   - `GET /:pub/account` — `{ username }` if this instance holds an active account linked to the key, else `404`. Anonymous; a new device uses it to find where its library lives. It exposes only the key ↔ username link the passport endpoints already publish.
 - **Auth**: `X-Fid-Auth: <ts>.<sig>`, where `sig` is the identity key's signature over `fid-library:<METHOD>:<path>:<ts>:<sha256 hex of the body>`. Timestamps more than 5 minutes off are refused. The key must belong to an **active account on that instance** (`admin.zen_pub`), so an instance is never free storage for strangers.
-- **Buckets**: `favorites`, `artists`, `playlists` (ciphertext in `d`) and `shared` (JSON in the clear, up to 200 tracks).
+- **Buckets**: `favorites`, `albums`, `artists`, `playlists` (ciphertext in `d`) and `shared` (JSON in the clear, up to 200 tracks).
 - **Limits**: 200 records per request, 64 KB per record, 5000 records and 8 MB per identity, 120 requests per minute per IP. Over the limit: `413`.
 - **Storage**: table `library_sync (pub, bucket, id, d, at, del)`. A deleted record keeps its row as a tombstone with an empty payload.

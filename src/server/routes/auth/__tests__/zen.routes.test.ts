@@ -5,6 +5,7 @@ import { jest } from "@jest/globals";
 import crypto from "node:crypto";
 import { generateKeyPair, signPayload } from "fid";
 import type { FidKeyPair } from "fid";
+import { createDatabase } from "../../../core/database.js";
 
 /**
  * Tests for zen.ts endpoints NOT already covered by zen.integration.test.ts.
@@ -392,7 +393,7 @@ describe("Zen routes — supplementary tests", () => {
 			expect(res.body.publicProfile.username).toBe("alice");
 		});
 
-		test("includes releases, playlists, and likes arrays", async () => {
+		test("includes releases, playlists, likes, and followed artists arrays", async () => {
 			const res = await request(app).get(
 				"/api/auth/zen/user/alice/public",
 			);
@@ -404,6 +405,104 @@ describe("Zen routes — supplementary tests", () => {
 			expect(Array.isArray(res.body.publicPlaylists)).toBe(true);
 			expect(res.body.publicLikes).toBeDefined();
 			expect(Array.isArray(res.body.publicLikes)).toBe(true);
+			expect(res.body.publicArtists).toBeDefined();
+			expect(Array.isArray(res.body.publicArtists)).toBe(true);
+		});
+	});
+
+	describe("GET /api/auth/zen/user/:username/public (SQLite integration)", () => {
+		let realApp: express.Express;
+		let dbHandle: any;
+
+		beforeEach(() => {
+			const database = createDatabase(":memory:");
+			dbHandle = database.db;
+			const authService = {
+				getUserByUsername: (username: string) =>
+					dbHandle.prepare("SELECT * FROM admin WHERE username = ?").get(username),
+				getUserProfile: (username: string) => {
+					const row = dbHandle.prepare("SELECT username, alias FROM admin WHERE username = ?").get(username);
+					return row ? { alias: row.alias || row.username } : undefined;
+				},
+			};
+			realApp = express();
+			realApp.use(express.json());
+			realApp.use(
+				"/api/auth/zen",
+				createZenRoutes({
+					authMiddleware: mockAuthMiddleware,
+					authService,
+					database,
+					config: { jwtSecret: "test-secret", host: "test.tunecamp.net" },
+				} as any),
+			);
+
+			dbHandle
+				.prepare("INSERT INTO admin (username, password_hash, role, is_active, zen_pub) VALUES (?, ?, 'user', 1, ?)")
+				.run("listener", "hash", baseKeys.pub);
+			const artistId = Number(
+				dbHandle
+					.prepare("INSERT INTO artists (name, slug, visibility) VALUES (?, ?, 'private')")
+					.run("Homologo", "homologo").lastInsertRowid,
+			);
+			const publicAlbumId = Number(
+				dbHandle
+					.prepare("INSERT INTO albums (title, slug, artist_id, visibility, is_public, is_release, year, type, status) VALUES (?, ?, ?, 'public', 1, 1, 2026, 'album', 'released')")
+					.run("Playground", "playground", artistId).lastInsertRowid,
+			);
+			const privateAlbumId = Number(
+				dbHandle
+					.prepare("INSERT INTO albums (title, slug, artist_id, visibility, is_public, is_release) VALUES (?, ?, ?, 'private', 0, 0)")
+					.run("Secret Vault", "secret-vault", artistId).lastInsertRowid,
+			);
+			const publicTrackId = Number(
+				dbHandle
+					.prepare("INSERT INTO tracks (title, album_id, artist_id, artist_name, duration) VALUES (?, ?, ?, ?, ?)")
+					.run("Waterflow", publicAlbumId, artistId, "Homologo", 203).lastInsertRowid,
+			);
+
+			dbHandle.prepare("INSERT INTO starred_items (username, item_type, item_id) VALUES (?, ?, ?)").run("listener", "album", String(publicAlbumId));
+			dbHandle.prepare("INSERT INTO starred_items (username, item_type, item_id) VALUES (?, ?, ?)").run("listener", "album", String(privateAlbumId));
+			dbHandle.prepare("INSERT INTO starred_items (username, item_type, item_id) VALUES (?, ?, ?)").run("listener", "track", String(publicTrackId));
+			dbHandle.prepare("INSERT INTO starred_items (username, item_type, item_id) VALUES (?, ?, ?)").run("listener", "artist", String(artistId));
+		});
+
+		test("returns enriched public albums/tracks in publicLikes, excludes private albums, and returns followed artists in publicArtists", async () => {
+			const res = await request(realApp).get("/api/auth/zen/user/listener/public");
+			expect(res.status).toBe(200);
+
+			const albumLike = res.body.publicLikes.find((l: any) => l.type === "album");
+			expect(albumLike).toMatchObject({
+				type: "album",
+				album_title: "Playground",
+				album_artist: "Homologo",
+				album_slug: "playground",
+				album_year: 2026,
+				album_type: "album",
+				album_is_release: 1,
+			});
+			expect(albumLike.album_cover).toMatch(/^\/api\/albums\/\d+\/cover$/);
+
+			const trackLike = res.body.publicLikes.find((l: any) => l.type === "track");
+			expect(trackLike).toMatchObject({
+				type: "track",
+				track_title: "Waterflow",
+				track_artist: "Homologo",
+				album_title: "Playground",
+				duration: 203,
+			});
+
+			// Private album and artist rows must not appear in publicLikes
+			expect(res.body.publicLikes.some((l: any) => l.album_title === "Secret Vault")).toBe(false);
+			expect(res.body.publicLikes.some((l: any) => l.type === "artist")).toBe(false);
+
+			// Followed artists appear in publicArtists even when artists.visibility defaults to private
+			expect(res.body.publicArtists).toHaveLength(1);
+			expect(res.body.publicArtists[0]).toMatchObject({
+				name: "Homologo",
+				slug: "homologo",
+			});
+			expect(res.body.publicArtists[0].cover_url).toMatch(/^\/api\/artists\/\d+\/cover$/);
 		});
 	});
 

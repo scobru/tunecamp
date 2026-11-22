@@ -193,9 +193,18 @@ const Library = () => {
 
   const favTracks = useMemo(() => (tracksQuery.data ?? []).filter((t) => t.starred), [tracksQuery.data]);
   const favAlbums = useMemo(() => {
-    const merged = [...(albumsQuery.data ?? []), ...(releasesQuery.data ?? [])];
-    const unique = Array.from(new Map(merged.map(a => [String(a.id), a])).values());
-    return unique.filter((a) => a.starred) as (Album | Release)[];
+    const byId = new Map<string, Album | Release>();
+    for (const item of [...(albumsQuery.data ?? []), ...(releasesQuery.data ?? [])]) {
+      const key = String(item.id);
+      const existing = byId.get(key);
+      byId.set(
+        key,
+        existing
+          ? { ...existing, ...item, starred: Boolean(existing.starred || item.starred) }
+          : item
+      );
+    }
+    return Array.from(byId.values()).filter((a) => a.starred);
   }, [albumsQuery.data, releasesQuery.data]);
   const favArtists = useMemo(() => (artistsQuery.data ?? []).filter((a) => a.starred), [artistsQuery.data]);
 
@@ -231,7 +240,7 @@ const Library = () => {
   const handleUnstar = async (type: 'track' | 'album' | 'artist', id: string | number) => {
     try {
       const clearStar = <T extends { id: string | number; starred?: boolean }>(key: readonly unknown[]) =>
-        queryClient.setQueryData<T[]>(key, prev => (prev ?? []).map(it => it.id === id ? { ...it, starred: false } : it));
+        queryClient.setQueryData<T[]>(key, prev => (prev ?? []).map(it => String(it.id) === String(id) ? { ...it, starred: false } : it));
       if (type === 'track') {
         await API.unstarTrack(id);
         clearStar<Track>(queryKeys.tracks(false));
@@ -506,7 +515,11 @@ const Library = () => {
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                   {favAlbums.map((album) => (
                     <div key={album.id} className="relative group/album">
-                      <ReleaseCard item={album} viewMode="grid" type="library" />
+                      <ReleaseCard
+                        item={album}
+                        viewMode="grid"
+                        type={(album as any).is_formal_release || (album as any).is_release ? "release" : "library"}
+                      />
                       <button 
                         onClick={() => handleUnstar('album', album.id)}
                         className="absolute top-2 right-2 p-2 bg-base-100/80 backdrop-blur-md rounded-xl text-error opacity-0 group-hover/album:opacity-100 transition-opacity shadow-level-1 hover:bg-error hover:text-white"
