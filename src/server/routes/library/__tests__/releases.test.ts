@@ -208,6 +208,68 @@ describe('Release Routes - Creation and Publishing', () => {
         expect(response.body.map((r: any) => r.id)).toContain(789);
     });
 
+    test('GET /releases attaches per-user starred/rating and includes starred formal releases without leaking across users', async () => {
+        const publicRelease = { id: 10, title: 'Public Release', visibility: 'public', cover_path: 'cover10.jpg' };
+        const extraStarredRelease = { id: 20, title: 'Extra Starred Release', visibility: 'unlisted', cover_path: 'cover20.jpg' };
+        const mockSocial = {
+            getStarredItems: jest.fn((username: string, type: string) =>
+                username === 'fid_alice' && type === 'album' ? [{ item_id: '10' }, { item_id: '20' }] : []
+            ),
+            getItemRatings: jest.fn((username: string, type: string) =>
+                username === 'fid_alice' && type === 'album' ? new Map([['10', 5]]) : new Map()
+            ),
+            isStarred: jest.fn((username: string, _type: string, id: string) =>
+                username === 'fid_alice' && (id === '10' || id === '20')
+            ),
+            getItemRating: jest.fn(() => 0),
+        };
+        (mockDatabase.getReleasesByOwner as jest.Mock).mockReturnValue([]);
+        (mockDatabase.getReleasesByArtist as jest.Mock).mockReturnValue([]);
+        (mockDatabase.getReleases as jest.Mock).mockReturnValue([publicRelease]);
+        (mockDatabase.getRelease as jest.Mock).mockImplementation((id: number) =>
+            id === 20 ? extraStarredRelease : undefined
+        );
+
+        const userApp = express();
+        userApp.use(express.json());
+        userApp.use((req: any, _res, next) => {
+            req.isAdmin = false;
+            req.isSuperUser = false;
+            req.isActive = true;
+            req.role = 'user';
+            req.userId = Number(req.headers['x-user-id'] || 5);
+            req.username = req.headers['x-username'] || undefined;
+            next();
+        });
+        userApp.use('/releases', createReleaseRouter({
+            database: mockDatabase,
+            library: mockDatabase,
+            social: mockSocial,
+            scannerService: mockScanner,
+            publishingService: mockPublishingService,
+            authService: mockAuthService,
+            musicDir,
+        } as any));
+
+        const aliceRes = await request(userApp)
+            .get('/releases')
+            .set('x-user-id', '5')
+            .set('x-username', 'fid_alice');
+        expect(aliceRes.status).toBe(200);
+        const byId = new Map<number, any>(aliceRes.body.map((r: any) => [r.id, r]));
+        expect(byId.get(10)).toMatchObject({ id: 10, starred: true, rating: 5, coverImage: 'cover10.jpg' });
+        expect(byId.get(20)).toMatchObject({ id: 20, starred: true, is_formal_release: true });
+
+        const bobRes = await request(userApp)
+            .get('/releases')
+            .set('x-user-id', '6')
+            .set('x-username', 'bob');
+        expect(bobRes.status).toBe(200);
+        const bobRelease10 = bobRes.body.find((r: any) => r.id === 10);
+        expect(bobRelease10).toMatchObject({ id: 10, starred: false, rating: 0 });
+        expect(bobRes.body.find((r: any) => r.id === 20)).toBeUndefined();
+    });
+
     test('POST /releases should prevent rapid double-submission duplicate creation', async () => {
         // Setup a duplicate release created 2 seconds ago
         const duplicateRelease = {

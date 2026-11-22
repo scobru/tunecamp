@@ -490,20 +490,37 @@ export function createZenRoutes(container: ServiceContainer): Router {
 				cover_url: `/api/playlists/${p.id}/cover`,
 			}));
 
-			// Get public likes / starred items created by user
+			// Get public likes / starred items created by user (tracks & public albums/releases)
 			let likes: any[] = [];
 			try {
 				likes =
 					db
 						.prepare(`
                     SELECT s.item_type as type, s.item_id as id, s.created_at,
-                           a.title as album_title, a.id as album_id,
-                           t.title as track_title, t.artist_name as track_artist, t.album_id as track_album_id
+                           COALESCE(a.title, ta.title) as album_title,
+                           COALESCE(a.id, ta.id) as album_id,
+                           COALESCE(a.slug, ta.slug) as album_slug,
+                           COALESCE(NULLIF(a.album_artist, ''), a_ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL AND artist_name != '' LIMIT 1)) as album_artist,
+                           a.year as album_year,
+                           a.type as album_type,
+                           a.is_release as album_is_release,
+                           t.title as track_title,
+                           COALESCE(NULLIF(t.artist_name, ''), t_ar.name) as track_artist,
+                           t.album_id as track_album_id,
+                           t.duration as duration
                     FROM starred_items s
                     LEFT JOIN albums a ON (s.item_type = 'album' OR s.item_type = 'release') AND CAST(a.id AS TEXT) = s.item_id
+                    LEFT JOIN artists a_ar ON a.artist_id = a_ar.id
                     LEFT JOIN tracks t ON s.item_type = 'track' AND CAST(t.id AS TEXT) = s.item_id
-                    WHERE LOWER(s.username) = LOWER(?) OR LOWER(s.username) = LOWER(?)
-                    ORDER BY s.id DESC LIMIT 20
+                    LEFT JOIN artists t_ar ON t.artist_id = t_ar.id
+                    LEFT JOIN albums ta ON t.album_id = ta.id
+                    WHERE (LOWER(s.username) = LOWER(?) OR LOWER(s.username) = LOWER(?))
+                      AND s.item_type IN ('track', 'album', 'release')
+                      AND (
+                          (s.item_type = 'track' AND t.id IS NOT NULL AND (ta.id IS NULL OR ta.visibility IS NULL OR ta.visibility != 'private' OR ta.is_public = 1))
+                          OR ((s.item_type = 'album' OR s.item_type = 'release') AND a.id IS NOT NULL AND (a.visibility IS NULL OR a.visibility != 'private' OR a.is_public = 1))
+                      )
+                    ORDER BY s.id DESC LIMIT 200
                 `)
 						.all(user.username, userAlias) || [];
 			} catch (e) {
@@ -518,6 +535,28 @@ export function createZenRoutes(container: ServiceContainer): Router {
 						: null,
 				};
 			});
+
+			// Get followed/starred artists for user
+			let followedArtists: any[] = [];
+			try {
+				followedArtists =
+					db
+						.prepare(`
+                    SELECT ar.id as id, ar.name as name, ar.slug as slug, s.created_at as created_at
+                    FROM starred_items s
+                    JOIN artists ar ON CAST(ar.id AS TEXT) = s.item_id
+                    WHERE (LOWER(s.username) = LOWER(?) OR LOWER(s.username) = LOWER(?))
+                      AND s.item_type = 'artist'
+                    ORDER BY s.id DESC LIMIT 200
+                `)
+						.all(user.username, userAlias) || [];
+			} catch (e) {
+				console.warn("[ZEN-PUBLIC] Error querying followed artists:", e);
+			}
+			followedArtists = followedArtists.map((a: any) => ({
+				...a,
+				cover_url: `/api/artists/${a.id}/cover`,
+			}));
 
 			return res.json({
 				success: true,
@@ -535,6 +574,7 @@ export function createZenRoutes(container: ServiceContainer): Router {
 				publicReleases: releases,
 				publicPlaylists: playlists,
 				publicLikes: likes,
+				publicArtists: followedArtists,
 			});
 		} catch (err: any) {
 			console.error("[ZEN-PUBLIC] Error fetching public profile:", err);

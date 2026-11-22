@@ -148,7 +148,7 @@ La nuova chiave pubblica è quella mostrata dalla pagina del profilo FID dopo av
 
 - **Endpoint**: `GET /api/auth/zen/user/:username/public`
 - **Autenticazione Richiesta**: No (Pubblico)
-- **Risposta**: Ritorna **solo** informazioni pubbliche del profilo, pubblicazioni e playlist pubbliche per l'aggregazione tra istanze su `fid-portal.vercel.app`.
+- **Risposta**: Ritorna **solo** informazioni pubbliche del profilo (`publicProfile`), pubblicazioni (`publicReleases`), playlist pubbliche (`publicPlaylists`), brani e album pubblici nei preferiti (`publicLikes`, con metadati completi) e artisti seguiti (`publicArtists`) per l'aggregazione tra istanze su `fid-portal.vercel.app` e `tunecamp-website`.
 
 ### 5. Scoperta Istanze per il Portale
 
@@ -177,7 +177,7 @@ La nuova chiave pubblica è quella mostrata dalla pagina del profilo FID dopo av
 - **Tab**: Pubblicazioni, Preferiti (stelle), Playlist — ognuna mostra il badge dell'istanza.
 - **Sincronizzazione Automatica**: Al login, `loadLinkedInstances()` recupera il registro e sincronizza automaticamente le istanze verificate.
 - **Sincronizzazione Manuale**: Pulsante "Sincronizza" per ogni istanza nell'elenco delle Istanze Collegate.
-- **Sync della libreria (player)**: quando un'identità è collegata a un'istanza, il player può replicare la libreria dell'ascoltatore (preferiti, artisti, playlist) su quell'istanza. I record sono cifrati nel browser con una chiave derivata dalla chiave d'identità; l'istanza conserva solo testo cifrato. Vedi sotto.
+- **Sync della libreria (player)**: quando un'identità è collegata a un'istanza, il player può replicare la libreria dell'ascoltatore (preferiti, album, artisti, playlist) su quell'istanza. I record sono cifrati nel browser con una chiave derivata dalla chiave d'identità; l'istanza conserva solo testo cifrato. Vedi sotto.
 
 ### 9. Sync della Libreria (player del sito)
 
@@ -189,6 +189,6 @@ Sincronizzazione tra dispositivi della libreria di un ascoltatore, più le playl
   - `GET /:pub/shared/:id` — una playlist condivisa pubblica `{ name, items, at }`. Anonimo.
   - `GET /:pub/account` — `{ username }` se l'istanza ha un account attivo collegato alla chiave, altrimenti `404`. Anonimo; un nuovo dispositivo lo usa per trovare dove sta la sua libreria. Espone solo il legame chiave ↔ username che gli endpoint dei passaporti già pubblicano.
 - **Autenticazione**: `X-Fid-Auth: <ts>.<sig>`, dove `sig` è la firma della chiave d'identità su `fid-library:<METODO>:<percorso>:<ts>:<sha256 esadecimale del corpo>`. Timestamp con più di 5 minuti di scarto vengono rifiutati. La chiave deve appartenere a un **account attivo su quell'istanza** (`admin.zen_pub`), così un'istanza non è mai spazio gratuito per sconosciuti.
-- **Bucket**: `favorites`, `artists`, `playlists` (testo cifrato in `d`) e `shared` (JSON in chiaro, fino a 200 brani).
+- **Bucket**: `favorites`, `albums`, `artists`, `playlists` (testo cifrato in `d`) e `shared` (JSON in chiaro, fino a 200 brani).
 - **Limiti**: 200 record per richiesta, 64 KB per record, 5000 record e 8 MB per identità, 120 richieste al minuto per IP. Oltre il limite: `413`.
 - **Archiviazione**: tabella `library_sync (pub, bucket, id, d, at, del)`. Un record eliminato mantiene la riga come tombstone con payload vuoto.

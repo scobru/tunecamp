@@ -134,11 +134,17 @@ export function createReleaseRouter(container: ServiceContainer): Router {
     router.get("/", wrapAsync(async (req: any, res: any) => {
         try {
             const isAdmin = req.isAdmin || req.isSuperUser;
-            // Admins see all; logged-in users see public + their own; anon sees public.
-            const scopeKey = `releases:${isAdmin ? "admin" : "user"}:u${req.userId ?? "anon"}`;
+            const username = req.username;
+            // Admins see all; logged-in users see public + their own + starred; anon sees public.
+            // Varies by role, userId, and username (for per-user starred/rating flags).
+            const scopeKey = `releases:${isAdmin ? "admin" : "user"}:u${req.userId ?? "anon"}:n${username ?? "anon"}`;
 
             await serveCachedList(req, res, scopeKey, () => {
-                let releases = [];
+                const starredItems = username && social?.getStarredItems ? social.getStarredItems(username, "album") : [];
+                const starredSet = new Set<string>(starredItems.map((i: any) => String(i.item_id)));
+                const ratingsMap = username && social?.getItemRatings ? social.getItemRatings(username, "album") : null;
+
+                let releases: any[] = [];
                 if (isAdmin) {
                     // For Admins and Super Users, return ALL formal releases (including drafts/private)
                     releases = library.getReleases(VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
@@ -170,11 +176,32 @@ export function createReleaseRouter(container: ServiceContainer): Router {
                             seenIds.add(r.id);
                         }
                     }
+
+                    if (starredSet.size > 0 && typeof library.getRelease === "function") {
+                        for (const rawId of starredSet) {
+                            const numericId = parseInt(rawId, 10);
+                            if (isNaN(numericId) || seenIds.has(numericId)) continue;
+                            const starredRelease = library.getRelease(numericId);
+                            if (starredRelease) {
+                                releases.push({ ...starredRelease, is_formal_release: true });
+                                seenIds.add(starredRelease.id);
+                            }
+                        }
+                    }
                 } else {
                     // For anonymous users, only show public formal releases
                     releases = library.getReleases(VisibilityProfile.PUBLIC_STAGE).map(r => ({ ...r, is_formal_release: true }));
                 }
-                return releases;
+                return releases.map((r: any) => ({
+                    ...r,
+                    coverImage: r.coverImage ?? r.cover_path,
+                    starred: username
+                        ? (starredSet.has(String(r.id)) || Boolean(social?.isStarred?.(username, "album", String(r.id))))
+                        : false,
+                    rating: username
+                        ? (ratingsMap?.get(String(r.id)) ?? social?.getItemRating?.(username, "album", String(r.id)) ?? 0)
+                        : 0,
+                }));
             });
         } catch (error) {
             console.error("Error getting releases:", error);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/useAuthStore';
+import { queryClient } from '../lib/queryClient';
 import API from '../services/api';
 import { ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
 import { notify } from '../utils/notify';
@@ -33,6 +34,7 @@ const SsoCallback = () => {
                     }
                     API.setToken(exchanged.token);
                     await checkAuth();
+                    queryClient.invalidateQueries();
                     notify.success(exchanged.isNewUser ? "Benvenuto! Identità FID creata con successo." : "Accesso effettuato con FID!");
                     navigate('/', { replace: true });
                     return;
@@ -71,6 +73,7 @@ const SsoCallback = () => {
                 if (response.success && response.token) {
                     API.setToken(response.token);
                     await checkAuth(); // refresh user data
+                    queryClient.invalidateQueries();
                     notify.success(response.isNewUser ? "Benvenuto! Identità FID creata con successo." : "Accesso effettuato con FID!");
                     navigate('/', { replace: true });
                 } else {

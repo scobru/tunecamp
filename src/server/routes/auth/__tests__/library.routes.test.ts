@@ -56,6 +56,17 @@ describe("library sync routes", () => {
 		expect((await get(100)).body.records.map((r: any) => r.id)).toEqual(["b"]);
 	});
 
+	test("round-trips album records and tombstones in the albums bucket", async () => {
+		const albumRec = { bucket: "albums", id: "al%3Aplayground%3A%3Ahomologo", d: "album-cipher", at: 150, del: 0 };
+		expect((await put([albumRec])).status).toBe(200);
+		const fetched = await get(0);
+		expect(fetched.body.records).toEqual([albumRec]);
+
+		expect((await put([{ ...albumRec, d: "", at: 250, del: 1 }])).status).toBe(200);
+		const afterDelete = await get(150);
+		expect(afterDelete.body.records).toEqual([{ bucket: "albums", id: albumRec.id, d: "", at: 250, del: 1 }]);
+	});
+
 	test("an older write never overwrites a newer record, a newer one does", async () => {
 		await put([rec("a", 200, { d: "new" })]);
 		await put([rec("a", 100, { d: "old" })]);
